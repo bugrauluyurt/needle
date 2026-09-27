@@ -18,6 +18,7 @@ export const keys = {
   allAlbums: ["allAlbums"] as const,
   me: ["me"] as const,
   requests: ["requests"] as const,
+  downloads: ["downloads"] as const,
   songCandidates: (q: string) => ["songCandidates", q] as const,
   mixes: ["mixes"] as const,
   stats: (period: Period) => ["stats", period] as const,

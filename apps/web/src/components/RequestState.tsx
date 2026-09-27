@@ -1,6 +1,9 @@
-import type { RequestItem } from "@needle/shared";
+import type { DownloadItem, RequestItem } from "@needle/shared";
 
-const LABELS: Record<RequestItem["state"], string> = {
+type State = RequestItem["state"] | DownloadItem["state"];
+
+const LABELS: Record<State, string> = {
+  queued: "Waiting to start",
   missing: "Not requested",
   wanted: "Waiting for a source",
   searching: "Searching indexers",
@@ -11,7 +14,7 @@ const LABELS: Record<RequestItem["state"], string> = {
   failed: "Didn’t work",
 };
 
-export function RequestState({ state, progress, detail, kind = "album" }: Pick<RequestItem, "state" | "progress"> & { detail?: string | null; kind?: RequestItem["kind"] }) {
+export function RequestState({ state, progress, detail, kind = "album" }: { state: State; progress: number | null; detail?: string | null; kind?: RequestItem["kind"] }) {
   const pct = Math.round((progress ?? 0) * 100);
   if (state === "downloading") {
     return <div className="get-state"><div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}><i /></div>{LABELS.downloading}, {pct}%</div>;

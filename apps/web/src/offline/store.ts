@@ -1,16 +1,17 @@
 import { create } from "zustand";
 import type { Song } from "@needle/shared";
-import { subsonicUrl } from "../lib/subsonic.ts";
+import { sub, subsonicUrl } from "../lib/subsonic.ts";
 import { settings } from "../state/settings.ts";
 import { idbAll, idbDelete, idbGet, idbPut } from "./idb.ts";
 
 const CACHE = "needle-audio";
 const CONCURRENCY = 2;
+const STALL_MS = 60_000;
 
 export type CollectionKind = "album" | "playlist" | "liked";
 export type OfflineCollection = { id: string; kind: CollectionKind; name: string; subtitle: string; coverArt?: string; songIds: string[]; savedAt: number };
 type OfflineSong = { id: string; song: Song; bytes: number; savedAt: number };
-export type Job = { done: number; total: number; waiting: boolean; failed: number };
+export type Job = { done: number; total: number; waiting: boolean; failed: number; progress: number };
 
 type OfflineState = {
   ready: boolean;
@@ -47,6 +48,8 @@ export async function loadOffline() {
     bytes: songs.reduce((n, s) => n + s.bytes, 0),
   });
   void navigator.storage?.persist?.().catch(() => false);
+  const have = useOffline.getState().songs;
+  for (const c of collections) if (c.songIds.some((id) => !have.has(id))) void resumeDownload(c).catch(() => undefined);
 }
 
 export async function offlineSource(songId: string): Promise<string | null> {
@@ -79,25 +82,62 @@ function setJob(id: string, job: Job | null) {
   useOffline.setState({ jobs });
 }
 
-async function saveSong(cache: Cache, song: Song): Promise<number> {
-  const res = await fetch(downloadUrl(song));
-  if (!res.ok) throw new Error(`Download failed (${res.status})`);
-  const blob = await res.blob();
-  await cache.put(key(song.id), new Response(blob, { headers: { "content-type": res.headers.get("content-type") ?? "audio/mpeg" } }));
-  await idbPut<OfflineSong>("songs", { id: song.id, song, bytes: blob.size, savedAt: Date.now() });
-  return blob.size;
+async function saveSong(cache: Cache, song: Song, onProgress: (fraction: number) => void): Promise<number> {
+  const abort = new AbortController();
+  let stall = setTimeout(() => abort.abort(), STALL_MS);
+  const alive = () => {
+    clearTimeout(stall);
+    stall = setTimeout(() => abort.abort(), STALL_MS);
+  };
+  try {
+    const res = await fetch(downloadUrl(song), { signal: abort.signal });
+    if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`);
+    const total = Number(res.headers.get("content-length") ?? 0) || (song.size ?? 0);
+    const reader = res.body.getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let received = 0;
+    for (let part = await reader.read(); !part.done; part = await reader.read()) {
+      chunks.push(part.value);
+      received += part.value.length;
+      alive();
+      if (total) onProgress(Math.min(1, received / total));
+    }
+    const type = res.headers.get("content-type") ?? "audio/mpeg";
+    const blob = new Blob(chunks, { type });
+    await cache.put(key(song.id), new Response(blob, { headers: { "content-type": type } }));
+    await idbPut<OfflineSong>("songs", { id: song.id, song, bytes: blob.size, savedAt: Date.now() });
+    return blob.size;
+  } finally {
+    clearTimeout(stall);
+  }
 }
 
+const running = new Set<string>();
+
 export async function download(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
-  if (!offlineSupported) return;
+  if (!offlineSupported || running.has(collection.id)) return;
+  running.add(collection.id);
+  try {
+    await fetchAll(collection, songs);
+  } finally {
+    running.delete(collection.id);
+  }
+}
+
+async function fetchAll(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
   const entry: OfflineCollection = { ...collection, songIds: songs.map((s) => s.id), savedAt: Date.now() };
   await idbPut("collections", entry);
   useOffline.setState((s) => ({ collections: [entry, ...s.collections.filter((c) => c.id !== entry.id)] }));
 
   const cache = await caches.open(CACHE);
   const pending = songs.filter((s) => !useOffline.getState().songs.has(s.id));
-  const job: Job = { done: songs.length - pending.length, total: songs.length, waiting: false, failed: 0 };
-  setJob(entry.id, { ...job });
+  const job: Job = { done: songs.length - pending.length, total: songs.length, waiting: false, failed: 0, progress: 0 };
+  const partial = new Map<string, number>();
+  const report = () => {
+    job.progress = (job.done + [...partial.values()].reduce((a, b) => a + b, 0)) / Math.max(1, job.total);
+    setJob(entry.id, { ...job });
+  };
+  report();
   const queue = pending.slice();
   const worker = async () => {
     for (let song = queue.shift(); song; song = queue.shift()) {
@@ -106,19 +146,34 @@ export async function download(collection: Omit<OfflineCollection, "savedAt" | "
         await new Promise((r) => setTimeout(r, 15_000));
       }
       if (!useOffline.getState().collections.some((c) => c.id === entry.id)) return;
+      const id = song.id;
       try {
-        const bytes = await saveSong(cache, song);
-        const id = song.id;
+        const bytes = await saveSong(cache, song, (f) => {
+          partial.set(id, f);
+          report();
+        });
         useOffline.setState((s) => ({ songs: new Set(s.songs).add(id), bytes: s.bytes + bytes }));
         job.done++;
       } catch {
         job.failed++;
       }
-      setJob(entry.id, { ...job, waiting: false });
+      partial.delete(id);
+      job.waiting = false;
+      report();
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   setJob(entry.id, job.failed ? { ...job } : null);
+}
+
+async function songsOf(c: OfflineCollection): Promise<Song[]> {
+  if (c.kind === "album") return (await sub.album(c.id)).song ?? [];
+  if (c.kind === "playlist") return (await sub.playlist(c.id)).entry ?? [];
+  return (await sub.starred()).song ?? [];
+}
+
+export async function resumeDownload(c: OfflineCollection) {
+  await download(c, await songsOf(c));
 }
 
 export async function removeDownload(collectionId: string) {

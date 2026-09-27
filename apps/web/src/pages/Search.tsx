@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useIsFetching } from "@tanstack/react-query";
-import { GetArtistCard, GetCard, GetSongCard } from "../components/GetCard.tsx";
+import { GetCard, GetSongCard } from "../components/GetCard.tsx";
 import type { BrowseTile, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "../components/Cards.tsx";
@@ -227,7 +227,7 @@ function LibrarySource({ q, filter, setFilter }: { q: string; filter: Filter; se
     cardBlock("Albums", albums.map((a) => albumItem(a))),
     cardBlock("Artists", artists.map((a) => artistItem(a))),
     cardBlock("Playlists", matchingPlaylists.map((p): CollectionItem => ({
-      key: p.id, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} px={px} />, title: p.name, subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "",
+      key: p.id, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />, title: p.name, subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "",
     }))),
   ];
   return (
@@ -286,33 +286,25 @@ function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; se
   );
 }
 
-const GETS: Record<"albums" | "artists" | "songs", Filter[]> = { albums: ["All", "Albums", "Get music"], artists: ["All", "Artists", "Get music"], songs: ["All", "Songs", "Get music"] };
+const GETS: Record<"albums" | "songs", Filter[]> = { albums: ["All", "Albums", "Get music"], songs: ["All", "Songs", "Get music"] };
 
 function GetSource({ q, filter, albumsOn, songsOn }: { q: string; filter: Filter; albumsOn: boolean; songsOn: boolean }) {
   const showAlbums = albumsOn && GETS.albums.includes(filter);
-  const showArtists = albumsOn && GETS.artists.includes(filter);
   const showSongs = songsOn && GETS.songs.includes(filter);
-  const lidarr = useLidarrSearch(q, showAlbums || showArtists);
+  const lidarr = useLidarrSearch(q, showAlbums);
   const songs = useSongCandidates(q, showSongs);
   const { data: requests = [] } = useRequests();
   const byRef = new Map(requests.map((r) => [`${r.kind}:${r.ref}`, r]));
   const few = filter === "All";
   const albums = lidarr.data?.albums ?? [];
-  const artists = lidarr.data?.artists ?? [];
   const asking = lidarr.isPending || lidarr.isFetching;
-  const heading = [showArtists, showAlbums, showSongs].filter(Boolean).length > 1;
+  const heading = showAlbums && showSongs;
   return (
     <section className="res-source" aria-label="Not in your library yet">
       <div className="source-h">
         <h2>Not in your library yet</h2>
         <p className="sub">Found on MusicBrainz. {albumsOn && songsOn ? "Albums come through Lidarr and single songs from Soulseek." : albumsOn ? "Lidarr downloads the albums you pick." : "Soulseek provides the songs you pick."} They show up in your library when they’re ready.</p>
       </div>
-      {showArtists && artists.length ? (
-        <>
-          {heading ? <RowHeader title="Artists" /> : null}
-          <div className="get">{(few ? artists.slice(0, 3) : artists).map((a) => <GetArtistCard key={a.foreignArtistId} artist={a} />)}</div>
-        </>
-      ) : null}
       {showAlbums ? (
         <>
           {heading ? <RowHeader title="Albums" /> : null}
@@ -358,7 +350,7 @@ function Results({ q }: { q: string }) {
       </div>
       {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} /> : null}
       {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} /> : null}
-      {(albumsOn || songsOn) && filter !== "Playlists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
+      {(albumsOn || songsOn) && filter !== "Playlists" && filter !== "Artists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
     </div>
   );
 }

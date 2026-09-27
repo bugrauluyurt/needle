@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { LidarrAlbum, LidarrArtist, RequestItem, SongCandidate } from "@needle/shared";
 import { api } from "../lib/api.ts";
@@ -18,34 +19,16 @@ export function RemoteCover({ url, round = false }: { url: string | null; round?
   );
 }
 
-export function GetArtistCard({ artist }: { artist: LidarrArtist }) {
-  const [state, setState] = useState<"idle" | "busy" | "added">(artist.inLidarr ? "added" : "idle");
-  const add = async () => {
-    setState("busy");
-    try {
-      await api.lidarrAddArtist(artist.foreignArtistId);
-      setState("added");
-      toast(`Lidarr is fetching ${artist.name}’s latest album`);
-    } catch (e) {
-      setState("idle");
-      toast(e instanceof Error ? e.message : "Lidarr didn’t take the request");
-    }
-  };
+export function ArtistSearchCard({ artist }: { artist: LidarrArtist }) {
   return (
-    <div className="get-card">
+    <Link to={`/search?q=${encodeURIComponent(artist.name)}`} className="get-card">
       <RemoteCover url={artist.imageUrl} round />
       <div className="get-text">
         <div className="t">{artist.name}</div>
-        <div className="s">Artist</div>
-        {state === "added" ? (
-          <div className="get-state ok">In Lidarr</div>
-        ) : (
-          <button type="button" className="btn light sm" disabled={state === "busy"} onClick={() => void add()}>
-            <Icon name="plus" size={15} />{state === "busy" ? "Adding…" : "Add artist"}
-          </button>
-        )}
+        <div className="s">{artist.disambiguation ?? "Artist"}</div>
+        <div className="get-state">Find their albums and songs</div>
       </div>
-    </div>
+    </Link>
   );
 }
 

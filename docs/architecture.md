@@ -129,11 +129,15 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
  Album: "Get album" ─► POST /api/lidarr/albums/:id ─► Lidarr monitors that album and searches
                         └► requests row (kind album)
         Requests page ─► GET /api/requests ─► state merged live from Lidarr's queue and commands
+                      GET /api/lidarr/downloads ─► "Downloading now": Lidarr's whole queue
+ Artist:  searching an artist's exact name also lists their studio albums
+          (Lidarr's albums if it knows the artist, else MusicBrainz release groups)
 
  Song:  search ─► GET /api/songs/search ─► musicbrainz.ts
                     two queries (title+artist, then title only if few), official studio
                     releases, live/remix/cover versions dropped, 1 request/second, cached 1 h,
                     songs already in the library left out
+        + deezer.ts: an artist's popular songs when the search is exactly their name
         "Get song" ─► POST /api/songs ─► requests row (kind song) ─► SongDownloads.run()
 ```
 

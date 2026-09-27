@@ -31,6 +31,7 @@ const You = lazy(() => import("./pages/You.tsx"));
 const AlbumGrid = lazy(() => import("./pages/AlbumGrid.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Requests = lazy(() => import("./pages/Requests.tsx"));
+const LikedArtists = lazy(() => import("./pages/LikedArtists.tsx"));
 const spotifyPage = (name: "SpotifyLikedPage" | "SpotifyPlaylistPage" | "SpotifyAlbumPage" | "SpotifyArtistPage") =>
   lazy(() => import("./pages/Spotify.tsx").then((m) => ({ default: m[name] })));
 const SpotifyLiked = spotifyPage("SpotifyLikedPage");
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
       { path: "/library", element: page(<Library />) },
       { path: "/downloads", element: page(<Downloads />) },
       { path: "/requests", element: page(<Requests />) },
+      { path: "/artists/liked", element: page(<LikedArtists />) },
       { path: "/you", element: page(<You />) },
       { path: "/albums/:type", element: page(<AlbumGrid />) },
       { path: "/spotify/liked", element: page(<SpotifyLiked />) },

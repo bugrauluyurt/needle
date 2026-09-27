@@ -41,10 +41,11 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
       { key: "liked", to: "/liked", art: () => <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), added: "9999", pinned: true },
+      ...(starred?.artist?.length ? [{ key: "liked-artists", to: "/artists/liked", art: () => <LikedArt className="artists" />, title: "Liked artists", subtitle: `Artists, ${plural(starred.artist.length, "artist")}`, kind: "artists", contextId: "liked-artists", downloaded: false, added: "9996", pinned: true } satisfies LibraryEntry] : []),
       ...(starred?.album?.length ? [{ key: "liked-albums", to: "/albums/starred", art: () => <LikedArt className="albums" />, title: "Liked albums", subtitle: `Albums, ${plural(starred.album.length, "album")}`, kind: "albums", contextId: "liked-albums", downloaded: false, added: "9997", pinned: true } satisfies LibraryEntry] : []),
       ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
       ...playlists.map((p): LibraryEntry => ({
-        key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} px={px} />, title: p.name,
+        key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />, title: p.name,
         subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "", kind: "playlists", contextId: p.id, downloaded: down.has(p.id), added: p.changed ?? p.created ?? "",
       })),
       ...albums.map((a): LibraryEntry => ({

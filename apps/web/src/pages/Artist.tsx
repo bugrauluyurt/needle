@@ -6,7 +6,7 @@ import { Art } from "../components/Art.tsx";
 import { LikeButton } from "../components/Buttons.tsx";
 import { albumItem, ArtistCard, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
 import { Collection, RELEASE_SORTS } from "../components/Collection.tsx";
-import { GetArtistCard } from "../components/GetCard.tsx";
+import { ArtistSearchCard } from "../components/GetCard.tsx";
 import { ActBar, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
@@ -116,8 +116,8 @@ export default function ArtistPage() {
         ) : null}
         {lidarrOn && missing.data?.length ? (
           <>
-            <RowHeader title="Similar artists you don’t have" subtitle="Picked from Last.fm. Add one and Lidarr fetches their latest album." />
-            <div className="get">{missing.data.map((a) => <GetArtistCard key={a.foreignArtistId} artist={a} />)}</div>
+            <RowHeader title="Similar artists you don’t have" subtitle="Picked from Last.fm. Open one to find their albums and songs." />
+            <div className="get">{missing.data.map((a) => <ArtistSearchCard key={a.foreignArtistId} artist={a} />)}</div>
           </>
         ) : null}
       </div>

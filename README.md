@@ -18,8 +18,8 @@ installs on the iPhone as a home-screen app.
   and (optionally) Spotify, with list or grid views and sorting everywhere.
 - **Fetching music:** search also lists albums and songs you don't have. **Get album**
   asks Lidarr; **Get song** fetches one song from Soulseek (slskd). The **Requests**
-  page follows both through searching, downloading and into the library. Artist pages
-  offer similar artists you don't have.
+  page follows both through searching, downloading and into the library, and lists
+  everything Lidarr is downloading. Artist pages suggest similar artists you don't have.
 - **Devices:** every open Needle signed in as you is listed. Pause or skip on another
   device, send your queue there, or pull its music over. A device that stopped
   somewhere else offers to pick up at the same second.

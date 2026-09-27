@@ -988,3 +988,21 @@
   gap: 6px;
   flex: none;
 }
+
+.req-section {
+  margin-bottom: 28px;
+}
+
+.req-section h2,
+.req-heading {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--label);
+  margin: 8px 0 10px;
+}
+
+a.get-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}

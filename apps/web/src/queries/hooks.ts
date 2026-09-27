@@ -60,6 +60,16 @@ export const useRequests = () =>
     },
   });
 
+const DOWNLOADS_IDLE_POLL_MS = 30_000;
+
+export const useLidarrDownloads = (enabled: boolean) =>
+  useQuery({
+    queryKey: keys.downloads,
+    queryFn: api.lidarrDownloads,
+    enabled,
+    refetchInterval: (q) => (q.state.data?.length ? REQUEST_POLL_MS : DOWNLOADS_IDLE_POLL_MS),
+  });
+
 export const useSongCandidates = (q: string, enabled: boolean) =>
   useQuery({ queryKey: keys.songCandidates(q), queryFn: () => api.songSearch(q), enabled: enabled && q.trim().length > 1, staleTime: HOUR_MS });
 

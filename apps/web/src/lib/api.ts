@@ -1,4 +1,4 @@
-import type { BrowseTile, Capabilities, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { BrowseTile, Capabilities, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -50,7 +50,7 @@ export const api = {
   lidarrAlbums: (ids: string[]) => request<LidarrAlbum[]>(`/lidarr/albums?ids=${ids.map(encodeURIComponent).join(",")}`),
   lidarrGet: (foreignAlbumId: string) => post<LidarrAlbum>(`/lidarr/albums/${encodeURIComponent(foreignAlbumId)}`),
   lidarrArtists: (names: string[]) => request<LidarrArtist[]>(`/lidarr/artists?names=${names.map(encodeURIComponent).join("|")}`),
-  lidarrAddArtist: (foreignArtistId: string) => post<void>(`/lidarr/artists/${encodeURIComponent(foreignArtistId)}`),
+  lidarrDownloads: () => request<DownloadItem[]>("/lidarr/downloads"),
   spotifyLogin: () => request<{ url: string }>("/spotify/login"),
   spotifyToken: () => request<SpotifyToken>("/spotify/token"),
   spotifyDisconnect: () => request<void>("/spotify", { method: "DELETE" }),

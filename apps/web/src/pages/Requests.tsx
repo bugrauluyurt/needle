@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import type { RequestItem } from "@needle/shared";
+import type { DownloadItem, RequestItem } from "@needle/shared";
 import { RemoteCover } from "../components/GetCard.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { RequestState } from "../components/RequestState.tsx";
@@ -9,7 +9,7 @@ import { ago } from "../lib/format.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
-import { useRequests } from "../queries/hooks.ts";
+import { useCapabilities, useLidarrDownloads, useRequests } from "../queries/hooks.ts";
 import { keys } from "../queries/keys.ts";
 import { toast } from "../state/ui.ts";
 
@@ -41,6 +41,41 @@ function RequestRow({ r }: { r: RequestItem }) {
   );
 }
 
+const ACTIVE_SONG = new Set<RequestItem["state"]>(["searching", "downloading", "moving"]);
+
+function DownloadRow({ d }: { d: DownloadItem }) {
+  return (
+    <li className="req-row">
+      <RemoteCover url={d.coverUrl} />
+      <div className="req-text">
+        <div className="t">{d.title}</div>
+        <div className="s">Album, {d.artist}</div>
+        <RequestState state={d.state} progress={d.progress} detail={d.detail} />
+      </div>
+    </li>
+  );
+}
+
+function DownloadingNow() {
+  const lidarr = Boolean(useCapabilities().data?.lidarr);
+  const { data: downloads = [] } = useLidarrDownloads(lidarr);
+  const { data: requests = [] } = useRequests();
+  const songs = requests.filter((r) => r.kind === "song" && ACTIVE_SONG.has(r.state));
+  return (
+    <section className="req-section" aria-label="Downloading now">
+      <h2>Downloading now</h2>
+      {downloads.length || songs.length ? (
+        <ul className="req-list">
+          {downloads.map((d) => <DownloadRow key={`d${d.id}`} d={d} />)}
+          {songs.map((r) => <RequestRow key={`s${r.id}`} r={r} />)}
+        </ul>
+      ) : (
+        <p className="muted">Nothing is downloading right now.</p>
+      )}
+    </section>
+  );
+}
+
 export default function RequestsPage() {
   const mobile = useIsMobile();
   const { data, isLoading } = useRequests();
@@ -50,7 +85,9 @@ export default function RequestsPage() {
       {mobile ? <MobileHeader title="Requests" /> : <TopBar />}
       <div className="pad requests-page">
         {!mobile ? <h1 className="hello">Requests</h1> : null}
-        <p className="muted req-intro">Albums you asked Lidarr for and songs fetched from Soulseek. Progress updates by itself.</p>
+        <p className="muted req-intro">Everything Lidarr is downloading, and the albums and songs you asked for. Progress updates by itself.</p>
+        <DownloadingNow />
+        <h2 className="req-heading">Your requests</h2>
         {isLoading ? <p className="muted source-note"><span className="spin" />Loading your requests…</p> : null}
         {data?.length ? <ul className="req-list">{data.map((r) => <RequestRow key={r.id} r={r} />)}</ul> : null}
         {data && !data.length ? (

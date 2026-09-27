@@ -106,6 +106,22 @@ describe("Lidarr", () => {
   });
 });
 
+describe("Lidarr downloads", () => {
+  it("lists everything in Lidarr's queue with progress and failures", async () => {
+    mockFetch([[/GET \/api\/v1\/queue/, () => ({ records: [
+      { id: 1, size: 100, sizeleft: 25, status: "downloading", trackedDownloadState: "downloading", album: { title: "Brave New World", foreignAlbumId: "f", images: [{ coverType: "cover", remoteUrl: "https://c/1" }] }, artist: { artistName: "Iron Maiden", foreignArtistId: "a" } },
+      { id: 2, size: 100, sizeleft: 0, status: "completed", trackedDownloadState: "importPending", album: { title: "Killers", foreignAlbumId: "g" }, artist: { artistName: "Iron Maiden", foreignArtistId: "a" } },
+      { id: 3, status: "completed", trackedDownloadState: "importFailed", trackedDownloadStatus: "warning", statusMessages: [{ messages: ["No files found"] }], title: "Some.Release" },
+    ] })]]);
+    const lidarr = new Lidarr({ url: "http://lidarr", apiKey: "k", qualityProfile: null, rootFolder: null });
+    expect(await lidarr.downloads()).toEqual([
+      { id: 1, title: "Brave New World", artist: "Iron Maiden", coverUrl: "https://c/1", state: "downloading", progress: 0.75, detail: null },
+      { id: 2, title: "Killers", artist: "Iron Maiden", coverUrl: null, state: "importing", progress: 1, detail: null },
+      { id: 3, title: "Some.Release", artist: "", coverUrl: null, state: "failed", progress: null, detail: "No files found" },
+    ]);
+  });
+});
+
 describe("Spotify import", () => {
   it("matches tracks against the library and writes a Navidrome playlist", async () => {
     const db = openDatabase(":memory:");

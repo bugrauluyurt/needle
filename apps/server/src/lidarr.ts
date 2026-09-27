@@ -1,4 +1,5 @@
-import type { LidarrAlbum, LidarrArtist, LidarrState } from "@needle/shared";
+import type { DownloadItem, LidarrAlbum, LidarrArtist, LidarrState } from "@needle/shared";
+import { fold } from "@needle/shared";
 
 type Image = { coverType: string; remoteUrl?: string; url?: string };
 type Stats = { trackFileCount?: number; trackCount?: number; totalTrackCount?: number };
@@ -11,6 +12,8 @@ type RawArtist = {
   qualityProfileId?: number;
   metadataProfileId?: number;
   rootFolderPath?: string;
+  disambiguation?: string;
+  ratings?: { votes?: number };
 };
 type RawAlbum = {
   id?: number;
@@ -27,7 +30,11 @@ type RawAlbum = {
   secondaryTypes?: string[];
   addOptions?: { searchForNewAlbum: boolean };
 };
-type QueueRecord = { albumId?: number; size?: number; sizeleft?: number; trackedDownloadState?: string };
+type QueueRecord = {
+  id?: number; albumId?: number; size?: number; sizeleft?: number; title?: string; status?: string;
+  trackedDownloadState?: string; trackedDownloadStatus?: string; statusMessages?: { messages?: string[] }[];
+  album?: RawAlbum; artist?: RawArtist;
+};
 type Command = { name: string; status: string; body?: { albumIds?: number[] } };
 type Profile = { id: number; name: string };
 type RootFolder = { path: string; defaultQualityProfileId?: number; defaultMetadataProfileId?: number };
@@ -130,7 +137,7 @@ export class Lidarr {
   }
 
   toArtist(r: RawArtist): LidarrArtist {
-    return { foreignArtistId: r.foreignArtistId, name: r.artistName, imageUrl: this.cover(r.images) ?? r.images?.[0]?.remoteUrl ?? null, inLidarr: Boolean(r.id && r.monitored) };
+    return { foreignArtistId: r.foreignArtistId, name: r.artistName, imageUrl: this.cover(r.images) ?? r.images?.[0]?.remoteUrl ?? null, disambiguation: r.disambiguation === "" ? null : (r.disambiguation ?? null) };
   }
 
   async artistAlbums(artistId: number): Promise<LidarrAlbum[]> {
@@ -191,24 +198,26 @@ export class Lidarr {
     return found.filter((a): a is LidarrArtist => a !== null);
   }
 
-  async addArtist(foreignArtistId: string): Promise<void> {
-    const existing = (await this.req<RawArtist[]>("/artist")).find((a) => a.foreignArtistId === foreignArtistId);
-    if (existing?.id) {
-      const albums = (await this.req<RawAlbum[]>(`/album?artistId=${existing.id}`))
-        .filter((a) => !a.albumType || KEEP_TYPES.has(a.albumType))
-        .sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
-      const latest = albums[0];
-      if (latest) await this.getAlbum(latest.foreignAlbumId);
-      return;
-    }
-    const lookup = (await this.req<RawArtist[]>(`/artist/lookup?term=${encodeURIComponent(`lidarr:${foreignArtistId}`)}`))[0];
-    if (!lookup) throw new LidarrError("Lidarr couldn't find that artist on MusicBrainz");
-    await this.req("/artist", {
-      method: "POST",
-      body: JSON.stringify({
-        ...lookup, ...(await this.defaults()), monitored: true, monitorNewItems: "none",
-        addOptions: { monitor: "latest", searchForMissingAlbums: true },
-      }),
+  pickArtist(artists: RawArtist[], name: string): RawArtist | undefined {
+    return artists
+      .filter((a) => fold(a.artistName) === fold(name))
+      .sort((a, b) => Number(Boolean(b.id)) - Number(Boolean(a.id)) || (b.ratings?.votes ?? 0) - (a.ratings?.votes ?? 0))[0];
+  }
+
+  async downloads(): Promise<DownloadItem[]> {
+    const { records } = await this.req<{ records: QueueRecord[] }>("/queue?pageSize=100&includeAlbum=true&includeArtist=true");
+    return records.map((r): DownloadItem => {
+      const tracked = r.trackedDownloadState ?? "";
+      const failed = r.trackedDownloadStatus === "error" || tracked === "failed" || tracked === "importFailed";
+      return {
+        id: r.id ?? 0,
+        title: r.album?.title ?? r.title ?? "",
+        artist: r.artist?.artistName ?? r.album?.artist?.artistName ?? "",
+        coverUrl: this.cover(r.album?.images),
+        state: failed ? "failed" : tracked.startsWith("import") ? "importing" : r.status === "queued" || r.status === "paused" ? "queued" : "downloading",
+        progress: r.size ? 1 - (r.sizeleft ?? 0) / r.size : null,
+        detail: failed ? (r.statusMessages?.flatMap((m) => m.messages ?? [])[0] ?? null) : null,
+      };
     });
   }
 }

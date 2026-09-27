@@ -58,12 +58,12 @@ export function subsonicUrl(method: string, params: Params = {}): string {
   return `/rest/${method}.view?${query(params, credentials(), false).toString()}`;
 }
 
-export function coverUrl(id: string | undefined, size = 300): string | null {
+export function coverUrl(id: string | undefined, size = 300, version?: string): string | null {
   if (!id) return null;
   if (id.startsWith("https://")) return sizedCover(id, size);
   const c = credentials();
   if (!c) return null;
-  return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle" }).toString()}`;
+  return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle", ...(version ? { changed: version } : {}) }).toString()}`;
 }
 
 export async function call<T>(method: string, params: Params = {}, creds?: Credentials, signal?: AbortSignal): Promise<T> {

@@ -5,7 +5,7 @@ import { plural } from "../lib/format.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
-import { offlineSongs, removeDownload, useOffline } from "../offline/store.ts";
+import { offlineSongs, removeDownload, resumeDownload, useOffline } from "../offline/store.ts";
 import type { OfflineCollection } from "../offline/store.ts";
 import { player } from "../player/controller.ts";
 import { useSettings } from "../state/settings.ts";
@@ -15,11 +15,15 @@ const gb = (bytes: number) => (bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` :
 
 function Row({ c }: { c: OfflineCollection }) {
   const job = useOffline((s) => s.jobs[c.id]);
+  const saved = useOffline((s) => c.songIds.filter((id) => s.songs.has(id)).length);
   const to = c.kind === "liked" ? "/liked" : `/${c.kind}/${c.id}`;
-  const pct = job ? Math.round((job.done / Math.max(1, job.total)) * 100) : 100;
-  const status = job
-    ? job.waiting ? "Waiting for Wi-Fi" : job.done < job.total ? `Downloading ${job.done + 1} of ${job.total}` : `${plural(job.failed, "song")} didn’t download`
-    : plural(c.songIds.length, "song");
+  const pct = Math.round((job ? job.progress : saved / Math.max(1, c.songIds.length)) * 100);
+  const running = job && job.done + job.failed < job.total;
+  const status = running
+    ? job.waiting ? "Waiting for Wi-Fi" : `Downloading ${Math.min(job.done + job.failed + 1, job.total)} of ${job.total}, ${pct}%`
+    : job?.failed ? `${plural(job.failed, "song")} didn’t download`
+    : saved < c.songIds.length ? `${saved} of ${plural(c.songIds.length, "song")} saved` : plural(c.songIds.length, "song");
+  const incomplete = !running && saved < c.songIds.length;
   return (
     <div className="dl-row">
       <Link to={to} className="dl-link">
@@ -27,7 +31,7 @@ function Row({ c }: { c: OfflineCollection }) {
         <div className="dl-text">
           <div className="t">{c.name}</div>
           <div className="s">{status}</div>
-          {job ? <div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}><i /></div> : null}
+          {running || incomplete ? <div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}><i /></div> : null}
         </div>
       </Link>
       <button
@@ -39,6 +43,7 @@ function Row({ c }: { c: OfflineCollection }) {
       >
         <Icon name="play" size={18} />
       </button>
+      {incomplete ? <button type="button" className="btn ghost sm" onClick={() => void resumeDownload(c)}>Try again</button> : null}
       <button type="button" className="icon-btn" aria-label={`Remove ${c.name} from this device`} onClick={() => void removeDownload(c.id)}>
         <Icon name="trash" size={18} />
       </button>
@@ -69,7 +74,7 @@ export default function DownloadsPage() {
           <>
             <div className="dl-sum">
               <b>{gb(bytes)} on this {where}</b>
-              <span>Plays with no connection, even away from home.</span>
+              <span>Kept in this browser on this {where}, not on the Pi. Plays with no connection, even away from home.</span>
             </div>
             {collections.map((c) => <Row key={c.id} c={c} />)}
             {!collections.length ? <p className="muted">Nothing downloaded yet. Use the download button on an album, a playlist or your liked songs.</p> : null}

@@ -500,11 +500,10 @@
 /* tracks */
 .tracks {
   --cols: 44px minmax(0, 1fr) 132px;
-  padding: 0 12px 8px;
+  padding-bottom: 8px;
 }
 
 .pad .tracks {
-  padding-inline: 0;
   margin-inline: -12px;
 }
 
@@ -1659,6 +1658,10 @@ kbd {
   from {
     opacity: 0;
   }
+}
+
+.liked-art.artists {
+  background: linear-gradient(135deg, #ff9a6b, #d9446b 55%, #5b1f4f);
 }
 
 .liked-art.albums {

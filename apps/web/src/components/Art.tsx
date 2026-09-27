@@ -16,6 +16,7 @@ export function artSize(cssPx: number): number {
 type ArtProps = {
   id?: string | undefined;
   images?: SpImage[] | null | undefined;
+  version?: string | undefined;
   px: number;
   round?: boolean;
   className?: string;
@@ -24,8 +25,8 @@ type ArtProps = {
   fallback?: "album" | "artist";
 };
 
-function ArtImpl({ id, images, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
-  const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px));
+function ArtImpl({ id, images, version, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
+  const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px), version);
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
   const cls = ["art", round ? "round" : "", state === "done" ? "loaded" : "", className ?? ""].filter(Boolean).join(" ");
   return (

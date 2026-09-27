@@ -3,6 +3,7 @@ import type { Song } from "@needle/shared";
 import { download, removeDownload, useIsDownloaded, useOffline } from "../offline/store.ts";
 import type { CollectionKind } from "../offline/store.ts";
 import { useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useNavigate } from "react-router";
 import { toast } from "../state/ui.ts";
 import { Icon } from "./Icon.tsx";
 
@@ -30,11 +31,12 @@ export function LikeButton({ kind, item, size = 28, className = "icon-btn big" }
 type DownloadTarget = { id: string; kind: CollectionKind; name: string; subtitle: string; coverArt?: string };
 
 export function DownloadButton({ target, songs, size = 32 }: { target: DownloadTarget; songs: Song[] | undefined; size?: number }) {
+  const navigate = useNavigate();
   const supported = useOffline((s) => s.supported);
   const done = useIsDownloaded(target.id);
   const job = useOffline((s) => s.jobs[target.id]);
   if (!supported) return null;
-  const pct = job ? Math.round((job.done / Math.max(1, job.total)) * 100) : 0;
+  const pct = job ? Math.round(job.progress * 100) : 0;
   const label = job ? `Downloading, ${pct}%` : done ? "Remove download" : "Download";
   return (
     <button
@@ -51,7 +53,7 @@ export function DownloadButton({ target, songs, size = 32 }: { target: DownloadT
           toast(`Removed ${target.name} from this device`);
         } else {
           void download(target, songs);
-          toast(`Downloading ${target.name}`);
+          toast(`Saving ${target.name} on this device for offline listening`, { label: "Downloads", run: () => void navigate("/downloads") });
         }
       }}
     >

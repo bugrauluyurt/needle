@@ -39,7 +39,7 @@ function EditForm({ playlist, onDone }: { playlist: PlaylistWithSongs; onDone: (
   return (
     <>
       <div className="edit-grid">
-        <Art id={playlist.coverArt} px={180} />
+        <Art id={playlist.coverArt} version={playlist.changed} px={180} />
         <div className="edit-fields">
           <label className="field">
             <span>Name</span>
@@ -141,7 +141,7 @@ export default function PlaylistPage() {
   return (
     <div className="tinted">
       <Hero
-        art={<Art id={playlist.coverArt} px={232} eager />}
+        art={<Art id={playlist.coverArt} version={playlist.changed} px={232} eager />}
         kind={playlist.public ? "Public playlist" : "Playlist"}
         title={playlist.name}
         description={playlist.comment}

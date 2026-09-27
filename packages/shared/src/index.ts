@@ -58,14 +58,16 @@ export type LidarrAlbum = {
   progress: number | null;
 };
 
-export type LidarrSearch = { albums: LidarrAlbum[]; artists: LidarrArtist[] };
+export type LidarrSearch = { albums: LidarrAlbum[] };
 
 export type LidarrArtist = {
   foreignArtistId: string;
   name: string;
   imageUrl: string | null;
-  inLidarr: boolean;
+  disambiguation: string | null;
 };
+
+export type DownloadItem = { id: number; title: string; artist: string; coverUrl: string | null; state: "queued" | "downloading" | "importing" | "failed"; progress: number | null; detail: string | null };
 
 export type Capabilities = {
   lidarr: boolean;

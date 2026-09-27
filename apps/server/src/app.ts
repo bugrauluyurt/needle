@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Capabilities, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
-import { fold, songKey } from "@needle/shared";
+import { songKey } from "@needle/shared";
 import type { Config } from "./config.ts";
 import { DeviceHub } from "./devices.ts";
 import { Lidarr, LidarrError } from "./lidarr.ts";
@@ -163,14 +163,13 @@ export function createApp(config: Config, db: DatabaseSync) {
     const r = await needLidarr(c);
     if (r.error) return r.error;
     const q = c.req.query("q")?.trim() ?? "";
-    if (q.length < 2) return c.json({ albums: [], artists: [] } satisfies LidarrSearch);
+    if (q.length < 2) return c.json({ albums: [] } satisfies LidarrSearch);
     const found = await r.lidarr.search(q);
-    const match = found.artists.find((a) => fold(a.artistName) === fold(q));
+    const match = r.lidarr.pickArtist(found.artists, q);
     const discography = !match ? [] : match.id ? await r.lidarr.artistAlbums(match.id) : await musicbrainz.albumsBy(match.foreignArtistId, match.artistName).catch(() => []);
     const seen = new Set(discography.map((a) => a.foreignAlbumId));
     return c.json({
       albums: [...discography.filter((a) => a.state !== "available"), ...found.albums.filter((a) => !seen.has(a.foreignAlbumId))],
-      artists: found.artists.map((a) => r.lidarr.toArtist(a)),
     } satisfies LidarrSearch);
   });
 
@@ -246,11 +245,10 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json(await r.lidarr.lookupArtists(names));
   });
 
-  app.post("/api/lidarr/artists/:id", async (c) => {
+  app.get("/api/lidarr/downloads", async (c) => {
     const r = await needLidarr(c);
     if (r.error) return r.error;
-    await r.lidarr.addArtist(c.req.param("id"));
-    return c.body(null, 204);
+    return c.json(await r.lidarr.downloads());
   });
 
   app.get("/api/spotify/login", (c) => {
