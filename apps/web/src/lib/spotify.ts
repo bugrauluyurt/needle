@@ -4,6 +4,7 @@ import { api } from "./api.ts";
 export const SPOTIFY_API = "https://api.spotify.com/v1";
 const MAX_ITEMS = 3000;
 const PAGE = 50;
+const ARTIST_ALBUMS_PAGE = 10;
 
 type Image = { url: string; width?: number | null; height?: number | null };
 export type SpArtistRef = { id: string; name: string };
@@ -72,11 +73,11 @@ async function req<T>(path: string, init: RequestInit = {}, retry = true): Promi
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-async function pages<T>(first: string, limit = MAX_ITEMS): Promise<T[]> {
+async function pages<T>(first: string, limit = MAX_ITEMS, unwrap: (body: unknown) => Paged<T> = (body) => body as Paged<T>): Promise<T[]> {
   const out: T[] = [];
   let next: string | null = first;
   while (next && out.length < limit) {
-    const page: Paged<T> = await req<Paged<T>>(next);
+    const page: Paged<T> = unwrap(await req<unknown>(next));
     out.push(...page.items);
     next = page.next;
   }
@@ -138,7 +139,8 @@ export const sp = {
     return { ...album, tracks: { ...album.tracks, items: [...album.tracks.items, ...rest], next: null } };
   },
   artist: (id: string) => req<SpArtist>(`/artists/${id}`),
-  artistAlbums: (id: string) => pages<SpAlbumRef>(`/artists/${id}/albums?include_groups=album,single&limit=${PAGE}`, 200),
+  artistAlbums: (id: string) => pages<SpAlbumRef>(`/artists/${id}/albums?include_groups=album,single&limit=${ARTIST_ALBUMS_PAGE}`, 200),
+  followed: () => pages<SpArtist>(`/me/following?type=artist&limit=${PAGE}`, MAX_ITEMS, (body) => (body as { artists: Paged<SpArtist> }).artists),
   search: (q: string, signal?: AbortSignal) =>
     req<SearchResult>(`/search?${new URLSearchParams({ q, type: "track,album,artist,playlist", limit: "10" }).toString()}`, signal ? { signal } : {}),
   saved: (uris: string[]) => req<boolean[]>(`/me/library/contains?${new URLSearchParams({ uris: uris.join(",") }).toString()}`),

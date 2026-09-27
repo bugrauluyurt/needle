@@ -11,7 +11,7 @@ test("shows the Spotify library next to your own", async ({ page }) => {
 
   const side = page.locator("nav.side");
   await side.getByRole("button", { name: "Spotify", exact: true }).click();
-  await expect(side.locator(".lib-item")).toHaveCount(4);
+  await expect(side.locator(".lib-item")).toHaveCount(5);
   await expect(side.locator(".lib-item", { hasText: "Liked on Spotify" })).toContainText("3 songs");
   await side.locator(".lib-item", { hasText: "Liked on Spotify" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Liked on Spotify" })).toBeVisible();
@@ -34,6 +34,30 @@ test("opens Spotify playlists, albums and artists", async ({ page }) => {
   await page.locator(".meta-artist", { hasText: "Lumen Drift" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Lumen Drift" })).toBeVisible();
   await expect(page.locator(".card", { hasText: "Glass Hours" })).toBeVisible();
+});
+
+test("lists followed artists and follows or unfollows them", async ({ page }) => {
+  const mock = await mockSpotify(page);
+  await signIn(page);
+  const side = page.locator("nav.side");
+  await side.getByRole("button", { name: "Artists", exact: true }).click();
+  await expect(side.locator(".lib-item", { hasText: "Lumen Drift" })).toContainText("Artist you follow on Spotify");
+  await side.locator(".lib-item", { hasText: "Lumen Drift" }).click();
+  await page.getByRole("button", { name: "Following" }).click();
+  await expect(page.getByRole("button", { name: "Follow", exact: true })).toBeVisible();
+  await expect(side.locator(".lib-item", { hasText: "Lumen Drift" })).toHaveCount(0);
+  await expect(side.getByText("Artists you like here, or follow on Spotify, show up here.")).toBeVisible();
+  await expect.poll(() => mock.saved).toEqual(["DELETE spotify:artist:ar1"]);
+});
+
+test("starts a radio from a Spotify song", async ({ page }) => {
+  const mock = await mockSpotify(page);
+  await signIn(page, "/spotify/album/al1");
+  await page.locator(".tr", { hasText: "Glass Song 2" }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Start radio from this song" }).click();
+  await expect.poll(() => mock.plays.length).toBe(1);
+  expect(mock.plays[0]?.uris).toEqual(["spotify:track:t2"]);
+  await expect(page.locator(".rp-card, .bar").getByText("Glass Song 2").first()).toBeVisible();
 });
 
 test("searches your library and Spotify in separate sections, and the filters apply to both", async ({ page }) => {

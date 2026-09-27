@@ -1684,7 +1684,9 @@ kbd {
   margin-bottom: 8px;
 }
 
-.sp-note p {
+.sp-note p,
+.library-note p {
+  max-width: 62ch;
   margin-bottom: 20px;
   line-height: 1.5;
 }

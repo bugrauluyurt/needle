@@ -70,7 +70,7 @@ export const useGenreSongs = (genre: string | undefined) =>
 export const useSearch = (q: string) =>
   useQuery({
     queryKey: keys.search(q),
-    queryFn: ({ signal }) => sub.search(q, { songs: 20, albums: 12, artists: 8 }, signal),
+    queryFn: ({ signal }) => api.search(q, signal),
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });

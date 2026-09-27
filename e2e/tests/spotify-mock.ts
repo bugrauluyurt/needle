@@ -17,7 +17,7 @@ export async function mockSpotify(page: Page): Promise<Mock> {
   const mock: Mock = { plays: [], saved: [] };
   await page.route("**/api/capabilities", async (route) => {
     const res = await route.fetch();
-    await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true } });
+    await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true, spotifyReconnect: false } });
   });
   await page.route("**/api/spotify/token", (route) => route.fulfill({ json: { accessToken: "fake", expiresAt: Date.now() + 3_600_000 } }));
   await page.route("https://i.scdn.co/**", (route) => route.fulfill({ body: PNG, contentType: "image/png", headers: { "access-control-allow-origin": "*" } }));
@@ -48,6 +48,9 @@ export async function mockSpotify(page: Page): Promise<Mock> {
       mock.plays.push({ device: url.searchParams.get("device_id"), uris: (req.postDataJSON() as { uris: string[] }).uris });
       return route.fulfill({ status: 204 });
     }
+    if (path === "/artists/ar1/albums" && Number(url.searchParams.get("limit")) > 10) {
+      return route.fulfill({ status: 400, json: { error: { status: 400, message: "Invalid limit" } } });
+    }
     if (path === "/me/library") {
       mock.saved.push(`${req.method()} ${url.searchParams.get("uris") ?? ""}`);
       return route.fulfill({ status: 200, body: "" });
@@ -63,6 +66,7 @@ export async function mockSpotify(page: Page): Promise<Mock> {
       "/albums/al1": album,
       "/artists/ar1": artist,
       "/artists/ar1/albums": page1([albumRef]),
+      "/me/following": { artists: page1([artist]) },
       "/search": url.searchParams.get("q")?.includes("zzzz")
         ? { tracks: page1([]), albums: page1([]), artists: page1([]), playlists: page1([]) }
         : { tracks: page1(tracks), albums: page1([albumRef]), artists: page1([artist]), playlists: page1([followed]) },

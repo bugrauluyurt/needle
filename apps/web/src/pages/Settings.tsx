@@ -170,12 +170,12 @@ function SpotifySettings() {
   }
   return (
     <>
-      {caps.data.spotifyPlayback ? (
+      {!caps.data.spotifyReconnect ? (
         <Row title="Spotify is connected" hint="Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium.">
           <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))}>Disconnect</button>
         </Row>
       ) : (
-        <Row title="Reconnect Spotify" hint="Needle needs a few more Spotify permissions to play songs and edit your playlists. Reconnect once to grant them.">
+        <Row title="Reconnect Spotify" hint="Needle needs a few more Spotify permissions, to play songs, edit playlists and follow artists. Reconnect once to grant them.">
           <button type="button" className="btn light sm" onClick={connect}>Reconnect</button>
         </Row>
       )}

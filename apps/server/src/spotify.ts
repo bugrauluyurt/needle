@@ -9,8 +9,8 @@ const API = "https://api.spotify.com/v1";
 const SCOPES = [
   "streaming", "user-read-email", "user-read-private", "user-read-playback-state", "user-modify-playback-state",
   "user-library-read", "user-library-modify", "playlist-read-private", "playlist-read-collaborative",
-  "playlist-modify-private", "playlist-modify-public", "user-follow-read", "user-read-recently-played",
-].join(" ");
+  "playlist-modify-private", "playlist-modify-public", "user-follow-read", "user-follow-modify", "user-read-recently-played",
+];
 const STATE_TTL = 10 * 60_000;
 const PAGE = 500;
 
@@ -73,9 +73,18 @@ export class Spotify {
     return Boolean(this.db.prepare("SELECT 1 FROM spotify_tokens WHERE user = ?").get(user));
   }
 
-  canPlay(user: string): boolean {
+  private scopes(user: string): Set<string> {
     const row = this.db.prepare("SELECT scope FROM spotify_tokens WHERE user = ?").get(user) as { scope: string } | undefined;
-    return Boolean(row?.scope.split(" ").includes("streaming"));
+    return new Set(row?.scope.split(" "));
+  }
+
+  canPlay(user: string): boolean {
+    return this.scopes(user).has("streaming");
+  }
+
+  needsReconnect(user: string): boolean {
+    const granted = this.scopes(user);
+    return this.connected(user) && SCOPES.some((s) => !granted.has(s));
   }
 
   async token(user: string): Promise<{ accessToken: string; expiresAt: number }> {
@@ -97,7 +106,7 @@ export class Spotify {
       client_id: this.clientId,
       response_type: "code",
       redirect_uri: this.redirectUri,
-      scope: SCOPES,
+      scope: SCOPES.join(" "),
       state,
       code_challenge_method: "S256",
       code_challenge: b64url(createHash("sha256").update(verifier).digest()),

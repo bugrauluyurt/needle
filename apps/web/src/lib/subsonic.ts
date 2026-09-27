@@ -10,7 +10,6 @@ import type {
   PlaylistWithSongs,
   PlayQueue,
   ScanStatus,
-  SearchResult3,
   Song,
   StructuredLyrics,
   SubsonicEnvelope,
@@ -106,10 +105,6 @@ export const sub = {
   songsByGenre: (genre: string, count = 100, offset = 0) =>
     call<{ songsByGenre: { song?: Song[] } }>("getSongsByGenre", { genre, count, offset }).then((r) => r.songsByGenre.song ?? []),
   genres: () => call<{ genres: { genre?: Genre[] } }>("getGenres").then((r) => r.genres.genre ?? []),
-  search: (query: string, counts: { songs?: number; albums?: number; artists?: number; songOffset?: number } = {}, signal?: AbortSignal) =>
-    call<{ searchResult3: SearchResult3 }>("search3", {
-      query, songCount: counts.songs ?? 20, albumCount: counts.albums ?? 12, artistCount: counts.artists ?? 8, songOffset: counts.songOffset ?? 0,
-    }, undefined, signal).then((r) => r.searchResult3),
 
   playlists: () => call<{ playlists: { playlist?: Playlist[] } }>("getPlaylists").then((r) => r.playlists.playlist ?? []),
   playlist: (id: string) => call<{ playlist: PlaylistWithSongs }>("getPlaylist", { id }).then((r) => r.playlist),

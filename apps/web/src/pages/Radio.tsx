@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { InternetRadioStation } from "@needle/shared";
+import type { Artist, InternetRadioStation } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { CardRow, RowHeader } from "../components/Cards.tsx";
 import { Icon } from "../components/Icon.tsx";
@@ -17,6 +17,8 @@ import { usePlayer } from "../player/store.ts";
 import { keys } from "../queries/keys.ts";
 import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
+import { image, isSpotify, rawId } from "../lib/spotify.ts";
+import { useSpotifyArtist } from "../queries/spotify.ts";
 
 function AddStation() {
   const qc = useQueryClient();
@@ -83,6 +85,12 @@ function Station({ s }: { s: InternetRadioStation }) {
   );
 }
 
+function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
+  const { data } = useSpotifyArtist(isSpotify(id) ? rawId(id) : undefined);
+  const cover = isSpotify(id) ? image(data?.artist.images, 300) : library?.find((x) => x.id === id)?.coverArt;
+  return <Art id={cover} px={180} round fallback="artist" />;
+}
+
 export default function RadioPage() {
   const mobile = useIsMobile();
   const { data: stations = [], isLoading } = useRadios();
@@ -100,13 +108,13 @@ export default function RadioPage() {
         {!mobile ? <h1 className="hello">Radio</h1> : null}
         {artists.length || songs.length ? (
           <>
-            <RowHeader title="Start a radio from something you like" subtitle="Plays songs from your library that sound like it, and keeps going" />
+            <RowHeader title="Start a radio from something you like" subtitle="Plays songs like it, and keeps going" />
             <CardRow>
               {artists.map((a) => (
                 <button key={a.id} type="button" className="card radio-card" onClick={() => void player.startRadio({ artistId: a.id, name: a.name })}>
-                  <div className="card-art"><Art id={library?.find((x) => x.id === a.id)?.coverArt} px={180} round fallback="artist" /></div>
+                  <div className="card-art"><ArtistArt id={a.id} library={library} /></div>
                   <div className="t">{a.name} radio</div>
-                  <div className="s">Artist radio</div>
+                  <div className="s">{isSpotify(a.id) ? "Shuffles their Spotify albums" : "Artist radio"}</div>
                 </button>
               ))}
               {songs.map((s) => (

@@ -7,7 +7,8 @@ import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
 import { usePlayer } from "../player/store.ts";
 import { useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
-import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { matchesTerms, queryTerms } from "@needle/shared";
 import { image, spId } from "../lib/spotify.ts";
 import { plural } from "../lib/format.ts";
 import type { LibraryFilter } from "../state/ui.ts";
@@ -34,6 +35,7 @@ export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEnt
   const { data: spLiked } = useSpotifyLiked();
   const { data: spPlaylists = [] } = useSpotifyPlaylists();
   const { data: spAlbums = [] } = useSpotifyAlbums();
+  const { data: spArtists = [] } = useSpotifyFollowed();
   return useMemo(() => {
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
@@ -59,8 +61,12 @@ export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEnt
         key: `sp-al-${a.id}`, to: `/spotify/album/${a.id}`, art: <Art id={image(a.images, 64)} px={48} />, title: a.name,
         subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, kind: "albums", spotify: true, contextId: spId(a.id), downloaded: false, date: "",
       })),
+      ...spArtists.map((a): LibraryEntry => ({
+        key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: <Art id={image(a.images, 64)} px={48} round fallback="artist" />, title: a.name,
+        subtitle: "Artist you follow on Spotify", kind: "artists", spotify: true, contextId: spId(a.id), downloaded: false, date: "",
+      })),
     ];
-    const q = query.trim().toLowerCase();
+    const terms = queryTerms(query);
     const matches = (e: LibraryEntry) => {
       if (filter === "downloaded") return e.downloaded;
       if (filter === "spotify") return Boolean(e.spotify);
@@ -69,9 +75,9 @@ export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEnt
     const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.spotify ? 2 : 1);
     return entries
       .filter(matches)
-      .filter((e) => !q || e.title.toLowerCase().includes(q))
+      .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.date.localeCompare(a.date));
-  }, [playlists, starred, collections, spLiked, spPlaylists, spAlbums, filter, query]);
+  }, [playlists, starred, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query]);
 }
 
 const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "Downloaded"]];
@@ -90,12 +96,25 @@ export function LibraryChips() {
   );
 }
 
-export function LibraryList({ entries, compact = false }: { entries: LibraryEntry[]; compact?: boolean }) {
+const EMPTY: Record<Exclude<LibraryFilter, null>, string> = {
+  playlists: "Your playlists show up here. Create one with the + button.",
+  albums: "Albums you like here, or save on Spotify, show up here.",
+  artists: "Artists you like here, or follow on Spotify, show up here.",
+  spotify: "Nothing from Spotify yet.",
+  downloaded: "Nothing downloaded yet. Use the download button on an album or playlist.",
+};
+
+export function libraryEmptyText(filter: LibraryFilter, query: string): string {
+  if (query.trim()) return `Nothing in your library matches “${query.trim()}”.`;
+  return filter ? EMPTY[filter] : "Like albums and artists, or create a playlist.";
+}
+
+export function LibraryList({ entries, empty }: { entries: LibraryEntry[]; empty: string }) {
   const ctx = usePlayer((s) => s.context);
   const playing = usePlayer((s) => s.playing);
   const { pathname } = useLocation();
   return (
-    <ul className={compact ? "lib-list scroll-thin" : "lib-list scroll-thin"}>
+    <ul className="lib-list scroll-thin">
       {entries.map((e) => {
         const isPlaying = ctx?.id === e.contextId;
         return (
@@ -114,7 +133,7 @@ export function LibraryList({ entries, compact = false }: { entries: LibraryEntr
           </li>
         );
       })}
-      {!entries.length ? <li className="lib-empty">Nothing here yet</li> : null}
+      {!entries.length ? <li className="lib-empty">{empty}</li> : null}
     </ul>
   );
 }
@@ -179,7 +198,7 @@ export function Sidebar() {
             Recents <Icon name="list" size={16} />
           </span>
         </div>
-        <LibraryList entries={entries} />
+        <LibraryList entries={entries} empty={libraryEmptyText(filter, query)} />
       </div>
     </nav>
   );

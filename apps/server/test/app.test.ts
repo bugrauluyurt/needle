@@ -54,7 +54,7 @@ describe("server", () => {
   });
 
   it("reports what's switched on", async () => {
-    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, publicUrl: null });
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, publicUrl: null });
     expect((await app.request("/api/lidarr/search?q=air", { headers: good })).status).toBe(404);
   });
 

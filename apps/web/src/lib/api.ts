@@ -1,4 +1,4 @@
-import type { Capabilities, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { Capabilities, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -34,6 +34,7 @@ export const api = {
   reportPlay: (p: PlayReport) => post<void>("/plays", p),
   stats: (period: Period) => request<Stats>(`/stats?period=${period}`),
   mixes: () => request<Mix[]>("/mixes"),
+  search: (q: string, signal?: AbortSignal) => request<SearchResult3>(`/search?q=${encodeURIComponent(q)}`, signal ? { signal } : {}),
   lidarrSearch: (q: string) => request<LidarrAlbum[]>(`/lidarr/search?q=${encodeURIComponent(q)}`),
   lidarrAlbums: (ids: string[]) => request<LidarrAlbum[]>(`/lidarr/albums?ids=${ids.map(encodeURIComponent).join(",")}`),
   lidarrGet: (foreignAlbumId: string) => post<LidarrAlbum>(`/lidarr/albums/${encodeURIComponent(foreignAlbumId)}`),

@@ -12,6 +12,7 @@ import { Mixes } from "./mixes.ts";
 import type { Auth } from "./navidrome.ts";
 import { authFromHeaders, authFromQuery, Navidrome, SubsonicFailure } from "./navidrome.ts";
 import { proxyToNavidrome } from "./proxy.ts";
+import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
 import { PlayLog } from "./stats.ts";
 
@@ -26,6 +27,7 @@ export function createApp(config: Config, db: DatabaseSync) {
   const navidrome = new Navidrome(config.navidromeUrl);
   const log = new PlayLog(db);
   const mixes = new Mixes(navidrome, log);
+  const library = new LibrarySearch(navidrome);
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
@@ -90,6 +92,7 @@ export function createApp(config: Config, db: DatabaseSync) {
       spotify: Boolean(spotify),
       spotifyConnected: spotify?.connected(auth.user) ?? false,
       spotifyPlayback: spotify?.canPlay(auth.user) ?? false,
+      spotifyReconnect: spotify?.needsReconnect(auth.user) ?? false,
       publicUrl: config.publicUrl,
     };
     return c.json(caps);
@@ -107,6 +110,8 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (!PERIODS.has(period)) return c.json({ error: "Unknown period" }, 400);
     return c.json(log.stats(c.get("auth").user, period));
   });
+
+  app.get("/api/search", async (c) => c.json(await library.search(c.get("auth"), c.req.query("q") ?? "")));
 
   app.get("/api/mixes", async (c) => c.json(await mixes.forUser(c.get("auth"))));
 

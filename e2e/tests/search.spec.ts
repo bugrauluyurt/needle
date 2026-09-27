@@ -28,6 +28,18 @@ test("searches as you type, with a top result and filters", async ({ page }) => 
   await expect(page.getByText("No artists in your library match “zzzz nothing”.")).toBeVisible();
 });
 
+test("finds text anywhere in names, in search and in the library list", async ({ page }) => {
+  await signIn(page, "/search?q=arbor");
+  await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
+  const side = page.locator("nav.side");
+  await side.getByRole("button", { name: "Search in your library" }).click();
+  await side.getByRole("textbox", { name: "Search in your library" }).fill("field");
+  await expect(side.locator(".lib-item")).toHaveCount(1);
+  await expect(side.locator(".lib-item")).toContainText("Weightless Hours");
+  await side.getByRole("textbox", { name: "Search in your library" }).fill("zzzz");
+  await expect(side.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
+});
+
 test("remembers recent searches", async ({ page }) => {
   await signIn(page, "/search");
   await page.getByRole("searchbox", { name: "Search" }).fill("Kasa");

@@ -1,8 +1,9 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Song } from "@needle/shared";
 import { albumSongs, sp, SpotifyApiError, toSong } from "../lib/spotify.ts";
-import type { SpPlaylist } from "../lib/spotify.ts";
+import type { SpArtist, SpPlaylist } from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
+import { queryClient } from "./client.ts";
 import { useCapabilities } from "./hooks.ts";
 
 const TEN_MIN = 10 * 60_000;
@@ -13,6 +14,7 @@ export const spKeys = {
   playlist: (id: string) => ["sp", "playlist", id] as const,
   liked: ["sp", "liked"] as const,
   albums: ["sp", "albums"] as const,
+  followed: ["sp", "followed"] as const,
   album: (id: string) => ["sp", "album", id] as const,
   artist: (id: string) => ["sp", "artist", id] as const,
   search: (q: string) => ["sp", "search", q] as const,
@@ -73,6 +75,32 @@ export function useSpotifyAlbums() {
   return useQuery({ queryKey: spKeys.albums, queryFn: sp.albums, enabled: on, staleTime: TEN_MIN });
 }
 
+export function useSpotifyFollowed() {
+  const on = useSpotifyOn();
+  return useQuery({ queryKey: spKeys.followed, queryFn: sp.followed, enabled: on, staleTime: TEN_MIN });
+}
+
+export function useToggleSpotifyFollow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ artist, on }: { artist: SpArtist; on: boolean }) => {
+      const uri = [`spotify:artist:${artist.id}`];
+      return on ? sp.save(uri) : sp.unsave(uri);
+    },
+    onMutate: async ({ artist, on }) => {
+      await qc.cancelQueries({ queryKey: spKeys.followed });
+      const prev = qc.getQueryData<SpArtist[]>(spKeys.followed);
+      if (prev) qc.setQueryData<SpArtist[]>(spKeys.followed, on ? [artist, ...prev] : prev.filter((a) => a.id !== artist.id));
+      return { prev };
+    },
+    onSuccess: (_d, { artist, on }) => toast(on ? `Following ${artist.name} on Spotify` : `Stopped following ${artist.name}`),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(spKeys.followed, ctx.prev);
+      toast("Spotify didn’t take that. Reconnect Spotify in Settings if this keeps happening.");
+    },
+  });
+}
+
 export const spotifyAlbumQuery = (id: string) => queryOptions({
   queryKey: spKeys.album(id),
   queryFn: async () => {
@@ -95,6 +123,14 @@ export const spotifyArtistQuery = (id: string) => queryOptions({
   },
   staleTime: TEN_MIN,
 });
+
+export async function spotifyArtistSongs(id: string, albumLimit = 3): Promise<{ artist: SpArtist; songs: Song[] }> {
+  const { artist, albums } = await queryClient.fetchQuery(spotifyArtistQuery(id));
+  const full = albums.filter((a) => a.album_type === "album");
+  const picks = (full.length ? full : albums).slice(0, albumLimit);
+  const loaded = await Promise.all(picks.map((a) => queryClient.fetchQuery(spotifyAlbumQuery(a.id))));
+  return { artist, songs: loaded.flatMap((a) => a.songs) };
+}
 
 export function useSpotifyArtist(id: string | undefined) {
   const on = useSpotifyOn();

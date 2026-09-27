@@ -9,6 +9,9 @@ import { useSession } from "../state/session.ts";
 import type { Quality } from "../state/settings.ts";
 import { AudioEngine, dbToGain } from "./engine.ts";
 import { prepareSpotify, spotifyPlayer } from "./spotify.ts";
+import { isSpotify, rawId } from "../lib/spotify.ts";
+import { spotifyArtistSongs } from "../queries/spotify.ts";
+import { toast } from "../state/ui.ts";
 import { progress } from "./progress.ts";
 import * as Q from "./queue.ts";
 import type { PlayContext, PlayerState, ResumeOffer } from "./store.ts";
@@ -21,6 +24,7 @@ const RESTART_THRESHOLD = 3;
 const SAVE_DELAY = 5_000;
 const RESUME_WINDOW_MS = 7 * 86_400_000;
 const AUTOPLAY_BATCH = 40;
+const RADIO_ALBUMS = 6;
 const SAVED_AT = "needle.queueSavedAt";
 const CLOCK_SLACK_MS = 3_000;
 
@@ -487,12 +491,26 @@ export function playStation(station: InternetRadioStation) {
   }
 }
 
+async function similarTo(id: string, genre: string | undefined): Promise<Song[]> {
+  const similar = await sub.similarSongs(id, 60).catch(() => [] as Song[]);
+  return similar.length < 5 && genre ? sub.randomSongs(60, genre).catch(() => []) : similar;
+}
+
+async function spotifyRadio(artistId: string): Promise<Song[]> {
+  const { songs } = await spotifyArtistSongs(rawId(artistId), RADIO_ALBUMS).catch(() => ({ songs: [] as Song[] }));
+  return Q.shuffleArray(songs);
+}
+
 export async function startRadio(seed: { song?: Song; artistId?: string; name: string }) {
   const id = seed.song?.id ?? seed.artistId;
   if (!id) return;
-  let similar = await sub.similarSongs(id, 60).catch(() => [] as Song[]);
-  if (similar.length < 5 && seed.song?.genre) similar = await sub.randomSongs(60, seed.song.genre).catch(() => []);
-  const songs = seed.song ? [seed.song, ...similar.filter((x) => x.id !== seed.song?.id)] : similar;
+  const artistId = seed.artistId ?? seed.song?.artistId;
+  const pool = isSpotify(id) ? (artistId ? await spotifyRadio(artistId) : []) : await similarTo(id, seed.song?.genre);
+  const songs = seed.song ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)] : pool;
+  if (songs.length < 2) {
+    toast(`Couldn’t find songs for ${seed.name} radio`);
+    return;
+  }
   playSongs(songs, 0, { kind: "radio", name: `${seed.name} radio` }, { shuffle: false });
 }
 

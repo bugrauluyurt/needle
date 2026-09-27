@@ -18,7 +18,7 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { useCapabilities } from "../queries/hooks.ts";
-import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists, useToggleSpotifyFollow } from "../queries/spotify.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "../state/ui.ts";
 
@@ -248,12 +248,15 @@ export function SpotifyArtistPage() {
   const on = useSpotifyOn();
   const mobile = useIsMobile();
   const { data, isLoading, isError, refetch } = useSpotifyArtist(id);
+  const { data: followed } = useSpotifyFollowed();
+  const follow = useToggleSpotifyFollow();
   const tone = useTone(image(data?.artist.images, 64));
   usePageTone(tone);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (isError || !data) return <SpotifyError what="artist" retry={() => void refetch()} />;
   const { artist, albums } = data;
+  const following = Boolean(followed?.some((a) => a.id === artist.id));
   const full = albums.filter((a) => a.album_type === "album");
   const singles = albums.filter((a) => a.album_type !== "album");
   return (
@@ -274,6 +277,9 @@ export function SpotifyArtistPage() {
             <ShuffleButton label={artist.name} onShuffle={() => void playSpotifyArtist(artist.id, true)} />
           </>
         ) : null}
+        <button type="button" className="btn ghost sm" aria-pressed={following} onClick={() => follow.mutate({ artist, on: !following })}>
+          {following ? "Following" : "Follow"}
+        </button>
         <OpenInSpotify kind="artist" id={artist.id} />
       </ActBar>
       <div className="pad">

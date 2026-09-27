@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase } from "../src/db.ts";
 import { Lidarr } from "../src/lidarr.ts";
 import { Navidrome } from "../src/navidrome.ts";
+import { LibrarySearch } from "../src/search.ts";
 import { matchKey, normalize, Spotify } from "../src/spotify.ts";
 
 type Route = [RegExp, (url: URL, init?: RequestInit) => unknown];
@@ -152,5 +153,48 @@ describe("Spotify import", () => {
     expect(spotify.canPlay("bugra")).toBe(true);
     expect(spotify.canPlay("guest")).toBe(false);
     expect(spotify.canPlay("nobody")).toBe(false);
+    expect(spotify.needsReconnect("bugra")).toBe(true);
+    expect(spotify.needsReconnect("nobody")).toBe(false);
+  });
+});
+
+describe("library search", () => {
+  const auth = { user: "bugra", token: "t", salt: "s" };
+  const library = (scan: string) => [
+    [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: scan, count: 3 } })],
+    [/POST \/rest\/search3/, () => ok({ searchResult3: {
+      song: [
+        { id: "s1", title: "Bad Guy", artist: "Billie Eilish", album: "When We All Fall Asleep" },
+        { id: "s2", title: "Guy Who Sings", artist: "Someone", album: "Eilish Tribute" },
+        { id: "s3", title: "İstanbul'da Gece", artist: "Kasa Kaan", album: "Gece" },
+      ],
+      album: [{ id: "a1", name: "Happier Than Ever", artist: "Billie Eilish" }],
+      artist: [{ id: "r1", name: "Billie Eilish" }, { id: "r2", name: "Kasa Kaan" }],
+    } })],
+  ] satisfies Route[];
+
+  it("matches text anywhere in titles, artists and albums, ignoring accents", async () => {
+    mockFetch(library("1"));
+    const search = new LibrarySearch(new Navidrome("http://nd"));
+    const r = await search.search(auth, "ilish");
+    expect(r.song?.map((s) => s.id)).toEqual(["s1", "s2"]);
+    expect(r.album?.map((a) => a.id)).toEqual(["a1"]);
+    expect(r.artist?.map((a) => a.id)).toEqual(["r1"]);
+    expect((await search.search(auth, "guy eilish")).song?.map((s) => s.id)).toEqual(["s2", "s1"]);
+    expect((await search.search(auth, "istanbul")).song?.map((s) => s.id)).toEqual(["s3"]);
+    expect((await search.search(auth, "  ")).song).toBeUndefined();
+  });
+
+  it("builds the index once and rebuilds it after a new scan", async () => {
+    let calls = mockFetch(library("1"));
+    const search = new LibrarySearch(new Navidrome("http://nd"));
+    await search.search(auth, "bad");
+    await search.search(auth, "guy");
+    expect(calls.filter((c) => c.url.endsWith("/search3"))).toHaveLength(1);
+    vi.setSystemTime(Date.now() + 120_000);
+    calls = mockFetch(library("2"));
+    await search.search(auth, "guy");
+    expect(calls.filter((c) => c.url.endsWith("/search3"))).toHaveLength(1);
+    vi.useRealTimers();
   });
 });

@@ -3,7 +3,7 @@ import { Card, CardRow } from "../components/Cards.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
-import { LibraryChips, LibraryList, useLibraryEntries, useNewPlaylist } from "../layout/Sidebar.tsx";
+import { LibraryChips, LibraryList, libraryEmptyText, useLibraryEntries, useNewPlaylist } from "../layout/Sidebar.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { useUi } from "../state/ui.ts";
 
@@ -46,13 +46,14 @@ export default function LibraryPage() {
           </button>
         </div>
         {grid ? (
-          <CardRow grid>
-            {entries.map((e) => <Card key={e.key} to={e.to} art={e.art} title={e.title} subtitle={e.subtitle} />)}
-          </CardRow>
+          entries.length ? (
+            <CardRow grid>
+              {entries.map((e) => <Card key={e.key} to={e.to} art={e.art} title={e.title} subtitle={e.subtitle} />)}
+            </CardRow>
+          ) : <p className="muted">{libraryEmptyText(filter, query)}</p>
         ) : (
-          <LibraryList entries={entries} />
+          <LibraryList entries={entries} empty={libraryEmptyText(filter, query)} />
         )}
-        {!entries.length ? <p className="muted">{filter === "downloaded" ? "Nothing downloaded yet. Use the download button on an album or playlist." : "Nothing here yet. Like albums and artists, or create a playlist."}</p> : null}
       </div>
     </>
   );

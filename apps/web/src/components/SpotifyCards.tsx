@@ -3,7 +3,7 @@ import { image, spId } from "../lib/spotify.ts";
 import type { SpAlbumRef, SpArtist, SpPlaylist } from "../lib/spotify.ts";
 import { player } from "../player/controller.ts";
 import { queryClient } from "../queries/client.ts";
-import { spotifyAlbumQuery, spotifyArtistQuery, spotifyPlaylistQuery } from "../queries/spotify.ts";
+import { spotifyAlbumQuery, spotifyArtistSongs, spotifyPlaylistQuery } from "../queries/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { Art } from "./Art.tsx";
 import { Card } from "./Cards.tsx";
@@ -16,10 +16,8 @@ export async function playSpotifyAlbum(id: string, shuffle = false) {
 }
 
 export async function playSpotifyArtist(id: string, shuffle = false) {
-  const { artist, albums } = await queryClient.fetchQuery(spotifyArtistQuery(id));
-  const picks = albums.filter((a) => a.album_type === "album").slice(0, 3);
-  const loaded = await Promise.all((picks.length ? picks : albums.slice(0, 5)).map((a) => queryClient.fetchQuery(spotifyAlbumQuery(a.id))));
-  player.playSongs(loaded.flatMap((a) => a.songs), 0, { kind: "artist", id: spId(artist.id), name: artist.name }, { shuffle });
+  const { artist, songs } = await spotifyArtistSongs(id);
+  player.playSongs(songs, 0, { kind: "artist", id: spId(artist.id), name: artist.name }, { shuffle });
 }
 
 export async function playSpotifyPlaylist(id: string, shuffle = false) {

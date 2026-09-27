@@ -124,7 +124,7 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
       <DM.Item className="menu-item" onSelect={() => { player.playNext(songs); toast(single ? "Plays next" : `${songs.length} songs play next`); }}>
         <Row icon="playNext">Play next</Row>
       </DM.Item>
-      {single && !spotify ? (
+      {single ? (
         <DM.Item className="menu-item" onSelect={() => void player.startRadio({ song, name: song.title })}>
           <Row icon="radio">Start radio from this song</Row>
         </DM.Item>

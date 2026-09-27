@@ -70,6 +70,7 @@ export type Capabilities = {
   spotify: boolean;
   spotifyConnected: boolean;
   spotifyPlayback: boolean;
+  spotifyReconnect: boolean;
   publicUrl: string | null;
 };
 
@@ -133,3 +134,4 @@ export type ImportResult = {
 export const AUTH_HEADERS = { user: "x-needle-user", token: "x-needle-token", salt: "x-needle-salt" } as const;
 
 export type * from "./subsonic.ts";
+export * from "./search.ts";

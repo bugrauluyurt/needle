@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { GetCard } from "../components/GetCard.tsx";
 import type { Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
@@ -9,7 +9,6 @@ import { AlbumCard, ArtistCard, Card, CardRow, playArtist, RowHeader } from "../
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { artistName, clock, plural } from "../lib/format.ts";
-import { sub } from "../lib/subsonic.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { useDelayed } from "../lib/useDelayed.ts";
 import { TILE_COLORS } from "../lib/palette.ts";
@@ -17,7 +16,6 @@ import { TILE_COLORS } from "../lib/palette.ts";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { tileCoversOptions, useCapabilities, useGenres, useLidarrSearch, usePlaylists, useSearch } from "../queries/hooks.ts";
-import { keys } from "../queries/keys.ts";
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
@@ -360,7 +358,6 @@ export default function Search() {
   const urlQ = params.get("q") ?? "";
   const [text, setText] = useState(urlQ);
   const [recent, setRecent] = useState(loadRecent);
-  const qc = useQueryClient();
   usePageTone(null);
 
   useEffect(() => {
@@ -379,9 +376,6 @@ export default function Search() {
   const box = <SearchBox value={text} onChange={setText} onCommit={() => text.trim() && remember(text.trim())} />;
   const q = urlQ.trim();
 
-  useEffect(() => {
-    if (q) void qc.prefetchQuery({ queryKey: keys.search(q), queryFn: () => sub.search(q) });
-  }, [q, qc]);
 
   return (
     <>
