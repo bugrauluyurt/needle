@@ -1,12 +1,15 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useQueries } from "@tanstack/react-query";
+import { useIsFetching, useQueries } from "@tanstack/react-query";
 import { GetCard } from "../components/GetCard.tsx";
 import type { Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
-import { AlbumCard, ArtistCard, Card, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
+import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "../components/Cards.tsx";
+import { Collection, SORT_LABELS } from "../components/Collection.tsx";
+import type { CollectionItem, SortOption } from "../components/Collection.tsx";
 import { Icon } from "../components/Icon.tsx";
+import { SearchField } from "../components/SearchField.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { artistName, clock, plural } from "../lib/format.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
@@ -20,9 +23,8 @@ import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { albumPath } from "../lib/paths.ts";
-import { image } from "../lib/spotify.ts";
 import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch } from "../queries/spotify.ts";
-import { playSpotifyArtist, SpotifyAlbumCard, SpotifyArtistCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
+import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylistItem } from "../components/SpotifyCards.tsx";
 
 const tile = (i: number) => TILE_COLORS[i % TILE_COLORS.length] ?? "#1E3C78";
 
@@ -48,29 +50,29 @@ function saveRecent(list: string[]) {
 
 function SearchBox({ value, onChange, onCommit }: { value: string; onChange: (v: string) => void; onCommit: () => void }) {
   const mobile = useIsMobile();
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (!mobile) ref.current?.focus();
-  }, [mobile]);
+  const [focused, setFocused] = useState(false);
+  const busy = useIsFetching({ predicate: (query) => query.queryKey.includes("search") }) > 0 && Boolean(value.trim());
+  const field = (
+    <SearchField
+      variant={mobile ? "page" : "top"}
+      value={value}
+      onChange={onChange}
+      onCommit={onCommit}
+      onFocusChange={setFocused}
+      autoFocus={!mobile}
+      busy={busy}
+      label="Search"
+      placeholder="What do you want to listen to?"
+    />
+  );
+  if (!mobile) return field;
   return (
-    <label className={mobile ? "psearch" : "searchbox"}>
-      <Icon name="search" size={20} />
-      <input
-        ref={ref}
-        type="search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && onCommit()}
-        placeholder="What do you want to listen to?"
-        aria-label="Search"
-        enterKeyHint="search"
-      />
-      {value ? (
-        <button type="button" className="clear" aria-label="Clear search" onClick={() => onChange("")}>
-          <Icon name="close" size={18} />
-        </button>
-      ) : null}
-    </label>
+    <div className={focused ? "psearch-row focused" : "psearch-row"}>
+      {field}
+      <button type="button" className="psearch-cancel" tabIndex={focused ? 0 : -1} onPointerDown={(e) => e.preventDefault()} onClick={() => { onChange(""); (document.activeElement as HTMLElement | null)?.blur(); }}>
+        Cancel
+      </button>
+    </div>
   );
 }
 
@@ -189,6 +191,21 @@ type SourceProps = {
   empty: (kind: string) => string;
 };
 
+const SEARCH_SORTS: Record<Exclude<Kind, "Songs">, SortOption[]> = {
+  Albums: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year]],
+  Artists: [["default", "Most relevant"], ["title", SORT_LABELS.title]],
+  Playlists: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Creator"]],
+};
+
+function cardBlock(kind: Exclude<Kind, "Songs">, items: CollectionItem[]): Block {
+  return {
+    kind,
+    count: items.length,
+    row: <CardRow>{items.map((i) => <ItemCard key={i.key} item={i} />)}</CardRow>,
+    all: <Collection id={`search-${kind.toLowerCase()}`} title={kind} items={items} sorts={SEARCH_SORTS[kind]} />,
+  };
+}
+
 function Source({ title, subtitle, filter, setFilter, blocks, top, songs = [], context, status, empty }: SourceProps) {
   const kind = filter === "All" ? null : filter;
   const visible = blocks.filter((b) => b.count && (!kind || b.kind === kind));
@@ -250,12 +267,13 @@ function LibrarySource({ q, filter, setFilter }: { q: string; filter: Filter; se
     : song
       ? { to: song.albumId ? albumPath(song.albumId) : "#", art: <Art id={song.coverArt} px={104} />, title: song.title, subtitle: `Song, ${artistName(song)}`, onPlay: () => player.playSongs([song], 0, context) }
       : undefined;
-  const playlistCards = matchingPlaylists.map((p) => <Card key={p.id} to={`/playlist/${p.id}`} art={<Art id={p.coverArt} px={180} />} title={p.name} subtitle={`Playlist, ${p.owner ?? ""}`.replace(/, $/, "")} />);
   const blocks: Block[] = [
     { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album /> },
-    { kind: "Albums", count: albums.length, row: <CardRow>{albums.map((a) => <AlbumCard key={a.id} album={a} />)}</CardRow>, all: <CardRow grid>{albums.map((a) => <AlbumCard key={a.id} album={a} />)}</CardRow> },
-    { kind: "Artists", count: artists.length, row: <CardRow>{artists.map((a) => <ArtistCard key={a.id} artist={a} />)}</CardRow>, all: <CardRow grid>{artists.map((a) => <ArtistCard key={a.id} artist={a} />)}</CardRow> },
-    { kind: "Playlists", count: matchingPlaylists.length, row: <CardRow>{playlistCards}</CardRow>, all: <CardRow grid>{playlistCards}</CardRow> },
+    cardBlock("Albums", albums.map((a) => albumItem(a))),
+    cardBlock("Artists", artists.map((a) => artistItem(a))),
+    cardBlock("Playlists", matchingPlaylists.map((p): CollectionItem => ({
+      key: p.id, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} px={px} />, title: p.name, subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "",
+    }))),
   ];
   return (
     <Source
@@ -287,16 +305,15 @@ function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; se
   const artist = artists.find((a) => a.name.toLowerCase() === q.toLowerCase());
   const song = songs[0];
   const top: Top | undefined = artist
-    ? { to: `/spotify/artist/${artist.id}`, art: <Art id={image(artist.images, 300)} px={104} round fallback="artist" />, title: artist.name, subtitle: "Artist on Spotify", onPlay: () => void playSpotifyArtist(artist.id) }
+    ? { to: `/spotify/artist/${artist.id}`, art: <Art images={artist.images} px={104} round fallback="artist" />, title: artist.name, subtitle: "Artist on Spotify", onPlay: () => void playSpotifyArtist(artist.id) }
     : song
       ? { to: song.albumId ? albumPath(song.albumId) : "#", art: <Art id={song.coverArt} px={104} />, title: song.title, subtitle: `Song, ${artistName(song)}`, onPlay: () => player.playSongs(songs, 0, context) }
       : undefined;
-  const playlistCards = playlists.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />);
   const blocks: Block[] = [
     { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album /> },
-    { kind: "Albums", count: albums.length, row: <CardRow>{albums.map((a) => <SpotifyAlbumCard key={a.id} album={a} />)}</CardRow>, all: <CardRow grid>{albums.map((a) => <SpotifyAlbumCard key={a.id} album={a} />)}</CardRow> },
-    { kind: "Artists", count: artists.length, row: <CardRow>{artists.map((a) => <SpotifyArtistCard key={a.id} artist={a} />)}</CardRow>, all: <CardRow grid>{artists.map((a) => <SpotifyArtistCard key={a.id} artist={a} />)}</CardRow> },
-    { kind: "Playlists", count: playlists.length, row: <CardRow>{playlistCards}</CardRow>, all: <CardRow grid>{playlistCards}</CardRow> },
+    cardBlock("Albums", albums.map((a) => spotifyAlbumItem(a))),
+    cardBlock("Artists", artists.map(spotifyArtistItem)),
+    cardBlock("Playlists", playlists.map(spotifyPlaylistItem)),
   ];
   return (
     <Source

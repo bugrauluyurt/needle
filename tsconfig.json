@@ -7,6 +7,7 @@
     ]
   },
   "include": [
-    "*.config.ts"
+    "*.config.ts",
+    "apps/web/scripts/*.ts"
   ]
 }

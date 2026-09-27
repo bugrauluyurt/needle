@@ -1,8 +1,10 @@
 import { memo, useState } from "react";
 import { coverUrl } from "../lib/subsonic.ts";
+import { image } from "../lib/spotify.ts";
+import type { SpImage } from "../lib/spotify.ts";
 import { Icon } from "./Icon.tsx";
 
-const dpr = typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
+const dpr = typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);
 const STEPS = [64, 128, 256, 384, 600, 900];
 
 export function artSize(cssPx: number): number {
@@ -11,7 +13,8 @@ export function artSize(cssPx: number): number {
 }
 
 type ArtProps = {
-  id: string | undefined;
+  id?: string | undefined;
+  images?: SpImage[] | null | undefined;
   px: number;
   round?: boolean;
   className?: string;
@@ -20,8 +23,8 @@ type ArtProps = {
   fallback?: "album" | "artist";
 };
 
-function ArtImpl({ id, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
-  const url = coverUrl(id, artSize(px));
+function ArtImpl({ id, images, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
+  const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px));
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
   const cls = ["art", round ? "round" : "", state === "done" ? "loaded" : "", className ?? ""].filter(Boolean).join(" ");
   return (

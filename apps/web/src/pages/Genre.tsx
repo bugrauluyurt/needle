@@ -1,5 +1,7 @@
 import { useParams } from "react-router";
-import { AlbumCard, CardRow, CardSkeletons, RowHeader } from "../components/Cards.tsx";
+import { albumItem, CardSkeletons, RowHeader } from "../components/Cards.tsx";
+import { Collection, SORT_LABELS } from "../components/Collection.tsx";
+import type { SortOption } from "../components/Collection.tsx";
 import { ActBar, Hero, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { MixArt } from "../components/MixArt.tsx";
 import { TrackList } from "../components/TrackList.tsx";
@@ -8,6 +10,8 @@ import { hashPalette } from "../lib/palette.ts";
 import { usePageTone } from "../layout/Shell.tsx";
 import { player } from "../player/controller.ts";
 import { useAlbumList, useGenres, useGenreSongs } from "../queries/hooks.ts";
+
+const GENRE_SORTS: SortOption[] = [["default", "Suggested"], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year]];
 
 export default function GenrePage() {
   const { name = "" } = useParams();
@@ -32,8 +36,7 @@ export default function GenrePage() {
         <ShuffleButton label={genre} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
       </ActBar>
       <div className="pad">
-        <RowHeader title="Albums" />
-        <CardRow grid>{albums.data ? albums.data.map((a) => <AlbumCard key={a.id} album={a} />) : <CardSkeletons />}</CardRow>
+        <Collection id="genre-albums" title="Albums" items={(albums.data ?? []).map((a) => albumItem(a))} sorts={GENRE_SORTS} {...(albums.data ? {} : { loading: <CardSkeletons /> })} />
         {songs.length ? (
           <>
             <RowHeader title="Songs" />

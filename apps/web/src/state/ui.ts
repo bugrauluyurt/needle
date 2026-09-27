@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 
 export type RightPanel = "now" | "queue" | "lyrics";
 export type LibraryFilter = "playlists" | "albums" | "artists" | "spotify" | "downloaded" | null;
+export type CollectionView = "compact" | "list" | "dense" | "grid";
+export type SortKey = "default" | "added" | "title" | "by" | "year";
 export type Toast = { id: number; message: string; action?: { label: string; run: () => void } };
 
 type UiState = {
@@ -13,6 +15,7 @@ type UiState = {
   shortcutsOpen: boolean;
   devicesOpen: boolean;
   libraryFilter: LibraryFilter;
+  collections: Record<string, { view: CollectionView; sort: SortKey }>;
   toasts: Toast[];
 };
 
@@ -26,9 +29,10 @@ export const useUi = create<UiState>()(
       shortcutsOpen: false,
       devicesOpen: false,
       libraryFilter: null as LibraryFilter,
+      collections: {},
       toasts: [] as Toast[],
     }),
-    { name: "needle.ui", version: 1, partialize: (s) => ({ rightPanel: s.rightPanel, libraryFilter: s.libraryFilter }) },
+    { name: "needle.ui", version: 1, partialize: (s) => ({ rightPanel: s.rightPanel, libraryFilter: s.libraryFilter, collections: s.collections }) },
   ),
 );
 

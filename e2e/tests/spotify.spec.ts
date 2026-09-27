@@ -81,7 +81,7 @@ test("searches your library and Spotify in separate sections, and the filters ap
   await expect(spotify).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Not in your library yet" })).toBeVisible();
 
-  await page.getByRole("searchbox", { name: "Search" }).fill("zzzz");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("zzzz");
   await filters.getByRole("button", { name: "All", exact: true }).click();
   await expect(library.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
   await expect(spotify.getByText("Spotify found no results for “zzzz”.")).toBeVisible();

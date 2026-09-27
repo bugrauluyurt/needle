@@ -1,6 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import * as DM from "@radix-ui/react-dropdown-menu";
 import { useMemo, useState } from "react";
+import { CollectionTools } from "../components/Collection.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import { shownSongs, SONG_SORTS } from "../lib/songs.ts";
+import type { SongSort } from "../lib/songs.ts";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import type { PlaylistWithSongs, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
@@ -17,18 +20,6 @@ import { player } from "../player/controller.ts";
 import { useAddToPlaylist, useDeletePlaylist, usePlaylist, useReorderPlaylist, useSimilarSongs, useUpdatePlaylist } from "../queries/hooks.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
-
-type Sort = "custom" | "title" | "artist" | "album" | "added";
-const SORTS: [Sort, string][] = [["custom", "Custom order"], ["title", "Title"], ["artist", "Artist"], ["album", "Album"], ["added", "Recently added"]];
-
-function sortSongs(songs: Song[], sort: Sort): Song[] {
-  if (sort === "custom") return songs;
-  const by = (f: (s: Song) => string) => [...songs].sort((a, b) => f(a).localeCompare(f(b)));
-  if (sort === "title") return by((s) => s.title);
-  if (sort === "artist") return by((s) => artistName(s));
-  if (sort === "album") return by((s) => s.album ?? "");
-  return [...songs].sort((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
-}
 
 function EditForm({ playlist, onDone }: { playlist: PlaylistWithSongs; onDone: () => void }) {
   const update = useUpdatePlaylist();
@@ -131,18 +122,13 @@ export default function PlaylistPage() {
   const me = useSession((s) => s.credentials?.user);
   const reorder = useReorderPlaylist();
   const update = useUpdatePlaylist();
-  const [sort, setSort] = useState<Sort>("custom");
+  const [sort, setSort] = useState<SongSort>("custom");
   const [filter, setFilter] = useState("");
-  const [finding, setFinding] = useState(false);
   const editing = params.get("edit") === "1";
   const tone = useTone(playlist?.coverArt);
   usePageTone(tone);
   const songs = useMemo(() => playlist?.entry ?? [], [playlist]);
-  const shown = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    const sorted = sortSongs(songs, sort);
-    return q ? sorted.filter((s) => `${s.title} ${artistName(s)} ${s.album ?? ""}`.toLowerCase().includes(q)) : sorted;
-  }, [songs, sort, filter]);
+  const shown = useMemo(() => shownSongs(songs, sort, filter), [songs, sort, filter]);
 
   if (isLoading) return <PageSkeleton />;
   if (isError || !playlist) return <NotFoundState what="playlist" error={error} retry={() => void refetch()} />;
@@ -169,30 +155,8 @@ export default function PlaylistPage() {
       <ActBar
         end={
           <>
-            {finding ? (
-              <label className="find">
-                <Icon name="search" size={17} />
-                <input autoFocus value={filter} onChange={(e) => setFilter(e.target.value)} onBlur={() => !filter && setFinding(false)} placeholder="Find in playlist" aria-label="Find in playlist" />
-              </label>
-            ) : (
-              <button type="button" className="icon-btn" aria-label="Find in playlist" onClick={() => setFinding(true)}><Icon name="search" size={18} /></button>
-            )}
-            <DM.Root modal={false}>
-              <DM.Trigger asChild>
-                <button type="button" className="sort-btn">{SORTS.find(([k]) => k === sort)?.[1]}<Icon name="list" size={18} /></button>
-              </DM.Trigger>
-              <DM.Portal>
-                <DM.Content className="menu" align="end" sideOffset={6}>
-                  <DM.Label className="menu-heading">Sort by</DM.Label>
-                  {SORTS.map(([k, label]) => (
-                    <DM.Item key={k} className="menu-item" onSelect={() => setSort(k)}>
-                      <span className="menu-label">{label}</span>
-                      {sort === k ? <Icon name="check" size={16} /> : null}
-                    </DM.Item>
-                  ))}
-                </DM.Content>
-              </DM.Portal>
-            </DM.Root>
+            <SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" />
+            <CollectionTools sorts={SONG_SORTS} sort={sort} onSort={setSort} />
           </>
         }
       >

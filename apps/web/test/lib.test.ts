@@ -6,7 +6,7 @@ import { md5 } from "../src/lib/md5.ts";
 import { toneFromPixels } from "../src/lib/tone.ts";
 import { dbToGain } from "../src/player/engine.ts";
 import { albumPath, artistPath } from "../src/lib/paths.ts";
-import { image, isSpotify, rawId, spotifyLink, toSong } from "../src/lib/spotify.ts";
+import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
 
 describe("md5", () => {
   it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])("matches node for %j", (s) => {
@@ -137,7 +137,7 @@ describe("spotify", () => {
       artists: [{ id: "sp:ar1", name: "Daft Punk" }, { id: "sp:ar2", name: "Romanthony" }],
       album: "Discovery",
       albumId: "sp:al1",
-      coverArt: "mid",
+      coverArt: "big",
       duration: 320,
       track: 1,
       discNumber: 1,
@@ -145,6 +145,14 @@ describe("spotify", () => {
       source: "spotify",
       uri: "spotify:track:t1",
     });
+  });
+
+  it("asks Spotify's CDN for an album cover sized to the tile", () => {
+    const cover = "https://i.scdn.co/image/ab67616d0000b273aaaa";
+    expect(sizedCover(cover, 64)).toBe("https://i.scdn.co/image/ab67616d00004851aaaa");
+    expect(sizedCover(cover, 256)).toBe("https://i.scdn.co/image/ab67616d00001e02aaaa");
+    expect(sizedCover(cover, 600)).toBe(cover);
+    expect(sizedCover("https://mosaic.scdn.co/640/abc", 64)).toBe("https://mosaic.scdn.co/640/abc");
   });
 
   it("routes Spotify ids to Spotify pages", () => {

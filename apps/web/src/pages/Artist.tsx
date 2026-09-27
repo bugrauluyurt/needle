@@ -1,10 +1,11 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import type { Album, LidarrArtist, Song } from "@needle/shared";
+import type { LidarrArtist, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { LikeButton } from "../components/Buttons.tsx";
-import { AlbumCard, ArtistCard, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
+import { albumItem, ArtistCard, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
+import { Collection, RELEASE_SORTS } from "../components/Collection.tsx";
 import { ActBar, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
@@ -18,6 +19,7 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
 import { useArtist, useArtistInfo, useCapabilities, useLidarrArtists, useStarredIds, useTopSongs } from "../queries/hooks.ts";
+import { useArtistImage } from "../queries/spotify.ts";
 import { toast } from "../state/ui.ts";
 
 const cleanBio = (html: string | undefined) => html?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() ?? "";
@@ -61,7 +63,6 @@ export default function ArtistPage() {
   const { data: top = [] } = useTopSongs(artist?.name);
   const starred = useStarredIds();
   const caps = useCapabilities();
-  const [tab, setTab] = useState<"albums" | "singles">("albums");
   const albums = useMemo(() => [...(artist?.album ?? [])].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)), [artist]);
   const fullAlbums = albums.filter((a) => releaseKind(a.songCount, a.duration) === "Album");
   const singles = albums.filter((a) => releaseKind(a.songCount, a.duration) !== "Album");
@@ -76,7 +77,7 @@ export default function ArtistPage() {
   const missingNames = (info?.similarArtist ?? []).filter((a) => !a.id).map((a) => a.name).slice(0, 6);
   const lidarrOn = Boolean(caps.data?.lidarr);
   const missing = useLidarrArtists(missingNames, lidarrOn);
-  const banner = artist?.coverArt;
+  const banner = useArtistImage(artist?.id, artist?.name);
   const tone = useTone(banner ?? albums[0]?.coverArt);
   usePageTone(tone);
   const [showAllPopular, setShowAllPopular] = useState(false);
@@ -88,7 +89,6 @@ export default function ArtistPage() {
   const plays = albums.reduce((n, a) => n + (a.playCount ?? 0), 0);
   const bio = cleanBio(info?.biography);
   const context = { kind: "artist" as const, id: artist.id, name: artist.name };
-  const shown: Album[] = tab === "albums" && fullAlbums.length ? fullAlbums : singles.length ? singles : fullAlbums;
 
   return (
     <div className="artist-page">
@@ -134,16 +134,8 @@ export default function ArtistPage() {
         ) : null}
       </div>
       <div className="pad">
-        <RowHeader title="Discography" />
-        {fullAlbums.length && singles.length ? (
-          <div className="chips tabs" role="tablist">
-            <button type="button" role="tab" className="pill" aria-selected={tab === "albums"} onClick={() => setTab("albums")}>Albums</button>
-            <button type="button" role="tab" className="pill" aria-selected={tab === "singles"} onClick={() => setTab("singles")}>Singles and EPs</button>
-          </div>
-        ) : null}
-        <CardRow grid={albums.length > 6}>
-          {shown.map((a) => <AlbumCard key={a.id} album={a} subtitle={[a.year, releaseKind(a.songCount, a.duration)].filter(Boolean).join(", ")} />)}
-        </CardRow>
+        {fullAlbums.length ? <Collection id="artist-albums" title="Albums" items={fullAlbums.map((a) => albumItem(a, [a.year, "Album"].filter(Boolean).join(", ")))} sorts={RELEASE_SORTS} /> : null}
+        {singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((a) => albumItem(a, [a.year, releaseKind(a.songCount, a.duration)].filter(Boolean).join(", ")))} sorts={RELEASE_SORTS} /> : null}
         {inLibrary.length ? (
           <>
             <RowHeader title="Similar artists in your library" />

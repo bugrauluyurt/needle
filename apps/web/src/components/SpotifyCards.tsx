@@ -1,14 +1,14 @@
-import type { ReactNode } from "react";
-import { image, spId } from "../lib/spotify.ts";
+import { spId } from "../lib/spotify.ts";
 import type { SpAlbumRef, SpArtist, SpPlaylist } from "../lib/spotify.ts";
 import { player } from "../player/controller.ts";
 import { queryClient } from "../queries/client.ts";
 import { spotifyAlbumQuery, spotifyArtistSongs, spotifyPlaylistQuery } from "../queries/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { Art } from "./Art.tsx";
-import { Card } from "./Cards.tsx";
+import { ItemCard } from "./Cards.tsx";
+import type { CollectionItem } from "./Collection.tsx";
 
-const years = (a: SpAlbumRef) => a.release_date?.slice(0, 4);
+export const releaseYear = (a: SpAlbumRef) => a.release_date?.slice(0, 4);
 
 export async function playSpotifyAlbum(id: string, shuffle = false) {
   const { album, songs } = await queryClient.fetchQuery(spotifyAlbumQuery(id));
@@ -31,41 +31,49 @@ export async function playSpotifyPlaylist(id: string, shuffle = false) {
 
 const failed = () => toast("Spotify didn’t answer. Try again in a moment.");
 
-export function SpotifyAlbumCard({ album, subtitle }: { album: SpAlbumRef; subtitle?: ReactNode }) {
-  return (
-    <Card
-      to={`/spotify/album/${album.id}`}
-      art={<Art id={image(album.images, 300)} px={180} />}
-      title={album.name}
-      subtitle={subtitle ?? [years(album), album.artists?.map((a) => a.name).join(", ")].filter(Boolean).join(", ")}
-      onPlay={() => void playSpotifyAlbum(album.id).catch(failed)}
-    />
-  );
+export function spotifyAlbumItem(album: SpAlbumRef & { added_at?: string }, subtitle?: string): CollectionItem {
+  const by = album.artists?.map((a) => a.name).join(", ") ?? "";
+  const year = Number.parseInt(album.release_date ?? "", 10);
+  return {
+    key: album.id,
+    to: `/spotify/album/${album.id}`,
+    art: (px) => <Art images={album.images} px={px} />,
+    title: album.name,
+    subtitle: subtitle ?? [releaseYear(album), by].filter(Boolean).join(", "),
+    by,
+    ...(Number.isNaN(year) ? {} : { year }),
+    ...(album.added_at ? { added: album.added_at } : {}),
+    onPlay: () => void playSpotifyAlbum(album.id).catch(failed),
+  };
 }
 
-export function SpotifyArtistCard({ artist }: { artist: SpArtist }) {
-  return (
-    <Card
-      to={`/spotify/artist/${artist.id}`}
-      art={<Art id={image(artist.images, 300)} px={180} round fallback="artist" />}
-      title={artist.name}
-      subtitle="Artist"
-      onPlay={() => void playSpotifyArtist(artist.id).catch(failed)}
-    />
-  );
+export function spotifyArtistItem(artist: SpArtist): CollectionItem {
+  return {
+    key: artist.id,
+    to: `/spotify/artist/${artist.id}`,
+    art: (px) => <Art images={artist.images} px={px} round fallback="artist" />,
+    title: artist.name,
+    subtitle: "Artist",
+    by: artist.name,
+    onPlay: () => void playSpotifyArtist(artist.id).catch(failed),
+  };
 }
 
-export function SpotifyPlaylistCard({ playlist }: { playlist: SpPlaylist }) {
-  return (
-    <Card
-      to={`/spotify/playlist/${playlist.id}`}
-      art={<Art id={image(playlist.images, 300)} px={180} />}
-      title={playlist.name}
-      subtitle={`Playlist, ${playlist.owner.display_name ?? playlist.owner.id}`}
-      onPlay={() => void playSpotifyPlaylist(playlist.id).catch(failed)}
-    />
-  );
+export function spotifyPlaylistItem(playlist: SpPlaylist): CollectionItem {
+  const by = playlist.owner.display_name ?? playlist.owner.id;
+  return {
+    key: playlist.id,
+    to: `/spotify/playlist/${playlist.id}`,
+    art: (px) => <Art images={playlist.images} px={px} />,
+    title: playlist.name,
+    subtitle: `Playlist, ${by}`,
+    by,
+    onPlay: () => void playSpotifyPlaylist(playlist.id).catch(failed),
+  };
 }
+
+export const SpotifyAlbumCard = ({ album, subtitle }: { album: SpAlbumRef; subtitle?: string }) => <ItemCard item={spotifyAlbumItem(album, subtitle)} />;
+export const SpotifyPlaylistCard = ({ playlist }: { playlist: SpPlaylist }) => <ItemCard item={spotifyPlaylistItem(playlist)} />;
 
 export function SpotifyBadge() {
   return <span className="sp-badge">Spotify</span>;

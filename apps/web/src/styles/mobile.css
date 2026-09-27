@@ -1,4 +1,6 @@
 .phone-app {
+  --tab-inset: max(10px, calc(var(--safe-bottom) - 14px));
+  --tabbar-h: calc(54px + var(--tab-inset));
   height: 100dvh;
   position: relative;
   background: var(--ink);
@@ -11,12 +13,12 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   padding-top: var(--safe-top);
-  padding-bottom: calc(88px + var(--safe-bottom));
+  padding-bottom: calc(var(--tabbar-h) + 24px);
   -webkit-overflow-scrolling: touch;
 }
 
 .phone-app.has-mini .pmain {
-  padding-bottom: calc(160px + var(--safe-bottom));
+  padding-bottom: calc(var(--tabbar-h) + 96px);
 }
 
 .phone-app .pad {
@@ -77,39 +79,6 @@
   top: 0;
   z-index: 5;
   background: var(--ink);
-}
-
-.psearch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 46px;
-  border-radius: 8px;
-  background: var(--label);
-  color: #3a3640;
-  padding: 0 14px;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.psearch input {
-  flex: 1;
-  min-width: 0;
-  color: var(--ink);
-  font-size: 16px;
-}
-
-.psearch input::placeholder {
-  color: #5d5866;
-}
-
-.psearch input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.psearch .clear {
-  color: #3a3640;
-  display: grid;
 }
 
 .phone-app .chips {
@@ -474,7 +443,7 @@
 }
 
 .phone-app .toasts {
-  bottom: calc(168px + var(--safe-bottom));
+  bottom: calc(var(--tabbar-h) + 104px);
 }
 
 .phone-app .lib-list {
@@ -491,11 +460,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(64px + var(--safe-bottom));
-  padding: 8px 12px var(--safe-bottom);
+  height: var(--tabbar-h);
+  padding: 6px 12px var(--tab-inset);
   display: flex;
   justify-content: space-around;
-  background: linear-gradient(180deg, rgba(15, 14, 19, 0), rgba(15, 14, 19, 0.94) 28%, var(--ink));
+  background: rgba(15, 14, 19, 0.62);
+  -webkit-backdrop-filter: saturate(170%) blur(24px);
+  backdrop-filter: saturate(170%) blur(24px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   z-index: 20;
 }
 
@@ -518,7 +490,7 @@
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: calc(68px + var(--safe-bottom));
+  bottom: calc(var(--tabbar-h) + 4px);
   height: 60px;
   border-radius: 10px;
   display: flex;
@@ -642,11 +614,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 0;
+  padding: 20px 0;
+  container-type: size;
 }
 
 .nowp-art .art.big {
-  width: min(100%, 46vh);
+  width: min(100cqw, 100cqh);
   border-radius: 10px;
   box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8);
 }
@@ -962,4 +935,33 @@
 
 .phone-app .source-h h2 {
   font-size: 24px;
+}
+
+.psearch-row {
+  display: flex;
+  align-items: center;
+}
+
+.psearch-cancel {
+  flex: none;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--label);
+  font-size: 15px;
+  font-weight: 600;
+  padding-left: 0;
+  transition: max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.psearch-row.focused .psearch-cancel {
+  max-width: 80px;
+  opacity: 1;
+  padding-left: 14px;
+}
+
+.phone-app .cards.grid.dense {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 10px;
 }

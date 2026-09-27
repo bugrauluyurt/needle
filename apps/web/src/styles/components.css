@@ -386,48 +386,36 @@
   font-size: 13.5px;
 }
 
-.sort-btn {
+.coll-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  margin-left: auto;
+}
+
+.coll-sort {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--sleeve);
-  font-size: 13.5px;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-
-.sort-btn:hover {
-  color: var(--label);
-}
-
-.find {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
+  height: 32px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: 16px;
   color: var(--sleeve);
-}
-
-.find:focus-within {
-  background: var(--groove);
-  color: var(--label);
-}
-
-.find input {
-  width: 190px;
   font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.coll-sort:hover,
+.coll-sort[data-state="open"] {
   color: var(--label);
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.find.wide {
-  background: var(--groove);
-  margin-bottom: 12px;
-}
-
-.find.wide input {
-  width: 100%;
+.collection .row-h {
+  align-items: center;
 }
 
 .dl-ring {
@@ -507,7 +495,12 @@
 /* tracks */
 .tracks {
   --cols: 44px minmax(0, 1fr) 132px;
-  padding: 0 20px 8px;
+  padding: 0 12px 8px;
+}
+
+.pad .tracks {
+  padding-inline: 0;
+  margin-inline: -12px;
 }
 
 .tracks.with-col {
@@ -684,6 +677,10 @@
   opacity: 0;
   display: grid;
   transition: opacity 0.15s;
+}
+
+.tr .heart svg {
+  transform: translateY(-1px);
 }
 
 .tr .heart.liked {
@@ -1245,6 +1242,7 @@ kbd {
 }
 
 .source-h .sub {
+  color: var(--sleeve);
   font-size: 13.5px;
   margin-top: 4px;
   max-width: 70ch;
@@ -1689,4 +1687,253 @@ kbd {
   max-width: 62ch;
   margin-bottom: 20px;
   line-height: 1.5;
+}
+
+/* search fields */
+.sf {
+  --sf-h: 36px;
+  --sf-w: 220px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: var(--sf-w);
+  height: var(--sf-h);
+  padding: 0 8px 0 12px;
+  border-radius: calc(var(--sf-h) / 2);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--sleeve);
+  overflow: hidden;
+  transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s, box-shadow 0.2s, color 0.2s, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sf:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sf:focus-within {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--label);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--amber) 80%, transparent), 0 0 0 4px color-mix(in oklab, var(--amber) 16%, transparent);
+}
+
+.sf-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: inherit;
+}
+
+.sf-icon svg {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+}
+
+.sf:focus-within .sf-icon svg {
+  color: var(--amber);
+  transform: scale(1.1) rotate(-8deg);
+}
+
+.sf input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  color: var(--label);
+  font-size: 14px;
+  transition: opacity 0.2s 0.06s;
+}
+
+.sf input:focus-visible {
+  outline: none;
+}
+
+.sf input::placeholder {
+  color: var(--sleeve);
+}
+
+.sf input:focus::placeholder {
+  color: var(--dim);
+}
+
+.sf input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.sf-clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--sleeve);
+  opacity: 0;
+  transform: scale(0.5) rotate(-90deg);
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s;
+}
+
+.sf.has-value .sf-clear {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.sf-clear:hover {
+  color: var(--label);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sf-busy {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent) no-repeat;
+  background-size: 45% 100%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.sf.busy .sf-busy {
+  opacity: 1;
+  animation: sf-scan 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes sf-scan {
+  from {
+    background-position: -60% 0;
+  }
+  to {
+    background-position: 160% 0;
+  }
+}
+
+.sf.collapsible:not(.open) {
+  width: var(--sf-h);
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sf.collapsible:not(.open) .sf-icon {
+  width: var(--sf-h);
+  height: var(--sf-h);
+  border-radius: 50%;
+}
+
+.sf.collapsible:not(.open) .sf-icon:hover {
+  color: var(--label);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sf.collapsible:not(.open) input,
+.sf.collapsible:not(.open) .sf-clear {
+  opacity: 0;
+  pointer-events: none;
+  transition-delay: 0s;
+}
+
+.sf-top {
+  --sf-h: 46px;
+  --sf-w: min(380px, 44vw);
+  padding: 0 10px 0 16px;
+  gap: 10px;
+  background: var(--groove);
+  box-shadow: inset 0 0 0 1px var(--ridge);
+}
+
+.sf-top:hover {
+  background: color-mix(in oklab, var(--groove), var(--label) 5%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ridge), var(--label) 25%);
+}
+
+.sf-top:focus-within {
+  --sf-w: min(480px, 52vw);
+  background: color-mix(in oklab, var(--groove), var(--label) 6%);
+}
+
+.sf-top input {
+  font-size: 15px;
+}
+
+.sf-page {
+  --sf-h: 46px;
+  --sf-w: 100%;
+  flex: 1;
+  border-radius: 12px;
+  padding: 0 8px 0 14px;
+  gap: 10px;
+  background: var(--groove);
+}
+
+.sf-page input {
+  font-size: 16px;
+}
+
+.sf-wide {
+  --sf-w: 100%;
+}
+
+.view-as {
+  display: flex;
+  gap: 4px;
+  padding: 2px 6px 6px;
+}
+
+.view-opt {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 36px;
+  min-width: 44px;
+  border-radius: 6px;
+  color: var(--sleeve);
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.view-opt[data-highlighted] {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--label);
+}
+
+.view-opt[data-state="checked"] {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--amber);
+}
+
+.cards.grid.dense {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+}
+
+.cards.dense .card .s {
+  display: none;
+}
+
+.lib-list.compact .lib-item {
+  padding: 5px 8px;
+}
+
+.lib-list.compact .lib-item > .art {
+  display: none;
+}
+
+.lib-list.compact .lib-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.lib-list.compact .lib-item .t {
+  flex: none;
+  max-width: 60%;
+  font-size: 14px;
+}
+
+.lib-list.compact .lib-item .s {
+  margin-top: 0;
 }

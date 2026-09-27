@@ -281,10 +281,6 @@
   margin-top: 10px;
 }
 
-.tabs {
-  padding: 0 0 6px;
-}
-
 /* playlist extras */
 .fit-list {
   display: grid;
@@ -778,8 +774,9 @@
   padding: 4px 0 8px;
 }
 
-.library-page .lib-list {
+.pad .lib-list {
   padding: 0;
+  margin-inline: -8px;
   overflow: visible;
 }
 

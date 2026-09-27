@@ -10,7 +10,8 @@ import { player } from "../player/controller.ts";
 import type { QueueItem } from "../player/queue.ts";
 import { userItemsAfter } from "../player/queue.ts";
 import { useCurrentSong, usePlayer } from "../player/store.ts";
-import { useArtistCover, useArtistInfo } from "../queries/hooks.ts";
+import { useArtistInfo } from "../queries/hooks.ts";
+import { useArtistImage } from "../queries/spotify.ts";
 import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
@@ -113,7 +114,7 @@ export function QueueView() {
 
 function AboutArtist({ song }: { song: Song }) {
   const { data } = useArtistInfo(song.artistId);
-  const cover = useArtistCover(song.artistId);
+  const cover = useArtistImage(song.artistId, song.artists?.[0]?.name ?? song.artist);
   const bio = data?.biography?.replace(/<a [^>]*>.*?<\/a>/g, "").replace(/<[^>]+>/g, "").trim();
   if (!song.artistId) return null;
   return (

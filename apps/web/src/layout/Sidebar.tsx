@@ -1,34 +1,33 @@
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, useNavigate } from "react-router";
 import { Art, LikedArt } from "../components/Art.tsx";
-import { Eq, Icon, Logo } from "../components/Icon.tsx";
+import { Icon, Logo } from "../components/Icon.tsx";
+import { CollectionTools, ItemList, SORT_LABELS, sortItems, useCollectionView } from "../components/Collection.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import type { CollectionItem, SortOption } from "../components/Collection.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
-import { usePlayer } from "../player/store.ts";
 import { useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
 import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
 import { matchesTerms, queryTerms } from "@needle/shared";
-import { image, spId } from "../lib/spotify.ts";
+import { spId } from "../lib/spotify.ts";
 import { plural } from "../lib/format.ts";
-import type { LibraryFilter } from "../state/ui.ts";
+import type { CollectionView, LibraryFilter, SortKey } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 
-export type LibraryEntry = {
-  key: string;
-  to: string;
-  art: ReactNode;
-  title: string;
-  subtitle: string;
+export type LibraryEntry = CollectionItem & {
   kind: Exclude<LibraryFilter, null | "spotify" | "downloaded">;
   spotify?: boolean;
   contextId: string;
   downloaded: boolean;
-  date: string;
-  pinned?: boolean;
+  added: string;
 };
 
-export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEntry[] {
+export const LIBRARY_SORTS: SortOption[] = [["default", "Recents"], ["title", SORT_LABELS.title], ["by", "Creator"]];
+
+export const useLibrarySort = (fallback: CollectionView = "list") => useCollectionView("library", LIBRARY_SORTS, fallback);
+
+export function useLibraryEntries(filter: LibraryFilter, query: string, sort: SortKey): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
   const collections = useOffline((s) => s.collections);
@@ -39,31 +38,31 @@ export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEnt
   return useMemo(() => {
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
-      { key: "liked", to: "/liked", art: <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), date: "9999", pinned: true },
-      ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, contextId: "sp:liked", downloaded: false, date: "9998", pinned: true } satisfies LibraryEntry] : []),
+      { key: "liked", to: "/liked", art: () => <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), added: "9999", pinned: true },
+      ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
       ...playlists.map((p): LibraryEntry => ({
-        key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: <Art id={p.coverArt} px={48} />, title: p.name,
-        subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), kind: "playlists", contextId: p.id, downloaded: down.has(p.id), date: p.changed ?? p.created ?? "",
+        key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} px={px} />, title: p.name,
+        subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "", kind: "playlists", contextId: p.id, downloaded: down.has(p.id), added: p.changed ?? p.created ?? "",
       })),
       ...(starred?.album ?? []).map((a): LibraryEntry => ({
-        key: `al-${a.id}`, to: `/album/${a.id}`, art: <Art id={a.coverArt} px={48} />, title: a.name,
-        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`, kind: "albums", contextId: a.id, downloaded: down.has(a.id), date: a.starred ?? "",
+        key: `al-${a.id}`, to: `/album/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} />, title: a.name,
+        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`, by: a.displayArtist ?? a.artist ?? "", kind: "albums", contextId: a.id, downloaded: down.has(a.id), added: a.starred ?? "",
       })),
       ...(starred?.artist ?? []).map((a): LibraryEntry => ({
-        key: `ar-${a.id}`, to: `/artist/${a.id}`, art: <Art id={a.coverArt} px={48} round fallback="artist" />, title: a.name,
-        subtitle: "Artist", kind: "artists", contextId: a.id, downloaded: false, date: a.starred ?? "",
+        key: `ar-${a.id}`, to: `/artist/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} round fallback="artist" />, title: a.name,
+        subtitle: "Artist", by: a.name, kind: "artists", contextId: a.id, downloaded: false, added: a.starred ?? "",
       })),
       ...spPlaylists.map((p): LibraryEntry => ({
-        key: `sp-pl-${p.id}`, to: `/spotify/playlist/${p.id}`, art: <Art id={image(p.images, 64)} px={48} />, title: p.name,
-        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`, kind: "playlists", spotify: true, contextId: spId(p.id), downloaded: false, date: "",
+        key: `sp-pl-${p.id}`, to: `/spotify/playlist/${p.id}`, art: (px) => <Art images={p.images} px={px} />, title: p.name,
+        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`, by: p.owner.display_name ?? p.owner.id, kind: "playlists", spotify: true, contextId: spId(p.id), downloaded: false, added: "",
       })),
       ...spAlbums.map((a): LibraryEntry => ({
-        key: `sp-al-${a.id}`, to: `/spotify/album/${a.id}`, art: <Art id={image(a.images, 64)} px={48} />, title: a.name,
-        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, kind: "albums", spotify: true, contextId: spId(a.id), downloaded: false, date: "",
+        key: `sp-al-${a.id}`, to: `/spotify/album/${a.id}`, art: (px) => <Art images={a.images} px={px} />, title: a.name,
+        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, by: a.artists?.[0]?.name ?? "", kind: "albums", spotify: true, contextId: spId(a.id), downloaded: false, added: a.added_at ?? "",
       })),
       ...spArtists.map((a): LibraryEntry => ({
-        key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: <Art id={image(a.images, 64)} px={48} round fallback="artist" />, title: a.name,
-        subtitle: "Artist you follow on Spotify", kind: "artists", spotify: true, contextId: spId(a.id), downloaded: false, date: "",
+        key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: (px) => <Art images={a.images} px={px} round fallback="artist" />, title: a.name,
+        subtitle: "Artist you follow on Spotify", by: a.name, kind: "artists", spotify: true, contextId: spId(a.id), downloaded: false, added: "",
       })),
     ];
     const terms = queryTerms(query);
@@ -73,11 +72,12 @@ export function useLibraryEntries(filter: LibraryFilter, query = ""): LibraryEnt
       return !filter || e.kind === filter;
     };
     const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.spotify ? 2 : 1);
-    return entries
+    const shown = entries
       .filter(matches)
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
-      .sort((a, b) => rank(a) - rank(b) || b.date.localeCompare(a.date));
-  }, [playlists, starred, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query]);
+      .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
+    return sortItems(shown, sort);
+  }, [playlists, starred, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort]);
 }
 
 const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "Downloaded"]];
@@ -109,35 +109,6 @@ export function libraryEmptyText(filter: LibraryFilter, query: string): string {
   return filter ? EMPTY[filter] : "Like albums and artists, or create a playlist.";
 }
 
-export function LibraryList({ entries, empty }: { entries: LibraryEntry[]; empty: string }) {
-  const ctx = usePlayer((s) => s.context);
-  const playing = usePlayer((s) => s.playing);
-  const { pathname } = useLocation();
-  return (
-    <ul className="lib-list scroll-thin">
-      {entries.map((e) => {
-        const isPlaying = ctx?.id === e.contextId;
-        return (
-          <li key={e.key}>
-            <Link to={e.to} className={`lib-item ${pathname === e.to ? "on" : ""}`}>
-              {e.art}
-              <div className="lib-text">
-                <div className={`t ${isPlaying ? "playing" : ""}`}>{e.title}</div>
-                <div className="s">
-                  {e.downloaded ? <span className="dl"><Icon name="downloaded" size={14} /></span> : null}
-                  <span className="ellipsis">{e.subtitle}</span>
-                </div>
-              </div>
-              {isPlaying ? <Eq paused={!playing} /> : null}
-            </Link>
-          </li>
-        );
-      })}
-      {!entries.length ? <li className="lib-empty">{empty}</li> : null}
-    </ul>
-  );
-}
-
 export function useNewPlaylist() {
   const create = useCreatePlaylist();
   const navigate = useNavigate();
@@ -157,8 +128,9 @@ function Nav({ to, icon, label }: { to: string; icon: IconName; label: string })
 export function Sidebar() {
   const filter = useUi((s) => s.libraryFilter);
   const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const entries = useLibraryEntries(filter, query);
+  const [focused, setFocused] = useState(false);
+  const { sort, setSort } = useLibrarySort();
+  const entries = useLibraryEntries(filter, query, sort);
   const newPlaylist = useNewPlaylist();
   return (
     <nav className="side" aria-label="Main">
@@ -183,22 +155,11 @@ export function Sidebar() {
           </button>
         </div>
         <LibraryChips />
-        <div className="lib-tools">
-          {searching ? (
-            <label className="lib-search">
-              <Icon name="search" size={16} />
-              <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} onBlur={() => !query && setSearching(false)} placeholder="Search in your library" aria-label="Search in your library" />
-            </label>
-          ) : (
-            <button type="button" className="icon-btn" aria-label="Search in your library" onClick={() => setSearching(true)}>
-              <Icon name="search" size={17} />
-            </button>
-          )}
-          <span className="lib-sort">
-            Recents <Icon name="list" size={16} />
-          </span>
+        <div className={focused || query ? "lib-tools searching" : "lib-tools"}>
+          <SearchField variant="inline" collapsible className="sf-wide" value={query} onChange={setQuery} onFocusChange={setFocused} label="Search in your library" />
+          <CollectionTools sorts={LIBRARY_SORTS} sort={sort} onSort={setSort} />
         </div>
-        <LibraryList entries={entries} empty={libraryEmptyText(filter, query)} />
+        <ItemList items={entries} empty={libraryEmptyText(filter, query)} />
       </div>
     </nav>
   );

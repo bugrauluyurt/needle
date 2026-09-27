@@ -15,6 +15,7 @@ import type {
   SubsonicEnvelope,
 } from "@needle/shared";
 import { md5 } from "./md5.ts";
+import { sizedCover } from "./spotify.ts";
 import type { Credentials } from "../state/session.ts";
 import { credentials, useSession } from "../state/session.ts";
 
@@ -59,7 +60,7 @@ export function subsonicUrl(method: string, params: Params = {}): string {
 
 export function coverUrl(id: string | undefined, size = 300): string | null {
   if (!id) return null;
-  if (id.startsWith("https://")) return id;
+  if (id.startsWith("https://")) return sizedCover(id, size);
   const c = credentials();
   if (!c) return null;
   return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle" }).toString()}`;

@@ -29,7 +29,7 @@ test("moves between tabs and plays from the mini player", async ({ page }) => {
 
 test("searches with the mobile search box", async ({ page }) => {
   await signIn(page, "/search");
-  await page.getByRole("searchbox", { name: "Search" }).fill("okto");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("okto");
   await expect(page.locator(".top-card h2")).toHaveText("Okto Quartet");
 });
 

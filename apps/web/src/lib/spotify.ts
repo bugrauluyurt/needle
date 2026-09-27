@@ -6,18 +6,18 @@ const MAX_ITEMS = 3000;
 const PAGE = 50;
 const ARTIST_ALBUMS_PAGE = 10;
 
-type Image = { url: string; width?: number | null; height?: number | null };
+export type SpImage = { url: string; width?: number | null; height?: number | null };
 export type SpArtistRef = { id: string; name: string };
-export type SpAlbumRef = { id: string; name: string; images: Image[]; release_date?: string; artists?: SpArtistRef[]; album_type?: string; total_tracks?: number; uri?: string };
+export type SpAlbumRef = { id: string; name: string; images: SpImage[]; release_date?: string; artists?: SpArtistRef[]; album_type?: string; total_tracks?: number; uri?: string };
 export type SpTrack = { id: string; uri: string; name: string; duration_ms: number; artists: SpArtistRef[]; album?: SpAlbumRef; track_number?: number; disc_number?: number; is_local?: boolean };
 export type SpAlbum = SpAlbumRef & { tracks: { items: SpTrack[]; next: string | null; total: number }; label?: string; copyrights?: { text: string }[] };
-export type SpArtist = { id: string; name: string; images: Image[]; followers?: { total: number } };
+export type SpArtist = { id: string; name: string; images: SpImage[]; followers?: { total: number } };
 export type SpPlaylist = {
   id: string;
   name: string;
   description?: string | null;
   owner: { id: string; display_name?: string };
-  images?: Image[] | null;
+  images?: SpImage[] | null;
   collaborative: boolean;
   public?: boolean | null;
   snapshot_id?: string;
@@ -84,10 +84,16 @@ async function pages<T>(first: string, limit = MAX_ITEMS, unwrap: (body: unknown
   return out;
 }
 
-export function image(images: Image[] | null | undefined, px = 300): string | undefined {
+export function image(images: SpImage[] | null | undefined, px = 300): string | undefined {
   if (!images?.length) return undefined;
   const sorted = [...images].sort((a, b) => (a.width ?? 640) - (b.width ?? 640));
   return (sorted.find((i) => (i.width ?? 640) >= px) ?? sorted[sorted.length - 1])?.url;
+}
+
+const ALBUM_COVER = /(\/image\/ab67616d0000)(4851|1e02|b273)/;
+
+export function sizedCover(url: string, px: number): string {
+  return url.replace(ALBUM_COVER, (_m, head: string) => `${head}${px <= 64 ? "4851" : px <= 300 ? "1e02" : "b273"}`);
 }
 
 export const spId = (id: string) => `sp:${id}`;
@@ -99,7 +105,7 @@ export function toSong(t: SpTrack, album?: SpAlbumRef, extra: Partial<Song> = {}
   const al = t.album ?? album;
   const artists = t.artists.map((a) => a.name).join(", ");
   const year = al?.release_date ? Number.parseInt(al.release_date, 10) : undefined;
-  const cover = image(al?.images, 300);
+  const cover = image(al?.images, 640);
   return {
     id: spId(t.id),
     title: t.name,
@@ -122,7 +128,7 @@ export function toSong(t: SpTrack, album?: SpAlbumRef, extra: Partial<Song> = {}
 const playable = (t: SpTrack | null | undefined): t is SpTrack => Boolean(t?.id && t.uri.startsWith("spotify:track:") && !t.is_local);
 
 export const sp = {
-  me: () => req<{ id: string; display_name?: string; product?: string }>("/me"),
+  me: () => req<{ id: string; display_name?: string; product?: string; images?: SpImage[] }>("/me"),
   playlists: () => pages<SpPlaylist>(`/me/playlists?limit=${PAGE}`),
   playlist: (id: string) => req<SpPlaylist>(`/playlists/${id}`),
   playlistSongs: async (id: string): Promise<Song[]> =>
@@ -132,7 +138,7 @@ export const sp = {
     }),
   liked: async (): Promise<Song[]> =>
     (await pages<SavedTrack>(`/me/tracks?limit=${PAGE}`)).filter((s) => playable(s.track)).map((s) => toSong(s.track, undefined, { starred: s.added_at })),
-  albums: async () => (await pages<SavedAlbum>(`/me/albums?limit=${PAGE}`)).map((s) => s.album),
+  albums: async (): Promise<(SpAlbum & { added_at: string })[]> => (await pages<SavedAlbum>(`/me/albums?limit=${PAGE}`)).map((s) => ({ ...s.album, added_at: s.added_at })),
   album: async (id: string): Promise<SpAlbum> => {
     const album = await req<SpAlbum>(`/albums/${id}`);
     const rest = album.tracks.next ? await pages<SpTrack>(album.tracks.next) : [];
@@ -141,6 +147,8 @@ export const sp = {
   artist: (id: string) => req<SpArtist>(`/artists/${id}`),
   artistAlbums: (id: string) => pages<SpAlbumRef>(`/artists/${id}/albums?include_groups=album,single&limit=${ARTIST_ALBUMS_PAGE}`, 200),
   followed: () => pages<SpArtist>(`/me/following?type=artist&limit=${PAGE}`, MAX_ITEMS, (body) => (body as { artists: Paged<SpArtist> }).artists),
+  findArtist: (name: string) =>
+    req<{ artists: Paged<SpArtist> }>(`/search?${new URLSearchParams({ q: name, type: "artist", limit: "5" }).toString()}`).then((r) => r.artists.items),
   search: (q: string, signal?: AbortSignal) =>
     req<SearchResult>(`/search?${new URLSearchParams({ q, type: "track,album,artist,playlist", limit: "10" }).toString()}`, signal ? { signal } : {}),
   saved: (uris: string[]) => req<boolean[]>(`/me/library/contains?${new URLSearchParams({ uris: uris.join(",") }).toString()}`),

@@ -12,7 +12,7 @@ test("likes a song and finds it in Liked songs", async ({ page }) => {
   await page.getByRole("link", { name: /Liked songs/ }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Liked songs" })).toBeVisible();
   await expect(page.locator(".tr", { hasText: "Lighthouse Keeper" })).toBeVisible();
-  await page.getByLabel("Find in liked songs").fill("lighthouse");
+  await page.getByRole("searchbox", { name: "Find in liked songs" }).fill("lighthouse");
   await expect(page.locator(".tr")).toHaveCount(1);
 
   await page.locator(".tr", { hasText: "Lighthouse Keeper" }).getByRole("button", { name: "Remove Lighthouse Keeper from liked songs" }).click();
@@ -75,11 +75,11 @@ test("finds songs in a playlist and sorts them", async ({ page }) => {
   await expect(rows.first()).toBeVisible();
   expect(await rows.count()).toBeGreaterThan(5);
   await page.getByRole("button", { name: /Custom order/ }).click();
-  await page.getByRole("menuitem", { name: "Title" }).click();
+  await page.getByRole("menuitemradio", { name: "Title" }).click();
   const titles = await rows.allTextContents();
   expect(titles).toEqual([...titles].sort((a, b) => a.localeCompare(b)));
   await page.getByRole("button", { name: "Find in playlist" }).click();
-  await page.getByLabel("Find in playlist").fill(titles[0] ?? "");
+  await page.getByRole("searchbox", { name: "Find in playlist" }).fill(titles[0] ?? "");
   await expect(rows).toHaveCount(1);
 });
 

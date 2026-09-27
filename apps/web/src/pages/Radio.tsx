@@ -17,7 +17,7 @@ import { usePlayer } from "../player/store.ts";
 import { keys } from "../queries/keys.ts";
 import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
-import { image, isSpotify, rawId } from "../lib/spotify.ts";
+import { isSpotify, rawId } from "../lib/spotify.ts";
 import { useSpotifyArtist } from "../queries/spotify.ts";
 
 function AddStation() {
@@ -87,8 +87,8 @@ function Station({ s }: { s: InternetRadioStation }) {
 
 function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
   const { data } = useSpotifyArtist(isSpotify(id) ? rawId(id) : undefined);
-  const cover = isSpotify(id) ? image(data?.artist.images, 300) : library?.find((x) => x.id === id)?.coverArt;
-  return <Art id={cover} px={180} round fallback="artist" />;
+  const source = isSpotify(id) ? { images: data?.artist.images } : { id: library?.find((x) => x.id === id)?.coverArt };
+  return <Art {...source} px={180} round fallback="artist" />;
 }
 
 export default function RadioPage() {

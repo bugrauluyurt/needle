@@ -17,6 +17,8 @@ if (root) {
   );
 }
 
+for (const gesture of ["gesturestart", "gesturechange"]) document.addEventListener(gesture, (e) => e.preventDefault(), { passive: false });
+
 if ("serviceWorker" in navigator && import.meta.env.PROD && window.isSecureContext) {
   void import("workbox-window").then(({ Workbox }) => {
     const wb = new Workbox("/sw.js");

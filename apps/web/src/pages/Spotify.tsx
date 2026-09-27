@@ -1,16 +1,20 @@
 import { useMemo, useState } from "react";
+import { Collection, CollectionTools, RELEASE_SORTS } from "../components/Collection.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import { LIKED_SORTS, shownSongs, SONG_SORTS } from "../lib/songs.ts";
+import type { SongSort } from "../lib/songs.ts";
 import { Link, useParams } from "react-router";
 import type { Song } from "@needle/shared";
 import { Art, LikedArt } from "../components/Art.tsx";
-import { CardRow, CardSkeletons, RowHeader } from "../components/Cards.tsx";
+import { CardRow, CardSkeletons } from "../components/Cards.tsx";
 import { ActBar, Hero, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { api } from "../lib/api.ts";
-import { ago, artistName, count, longDuration, plural, releaseKind } from "../lib/format.ts";
+import { ago, count, longDuration, plural, releaseKind } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
 import { image, sp, spId, spotifyLink } from "../lib/spotify.ts";
-import { playSpotifyArtist, SpotifyAlbumCard, SpotifyBadge } from "../components/SpotifyCards.tsx";
+import { playSpotifyArtist, releaseYear, SpotifyBadge, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
 import { useTone } from "../lib/tone.ts";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { MobileBack } from "../layout/Mobile.tsx";
@@ -75,11 +79,9 @@ export function SpotifyLikedPage() {
   const on = useSpotifyOn();
   const { data: songs, isLoading, isError, refetch } = useSpotifyLiked();
   const [filter, setFilter] = useState("");
+  const [sort, setSort] = useState<SongSort>("added");
   usePageTone("#1F5A3A");
-  const shown = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    return (songs ?? []).filter((s) => !q || `${s.title} ${artistName(s)} ${s.album ?? ""}`.toLowerCase().includes(q));
-  }, [songs, filter]);
+  const shown = useMemo(() => shownSongs(songs ?? [], sort, filter), [songs, sort, filter]);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (isError || !songs) return <SpotifyError what="list" retry={() => void refetch()} />;
@@ -87,7 +89,7 @@ export function SpotifyLikedPage() {
   return (
     <div className="tinted">
       <Hero art={<LikedArt className="sp-liked" />} kind="Spotify" title="Liked on Spotify" meta={<span>{plural(songs.length, "song")}</span>} />
-      <ActBar end={<label className="find"><Icon name="search" size={17} /><input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find in liked songs" aria-label="Find in liked songs" /></label>}>
+      <ActBar end={<><SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" /><CollectionTools sorts={LIKED_SORTS} sort={sort} onSort={setSort} /></>}>
         <PlayContextButton contextId="sp:liked" label="Liked on Spotify" onPlay={() => player.playSongs(shown, 0, context)} />
         <ShuffleButton label="Liked on Spotify" onShuffle={() => player.playSongs(shown, 0, context, { shuffle: true })} />
       </ActBar>
@@ -103,6 +105,9 @@ export function SpotifyPlaylistPage() {
   const edits = useSpotifyPlaylistEdits();
   const { data: playlists } = useSpotifyPlaylists();
   const mine = playlists?.find((p) => p.id === id)?.mine;
+  const [filter, setFilter] = useState("");
+  const [sort, setSort] = useState<SongSort>("custom");
+  const shown = useMemo(() => (data?.songs ? shownSongs(data.songs, sort, filter) : null), [data, sort, filter]);
   const tone = useTone(image(data?.meta.images, 64));
   usePageTone(tone);
   if (!on) return <NotConnected />;
@@ -111,11 +116,11 @@ export function SpotifyPlaylistPage() {
   const { meta, songs } = data;
   const context: PlayContext = { kind: "playlist", id: spId(id), name: meta.name };
   const total = meta.items?.total ?? meta.tracks?.total ?? songs?.length ?? 0;
-  const editable = Boolean(mine) && songs !== null;
+  const editable = Boolean(mine) && songs !== null && sort === "custom" && !filter;
   return (
     <div className="tinted">
       <Hero
-        art={<Art id={image(meta.images, 640)} px={232} eager />}
+        art={<Art images={meta.images} px={232} eager />}
         kind={mine ? "Spotify playlist" : "Spotify playlist you follow"}
         title={meta.name}
         description={plain(meta.description)}
@@ -127,7 +132,7 @@ export function SpotifyPlaylistPage() {
         }
       />
       {songs ? (
-        <ActBar>
+        <ActBar end={songs.length ? <><SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" /><CollectionTools sorts={SONG_SORTS} sort={sort} onSort={setSort} /></> : null}>
           {songs.length ? (
             <>
               <PlayContextButton contextId={context.id ?? ""} label={meta.name} onPlay={() => player.playSongs(songs, 0, context)} />
@@ -143,14 +148,14 @@ export function SpotifyPlaylistPage() {
           <p className="muted">Spotify only lets personal apps read playlists you made or collaborate on. Open it in Spotify, like the songs you want, and they’ll show up in Liked on Spotify here.</p>
           <a className="btn light" href={spotifyLink("playlist", id)} target="_blank" rel="noopener noreferrer"><Icon name="link" size={16} />Open in Spotify</a>
         </div>
-      ) : songs.length ? (
+      ) : songs.length && shown ? (
         <TrackList
-          songs={songs}
+          songs={shown}
           context={context}
           art
           album
           column={{ label: "Added", value: (s) => ago(s.created) }}
-          onPlay={(i) => player.playSongs(songs, i, context)}
+          onPlay={(i) => player.playSongs(shown, i, context)}
           {...(editable ? {
             onReorder: (from: number, to: number) => void edits.reorder(id, from, to),
             menuExtra: (s: Song) => [{ label: "Remove from this playlist", icon: "trash" as const, run: () => void edits.remove(id, s) }],
@@ -211,7 +216,7 @@ export function SpotifyAlbumPage() {
   return (
     <div className="tinted">
       <Hero
-        art={<Art id={image(album.images, 640)} px={232} eager />}
+        art={<Art images={album.images} px={232} eager />}
         kind={`${album.album_type === "album" ? "Album" : album.album_type === "compilation" ? "Compilation" : releaseKind(songs.length, duration(songs))} on Spotify`}
         title={album.name}
         meta={
@@ -263,7 +268,7 @@ export function SpotifyArtistPage() {
     <div className="artist-page">
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
-        <div className="bg"><Art id={image(artist.images, 640)} px={900} eager fallback="artist" /></div>
+        <div className="bg"><Art images={artist.images} px={900} eager fallback="artist" /></div>
         <div className="a-hero-text">
           <div className="kind"><SpotifyBadge /> Artist</div>
           <h1 style={{ "--title": `${artist.name.length > 14 ? 76 : 112}px` } as React.CSSProperties}>{artist.name}</h1>
@@ -283,18 +288,8 @@ export function SpotifyArtistPage() {
         <OpenInSpotify kind="artist" id={artist.id} />
       </ActBar>
       <div className="pad">
-        {full.length ? (
-          <>
-            <RowHeader title="Albums" />
-            <CardRow grid={full.length > 6}>{full.map((a) => <SpotifyAlbumCard key={a.id} album={a} subtitle={a.release_date?.slice(0, 4) ?? ""} />)}</CardRow>
-          </>
-        ) : null}
-        {singles.length ? (
-          <>
-            <RowHeader title="Singles and EPs" />
-            <CardRow grid={singles.length > 6}>{singles.map((a) => <SpotifyAlbumCard key={a.id} album={a} subtitle={a.release_date?.slice(0, 4) ?? ""} />)}</CardRow>
-          </>
-        ) : null}
+        {full.length ? <Collection id="artist-albums" title="Albums" items={full.map((a) => spotifyAlbumItem(a, releaseYear(a)))} sorts={RELEASE_SORTS} /> : null}
+        {singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((a) => spotifyAlbumItem(a, releaseYear(a)))} sorts={RELEASE_SORTS} /> : null}
         {!albums.length ? <CardRow><CardSkeletons n={3} /></CardRow> : null}
       </div>
     </div>

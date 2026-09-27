@@ -37,6 +37,7 @@ body,
 }
 
 html {
+  touch-action: pan-x pan-y;
   background: var(--ink);
   color: var(--label);
   font-family: var(--ui);

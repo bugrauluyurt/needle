@@ -8,6 +8,7 @@ import { artistPath } from "../lib/paths.ts";
 import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
+import type { CollectionItem } from "./Collection.tsx";
 
 type CardProps = {
   to: string;
@@ -51,29 +52,42 @@ export async function playArtist(artist: Pick<Artist, "id" | "name">, shuffle = 
   player.playSongs(songs, 0, { kind: "artist", id: artist.id, name: artist.name }, { shuffle });
 }
 
-export function AlbumCard({ album, subtitle }: { album: Album; subtitle?: ReactNode }) {
-  return (
-    <Card
-      to={`/album/${album.id}`}
-      art={<Art id={album.coverArt} px={180} />}
-      title={album.name}
-      subtitle={subtitle ?? [album.year, album.displayArtist ?? album.artist].filter(Boolean).join(", ")}
-      onPlay={() => void playAlbum(album.id, album.name)}
-    />
-  );
+export function albumItem(album: Album, subtitle?: string): CollectionItem {
+  const by = album.displayArtist ?? album.artist ?? "";
+  return {
+    key: album.id,
+    to: `/album/${album.id}`,
+    art: (px) => <Art id={album.coverArt} px={px} />,
+    title: album.name,
+    subtitle: subtitle ?? [album.year, by].filter(Boolean).join(", "),
+    by,
+    ...(album.year ? { year: album.year } : {}),
+    ...(album.created ? { added: album.created } : {}),
+    onPlay: () => void playAlbum(album.id, album.name),
+  };
 }
 
-export function ArtistCard({ artist, subtitle = "Artist" }: { artist: Artist; subtitle?: ReactNode }) {
-  return (
-    <Card
-      to={artistPath(artist.id)}
-      art={<Art id={artist.coverArt} px={180} round fallback="artist" />}
-      title={artist.name}
-      subtitle={subtitle}
-      {...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) })}
-    />
-  );
+export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem {
+  return {
+    key: artist.id,
+    to: artistPath(artist.id),
+    art: (px) => <Art id={artist.coverArt} px={px} round fallback="artist" />,
+    title: artist.name,
+    subtitle,
+    by: artist.name,
+    ...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) }),
+  };
 }
+
+const CARD_ART = 180;
+
+export function ItemCard({ item }: { item: CollectionItem }) {
+  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} />;
+}
+
+export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => <ItemCard item={albumItem(album, subtitle)} />;
+
+export const ArtistCard = ({ artist, subtitle }: { artist: Artist; subtitle?: string }) => <ItemCard item={artistItem(artist, subtitle)} />;
 
 export function RowHeader({ title, subtitle, to, action }: { title: string; subtitle?: string; to?: string; action?: ReactNode }) {
   return (
@@ -87,8 +101,8 @@ export function RowHeader({ title, subtitle, to, action }: { title: string; subt
   );
 }
 
-export function CardRow({ children, grid = false }: { children: ReactNode; grid?: boolean }) {
-  return <div className={grid ? "cards grid" : "cards"}>{children}</div>;
+export function CardRow({ children, grid = false, dense = false }: { children: ReactNode; grid?: boolean; dense?: boolean }) {
+  return <div className={["cards", grid ? "grid" : "", dense ? "dense" : ""].filter(Boolean).join(" ")}>{children}</div>;
 }
 
 export function CardSkeletons({ n = 6, round = false }: { n?: number; round?: boolean }) {

@@ -4,6 +4,7 @@ import type { IconName } from "../components/Icon.tsx";
 import { isIOS, isStandalone } from "../lib/device.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { usePageTone } from "../layout/Shell.tsx";
+import { AvatarFace } from "../layout/TopBar.tsx";
 import { useSession } from "../state/session.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
 
@@ -24,7 +25,7 @@ export default function YouPage() {
       <MobileHeader title="You" />
       <div className="pad you">
         <div className="you-card">
-          <span className="avatar big">{user.slice(0, 1).toUpperCase()}</span>
+          <span className="avatar big"><AvatarFace px={64} /></span>
           <div>
             <b>{user}</b>
             <span>Listening on {device}</span>

@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { useSession } from "../state/session.ts";
+import { image } from "../lib/spotify.ts";
+import { useSpotifyMe } from "../queries/spotify.ts";
 import { useUi } from "../state/ui.ts";
 
 let maxIdx = 0;
@@ -13,15 +15,23 @@ function historyIdx(): number {
   return idx;
 }
 
+export function AvatarFace({ px }: { px: number }) {
+  const user = useSession((s) => s.credentials?.user ?? "");
+  const { data: me } = useSpotifyMe();
+  const photo = image(me?.images, px * 2);
+  return photo ? <img src={photo} alt="" draggable={false} /> : <>{(me?.display_name ?? user).slice(0, 1).toUpperCase()}</>;
+}
+
 export function AccountMenu({ size = 32 }: { size?: number }) {
   const user = useSession((s) => s.credentials?.user ?? "");
   const signOut = useSession((s) => s.signOut);
   const navigate = useNavigate();
+
   return (
     <DM.Root modal={false}>
       <DM.Trigger asChild>
         <button type="button" className="avatar" style={{ width: size, height: size }} aria-label={`Account, signed in as ${user}`}>
-          {user.slice(0, 1).toUpperCase()}
+          <AvatarFace px={size} />
         </button>
       </DM.Trigger>
       <DM.Portal>

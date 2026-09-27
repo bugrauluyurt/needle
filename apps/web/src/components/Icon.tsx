@@ -34,6 +34,8 @@ const PATHS = {
   grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   list: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01",
   grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  gridDense: "M4 4h3.5v3.5H4zM10.25 4h3.5v3.5h-3.5zM16.5 4H20v3.5h-3.5zM4 10.25h3.5v3.5H4zM10.25 10.25h3.5v3.5h-3.5zM16.5 10.25H20v3.5h-3.5zM4 16.5h3.5V20H4zM10.25 16.5h3.5V20h-3.5zM16.5 16.5H20V20h-3.5z",
+  rows: "M4 6h16M4 12h16M4 18h16",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 21a7.5 7.5 0 0 1 15 0",
   share: "M12 3v12M8 7l4-4 4 4M5 12v8h14v-8",
   keyboard: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10",
@@ -79,13 +81,13 @@ export function Icon({ name, size = 20, className }: { name: IconName; size?: nu
 
 export function Logo({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="14" cy="18" r="12" fill="#2F2B38" />
-      <circle cx="14" cy="18" r="8.5" fill="none" stroke="#F3EFE8" strokeOpacity=".2" />
-      <circle cx="14" cy="18" r="5.5" fill="none" stroke="#F3EFE8" strokeOpacity=".12" />
-      <circle cx="14" cy="18" r="3" fill="#F6B23C" />
-      <path d="M28.5 3.5 19.5 15.5" stroke="#F3EFE8" strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="28.5" cy="3.5" r="2.4" fill="#F3EFE8" />
+    <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
+      <circle cx="256" cy="256" r="190" fill="#2F2B38" />
+      <circle cx="256" cy="256" r="136" fill="none" stroke="#F3EFE8" strokeOpacity=".2" strokeWidth="16" />
+      <circle cx="256" cy="256" r="88" fill="none" stroke="#F3EFE8" strokeOpacity=".12" strokeWidth="16" />
+      <circle cx="256" cy="256" r="48" fill="#F6B23C" />
+      <path d="M440 72 344 184" stroke="#F3EFE8" strokeWidth="38" strokeLinecap="round" />
+      <circle cx="440" cy="72" r="38" fill="#F3EFE8" />
     </svg>
   );
 }

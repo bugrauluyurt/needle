@@ -14,7 +14,7 @@ test("browses by genre and decade before typing", async ({ page }) => {
 
 test("searches as you type, with a top result and filters", async ({ page }) => {
   await signIn(page, "/search");
-  await page.getByRole("searchbox", { name: "Search" }).fill("neon");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("neon");
   await expect(page).toHaveURL(/q=neon/);
   await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
   await expect(page.locator(".songs-mini .song-mini")).toHaveCount(4);
@@ -24,7 +24,7 @@ test("searches as you type, with a top result and filters", async ({ page }) => 
   await filters.getByRole("button", { name: "Artists", exact: true }).click();
   await expect(page.locator(".card", { hasText: "Neon Harbor" })).toBeVisible();
 
-  await page.getByRole("searchbox", { name: "Search" }).fill("zzzz nothing");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("zzzz nothing");
   await expect(page.getByText("No artists in your library match “zzzz nothing”.")).toBeVisible();
 });
 
@@ -33,16 +33,16 @@ test("finds text anywhere in names, in search and in the library list", async ({
   await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
   const side = page.locator("nav.side");
   await side.getByRole("button", { name: "Search in your library" }).click();
-  await side.getByRole("textbox", { name: "Search in your library" }).fill("field");
+  await side.getByRole("searchbox", { name: "Search in your library" }).fill("field");
   await expect(side.locator(".lib-item")).toHaveCount(1);
   await expect(side.locator(".lib-item")).toContainText("Weightless Hours");
-  await side.getByRole("textbox", { name: "Search in your library" }).fill("zzzz");
+  await side.getByRole("searchbox", { name: "Search in your library" }).fill("zzzz");
   await expect(side.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
 });
 
 test("remembers recent searches", async ({ page }) => {
   await signIn(page, "/search");
-  await page.getByRole("searchbox", { name: "Search" }).fill("Kasa");
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("Kasa");
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Clear search" }).click();
   await expect(page.getByRole("heading", { name: "Recent searches" })).toBeVisible();

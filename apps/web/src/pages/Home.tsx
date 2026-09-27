@@ -14,7 +14,7 @@ import { useAlbumList, useArtists, useMixes, useStarred, useStats } from "../que
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
-import { image, spId } from "../lib/spotify.ts";
+import { spId } from "../lib/spotify.ts";
 import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
 import { playSpotifyPlaylist, SpotifyAlbumCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
 
@@ -111,7 +111,7 @@ function SpotifyHome({ header }: { header: React.ReactNode }) {
         <div className="quick">
           <SpotifyLikedTile />
           {playlists.slice(0, mobile ? 5 : 7).map((p) => (
-            <QuickTile key={p.id} to={`/spotify/playlist/${p.id}`} art={<Art id={image(p.images, 64)} px={56} />} title={p.name} playingId={spId(p.id)} onPlay={() => void playSpotifyPlaylist(p.id)} />
+            <QuickTile key={p.id} to={`/spotify/playlist/${p.id}`} art={<Art images={p.images} px={56} />} title={p.name} playingId={spId(p.id)} onPlay={() => void playSpotifyPlaylist(p.id)} />
           ))}
         </div>
         <Resume />

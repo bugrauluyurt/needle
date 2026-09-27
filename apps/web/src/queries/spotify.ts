@@ -1,10 +1,11 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Song } from "@needle/shared";
-import { albumSongs, sp, SpotifyApiError, toSong } from "../lib/spotify.ts";
+import { albumSongs, image, isSpotify, rawId, sp, SpotifyApiError, toSong } from "../lib/spotify.ts";
 import type { SpArtist, SpPlaylist } from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
-import { useCapabilities } from "./hooks.ts";
+import { useArtistCover, useCapabilities } from "./hooks.ts";
+import { fold } from "@needle/shared";
 
 const TEN_MIN = 10 * 60_000;
 
@@ -15,6 +16,7 @@ export const spKeys = {
   liked: ["sp", "liked"] as const,
   albums: ["sp", "albums"] as const,
   followed: ["sp", "followed"] as const,
+  artistImage: (name: string) => ["sp", "artistImage", name] as const,
   album: (id: string) => ["sp", "album", id] as const,
   artist: (id: string) => ["sp", "artist", id] as const,
   search: (q: string) => ["sp", "search", q] as const,
@@ -235,4 +237,21 @@ export function useSpotifyPlaylistEdits() {
       }
     },
   };
+}
+
+export function useArtistImage(id: string | undefined, name: string | undefined): string | undefined {
+  const on = useSpotifyOn();
+  const spotify = isSpotify(id);
+  const local = useArtistCover(spotify ? undefined : id);
+  const { data: artist } = useSpotifyArtist(spotify ? rawId(id ?? "") : undefined);
+  const { data: found } = useQuery({
+    queryKey: spKeys.artistImage(name ?? ""),
+    queryFn: async () => {
+      const hits = await sp.findArtist(name ?? "");
+      return image(hits.find((a) => fold(a.name) === fold(name ?? ""))?.images, 640) ?? null;
+    },
+    enabled: on && !spotify && !local && Boolean(name),
+    staleTime: Infinity,
+  });
+  return spotify ? image(artist?.artist.images, 640) : (local ?? found ?? undefined);
 }
