@@ -89,6 +89,7 @@ export function createApp(config: Config, db: DatabaseSync) {
       lidarr: Boolean(lidarr) && (await isAdmin(auth)),
       spotify: Boolean(spotify),
       spotifyConnected: spotify?.connected(auth.user) ?? false,
+      spotifyPlayback: spotify?.canPlay(auth.user) ?? false,
       publicUrl: config.publicUrl,
     };
     return c.json(caps);
@@ -153,6 +154,11 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (r.error) return r.error;
     r.spotify.disconnect(c.get("auth").user);
     return c.body(null, 204);
+  });
+
+  app.get("/api/spotify/token", async (c) => {
+    const r = needSpotify(c);
+    return r.error ?? c.json(await r.spotify.token(c.get("auth").user));
   });
 
   app.get("/api/spotify/playlists", async (c) => {

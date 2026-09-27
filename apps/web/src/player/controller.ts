@@ -8,6 +8,7 @@ import { settings } from "../state/settings.ts";
 import { useSession } from "../state/session.ts";
 import type { Quality } from "../state/settings.ts";
 import { AudioEngine, dbToGain } from "./engine.ts";
+import { prepareSpotify, spotifyPlayer } from "./spotify.ts";
 import { progress } from "./progress.ts";
 import * as Q from "./queue.ts";
 import type { PlayContext, PlayerState, ResumeOffer } from "./store.ts";
@@ -26,6 +27,9 @@ const CLOCK_SLACK_MS = 3_000;
 export const canCrossfade = !isIOS;
 
 let engine: AudioEngine | null = null;
+let backend: "local" | "spotify" = "local";
+let spotifyTicker: number | null = null;
+const SPOTIFY_TICK = 500;
 let loadedUid: string | null = null;
 let listenedMs = 0;
 let lastTick = 0;
@@ -40,6 +44,8 @@ const resolved = new Map<string, string>();
 const objectUrls = new Set<string>();
 
 const set = (patch: Partial<PlayerState>) => usePlayer.setState(patch);
+const onSpotify = (song: Song | null | undefined) => song?.source === "spotify";
+const position = () => (backend === "spotify" ? spotifyPlayer.position() : (engine?.position() ?? 0));
 const get = () => usePlayer.getState();
 
 function codecFor(): string {
@@ -123,7 +129,7 @@ function beginListen(item: Q.QueueItem, announce: boolean) {
   scrobbled = false;
   reported = false;
   updateMediaSession(item.song);
-  if (announce) void sub.scrobble(item.song.id, false).catch(() => undefined);
+  if (announce && !onSpotify(item.song)) void sub.scrobble(item.song.id, false).catch(() => undefined);
 }
 
 async function loadCurrent(autoplay: boolean, startAt = 0) {
@@ -139,12 +145,72 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   finishListen();
   beginListen(item, autoplay);
   set({ playing: autoplay, error: null, station: null, buffering: autoplay });
+  if (onSpotify(item.song)) {
+    engine.stop();
+    backend = "spotify";
+    progress.set({ position: startAt, duration: item.song.duration ?? 0, buffered: 0 });
+    if (autoplay) await startSpotify(item, startAt);
+    scheduleSave();
+    return;
+  }
+  if (backend === "spotify") leaveSpotify();
   const src = await sourceFor(item);
   if (get().items[get().index]?.uid !== item.uid) return;
   engine.load(src, { autoplay, startAt, gain: gainFor(item.song) });
   const nextIdx = Q.nextIndex(get(), get().repeat);
   releaseSources(new Set([item.uid, ...(nextIdx !== null ? [get().items[nextIdx]?.uid ?? ""] : [])]));
   scheduleSave();
+}
+
+function spotifyEvents() {
+  return {
+    state: ({ paused }: { paused: boolean }) => {
+      if (backend !== "spotify") return;
+      set({ playing: !paused, buffering: false });
+    },
+    ended: () => {
+      if (backend === "spotify") onEnded();
+    },
+    error: (message: string) => {
+      if (backend === "spotify") set({ error: message, playing: false, buffering: false });
+    },
+  };
+}
+
+const connectSpotify = () => prepareSpotify(`Needle ${useSession.getState().deviceName}`, spotifyEvents());
+
+export function warmSpotify() {
+  void connectSpotify().catch(() => undefined);
+}
+
+function tickSpotify() {
+  if (backend !== "spotify") return;
+  const song = current();
+  const duration = spotifyPlayer.duration() || (song?.duration ?? 0);
+  onTime(Math.min(spotifyPlayer.position(), duration), duration, duration);
+}
+
+async function startSpotify(item: Q.QueueItem, startAt: number) {
+  if (!item.song.uri) {
+    onError("This song has no Spotify link.");
+    return;
+  }
+  try {
+    await connectSpotify();
+    if (get().items[get().index]?.uid !== item.uid) return;
+    spotifyPlayer.setVolume(get().muted ? 0 : get().volume);
+    await spotifyPlayer.play(item.song.uri, startAt);
+    spotifyTicker ??= window.setInterval(tickSpotify, SPOTIFY_TICK);
+  } catch (e) {
+    set({ playing: false, buffering: false, error: e instanceof Error ? e.message : "Spotify couldn’t play that song" });
+  }
+}
+
+function leaveSpotify() {
+  spotifyPlayer.stop();
+  if (spotifyTicker !== null) window.clearInterval(spotifyTicker);
+  spotifyTicker = null;
+  backend = "local";
 }
 
 function onTime(position: number, duration: number, buffered: number) {
@@ -161,7 +227,7 @@ function onTime(position: number, duration: number, buffered: number) {
 
   const song = current(s);
   if (!song) return;
-  if (!scrobbled && listenedMs >= Math.min((song.duration ?? duration) * 500, SCROBBLE_CAP_MS)) {
+  if (!scrobbled && !onSpotify(song) && listenedMs >= Math.min((song.duration ?? duration) * 500, SCROBBLE_CAP_MS)) {
     scrobbled = true;
     void sub.scrobble(song.id, true).catch(() => undefined);
   }
@@ -177,7 +243,11 @@ function onTime(position: number, duration: number, buffered: number) {
   const remaining = duration - position;
   const nextIdx = s.repeat === "one" ? null : Q.nextIndex(s, s.repeat);
   const next = nextIdx !== null ? s.items[nextIdx] : undefined;
-  if (!next || !duration || !s.playing) return;
+  if (!next || onSpotify(next.song) || !duration || !s.playing) return;
+  if (onSpotify(song)) {
+    if (remaining < PRELOAD_AT && !resolved.has(next.uid)) void sourceFor(next).then((src) => engine?.preload(src));
+    return;
+  }
   const cf = crossfadeSeconds();
   if (cf > 0 && remaining <= cf && !engine.fading && duration > cf * 2) {
     const src = resolved.get(next.uid);
@@ -204,6 +274,10 @@ function onEnded() {
     finishListen();
     const item = s.items[s.index];
     if (item) beginListen(item, true);
+    if (backend === "spotify" && item) {
+      void startSpotify(item, 0);
+      return;
+    }
     engine?.seek(0);
     void engine?.play();
     return;
@@ -227,7 +301,7 @@ function onError(message: string) {
 
 async function appendSimilar(): Promise<boolean> {
   const song = current();
-  if (!song) return false;
+  if (!song || onSpotify(song)) return false;
   const have = new Set(get().items.map((i) => i.song.id));
   let songs = (await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])).filter((x) => !have.has(x.id));
   if (songs.length < 5) songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
@@ -245,6 +319,7 @@ export async function next() {
     finishListen();
     engine?.pause();
     engine?.seek(0);
+    if (backend === "spotify") spotifyPlayer.pause();
     set({ playing: false });
     return;
   }
@@ -255,13 +330,13 @@ export async function next() {
 export async function previous() {
   const s = get();
   if (s.station) return;
-  if ((engine?.position() ?? 0) > RESTART_THRESHOLD) {
-    engine?.seek(0);
+  if (position() > RESTART_THRESHOLD) {
+    seek(0);
     return;
   }
   const p = Q.previousIndex(s, s.repeat);
   if (p === null) {
-    engine?.seek(0);
+    seek(0);
     return;
   }
   set({ index: p });
@@ -270,6 +345,7 @@ export async function previous() {
 
 export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean } = {}) {
   if (!songs.length) return;
+  spotifyPlayer.activate();
   const shuffle = opts.shuffle ?? get().shuffle;
   set({ ...Q.start(songs, startIndex, shuffle), shuffle, context, station: null, resume: null });
   void loadCurrent(true);
@@ -278,6 +354,7 @@ export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | 
 export function playQueueItem(uid: string) {
   const i = get().items.findIndex((it) => it.uid === uid);
   if (i < 0) return;
+  spotifyPlayer.activate();
   set({ index: i });
   void loadCurrent(true);
 }
@@ -296,6 +373,15 @@ export function toggle() {
   }
   const item = s.items[s.index];
   if (!item) return;
+  spotifyPlayer.activate();
+  if (onSpotify(item.song)) {
+    if (backend === "spotify" && loadedUid === item.uid && spotifyPlayer.playingUri === item.song.uri) {
+      set({ playing: true });
+      lastTick = performance.now();
+      spotifyPlayer.resume();
+    } else void loadCurrent(true, s.lastPosition);
+    return;
+  }
   if (loadedUid !== item.uid || !engine.currentSrc) {
     void loadCurrent(true, s.lastPosition);
     return;
@@ -311,26 +397,30 @@ export function play() {
 }
 
 export function pause() {
+  const at = position();
   engine?.pause();
-  set({ playing: false, lastPosition: engine?.position() ?? 0 });
+  if (backend === "spotify") spotifyPlayer.pause();
+  set({ playing: false, lastPosition: at });
   saveNow();
 }
 
 export function seek(seconds: number) {
-  engine?.seek(seconds);
+  if (backend === "spotify") spotifyPlayer.seek(seconds);
+  else engine?.seek(seconds);
   progress.set({ position: seconds });
   set({ lastPosition: seconds });
   scheduleSave();
 }
 
 export function seekBy(delta: number) {
-  seek((engine?.position() ?? 0) + delta);
+  seek(position() + delta);
 }
 
 export function setVolume(volume: number) {
   const v = Math.min(1, Math.max(0, volume));
   set({ volume: v, muted: v === 0 });
   engine?.setVolume(v);
+  spotifyPlayer.setVolume(v);
 }
 
 export function toggleMute() {
@@ -338,6 +428,7 @@ export function toggleMute() {
   const muted = !s.muted;
   set({ muted });
   engine?.setVolume(muted ? 0 : s.volume || 0.5);
+  spotifyPlayer.setVolume(muted ? 0 : s.volume || 0.5);
 }
 
 export function setShuffle(on: boolean) {
@@ -385,6 +476,7 @@ export function clearUserQueue() {
 export function playStation(station: InternetRadioStation) {
   if (!engine) return;
   finishListen();
+  if (backend === "spotify") leaveSpotify();
   loadedUid = null;
   set({ station, playing: true, buffering: true, error: null });
   const c = useSession.getState().credentials;
@@ -427,9 +519,9 @@ function saveNow() {
   saveTimer = null;
   const s = get();
   const song = current(s);
-  if (!dirty || !song || s.station) return;
+  if (!dirty || !song || s.station || onSpotify(song)) return;
   dirty = false;
-  const ids = s.items.slice(Math.max(0, s.index - 100), s.index + 400).map((i) => i.song.id);
+  const ids = s.items.slice(Math.max(0, s.index - 100), s.index + 400).filter((i) => !onSpotify(i.song)).map((i) => i.song.id);
   void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(() => {
     try {
       localStorage.setItem(SAVED_AT, String(Date.now()));

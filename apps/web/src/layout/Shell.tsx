@@ -3,23 +3,23 @@ import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
-import { player } from "../player/controller.ts";
+import { player, warmSpotify } from "../player/controller.ts";
+import { useCapabilities } from "../queries/hooks.ts";
 import { current, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
-import { sub } from "../lib/subsonic.ts";
+import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { TrackMenuHost } from "../components/TrackMenu.tsx";
+import { Tooltips } from "../components/Tooltips.tsx";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
 import { PlayerBar } from "./PlayerBar.tsx";
 import { RightPanel } from "./RightPanel.tsx";
 import { Sidebar } from "./Sidebar.tsx";
-import { queryClient } from "../queries/client.ts";
-import { keys } from "../queries/keys.ts";
 
 const MOBILE = "(max-width: 767px)";
 
@@ -52,6 +52,11 @@ function typing(target: EventTarget | null): boolean {
 function useShortcuts() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const songLikes = useSongLikes();
+  const likes = useRef(songLikes);
+  useEffect(() => {
+    likes.current = songLikes;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
@@ -88,8 +93,7 @@ function useShortcuts() {
           const song = current(s);
           if (!song) return;
           handled();
-          const liked = queryClient.getQueryData<{ song?: { id: string }[] }>(keys.starred)?.song?.some((x) => x.id === song.id) ?? false;
-          void (liked ? sub.unstar({ id: [song.id] }) : sub.star({ id: [song.id] })).then(() => queryClient.invalidateQueries({ queryKey: keys.starred }));
+          likes.current.setLiked(song, !likes.current.isLiked(song));
           break;
         }
         case "s":
@@ -173,7 +177,11 @@ export function Shell() {
   const shortcuts = useUi((s) => s.shortcutsOpen);
   const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station));
   const wide = useMediaQuery("(min-width: 1180px)");
+  const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback);
   useShortcuts();
+  useEffect(() => {
+    if (spotifyPlayback) warmSpotify();
+  }, [spotifyPlayback]);
   if (mobile) {
     return (
       <div className={`phone-app ${hasSong ? "has-mini" : ""}`}>
@@ -200,6 +208,7 @@ export function Shell() {
       {showRight ? <RightPanel /> : null}
       <PlayerBar />
       <TrackMenuHost />
+      <Tooltips />
       {fullScreen ? <Suspense fallback={null}><FullScreenPlayer /></Suspense> : null}
       {shortcuts ? <Suspense fallback={null}><ShortcutsDialog /></Suspense> : null}
       <Toasts />

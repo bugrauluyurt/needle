@@ -75,6 +75,6 @@ test("changes settings and keeps them", async ({ page }) => {
   await expect(page.getByRole("radio", { name: "Per song" })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("switch", { name: "Colour from album art" })).toHaveAttribute("aria-checked", "false");
   await expect(page.getByLabel("Device name")).toHaveValue("Test bench");
-  await expect(page.getByText("Import from Spotify")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect Spotify" })).toBeDisabled();
   await expect(page.getByText("Get music through Lidarr")).toBeVisible();
 });

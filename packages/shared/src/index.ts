@@ -69,8 +69,11 @@ export type Capabilities = {
   lidarr: boolean;
   spotify: boolean;
   spotifyConnected: boolean;
+  spotifyPlayback: boolean;
   publicUrl: string | null;
 };
+
+export type SpotifyToken = { accessToken: string; expiresAt: number };
 
 export type DeviceKind = "desktop" | "phone" | "tablet";
 
@@ -98,7 +101,7 @@ export type RemoteCommand =
   | { action: "play" | "pause" | "next" | "previous" }
   | { action: "seek"; position: number }
   | { action: "volume"; volume: number }
-  | { action: "transfer"; queue: string[]; index: number; position: number; playing: boolean }
+  | { action: "transfer"; songs: Song[]; index: number; position: number; playing: boolean }
   | { action: "pull" };
 
 export type ClientMessage =

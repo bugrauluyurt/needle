@@ -9,6 +9,8 @@ import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { useArtists, useStats } from "../queries/hooks.ts";
+import { albumPath, artistPath } from "../lib/paths.ts";
+import { isSpotify } from "../lib/spotify.ts";
 
 const PERIODS: [Period, string][] = [["month", "This month"], ["quarter", "Last 3 months"], ["year", "This year"], ["all", "All time"]];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -80,7 +82,7 @@ export default function StatsPage() {
               <section className="stat-box">
                 <h3>Top artists <span>Plays</span></h3>
                 {s.topArtists.map((a, i) => (
-                  <Link key={a.id} to={known(a.id) ? `/artist/${a.id}` : "/stats"} className="rank">
+                  <Link key={a.id} to={known(a.id) || isSpotify(a.id) ? artistPath(a.id) : "/stats"} className="rank">
                     <span className="n">{i + 1}</span>
                     <Art id={cover(a.id)} px={44} round fallback="artist" />
                     <div>
@@ -94,7 +96,7 @@ export default function StatsPage() {
               <section className="stat-box">
                 <h3>Top albums <span>Plays</span></h3>
                 {s.topAlbums.map((a, i) => (
-                  <Link key={a.id} to={`/album/${a.id}`} className="rank">
+                  <Link key={a.id} to={albumPath(a.id)} className="rank">
                     <span className="n">{i + 1}</span>
                     <Art id={a.coverArt} px={44} />
                     <div>

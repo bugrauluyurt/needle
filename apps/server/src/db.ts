@@ -39,5 +39,7 @@ export function openDatabase(dataDir: string): DatabaseSync {
   const db = new DatabaseSync(dataDir === ":memory:" ? ":memory:" : join(dataDir, "needle.db"));
   db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
   db.exec(SCHEMA);
+  const columns = db.prepare("PRAGMA table_info(spotify_tokens)").all() as { name: string }[];
+  if (!columns.some((c) => c.name === "scope")) db.exec("ALTER TABLE spotify_tokens ADD COLUMN scope TEXT NOT NULL DEFAULT ''");
   return db;
 }

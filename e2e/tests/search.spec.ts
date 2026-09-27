@@ -25,7 +25,7 @@ test("searches as you type, with a top result and filters", async ({ page }) => 
   await expect(page.locator(".card", { hasText: "Neon Harbor" })).toBeVisible();
 
   await page.getByRole("searchbox", { name: "Search" }).fill("zzzz nothing");
-  await expect(page.getByText("Nothing in your library matches “zzzz nothing”")).toBeVisible();
+  await expect(page.getByText("No artists in your library match “zzzz nothing”.")).toBeVisible();
 });
 
 test("remembers recent searches", async ({ page }) => {

@@ -29,6 +29,12 @@ const Downloads = lazy(() => import("./pages/Downloads.tsx"));
 const You = lazy(() => import("./pages/You.tsx"));
 const AlbumGrid = lazy(() => import("./pages/AlbumGrid.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const spotifyPage = (name: "SpotifyLikedPage" | "SpotifyPlaylistPage" | "SpotifyAlbumPage" | "SpotifyArtistPage") =>
+  lazy(() => import("./pages/Spotify.tsx").then((m) => ({ default: m[name] })));
+const SpotifyLiked = spotifyPage("SpotifyLikedPage");
+const SpotifyPlaylist = spotifyPage("SpotifyPlaylistPage");
+const SpotifyAlbum = spotifyPage("SpotifyAlbumPage");
+const SpotifyArtist = spotifyPage("SpotifyArtistPage");
 
 const page = (el: React.ReactNode) => <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{el}</Suspense>;
 
@@ -52,6 +58,10 @@ const router = createBrowserRouter([
       { path: "/downloads", element: page(<Downloads />) },
       { path: "/you", element: page(<You />) },
       { path: "/albums/:type", element: page(<AlbumGrid />) },
+      { path: "/spotify/liked", element: page(<SpotifyLiked />) },
+      { path: "/spotify/playlist/:id", element: page(<SpotifyPlaylist />) },
+      { path: "/spotify/album/:id", element: page(<SpotifyAlbum />) },
+      { path: "/spotify/artist/:id", element: page(<SpotifyArtist />) },
       { path: "*", element: page(<NotFound />) },
     ],
   },

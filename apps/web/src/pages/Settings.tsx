@@ -82,25 +82,11 @@ function Storage() {
 function SpotifyImport() {
   const caps = useCapabilities();
   const qc = useQueryClient();
-  const connected = Boolean(caps.data?.spotifyConnected);
-  const lists = useQuery({ queryKey: keys.spotifyPlaylists, queryFn: api.spotifyPlaylists, enabled: connected });
+  const [open, setOpen] = useState(false);
+  const lists = useQuery({ queryKey: keys.spotifyPlaylists, queryFn: api.spotifyPlaylists, enabled: open });
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [requesting, setRequesting] = useState(false);
-  if (!caps.data?.spotify) {
-    return (
-      <Row title="Import from Spotify" hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s settings on the Pi to turn this on.">
-        <button type="button" className="btn ghost sm" disabled>Connect Spotify</button>
-      </Row>
-    );
-  }
-  if (!connected) {
-    return (
-      <Row title="Import from Spotify" hint="Brings your Spotify playlists and liked songs into Navidrome playlists, matched against your library.">
-        <button type="button" className="btn light sm" onClick={() => void api.spotifyLogin().then(({ url }) => { location.href = url; })}>Connect Spotify</button>
-      </Row>
-    );
-  }
   const run = async (source: string) => {
     setBusy(source);
     setResult(null);
@@ -109,7 +95,7 @@ function SpotifyImport() {
       setResult(r);
       await qc.invalidateQueries({ queryKey: keys.playlists });
     } catch (e) {
-      toast(e instanceof Error ? e.message : "The import failed");
+      toast(e instanceof Error ? e.message : "The copy failed");
     } finally {
       setBusy(null);
     }
@@ -128,36 +114,72 @@ function SpotifyImport() {
   };
   return (
     <>
-      <Row title="Spotify is connected" hint="Pick what to bring over. Each import makes or updates a Navidrome playlist.">
-        <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))}>Disconnect</button>
+      <Row title="Copy playlists into your own library" hint="Optional. Makes a Navidrome playlist from a Spotify one, using only songs you already have. Lidarr can fetch the rest.">
+        <button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Choose playlists"}</button>
       </Row>
-      <ul className="sp-list">
-        <li>
-          <span><Icon name="heartFill" size={16} />Liked songs</span>
-          <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run("liked")}>{busy === "liked" ? "Importing…" : "Import"}</button>
-        </li>
-        {(lists.data ?? []).map((p) => (
-          <li key={p.id}>
-            <span>{p.name}<em>{plural(p.trackCount, "song")}</em></span>
-            <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run(p.id)}>{busy === p.id ? "Importing…" : "Import"}</button>
+      {open ? (
+        <ul className="sp-list">
+          <li>
+            <span><Icon name="heartFill" size={16} />Liked songs</span>
+            <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run("liked")}>{busy === "liked" ? "Copying…" : "Copy"}</button>
           </li>
-        ))}
-        {lists.isLoading ? <li className="muted">Loading your playlists…</li> : null}
-        {lists.isError ? <li className="muted">{lists.error instanceof Error ? lists.error.message : "Couldn’t load your Spotify playlists"}</li> : null}
-      </ul>
+          {(lists.data ?? []).map((p) => (
+            <li key={p.id}>
+              <span>{p.name}<em>{plural(p.trackCount, "song")}</em></span>
+              <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run(p.id)}>{busy === p.id ? "Copying…" : "Copy"}</button>
+            </li>
+          ))}
+          {lists.isLoading ? <li className="muted">Loading your playlists…</li> : null}
+          {lists.isError ? <li className="muted">{lists.error instanceof Error ? lists.error.message : "Couldn’t load your Spotify playlists"}</li> : null}
+        </ul>
+      ) : null}
       {result ? (
         <div className="sp-result" role="status">
           <b>{result.source}: {result.matched} of {plural(result.total, "song")} are in your library.</b>
           {result.missing.length ? (
             <>
               <span>{plural(result.missing.length, "song")} aren’t, for example {result.missing.slice(0, 3).map((m) => `${m.title} by ${m.artist}`).join("; ")}.</span>
-              {caps.data.lidarr ? (
+              {caps.data?.lidarr ? (
                 <button type="button" className="btn light sm" disabled={requesting} onClick={() => void requestMissing()}>{requesting ? "Asking Lidarr…" : "Get the missing albums through Lidarr"}</button>
               ) : null}
             </>
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+}
+
+function SpotifySettings() {
+  const caps = useCapabilities();
+  const qc = useQueryClient();
+  const connect = () => void api.spotifyLogin().then(({ url }) => { location.href = url; });
+  if (!caps.data?.spotify) {
+    return (
+      <Row title="Connect Spotify" hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s settings on the Pi to turn this on.">
+        <button type="button" className="btn ghost sm" disabled>Connect Spotify</button>
+      </Row>
+    );
+  }
+  if (!caps.data.spotifyConnected) {
+    return (
+      <Row title="Connect Spotify" hint="Shows your Spotify playlists, liked songs and saved albums next to your own music, and plays them here. Playing needs Spotify Premium.">
+        <button type="button" className="btn light sm" onClick={connect}>Connect Spotify</button>
+      </Row>
+    );
+  }
+  return (
+    <>
+      {caps.data.spotifyPlayback ? (
+        <Row title="Spotify is connected" hint="Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium.">
+          <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))}>Disconnect</button>
+        </Row>
+      ) : (
+        <Row title="Reconnect Spotify" hint="Needle needs a few more Spotify permissions to play songs and edit your playlists. Reconnect once to grant them.">
+          <button type="button" className="btn light sm" onClick={connect}>Reconnect</button>
+        </Row>
+      )}
+      <SpotifyImport />
     </>
   );
 }
@@ -239,7 +261,10 @@ export default function SettingsPage() {
         <Row title="Get music through Lidarr" hint={caps.data?.lidarr ? "Search offers albums you don’t have yet, and Lidarr fetches them." : "Needs Lidarr set up on the Needle server, and a Navidrome admin account."}>
           {caps.data?.lidarr ? <span className="ok">On</span> : <span className="muted">Off</span>}
         </Row>
-        <SpotifyImport />
+        <h2>Spotify</h2>
+        <SpotifySettings />
+
+        <h2>This app</h2>
         <Row title="Keyboard shortcuts">
           <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}><Icon name="keyboard" size={16} />Show shortcuts</button>
         </Row>

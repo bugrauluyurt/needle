@@ -5,6 +5,8 @@ import { lineAt, pickLyrics } from "../src/lib/lyrics.ts";
 import { md5 } from "../src/lib/md5.ts";
 import { toneFromPixels } from "../src/lib/tone.ts";
 import { dbToGain } from "../src/player/engine.ts";
+import { albumPath, artistPath } from "../src/lib/paths.ts";
+import { image, isSpotify, rawId, spotifyLink, toSong } from "../src/lib/spotify.ts";
 
 describe("md5", () => {
   it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])("matches node for %j", (s) => {
@@ -111,5 +113,48 @@ describe("ReplayGain", () => {
     expect(dbToGain(-6)).toBeCloseTo(0.501, 3);
     expect(dbToGain(6, 0.9)).toBeCloseTo(1 / 0.9, 5);
     expect(dbToGain(undefined)).toBe(1);
+  });
+});
+
+describe("spotify", () => {
+  const album = { id: "al1", name: "Discovery", release_date: "2001-03-12", images: [{ url: "big", width: 640 }, { url: "small", width: 64 }, { url: "mid", width: 300 }] };
+  const track = { id: "t1", uri: "spotify:track:t1", name: "One More Time", duration_ms: 320_357, artists: [{ id: "ar1", name: "Daft Punk" }, { id: "ar2", name: "Romanthony" }], track_number: 1, disc_number: 1 };
+
+  it("picks the smallest image that is big enough", () => {
+    expect(image(album.images, 50)).toBe("small");
+    expect(image(album.images, 200)).toBe("mid");
+    expect(image(album.images, 1000)).toBe("big");
+    expect(image([], 300)).toBeUndefined();
+  });
+
+  it("turns a Spotify track into a song", () => {
+    expect(toSong(track, album)).toEqual({
+      id: "sp:t1",
+      title: "One More Time",
+      artist: "Daft Punk, Romanthony",
+      displayArtist: "Daft Punk, Romanthony",
+      artistId: "sp:ar1",
+      artists: [{ id: "sp:ar1", name: "Daft Punk" }, { id: "sp:ar2", name: "Romanthony" }],
+      album: "Discovery",
+      albumId: "sp:al1",
+      coverArt: "mid",
+      duration: 320,
+      track: 1,
+      discNumber: 1,
+      year: 2001,
+      source: "spotify",
+      uri: "spotify:track:t1",
+    });
+  });
+
+  it("routes Spotify ids to Spotify pages", () => {
+    expect(isSpotify("sp:al1")).toBe(true);
+    expect(isSpotify("al1")).toBe(false);
+    expect(rawId("sp:al1")).toBe("al1");
+    expect(albumPath("sp:al1")).toBe("/spotify/album/al1");
+    expect(albumPath("nd1")).toBe("/album/nd1");
+    expect(artistPath("sp:ar1")).toBe("/spotify/artist/ar1");
+    expect(artistPath("nd2")).toBe("/artist/nd2");
+    expect(spotifyLink("track", "sp:t1")).toBe("https://open.spotify.com/track/t1");
   });
 });

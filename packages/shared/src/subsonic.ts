@@ -34,6 +34,8 @@ export type Song = {
   played?: string;
   replayGain?: ReplayGain;
   isrc?: string[];
+  source?: "spotify";
+  uri?: string;
 };
 
 export type Album = {

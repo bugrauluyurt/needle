@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import type { Album, Artist, Song } from "@needle/shared";
 import { player } from "../player/controller.ts";
 import { sub } from "../lib/subsonic.ts";
+import { artistPath } from "../lib/paths.ts";
+import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 
@@ -64,11 +66,11 @@ export function AlbumCard({ album, subtitle }: { album: Album; subtitle?: ReactN
 export function ArtistCard({ artist, subtitle = "Artist" }: { artist: Artist; subtitle?: ReactNode }) {
   return (
     <Card
-      to={`/artist/${artist.id}`}
+      to={artistPath(artist.id)}
       art={<Art id={artist.coverArt} px={180} round fallback="artist" />}
       title={artist.name}
       subtitle={subtitle}
-      onPlay={() => void playArtist(artist)}
+      {...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) })}
     />
   );
 }

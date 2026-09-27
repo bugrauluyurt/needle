@@ -118,3 +118,13 @@ test("keyboard shortcuts work and are listed", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Full screen player" })).toBeHidden();
 });
+
+test("explains icon buttons with tooltips", async ({ page }) => {
+  await signIn(page);
+  await bar(page).getByRole("button", { name: "Queue" }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("QueueQ");
+  await page.mouse.move(700, 450);
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await bar(page).getByRole("button", { name: "Devices" }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Devices");
+});

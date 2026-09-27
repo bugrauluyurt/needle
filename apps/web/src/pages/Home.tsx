@@ -14,6 +14,9 @@ import { useAlbumList, useArtists, useMixes, useStarred, useStats } from "../que
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
+import { image, spId } from "../lib/spotify.ts";
+import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { playSpotifyPlaylist, SpotifyAlbumCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
 
 const YEAR_MS = 365 * 86_400_000;
 
@@ -69,6 +72,56 @@ function Resume() {
   );
 }
 
+function SpotifyLikedTile() {
+  const { data: liked = [] } = useSpotifyLiked();
+  const context = { kind: "liked" as const, id: "sp:liked", name: "Liked on Spotify" };
+  return <QuickTile to="/spotify/liked" art={<LikedArt className="sp-liked" />} title="Liked on Spotify" playingId="sp:liked" {...(liked.length ? { onPlay: () => player.playSongs(liked, 0, context) } : {})} />;
+}
+
+function SpotifyRows() {
+  const playlists = useSpotifyPlaylists();
+  const albums = useSpotifyAlbums();
+  const mine = (playlists.data ?? []).toSorted((a, b) => Number(b.mine) - Number(a.mine));
+  return (
+    <>
+      {playlists.isPending || mine.length ? (
+        <>
+          <RowHeader title="Your Spotify playlists" to="/library" />
+          <CardRow>{playlists.isPending ? <CardSkeletons /> : mine.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />)}</CardRow>
+        </>
+      ) : null}
+      {albums.isPending || albums.data?.length ? (
+        <>
+          <RowHeader title="Albums you saved on Spotify" to="/library" />
+          <CardRow>{albums.data ? albums.data.map((a) => <SpotifyAlbumCard key={a.id} album={a} />) : <CardSkeletons />}</CardRow>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function SpotifyHome({ header }: { header: React.ReactNode }) {
+  const mobile = useIsMobile();
+  const { data: playlists = [] } = useSpotifyPlaylists();
+  return (
+    <div className="tinted">
+      {header}
+      <div className="pad">
+        {!mobile ? <h1 className="hello">{greeting()}</h1> : null}
+        <div className="quick">
+          <SpotifyLikedTile />
+          {playlists.slice(0, mobile ? 5 : 7).map((p) => (
+            <QuickTile key={p.id} to={`/spotify/playlist/${p.id}`} art={<Art id={image(p.images, 64)} px={56} />} title={p.name} playingId={spId(p.id)} onPlay={() => void playSpotifyPlaylist(p.id)} />
+          ))}
+        </div>
+        <Resume />
+        <SpotifyRows />
+        <EmptyLibrary compact />
+      </div>
+    </div>
+  );
+}
+
 function MixCard({ mix }: { mix: Mix }) {
   return <Card to={`/mix/${mix.id}`} art={<MixArt mix={mix} />} title={mix.name} subtitle={mix.description} onPlay={() => playMix(mix)} />;
 }
@@ -105,37 +158,40 @@ export default function Home() {
   const current = usePlayer((s) => s.items[s.index]?.song);
   const headerCover = current?.coverArt ?? recent.data?.[0]?.coverArt ?? newest.data?.[0]?.coverArt;
   const tone = useTone(headerCover);
+  const spotifyOn = useSpotifyOn();
   usePageTone(tone);
+  const header = mobile ? <MobileHeader title={greeting()} /> : <TopBar />;
 
   if (newest.isPending || recent.isPending || mixes.isPending) {
     return (
       <>
-        {mobile ? <MobileHeader title={greeting()} /> : <TopBar />}
+        {header}
         <HomeSkeleton />
       </>
     );
   }
 
   if (!newest.data?.length) {
-    return (
+    return spotifyOn ? <SpotifyHome header={header} /> : (
       <>
-        {mobile ? <MobileHeader title={greeting()} /> : <TopBar />}
+        {header}
         <EmptyLibrary />
       </>
     );
   }
 
-  const quick = [...(recent.data ?? []), ...(newest.data ?? [])].filter((a, i, all) => all.findIndex((b) => b.id === a.id) === i).slice(0, mobile ? 5 : 7);
+  const quick = [...(recent.data ?? []), ...(newest.data ?? [])].filter((a, i, all) => all.findIndex((b) => b.id === a.id) === i).slice(0, (mobile ? 5 : 7) - (spotifyOn ? 1 : 0));
   const old = forgotten(frequent.data);
   const liked = starred.data?.song ?? [];
 
   return (
     <div className="tinted">
-      {mobile ? <MobileHeader title={greeting()} /> : <TopBar />}
+      {header}
       <div className="pad">
         {!mobile ? <h1 className="hello">{greeting()}</h1> : null}
         <div className="quick">
           <QuickTile to="/liked" art={<LikedArt />} title="Liked songs" playingId="liked" {...(liked.length ? { onPlay: () => player.playSongs(liked, 0, { kind: "liked", id: "liked", name: "Liked songs" }) } : {})} />
+          {spotifyOn ? <SpotifyLikedTile /> : null}
           {quick.map((a) => (
             <QuickTile key={a.id} to={`/album/${a.id}`} art={<Art id={a.coverArt} px={56} />} title={a.name} playingId={a.id} onPlay={() => void playAlbum(a.id, a.name)} />
           ))}
@@ -149,6 +205,7 @@ export default function Home() {
         ) : null}
         <RowHeader title="Recently added" to="/albums/newest" />
         <CardRow>{newest.data.map((a) => <AlbumCard key={a.id} album={a} />)}</CardRow>
+        {spotifyOn ? <SpotifyRows /> : null}
         {old.length ? (
           <>
             <RowHeader title="You haven’t played these in a while" subtitle="Albums you played a lot, and not for six months" />

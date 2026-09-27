@@ -60,6 +60,7 @@ export function subsonicUrl(method: string, params: Params = {}): string {
 
 export function coverUrl(id: string | undefined, size = 300): string | null {
   if (!id) return null;
+  if (id.startsWith("https://")) return id;
   const c = credentials();
   if (!c) return null;
   return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle" }).toString()}`;

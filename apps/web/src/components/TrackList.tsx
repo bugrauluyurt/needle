@@ -8,12 +8,13 @@ import { useOffline } from "../offline/store.ts";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { usePlayer } from "../player/store.ts";
-import { useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useSongLikes } from "../queries/likes.ts";
 import { Art } from "./Art.tsx";
 import { Eq, Icon } from "./Icon.tsx";
 import { useScrollContainer } from "./ScrollContext.ts";
 import type { TrackMenuExtra } from "./TrackMenu.tsx";
 import { openTrackMenu, TrackMoreButton } from "./TrackMenu.tsx";
+import { albumPath, artistPath } from "../lib/paths.ts";
 
 export type TrackColumn = { label: string; value: (song: Song, index: number) => string; width?: string };
 
@@ -140,13 +141,13 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           <div className="name">{p.song.title}</div>
           <div className="by">
             {p.downloaded ? <span className="dlmark" title="Downloaded"><Icon name="downloaded" size={13} /></span> : null}
-            {p.song.artistId ? <Link to={`/artist/${p.song.artistId}`}>{artistName(p.song)}</Link> : artistName(p.song)}
+            {p.song.artistId ? <Link to={artistPath(p.song.artistId)}>{artistName(p.song)}</Link> : artistName(p.song)}
           </div>
         </div>
       </div>
       {p.album ? (
         <span className="alb" role="cell">
-          {p.song.albumId ? <Link to={`/album/${p.song.albumId}`}>{p.song.album}</Link> : p.song.album}
+          {p.song.albumId ? <Link to={albumPath(p.song.albumId)}>{p.song.album}</Link> : p.song.album}
         </span>
       ) : null}
       {p.column ? <span className="col" role="cell">{p.column.value(p.song, p.index)}</span> : null}
@@ -170,15 +171,14 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
 export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay }: TrackListProps) {
   const currentId = usePlayer((s) => s.items[s.index]?.song.id);
   const paused = usePlayer((s) => !s.playing);
-  const starred = useStarredIds();
-  const star = useToggleStar();
+  const likes = useSongLikes();
   const downloaded = useOffline((s) => s.songs);
   const [selected, setSelected] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
   const shown = limit ? songs.slice(0, limit) : songs;
 
   const play = useCallback((i: number) => (onPlay ? onPlay(i) : player.playSongs(songs, i, context)), [songs, context, onPlay]);
-  const like = useCallback((song: Song, on: boolean) => star.mutate({ kind: "song", item: song, on }), [star]);
+  const like = likes.setLiked;
 
   const scroller = useScrollContainer();
   const listRef = useRef<HTMLDivElement>(null);
@@ -215,7 +215,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       column={column}
       playing={song.id === currentId}
       paused={paused}
-      liked={starred.songs.has(song.id)}
+      liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
       selected={selected === i}
       draggable={Boolean(onReorder)}

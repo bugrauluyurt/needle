@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type { ClientMessage, Device, RemoteCommand, RemoteState, ServerMessage } from "@needle/shared";
 import { devicesSocketUrl } from "../lib/api.ts";
 import { deviceKind } from "../lib/device.ts";
-import { sub } from "../lib/subsonic.ts";
 import { artistName } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import { progress } from "../player/progress.ts";
@@ -16,6 +15,7 @@ export const useRemote = create<RemoteStore>(() => ({ connected: false, devices:
 
 const STATE_EVERY = 5_000;
 const RETRY_MAX = 30_000;
+const TRANSFER_LIMIT = 300;
 
 let socket: WebSocket | null = null;
 let retry = 1_000;
@@ -55,10 +55,11 @@ function publish(force = false) {
 export function transferTo(deviceId: string) {
   const s = usePlayer.getState();
   if (!s.items.length) return;
+  const start = Math.max(0, s.index - 20);
   send({
     type: "command",
     to: deviceId,
-    command: { action: "transfer", queue: s.items.map((i) => i.song.id).slice(0, 500), index: Math.min(s.index, 499), position: progress.get().position, playing: true },
+    command: { action: "transfer", songs: s.items.slice(start, start + TRANSFER_LIMIT).map((i) => i.song), index: s.index - start, position: progress.get().position, playing: true },
   });
   player.pause();
 }
@@ -67,7 +68,7 @@ export function command(deviceId: string, cmd: RemoteCommand) {
   send({ type: "command", to: deviceId, command: cmd });
 }
 
-async function receive(from: string, cmd: RemoteCommand) {
+function receive(from: string, cmd: RemoteCommand) {
   switch (cmd.action) {
     case "play":
       player.play();
@@ -91,11 +92,7 @@ async function receive(from: string, cmd: RemoteCommand) {
       transferTo(from);
       break;
     case "transfer": {
-      const songs = await Promise.all(cmd.queue.map((id) => sub.song(id).catch(() => null)));
-      const found = songs.filter((x): x is NonNullable<typeof x> => Boolean(x));
-      const target = cmd.queue[cmd.index];
-      const index = Math.max(0, found.findIndex((x) => x.id === target));
-      player.playSongs(found, index, { kind: "queue", name: "Your queue" }, { shuffle: false });
+      player.playSongs(cmd.songs, cmd.index, { kind: "queue", name: "Your queue" }, { shuffle: false });
       if (cmd.position > 1) window.setTimeout(() => player.seek(cmd.position), 400);
       const sender = useRemote.getState().devices.find((d) => d.id === from)?.name;
       toast(sender ? `Now playing here, sent from ${sender}` : "Now playing here");
@@ -120,7 +117,7 @@ function connect() {
   ws.onmessage = (e) => {
     const msg = JSON.parse(String(e.data)) as ServerMessage;
     if (msg.type === "devices") useRemote.setState({ devices: msg.devices });
-    else void receive(msg.from, msg.command);
+    else receive(msg.from, msg.command);
   };
   ws.onclose = (e) => {
     if (socket === ws) socket = null;

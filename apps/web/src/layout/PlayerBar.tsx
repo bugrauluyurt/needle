@@ -7,9 +7,10 @@ import { artistName, clock, formatLabel } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import { useProgress } from "../player/progress.ts";
 import { useCurrentSong, usePlayer } from "../player/store.ts";
-import { useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useSongLikes } from "../queries/likes.ts";
 import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
+import { albumPath, artistPath } from "../lib/paths.ts";
 
 export function SeekBar({ className = "seek", times = "side" }: { className?: string; times?: "side" | "below" | "remaining" }) {
   const position = useProgress((p) => Math.floor(p.position * 4) / 4);
@@ -80,21 +81,22 @@ export function Transport({ big = false }: { big?: boolean }) {
   }
   return (
     <div className="ctl-btns">
-      <button type="button" className="icon-btn" aria-pressed={shuffle} aria-label={shuffle ? "Turn off shuffle" : "Shuffle"} disabled={empty} onClick={() => player.setShuffle(!shuffle)}>
+      <button type="button" className="icon-btn" data-key="S" aria-pressed={shuffle} aria-label={shuffle ? "Turn off shuffle" : "Shuffle"} disabled={empty} onClick={() => player.setShuffle(!shuffle)}>
         <Icon name="shuffle" size={big ? 22 : size} />
       </button>
-      <button type="button" className="icon-btn" aria-label="Previous" disabled={empty} onClick={() => void player.previous()}>
+      <button type="button" className="icon-btn" data-key="Shift ←" aria-label="Previous" disabled={empty} onClick={() => void player.previous()}>
         <Icon name="prev" size={big ? 30 : size} />
       </button>
-      <button type="button" className={`pp ${buffering && playing ? "buffering" : ""}`} aria-label={playing ? "Pause" : "Play"} disabled={empty} onClick={player.toggle}>
+      <button type="button" className={`pp ${buffering && playing ? "buffering" : ""}`} data-key="Space" aria-label={playing ? "Pause" : "Play"} disabled={empty} onClick={player.toggle}>
         <Icon name={playing ? "pause" : "play"} size={big ? 26 : 16} />
       </button>
-      <button type="button" className="icon-btn" aria-label="Next" disabled={empty} onClick={() => void player.next()}>
+      <button type="button" className="icon-btn" data-key="Shift →" aria-label="Next" disabled={empty} onClick={() => void player.next()}>
         <Icon name="next" size={big ? 30 : size} />
       </button>
       <button
         type="button"
         className="icon-btn"
+        data-key="R"
         aria-pressed={repeat !== "off"}
         aria-label={repeat === "off" ? "Repeat" : repeat === "all" ? "Repeat one" : "Turn off repeat"}
         disabled={empty}
@@ -120,12 +122,11 @@ export function Volume() {
 
 export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: number; className?: string }) {
   const song = useCurrentSong();
-  const starred = useStarredIds();
-  const star = useToggleStar();
+  const likes = useSongLikes();
   if (!song) return null;
-  const on = starred.songs.has(song.id);
+  const on = likes.isLiked(song);
   return (
-    <button type="button" className={className} aria-pressed={on} aria-label={on ? "Remove from liked songs" : "Add to liked songs"} onClick={() => star.mutate({ kind: "song", item: song, on: !on })}>
+    <button type="button" className={className} aria-pressed={on} aria-label={on ? "Remove from liked songs" : "Add to liked songs"} onClick={() => likes.setLiked(song, !on)}>
       <Icon name={on ? "heartFill" : "heart"} size={size} />
     </button>
   );
@@ -151,12 +152,12 @@ export function PlayerBar() {
           </>
         ) : song ? (
           <>
-            <Link to={song.albumId ? `/album/${song.albumId}` : "#"} aria-label={`Go to ${song.album ?? "album"}`}>
+            <Link to={song.albumId ? albumPath(song.albumId) : "#"} aria-label={`Go to ${song.album ?? "album"}`}>
               <Art id={song.coverArt} px={56} />
             </Link>
             <div className="np-text">
-              <div className="np-t">{song.albumId ? <Link to={`/album/${song.albumId}`}>{song.title}</Link> : song.title}</div>
-              <div className="np-a">{song.artistId ? <Link to={`/artist/${song.artistId}`}>{artistName(song)}</Link> : artistName(song)}</div>
+              <div className="np-t">{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</div>
+              <div className="np-a">{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</div>
             </div>
             <LikeCurrent />
           </>
@@ -173,18 +174,18 @@ export function PlayerBar() {
       </div>
       <div className="bar-r">
         {fmt ? <span className="fmt">{fmt}</span> : null}
-        <button type="button" className="icon-btn" aria-pressed={panel === "now"} aria-label="Now playing view" onClick={() => toggleRightPanel("now")}>
+        <button type="button" className="icon-btn" aria-pressed={panel === "now"} aria-label="Now playing panel" onClick={() => toggleRightPanel("now")}>
           <Icon name="album" size={18} />
         </button>
-        <button type="button" className="icon-btn" aria-pressed={pathname === "/lyrics"} aria-label="Lyrics" onClick={() => (pathname === "/lyrics" ? void navigate(-1) : void navigate("/lyrics"))}>
+        <button type="button" className="icon-btn" aria-pressed={pathname === "/lyrics"} data-key="Y" aria-label="Lyrics" onClick={() => (pathname === "/lyrics" ? void navigate(-1) : void navigate("/lyrics"))}>
           <Icon name="mic" size={18} />
         </button>
-        <button type="button" className="icon-btn" aria-pressed={panel === "queue"} aria-label="Queue" onClick={() => toggleRightPanel("queue")}>
+        <button type="button" className="icon-btn" aria-pressed={panel === "queue"} data-key="Q" aria-label="Queue" onClick={() => toggleRightPanel("queue")}>
           <Icon name="queue" size={18} />
         </button>
         <DevicesButton />
         <Volume />
-        <button type="button" className="icon-btn" aria-label="Full screen" disabled={!song && !station} onClick={() => setFullScreen(true)}>
+        <button type="button" className="icon-btn" data-key="F" aria-label="Full screen" disabled={!song && !station} onClick={() => setFullScreen(true)}>
           <Icon name="expand" size={17} />
         </button>
       </div>

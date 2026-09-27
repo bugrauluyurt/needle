@@ -5,11 +5,15 @@ import { useNavigate } from "react-router";
 import { create } from "zustand";
 import type { Song } from "@needle/shared";
 import { player } from "../player/controller.ts";
-import { useAddToPlaylist, useCreatePlaylist, usePlaylists, useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useAddToPlaylist, useCapabilities, useCreatePlaylist, usePlaylists, useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useSpotifyPlaylistEdits, useSpotifyPlaylists, useSpotifySaved, useToggleSpotifySave } from "../queries/spotify.ts";
+import { api } from "../lib/api.ts";
+import { spotifyLink } from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { openSongDetails } from "./songDetailsStore.ts";
 import { Icon } from "./Icon.tsx";
 import type { IconName } from "./Icon.tsx";
+import { albumPath, artistPath } from "../lib/paths.ts";
 
 export type TrackMenuExtra = { label: string; icon: IconName; run: () => void };
 type MenuRequest = { songs: Song[]; extra?: TrackMenuExtra[] | undefined; x: number; y: number; align: "start" | "end"; key: number };
@@ -33,12 +37,20 @@ function Row({ icon, children, end }: { icon: IconName; children: ReactNode; end
 }
 
 function PlaylistSub({ songs }: { songs: Song[] }) {
-  const { data: playlists = [] } = usePlaylists();
+  const spotify = songs.every((s) => s.source === "spotify");
+  const { data: local = [] } = usePlaylists();
+  const { data: remote = [] } = useSpotifyPlaylists();
+  const edits = useSpotifyPlaylistEdits();
   const add = useAddToPlaylist();
   const create = useCreatePlaylist();
   const [filter, setFilter] = useState("");
   const ids = songs.map((s) => s.id);
-  const shown = useMemo(() => playlists.filter((p) => !p.readonly && p.name.toLowerCase().includes(filter.toLowerCase())), [playlists, filter]);
+  const playlists = useMemo(
+    () => (spotify ? remote.filter((p) => p.mine).map((p) => ({ id: p.id, name: p.name })) : local.filter((p) => !p.readonly)),
+    [spotify, remote, local],
+  );
+  const shown = useMemo(() => playlists.filter((p) => p.name.toLowerCase().includes(filter.toLowerCase())), [playlists, filter]);
+  const name = songs.length === 1 && songs[0] ? songs[0].title : "New playlist";
   return (
     <DM.Sub>
       <DM.SubTrigger className="menu-item">
@@ -53,11 +65,11 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
           <DM.Item
             className="menu-item"
             onSelect={() => {
-              const name = songs.length === 1 && songs[0] ? songs[0].title : "New playlist";
-              void create.mutateAsync({ name, songIds: ids }).then((p) => toast(`Added to ${p.name}`), () => toast("Couldn’t create the playlist"));
+              if (spotify) void edits.create(name, songs);
+              else void create.mutateAsync({ name, songIds: ids }).then((p) => toast(`Added to ${p.name}`), () => toast("Couldn’t create the playlist"));
             }}
           >
-            <Row icon="plus">New playlist</Row>
+            <Row icon="plus">{spotify ? "New Spotify playlist" : "New playlist"}</Row>
           </DM.Item>
           <DM.Separator className="menu-sep" />
           <div className="menu-scroll">
@@ -65,7 +77,10 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
               <DM.Item
                 key={p.id}
                 className="menu-item"
-                onSelect={() => void add.mutateAsync({ playlistId: p.id, songIds: ids }).then(() => toast(`Added to ${p.name}`), () => toast(`Couldn’t add to ${p.name}`))}
+                onSelect={() => {
+                  if (spotify) void edits.add(p, songs);
+                  else void add.mutateAsync({ playlistId: p.id, songIds: ids }).then(() => toast(`Added to ${p.name}`), () => toast(`Couldn’t add to ${p.name}`));
+                }}
               >
                 <span className="menu-label">{p.name}</span>
               </DM.Item>
@@ -82,10 +97,25 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
   const navigate = useNavigate();
   const starred = useStarredIds();
   const star = useToggleStar();
+  const saved = useSpotifySaved();
+  const save = useToggleSpotifySave();
+  const lidarr = Boolean(useCapabilities().data?.lidarr);
   const song = songs[0];
   if (!song) return null;
-  const liked = songs.every((s) => starred.songs.has(s.id));
+  const spotify = songs.every((s) => s.source === "spotify");
+  const mixed = !spotify && songs.some((s) => s.source === "spotify");
+  const liked = songs.every((s) => (s.source === "spotify" ? saved.has(s.id) : starred.songs.has(s.id)));
   const single = songs.length === 1;
+  const { artistId, albumId } = song;
+  const toggleLike = () => songs.forEach((s) => (s.source === "spotify" ? save.mutate({ song: s, on: !liked }) : star.mutate({ kind: "song", item: s, on: !liked })));
+  const getAlbum = async () => {
+    const [hit] = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => []);
+    if (!hit) {
+      toast("Lidarr couldn’t find that album");
+      return;
+    }
+    await api.lidarrGet(hit.foreignAlbumId).then(() => toast(`Lidarr is looking for ${hit.title}`), () => toast("Lidarr didn’t take the request"));
+  };
   return (
     <>
       <DM.Item className="menu-item" onSelect={() => { player.addToQueue(songs); toast(single ? "Added to queue" : `${songs.length} songs added to queue`); }}>
@@ -94,16 +124,21 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
       <DM.Item className="menu-item" onSelect={() => { player.playNext(songs); toast(single ? "Plays next" : `${songs.length} songs play next`); }}>
         <Row icon="playNext">Play next</Row>
       </DM.Item>
-      {single ? (
+      {single && !spotify ? (
         <DM.Item className="menu-item" onSelect={() => void player.startRadio({ song, name: song.title })}>
           <Row icon="radio">Start radio from this song</Row>
         </DM.Item>
       ) : null}
       <DM.Separator className="menu-sep" />
-      <PlaylistSub songs={songs} />
-      <DM.Item className="menu-item" onSelect={() => songs.forEach((s) => star.mutate({ kind: "song", item: s, on: !liked }))}>
-        <Row icon={liked ? "heartFill" : "heart"}>{liked ? "Remove from liked songs" : "Add to liked songs"}</Row>
+      {mixed ? null : <PlaylistSub songs={songs} />}
+      <DM.Item className="menu-item" onSelect={toggleLike}>
+        <Row icon={liked ? "heartFill" : "heart"}>{liked ? `Remove from ${spotify ? "Spotify " : ""}liked songs` : `Add to ${spotify ? "Spotify " : ""}liked songs`}</Row>
       </DM.Item>
+      {single && spotify && lidarr ? (
+        <DM.Item className="menu-item" onSelect={() => void getAlbum()}>
+          <Row icon="download">Get this album through Lidarr</Row>
+        </DM.Item>
+      ) : null}
       {extra?.map((x) => (
         <DM.Item key={x.label} className="menu-item" onSelect={x.run}>
           <Row icon={x.icon}>{x.label}</Row>
@@ -112,19 +147,25 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
       {single ? (
         <>
           <DM.Separator className="menu-sep" />
-          {song.artistId ? (
-            <DM.Item className="menu-item" onSelect={() => void navigate(`/artist/${song.artistId}`)}>
+          {artistId ? (
+            <DM.Item className="menu-item" onSelect={() => void navigate(artistPath(artistId))}>
               <Row icon="user">Go to artist</Row>
             </DM.Item>
           ) : null}
-          {song.albumId ? (
-            <DM.Item className="menu-item" onSelect={() => void navigate(`/album/${song.albumId}`)}>
+          {albumId ? (
+            <DM.Item className="menu-item" onSelect={() => void navigate(albumPath(albumId))}>
               <Row icon="album">Go to album</Row>
             </DM.Item>
           ) : null}
-          <DM.Item className="menu-item" onSelect={() => openSongDetails(song)}>
-            <Row icon="info">Song details</Row>
-          </DM.Item>
+          {spotify ? (
+            <DM.Item className="menu-item" onSelect={() => window.open(spotifyLink("track", song.id), "_blank", "noopener")}>
+              <Row icon="link">Open in Spotify</Row>
+            </DM.Item>
+          ) : (
+            <DM.Item className="menu-item" onSelect={() => openSongDetails(song)}>
+              <Row icon="info">Song details</Row>
+            </DM.Item>
+          )}
         </>
       ) : null}
     </>

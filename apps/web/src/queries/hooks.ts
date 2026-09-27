@@ -4,6 +4,7 @@ import type { Album, Artist, Period, PlaylistWithSongs, Song } from "@needle/sha
 import { api } from "../lib/api.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
+import { isSpotify } from "../lib/spotify.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
 import { keys } from "./keys.ts";
@@ -46,8 +47,10 @@ export function useArtistCover(id: string | undefined): string | undefined {
   return id ? data?.find((a) => a.id === id)?.coverArt : undefined;
 }
 
+const navidromeId = (id: string | undefined) => Boolean(id) && !isSpotify(id ?? "");
+
 export const useArtistInfo = (id: string | undefined) =>
-  useQuery({ queryKey: keys.artistInfo(id ?? ""), queryFn: () => sub.artistInfo(id ?? "", 12, true), enabled: Boolean(id), staleTime: HOUR });
+  useQuery({ queryKey: keys.artistInfo(id ?? ""), queryFn: () => sub.artistInfo(id ?? "", 12, true), enabled: navidromeId(id), staleTime: HOUR });
 
 export const useTopSongs = (name: string | undefined) =>
   useQuery({ queryKey: keys.topSongs(name ?? ""), queryFn: () => sub.topSongs(name ?? "", 10), enabled: Boolean(name), staleTime: HOUR });
@@ -77,7 +80,7 @@ export const useMixes = () => useQuery(mixesOptions);
 export const useStats = (period: Period) => useQuery({ queryKey: keys.stats(period), queryFn: () => api.stats(period), placeholderData: keepPreviousData });
 
 export const useLyrics = (id: string | undefined) =>
-  useQuery({ queryKey: keys.lyrics(id ?? ""), queryFn: () => sub.lyrics(id ?? ""), enabled: Boolean(id), staleTime: Infinity });
+  useQuery({ queryKey: keys.lyrics(id ?? ""), queryFn: () => sub.lyrics(id ?? ""), enabled: navidromeId(id), staleTime: Infinity });
 
 export const useRadios = () => useQuery({ queryKey: keys.radios, queryFn: sub.radios });
 

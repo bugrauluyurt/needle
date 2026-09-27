@@ -1225,6 +1225,35 @@ kbd {
   padding: 0 0 18px;
 }
 
+.res-source + .res-source {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--ridge);
+}
+
+.source-h {
+  margin-bottom: 18px;
+}
+
+.source-h h2 {
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--label);
+}
+
+.source-h .sub {
+  font-size: 13.5px;
+  margin-top: 4px;
+  max-width: 70ch;
+}
+
+.res-source > .source-note {
+  margin-top: 0;
+}
+
 .res-top {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
@@ -1301,18 +1330,6 @@ kbd {
 .song-mini .art {
   width: 40px;
   border-radius: 4px;
-}
-
-.no-results {
-  padding: 30px 0 10px;
-}
-
-.no-results h2 {
-  font-family: var(--display);
-  font-size: 26px;
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  margin-bottom: 6px;
 }
 
 .get {
@@ -1592,5 +1609,82 @@ kbd {
 }
 
 .browse-empty p {
+  line-height: 1.5;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 120;
+  transform: translateY(-100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #2f2b38;
+  color: var(--label);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: tip-in 0.12s ease;
+}
+
+.tooltip.below {
+  transform: none;
+}
+
+.tooltip kbd {
+  height: 20px;
+  min-width: 20px;
+  font-size: 11px;
+  margin-left: 0;
+  background: var(--groove);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.liked-art.sp-liked {
+  background: linear-gradient(135deg, #3ddc84, #1a7f55 55%, #123a4a);
+}
+
+.sp-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: rgb(61 220 132 / 0.16);
+  color: #6fe7a6;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  vertical-align: middle;
+}
+
+.sp-note {
+  max-width: 62ch;
+  padding-top: 24px;
+  padding-bottom: 32px;
+}
+
+.sp-note h2 {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--label);
+  margin-bottom: 8px;
+}
+
+.sp-note p {
+  margin-bottom: 20px;
   line-height: 1.5;
 }

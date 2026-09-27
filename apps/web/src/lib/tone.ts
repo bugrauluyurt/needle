@@ -64,6 +64,7 @@ function extract(id: string): Promise<string> {
   const p = new Promise<string>((resolve) => {
     const img = new Image();
     img.decoding = "async";
+    if (url.startsWith("https://")) img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");

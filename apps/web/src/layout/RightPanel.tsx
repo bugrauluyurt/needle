@@ -15,6 +15,7 @@ import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 import { LikeCurrent } from "./PlayerBar.tsx";
+import { albumPath, artistPath } from "../lib/paths.ts";
 
 const TABS: [Panel, string][] = [["now", "Now playing"], ["queue", "Queue"], ["lyrics", "Lyrics"]];
 
@@ -116,7 +117,7 @@ function AboutArtist({ song }: { song: Song }) {
   const bio = data?.biography?.replace(/<a [^>]*>.*?<\/a>/g, "").replace(/<[^>]+>/g, "").trim();
   if (!song.artistId) return null;
   return (
-    <Link to={`/artist/${song.artistId}`} className="rp-card about-card">
+    <Link to={artistPath(song.artistId)} className="rp-card about-card">
       <div className="about-art">
         <Art id={cover ?? song.coverArt} px={300} fallback="artist" className={cover ? "" : "blurred"} />
         <span>About the artist</span>
@@ -143,8 +144,8 @@ function NowView() {
       <Art id={song.coverArt} px={304} className="rp-art" eager />
       <div className="rp-title">
         <div>
-          <h5>{song.albumId ? <Link to={`/album/${song.albumId}`}>{song.title}</Link> : song.title}</h5>
-          <p>{song.artistId ? <Link to={`/artist/${song.artistId}`}>{artistName(song)}</Link> : artistName(song)}</p>
+          <h5>{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</h5>
+          <p>{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</p>
         </div>
         <TrackMoreButton songs={[song]} />
         <LikeCurrent size={20} />

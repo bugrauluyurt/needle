@@ -35,7 +35,7 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
     return (
       <div className={`lyrics ${variant} none`}>
         <p className="lyrics-none">No lyrics for this song</p>
-        {variant !== "peek" ? <p className="lyrics-hint">Needle shows the words saved in the song’s file, or in a .lrc file next to it.</p> : null}
+        {variant !== "peek" ? <p className="lyrics-hint">{song.source === "spotify" ? "Spotify doesn’t share lyrics with other apps." : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}</p> : null}
       </div>
     );
   }

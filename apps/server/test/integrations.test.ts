@@ -138,4 +138,19 @@ describe("Spotify import", () => {
     expect(url.searchParams.get("scope")).toContain("user-library-read");
     await expect(spotify.complete("code", "not-a-state")).rejects.toThrow(/expired/);
   });
+
+  it("refreshes an expired token, keeps its scope, and reports whether it can play", async () => {
+    const db = openDatabase(":memory:");
+    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES ('bugra', 'old', 'ref', ?, 'streaming user-library-read')").run(Date.now() - 1000);
+    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES ('guest', 'tok', 'ref', ?, 'user-library-read')").run(Date.now() + 3_600_000);
+    const calls = mockFetch([[/POST \/api\/token/, () => ({ access_token: "fresh", expires_in: 3600 })]]);
+    const spotify = new Spotify({ clientId: "id", clientSecret: "secret", publicUrl: "https://needle", db, navidrome: new Navidrome("http://nd") });
+    const t = await spotify.token("bugra");
+    expect(t.accessToken).toBe("fresh");
+    expect(t.expiresAt).toBeGreaterThan(Date.now());
+    expect(new URLSearchParams(calls[0]?.body).get("refresh_token")).toBe("ref");
+    expect(spotify.canPlay("bugra")).toBe(true);
+    expect(spotify.canPlay("guest")).toBe(false);
+    expect(spotify.canPlay("nobody")).toBe(false);
+  });
 });

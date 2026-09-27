@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type RightPanel = "now" | "queue" | "lyrics";
-export type LibraryFilter = "playlists" | "albums" | "artists" | "downloaded" | null;
+export type LibraryFilter = "playlists" | "albums" | "artists" | "spotify" | "downloaded" | null;
 export type Toast = { id: number; message: string; action?: { label: string; run: () => void } };
 
 type UiState = {
