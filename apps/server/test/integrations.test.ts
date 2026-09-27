@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { songKey } from "@needle/shared";
 import { openDatabase } from "../src/db.ts";
 import { Lidarr } from "../src/lidarr.ts";
 import { Navidrome } from "../src/navidrome.ts";
 import { LibrarySearch } from "../src/search.ts";
+import { MusicBrainz, toCandidates } from "../src/musicbrainz.ts";
+import { Deezer } from "../src/deezer.ts";
+import { Requests } from "../src/requests.ts";
+import { pickFiles, singlePath } from "../src/soulseek.ts";
+import type { SlskdFile } from "../src/soulseek.ts";
 import { matchKey, normalize, Spotify } from "../src/spotify.ts";
 
 type Route = [RegExp, (url: URL, init?: RequestInit) => unknown];
@@ -156,6 +162,9 @@ describe("Spotify import", () => {
     expect(spotify.canPlay("nobody")).toBe(false);
     expect(spotify.needsReconnect("bugra")).toBe(true);
     expect(spotify.needsReconnect("nobody")).toBe(false);
+    spotify.setEnabled("bugra", false);
+    expect(spotify.enabled("bugra")).toBe(false);
+    await expect(spotify.token("bugra")).rejects.toMatchObject({ status: 409 });
   });
 });
 
@@ -197,5 +206,93 @@ describe("library search", () => {
     await search.search(auth, "guy");
     expect(calls.filter((c) => c.url.endsWith("/search3"))).toHaveLength(1);
     vi.useRealTimers();
+  });
+});
+
+describe("single songs", () => {
+  const want = { title: "Fade to Black", artist: "Metallica", duration: 417 };
+  const peer = (username: string, files: SlskdFile[], extra = {}) => ({ username, files, hasFreeUploadSlot: true, uploadSpeed: 2_000_000, queueLength: 0, ...extra });
+
+  it("picks the best matching copy", () => {
+    const picks = pickFiles([
+      peer("mp3", [{ filename: "Music\\Metallica\\Ride\\04 Fade to Black.mp3", size: 1, bitRate: 320, length: 417 }]),
+      peer("flac", [{ filename: "Music\\Metallica - Ride the Lightning\\04 - Fade To Black.flac", size: 2, length: 416 }]),
+      peer("live", [{ filename: "Bootlegs\\Metallica\\Fade to Black (Live).flac", size: 3, length: 417 }]),
+      peer("short", [{ filename: "x\\Fade to Black.flac", size: 4, length: 200 }]),
+      peer("low", [{ filename: "x\\Metallica\\Fade to Black.mp3", size: 5, bitRate: 128, length: 417 }]),
+      peer("busy", [{ filename: "Metallica\\Fade to Black.flac", size: 6, length: 417 }], { hasFreeUploadSlot: false, queueLength: 50, uploadSpeed: 0 }),
+    ], want);
+    expect(picks.map((p) => p.username)).toEqual(["flac", "busy", "mp3"]);
+  });
+
+  it("names the file after the artist and title", () => {
+    expect(singlePath("/singles", { title: "One/Two?", artist: "AC/DC" }, { filename: "x\\a.FLAC", size: 1, extension: "FLAC" })).toBe("/singles/AC_DC/AC_DC - One_Two_.flac");
+  });
+
+  it("turns MusicBrainz recordings into songs, once each", () => {
+    const rec = (id: string, title: string) => ({ id, title, length: 417_000, "artist-credit": [{ name: "Metallica" }], releases: [{ title: "Ride the Lightning", date: "1984-07-27", status: "Official", "release-group": { id: "rg1", "primary-type": "Album" } }] });
+    expect(toCandidates([rec("r1", "Fade to Black"), rec("r2", "Fade To Black")])).toEqual([
+      { id: "r1", title: "Fade to Black", artist: "Metallica", album: "Ride the Lightning", duration: 417, year: 1984, coverUrl: "https://coverartarchive.org/release-group/rg1/front-250" },
+    ]);
+  });
+
+  it("ranks the song that matches both artist and title first, and skips live versions", () => {
+    const rec = (id: string, artist: string, title: string, disambiguation = "") => ({ id, title, disambiguation, "artist-credit": [{ name: artist }] });
+    const songs = toCandidates([
+      rec("a", "Fade to Black", "Black Box"),
+      rec("b", "Metallica", "Fade to Black (Live)"),
+      rec("c", "Metallica", "Fade to Black", "live, 1997"),
+      rec("d", "Metallica", "Fade to Black"),
+    ], "fade to black metallica");
+    expect(songs.map((x) => x.id)).toEqual(["d", "a"]);
+  });
+
+  it("prefers the song whose artist and title add nothing to the search", () => {
+    const rec = (id: string, artist: string, title: string) => ({ id, title, "artist-credit": [{ name: artist }] });
+    const songs = toCandidates([
+      rec("muppets", "Queen + The Muppets", "Bohemian Rhapsody"),
+      rec("tribute", "Bohemian Rhapsody", "White Queen (As It Began)"),
+      { ...rec("queen", "Queen", "Bohemian Rhapsody"), disambiguation: "2002 5.1 mix" },
+    ], "bohemian rhapsody queen");
+    expect(songs.map((x) => x.id)).toEqual(["queen", "muppets", "tribute"]);
+  });
+
+  it("keeps one request per item and marks interrupted songs", () => {
+    const requests = new Requests(openDatabase(":memory:"));
+    const first = requests.add({ user: "bugra", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
+    requests.update(first.id, { state: "failed", detail: "nope" });
+    const again = requests.add({ user: "bugra", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
+    expect(again.id).toBe(first.id);
+    expect(again.detail).toBeNull();
+    expect(requests.list("bugra")).toHaveLength(1);
+    expect(requests.active().map((r) => r.id)).toEqual([first.id]);
+  });
+});
+
+describe("artist catalogues", () => {
+  it("lists an artist's studio albums from MusicBrainz, newest first", async () => {
+    mockFetch([[/GET \/ws\/2\/release-group/, () => ({ "release-groups": [
+      { id: "rg1", title: "Kill 'Em All", "first-release-date": "1983-07-25", "primary-type": "Album" },
+      { id: "rg2", title: "Master of Puppets", "first-release-date": "1986-03-03", "primary-type": "Album" },
+      { id: "rg3", title: "S&M", "first-release-date": "1999-11-23", "primary-type": "Album", "secondary-types": ["Live"] },
+    ] })]]);
+    const albums = await new MusicBrainz("https://musicbrainz.org/ws/2").albumsBy("mbid", "Metallica");
+    expect(albums.map((a) => [a.title, a.year, a.state])).toEqual([["Master of Puppets", 1986, "missing"], ["Kill 'Em All", 1983, "missing"]]);
+  });
+
+  it("gets an artist's popular songs from Deezer only for an exact name", async () => {
+    const calls = mockFetch([
+      [/GET \/search\/artist/, () => ({ data: [{ id: 7, name: "Metallica Tribute" }, { id: 119, name: "Metallica" }] })],
+      [/GET \/artist\/119\/top/, () => ({ data: [{ id: 1, title: "Enter Sandman", duration: 331, artist: { name: "Metallica" }, album: { title: "Metallica", cover_medium: "https://c/1" } }] })],
+    ]);
+    const songs = await new Deezer("https://api.deezer.com").topSongs("metallica");
+    expect(songs).toEqual([{ id: "deezer:1", title: "Enter Sandman", artist: "Metallica", album: "Metallica", duration: 331, year: null, coverUrl: "https://c/1" }]);
+    expect(await new Deezer("https://api.deezer.com").topSongs("metallica ride")).toEqual([]);
+    expect(calls.filter((c) => c.url.includes("/top"))).toHaveLength(1);
+  });
+
+  it("matches owned songs even with remaster notes in the title", () => {
+    expect(songKey("Metallica", "Enter Sandman (Remastered 2021)")).toBe(songKey("metallica", "Enter Sandman"));
+    expect(songKey("Queen", "Bohemian Rhapsody - Remastered 2011")).toBe(songKey("Queen", "Bohemian Rhapsody"));
   });
 });

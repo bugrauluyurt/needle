@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
+import { DAY_MS, QUARTER_DAYS } from "@needle/shared";
 import type { GenreShare, Period, PlayReport, RankedAlbum, RankedArtist, Stats } from "@needle/shared";
 
-const DAY = 86_400_000;
 const TOP = 5;
 const GENRES = 5;
 
@@ -12,7 +12,7 @@ export function periodStart(period: Period, now = new Date()): { from: number; p
     case "month":
       return { from: new Date(y, m, 1).getTime(), prevFrom: new Date(y, m - 1, 1).getTime() };
     case "quarter":
-      return { from: now.getTime() - 90 * DAY, prevFrom: now.getTime() - 180 * DAY };
+      return { from: now.getTime() - QUARTER_DAYS * DAY_MS, prevFrom: now.getTime() - 2 * QUARTER_DAYS * DAY_MS };
     case "year":
       return { from: new Date(y, 0, 1).getTime(), prevFrom: new Date(y - 1, 0, 1).getTime() };
     case "all":

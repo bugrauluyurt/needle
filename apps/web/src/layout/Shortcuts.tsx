@@ -1,10 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Icon } from "../components/Icon.tsx";
 import { useUi } from "../state/ui.ts";
+import { SEEK_STEP_S } from "../player/controller.ts";
 
 const KEYS: [string, string[]][] = [
-  ["Play or pause", ["Space"]], ["Next song", ["Shift", "→"]], ["Previous song", ["Shift", "←"]], ["Skip forward 10 s", ["→"]],
-  ["Skip back 10 s", ["←"]], ["Volume up or down", ["↑", "↓"]], ["Like the song", ["L"]], ["Shuffle", ["S"]], ["Repeat", ["R"]],
+  ["Play or pause", ["Space"]], ["Next song", ["Shift", "→"]], ["Previous song", ["Shift", "←"]], [`Skip forward ${SEEK_STEP_S} s`, ["→"]],
+  [`Skip back ${SEEK_STEP_S} s`, ["←"]], ["Volume up or down", ["↑", "↓"]], ["Like the song", ["L"]], ["Shuffle", ["S"]], ["Repeat", ["R"]],
   ["Search", ["/"]], ["Queue", ["Q"]], ["Lyrics", ["Y"]], ["Full screen", ["F"]], ["These shortcuts", ["?"]],
 ];
 

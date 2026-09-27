@@ -4,7 +4,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
-import type { Capabilities, ImportedTrack, InternetRadioStation, Period, PlayReport } from "@needle/shared";
+import type { Capabilities, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
+import { fold, songKey } from "@needle/shared";
 import type { Config } from "./config.ts";
 import { DeviceHub } from "./devices.ts";
 import { Lidarr, LidarrError } from "./lidarr.ts";
@@ -12,6 +13,11 @@ import { Mixes } from "./mixes.ts";
 import type { Auth } from "./navidrome.ts";
 import { authFromHeaders, authFromQuery, Navidrome, SubsonicFailure } from "./navidrome.ts";
 import { proxyToNavidrome } from "./proxy.ts";
+import { PHOTO_MAX_BYTES, PHOTO_TYPES, Profiles } from "./profiles.ts";
+import { MusicBrainz, MusicBrainzError } from "./musicbrainz.ts";
+import { Deezer } from "./deezer.ts";
+import { Requests, toItem } from "./requests.ts";
+import { Slskd, SlskdError, SongDownloads } from "./soulseek.ts";
 import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
 import { PlayLog } from "./stats.ts";
@@ -21,6 +27,7 @@ type Env = { Variables: { auth: Auth } };
 const PERIODS = new Set<Period>(["month", "quarter", "year", "all"]);
 const ADMIN_TTL = 10 * 60_000;
 const MISSING_ALBUMS_LIMIT = 25;
+const SONG_RESULTS = 12;
 const FILE = /\/[^/]+\.[a-z0-9]+$/i;
 
 export function createApp(config: Config, db: DatabaseSync) {
@@ -28,6 +35,13 @@ export function createApp(config: Config, db: DatabaseSync) {
   const log = new PlayLog(db);
   const mixes = new Mixes(navidrome, log);
   const library = new LibrarySearch(navidrome);
+  const profiles = new Profiles(db);
+  const requests = new Requests(db);
+  const musicbrainz = new MusicBrainz(config.musicbrainzUrl);
+  const deezer = new Deezer(config.deezerUrl);
+  const songs = config.soulseek
+    ? new SongDownloads({ slskd: new Slskd(config.soulseek.url, config.soulseek.apiKey), requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
+    : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
@@ -47,8 +61,8 @@ export function createApp(config: Config, db: DatabaseSync) {
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
-    if (err instanceof SpotifyError) return c.json({ error: err.message }, err.status === 401 ? 401 : 502);
-    if (err instanceof LidarrError || err instanceof SubsonicFailure) return c.json({ error: err.message }, 502);
+    if (err instanceof SpotifyError) return c.json({ error: err.message }, err.status === 401 || err.status === 409 ? err.status : 502);
+    if (err instanceof LidarrError || err instanceof SubsonicFailure || err instanceof SlskdError || err instanceof MusicBrainzError) return c.json({ error: err.message }, 502);
     console.error(err);
     return c.json({ error: "Something went wrong on the Needle server" }, 500);
   });
@@ -81,6 +95,13 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (!(await isAdmin(c.get("auth")))) return { error: c.json({ error: "Only Navidrome admins can add music" }, 403) };
     return { lidarr };
   };
+  const needSongs = async (c: Context<Env>) => {
+    if (!songs) return { error: c.json({ error: "slskd isn't set up on the Needle server" }, 404) };
+    if (!(await isAdmin(c.get("auth")))) return { error: c.json({ error: "Only Navidrome admins can add music" }, 403) };
+    return { songs };
+  };
+  const recordAlbum = (user: string, a: LidarrAlbum) =>
+    requests.add({ user, kind: "album", ref: a.foreignAlbumId, title: a.title, artist: a.artist, cover_url: a.coverUrl, state: a.state });
   const needSpotify = (c: Context<Env>) => spotify
     ? { spotify }
     : { error: c.json({ error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" }, 404) };
@@ -93,6 +114,8 @@ export function createApp(config: Config, db: DatabaseSync) {
       spotifyConnected: spotify?.connected(auth.user) ?? false,
       spotifyPlayback: spotify?.canPlay(auth.user) ?? false,
       spotifyReconnect: spotify?.needsReconnect(auth.user) ?? false,
+      spotifyEnabled: spotify?.enabled(auth.user) ?? false,
+      songs: Boolean(songs) && (await isAdmin(auth)),
       publicUrl: config.publicUrl,
     };
     return c.json(caps);
@@ -113,13 +136,42 @@ export function createApp(config: Config, db: DatabaseSync) {
 
   app.get("/api/search", async (c) => c.json(await library.search(c.get("auth"), c.req.query("q") ?? "")));
 
+  app.get("/api/me", (c) => {
+    const { user } = c.get("auth");
+    return c.json({ user, photo: profiles.photo(user) });
+  });
+
+  app.put("/api/me/photo", async (c) => {
+    const type = c.req.header("content-type") ?? "";
+    const photo = new Uint8Array(await c.req.arrayBuffer());
+    if (!PHOTO_TYPES.has(type)) return c.json({ error: "Use a JPEG, PNG or WebP image" }, 415);
+    if (!photo.length || photo.length > PHOTO_MAX_BYTES) return c.json({ error: "That image is too large" }, 413);
+    profiles.setPhoto(c.get("auth").user, photo, type);
+    return c.body(null, 204);
+  });
+
+  app.delete("/api/me/photo", (c) => {
+    profiles.removePhoto(c.get("auth").user);
+    return c.body(null, 204);
+  });
+
+  app.get("/api/browse", async (c) => c.json(await library.browse(c.get("auth"))));
+
   app.get("/api/mixes", async (c) => c.json(await mixes.forUser(c.get("auth"))));
 
   app.get("/api/lidarr/search", async (c) => {
     const r = await needLidarr(c);
     if (r.error) return r.error;
     const q = c.req.query("q")?.trim() ?? "";
-    return c.json(q.length < 2 ? [] : await r.lidarr.searchAlbums(q));
+    if (q.length < 2) return c.json({ albums: [], artists: [] } satisfies LidarrSearch);
+    const found = await r.lidarr.search(q);
+    const match = found.artists.find((a) => fold(a.artistName) === fold(q));
+    const discography = !match ? [] : match.id ? await r.lidarr.artistAlbums(match.id) : await musicbrainz.albumsBy(match.foreignArtistId, match.artistName).catch(() => []);
+    const seen = new Set(discography.map((a) => a.foreignAlbumId));
+    return c.json({
+      albums: [...discography.filter((a) => a.state !== "available"), ...found.albums.filter((a) => !seen.has(a.foreignAlbumId))],
+      artists: found.artists.map((a) => r.lidarr.toArtist(a)),
+    } satisfies LidarrSearch);
   });
 
   app.get("/api/lidarr/albums", async (c) => {
@@ -132,7 +184,59 @@ export function createApp(config: Config, db: DatabaseSync) {
   app.post("/api/lidarr/albums/:id", async (c) => {
     const r = await needLidarr(c);
     if (r.error) return r.error;
-    return c.json(await r.lidarr.getAlbum(c.req.param("id")));
+    const album = await r.lidarr.getAlbum(c.req.param("id"));
+    if (album.title) recordAlbum(c.get("auth").user, album);
+    return c.json(album);
+  });
+
+  app.get("/api/songs/search", async (c) => {
+    const r = await needSongs(c);
+    if (r.error) return r.error;
+    const q = c.req.query("q")?.trim() ?? "";
+    if (q.length < 2) return c.json([]);
+    const [top, found, owned] = await Promise.all([deezer.topSongs(q), musicbrainz.recordings(q), library.songKeys(c.get("auth"))]);
+    const seen = new Set<string>();
+    return c.json([...top, ...found].filter((s) => {
+      const key = songKey(s.artist, s.title);
+      if (owned.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, SONG_RESULTS));
+  });
+
+  app.post("/api/songs", async (c) => {
+    const r = await needSongs(c);
+    if (r.error) return r.error;
+    return c.json(toItem(r.songs.start(c.get("auth"), await c.req.json<SongCandidate>())));
+  });
+
+  app.get("/api/requests", async (c) => {
+    const rows = requests.list(c.get("auth").user);
+    const albumIds = rows.filter((r) => r.kind === "album").map((r) => r.ref);
+    const live = lidarr && albumIds.length ? await lidarr.albumStates(albumIds).catch(() => []) : [];
+    const byId = new Map(live.map((a) => [a.foreignAlbumId, a]));
+    return c.json(rows.map((row): RequestItem => {
+      const a = row.kind === "album" ? byId.get(row.ref) : undefined;
+      return { ...toItem(row), ...(a ? { state: a.state, progress: a.progress, coverUrl: a.coverUrl ?? row.cover_url } : {}) };
+    }));
+  });
+
+  app.post("/api/requests/:id/retry", async (c) => {
+    const row = requests.get(Number(c.req.param("id")));
+    if (row?.user !== c.get("auth").user) return c.json({ error: "No such request" }, 404);
+    if (row.kind === "album") {
+      const r = await needLidarr(c);
+      if (r.error) return r.error;
+      return c.json(toItem(recordAlbum(row.user, await r.lidarr.getAlbum(row.ref))));
+    }
+    const r = await needSongs(c);
+    if (r.error) return r.error;
+    return c.json(toItem(r.songs.start(c.get("auth"), { id: row.ref, title: row.title, artist: row.artist, album: null, duration: null, year: null, coverUrl: row.cover_url })));
+  });
+
+  app.delete("/api/requests/:id", (c) => {
+    requests.remove(c.get("auth").user, Number(c.req.param("id")));
+    return c.body(null, 204);
   });
 
   app.get("/api/lidarr/artists", async (c) => {
@@ -158,6 +262,14 @@ export function createApp(config: Config, db: DatabaseSync) {
     const r = needSpotify(c);
     if (r.error) return r.error;
     r.spotify.disconnect(c.get("auth").user);
+    return c.body(null, 204);
+  });
+
+  app.put("/api/spotify/enabled", async (c) => {
+    const r = needSpotify(c);
+    if (r.error) return r.error;
+    const { on } = await c.req.json<{ on: boolean }>();
+    r.spotify.setEnabled(c.get("auth").user, on);
     return c.body(null, 204);
   });
 
@@ -188,7 +300,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     for (const t of albums) {
       const [hit] = await r.lidarr.searchAlbums(`${t.artist} ${t.album}`);
       if (!hit) continue;
-      await r.lidarr.getAlbum(hit.foreignAlbumId);
+      recordAlbum(c.get("auth").user, await r.lidarr.getAlbum(hit.foreignAlbumId));
       requested++;
     }
     return c.json({ requested, notFound: albums.length - requested, skipped: groups.length - albums.length });

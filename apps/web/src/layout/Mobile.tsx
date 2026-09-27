@@ -6,7 +6,7 @@ import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
-import { artistName } from "../lib/format.ts";
+import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { player } from "../player/controller.ts";
 import { useProgress } from "../player/progress.ts";
@@ -128,6 +128,7 @@ export function NowPlayingSheet() {
     </div>
   );
 
+  const fmt = station ? null : formatLabel(song);
   return (
     <div className={`sheet-root view-${view}`} role="dialog" aria-modal="true" aria-label="Now playing" style={{ "--tone": tone } as React.CSSProperties}>
       {view === "lyrics" && song ? (
@@ -165,9 +166,12 @@ export function NowPlayingSheet() {
           <Transport big />
           <div className="under">
             <DevicesButton trigger={<button type="button" className="dev-pill"><Icon name="devices" size={16} />{deviceName}</button>} />
-            <button type="button" className="icon-btn light" aria-label="Queue" onClick={() => useUi.setState({ mobileView: "queue" })}>
-              <Icon name="queue" size={22} />
-            </button>
+            <div className="under-end">
+              {fmt ? <span className="fmt">{fmt}</span> : null}
+              <button type="button" className="icon-btn light" aria-label="Queue" onClick={() => useUi.setState({ mobileView: "queue" })}>
+                <Icon name="queue" size={22} />
+              </button>
+            </div>
           </div>
           {song ? (
             <button type="button" className="lyr-peek" onClick={() => useUi.setState({ mobileView: "lyrics" })} aria-label="Open lyrics">

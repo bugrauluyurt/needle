@@ -1,4 +1,5 @@
 import type { InternetRadioStation, Song } from "@needle/shared";
+import { DAY_MS } from "@needle/shared";
 import { api } from "../lib/api.ts";
 import { isIOS } from "../lib/device.ts";
 import { artistName } from "../lib/format.ts";
@@ -18,15 +19,17 @@ import type { PlayContext, PlayerState, ResumeOffer } from "./store.ts";
 import { current, usePlayer } from "./store.ts";
 
 const PRELOAD_AT = 30;
-const MIN_REPORT_MS = 30_000;
+export const MIN_REPORT_MS = 30_000;
+export const SEEK_STEP_S = 10;
 const SCROBBLE_CAP_MS = 240_000;
 const RESTART_THRESHOLD = 3;
 const SAVE_DELAY = 5_000;
-const RESUME_WINDOW_MS = 7 * 86_400_000;
+const RESUME_WINDOW_MS = 7 * DAY_MS;
 const AUTOPLAY_BATCH = 40;
 const RADIO_ALBUMS = 6;
 const SAVED_AT = "needle.queueSavedAt";
 const CLOCK_SLACK_MS = 3_000;
+const RESUME_CHECK_MS = 30_000;
 
 export const canCrossfade = !isIOS;
 
@@ -194,7 +197,18 @@ function tickSpotify() {
   onTime(Math.min(spotifyPlayer.position(), duration), duration, duration);
 }
 
+let spotifyAllowed = false;
+
+export function allowSpotify(on: boolean) {
+  spotifyAllowed = on;
+  if (!on && backend === "spotify") leaveSpotify();
+}
+
 async function startSpotify(item: Q.QueueItem, startAt: number) {
+  if (!spotifyAllowed) {
+    onError("Spotify is switched off or unavailable in Needle.");
+    return;
+  }
   if (!item.song.uri) {
     onError("This song has no Spotify link.");
     return;
@@ -575,8 +589,8 @@ function bindMediaSession() {
     ["previoustrack", () => void previous()],
     ["nexttrack", () => void next()],
     ["seekto", (d) => d.seekTime !== undefined && seek(d.seekTime)],
-    ["seekbackward", (d) => seekBy(-(d.seekOffset ?? 10))],
-    ["seekforward", (d) => seekBy(d.seekOffset ?? 10)],
+    ["seekbackward", (d) => seekBy(-(d.seekOffset ?? SEEK_STEP_S))],
+    ["seekforward", (d) => seekBy(d.seekOffset ?? SEEK_STEP_S)],
     ["stop", () => pause()],
   ];
   for (const [action, handler] of handlers) {
@@ -591,7 +605,11 @@ function bindMediaSession() {
   });
 }
 
+let resumeCheckedAt = 0;
+
 async function offerResume() {
+  if (Date.now() - resumeCheckedAt < RESUME_CHECK_MS) return;
+  resumeCheckedAt = Date.now();
   const q = await sub.playQueue().catch(() => null);
   if (!q?.entry?.length || !q.current) return;
   const index = q.entry.findIndex((e) => e.id === q.current);

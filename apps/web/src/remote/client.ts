@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { REPLACED_CLOSE_CODE } from "@needle/shared";
 import type { ClientMessage, Device, RemoteCommand, RemoteState, ServerMessage } from "@needle/shared";
 import { devicesSocketUrl } from "../lib/api.ts";
 import { deviceKind } from "../lib/device.ts";
@@ -122,7 +123,7 @@ function connect() {
   ws.onclose = (e) => {
     if (socket === ws) socket = null;
     useRemote.setState({ connected: false, devices: [] });
-    if (stopped || e.code === 4000) return;
+    if (stopped || e.code === REPLACED_CLOSE_CODE) return;
     window.setTimeout(connect, retry);
     retry = Math.min(RETRY_MAX, retry * 2);
   };

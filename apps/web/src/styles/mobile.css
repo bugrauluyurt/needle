@@ -707,6 +707,12 @@
   color: rgba(243, 239, 232, 0.8);
 }
 
+.nowp .under-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .dev-pill {
   display: flex;
   align-items: center;

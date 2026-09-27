@@ -24,6 +24,7 @@ type RawAlbum = {
   artist?: RawArtist;
   artistId?: number;
   releases?: { trackCount?: number; monitored?: boolean }[];
+  secondaryTypes?: string[];
   addOptions?: { searchForNewAlbum: boolean };
 };
 type QueueRecord = { albumId?: number; size?: number; sizeleft?: number; trackedDownloadState?: string };
@@ -93,7 +94,8 @@ export class Lidarr {
 
   private toAlbum(a: RawAlbum, activity: Awaited<ReturnType<Lidarr["activity"]>>): LidarrAlbum {
     const { state, progress } = this.state(a, activity);
-    const trackCount = a.statistics?.totalTrackCount ?? a.releases?.find((r) => r.monitored)?.trackCount ?? a.releases?.[0]?.trackCount ?? null;
+    const counts = (a.releases ?? []).map((r) => r.trackCount ?? 0).filter(Boolean);
+    const trackCount = counts.length ? Math.min(...counts) : (a.statistics?.totalTrackCount ?? null);
     return {
       foreignAlbumId: a.foreignAlbumId,
       title: a.title,
@@ -107,17 +109,36 @@ export class Lidarr {
     };
   }
 
-  async searchAlbums(term: string): Promise<LidarrAlbum[]> {
-    const results = await this.req<{ album?: RawAlbum }[]>(`/search?term=${encodeURIComponent(term)}`);
+  async search(term: string): Promise<{ albums: LidarrAlbum[]; artists: RawArtist[] }> {
+    const results = await this.req<{ album?: RawAlbum; artist?: RawArtist }[]>(`/search?term=${encodeURIComponent(term)}`);
     const albums = results.map((r) => r.album).filter((a): a is RawAlbum => Boolean(a && (!a.albumType || KEEP_TYPES.has(a.albumType)))).slice(0, RESULTS * 2);
     const known = albums.filter((a) => a.id).map((a) => a.id as number);
     const stats = known.length ? await this.req<RawAlbum[]>(`/album?${known.map((id) => `albumIds=${id}`).join("&")}`) : [];
     const byId = new Map(stats.map((a) => [a.id, a]));
     const activity = await this.activity();
+    return {
+      albums: albums
+        .map((a) => this.toAlbum(a.id ? { ...a, statistics: byId.get(a.id)?.statistics, monitored: byId.get(a.id)?.monitored ?? a.monitored } : a, activity))
+        .filter((a) => a.state !== "available")
+        .slice(0, RESULTS),
+      artists: results.map((r) => r.artist).filter((a): a is RawArtist => Boolean(a)).slice(0, RESULTS),
+    };
+  }
+
+  async searchAlbums(term: string): Promise<LidarrAlbum[]> {
+    return (await this.search(term)).albums;
+  }
+
+  toArtist(r: RawArtist): LidarrArtist {
+    return { foreignArtistId: r.foreignArtistId, name: r.artistName, imageUrl: this.cover(r.images) ?? r.images?.[0]?.remoteUrl ?? null, inLidarr: Boolean(r.id && r.monitored) };
+  }
+
+  async artistAlbums(artistId: number): Promise<LidarrAlbum[]> {
+    const [albums, activity] = await Promise.all([this.req<RawAlbum[]>(`/album?artistId=${artistId}`), this.activity()]);
     return albums
-      .map((a) => this.toAlbum(a.id ? { ...a, statistics: byId.get(a.id)?.statistics, monitored: byId.get(a.id)?.monitored ?? a.monitored } : a, activity))
-      .filter((a) => a.state !== "available")
-      .slice(0, RESULTS);
+      .filter((a) => a.albumType === "Album" && !a.secondaryTypes?.length)
+      .sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""))
+      .map((a) => this.toAlbum(a, activity));
   }
 
   async albumStates(foreignIds: string[]): Promise<LidarrAlbum[]> {
@@ -165,8 +186,7 @@ export class Lidarr {
   async lookupArtists(names: string[]): Promise<LidarrArtist[]> {
     const found = await Promise.all(names.map(async (name) => {
       const r = (await this.req<RawArtist[]>(`/artist/lookup?term=${encodeURIComponent(name)}`))[0];
-      if (!r) return null;
-      return { foreignArtistId: r.foreignArtistId, name: r.artistName, imageUrl: this.cover(r.images) ?? r.images?.[0]?.remoteUrl ?? null, inLidarr: Boolean(r.id && r.monitored) };
+      return r ? this.toArtist(r) : null;
     }));
     return found.filter((a): a is LidarrArtist => a !== null);
   }

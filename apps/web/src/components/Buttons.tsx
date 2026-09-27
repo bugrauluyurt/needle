@@ -10,7 +10,7 @@ export function LikeButton({ kind, item, size = 28, className = "icon-btn big" }
   const starred = useStarredIds();
   const star = useToggleStar();
   const on = kind === "album" ? starred.albums.has(item.id) : starred.artists.has(item.id);
-  const noun = kind === "album" ? "your library" : "your favourites";
+  const noun = kind === "album" ? "your liked albums" : "your liked artists";
   return (
     <button
       type="button"

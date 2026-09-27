@@ -5,11 +5,12 @@ import type { SpImage } from "../lib/spotify.ts";
 import { Icon } from "./Icon.tsx";
 
 const dpr = typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);
-const STEPS = [64, 128, 256, 384, 600, 900];
+const LARGEST = 900;
+const STEPS = [64, 128, 256, 384, 600, LARGEST];
 
 export function artSize(cssPx: number): number {
   const want = cssPx * dpr;
-  return STEPS.find((s) => s >= want) ?? 900;
+  return STEPS.find((s) => s >= want) ?? LARGEST;
 }
 
 type ArtProps = {

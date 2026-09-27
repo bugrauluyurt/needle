@@ -24,6 +24,12 @@ export type PlayerState = QueueState & {
 
 const PERSIST_LIMIT = 500;
 
+export function useContextPlaying(id: string | undefined) {
+  const current = usePlayer((s) => Boolean(id) && s.context?.id === id);
+  const playing = usePlayer((s) => s.playing);
+  return { current, playing: current && playing };
+}
+
 export const usePlayer = create<PlayerState>()(
   persist(
     (): PlayerState => ({

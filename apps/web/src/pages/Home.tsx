@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router";
+import { DAY_MS } from "@needle/shared";
 import type { Album, Mix } from "@needle/shared";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { AlbumCard, ArtistCard, Card, CardRow, CardSkeletons, playAlbum, RowHeader } from "../components/Cards.tsx";
@@ -9,7 +10,7 @@ import { useDelayed } from "../lib/useDelayed.ts";
 import { useTone } from "../lib/tone.ts";
 import { MixArt, playMix } from "../components/MixArt.tsx";
 import { player } from "../player/controller.ts";
-import { usePlayer } from "../player/store.ts";
+import { useContextPlaying, usePlayer } from "../player/store.ts";
 import { useAlbumList, useArtists, useMixes, useStarred, useStats } from "../queries/hooks.ts";
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
@@ -18,22 +19,20 @@ import { spId } from "../lib/spotify.ts";
 import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
 import { playSpotifyPlaylist, SpotifyAlbumCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
 
-const YEAR_MS = 365 * 86_400_000;
+const YEAR_MS = 365 * DAY_MS;
 
 function QuickTile({ to, art, title, playingId, onPlay }: { to: string; art: React.ReactNode; title: string; playingId?: string; onPlay?: () => void }) {
-  const ctxId = usePlayer((s) => s.context?.id);
-  const playing = usePlayer((s) => s.playing);
-  const isCurrent = Boolean(playingId && ctxId === playingId);
+  const { current, playing } = useContextPlaying(playingId);
   return (
     <div className="q">
       <Link to={to} className="q-link">
         {art}
         <span>{title}</span>
       </Link>
-      {isCurrent ? <Eq paused={!playing} /> : null}
+      {current ? <Eq paused={!playing} /> : null}
       {onPlay ? (
-        <button type="button" className="q-play" aria-label={`Play ${title}`} onClick={onPlay}>
-          <Icon name="play" size={16} />
+        <button type="button" className="q-play" aria-label={playing ? `Pause ${title}` : `Play ${title}`} onClick={current ? player.toggle : onPlay}>
+          <Icon name={playing ? "pause" : "play"} size={16} />
         </button>
       ) : null}
     </div>

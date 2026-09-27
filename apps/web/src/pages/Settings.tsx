@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
@@ -9,11 +9,12 @@ import { api } from "../lib/api.ts";
 import { minutesSince, plural } from "../lib/format.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
-import { TopBar } from "../layout/TopBar.tsx";
+import { AvatarFace, TopBar } from "../layout/TopBar.tsx";
 import { removeAllDownloads, useOffline } from "../offline/store.ts";
 import { canCrossfade } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
-import { useCapabilities } from "../queries/hooks.ts";
+import { useCapabilities, useMe } from "../queries/hooks.ts";
+import { squarePhoto } from "../lib/photo.ts";
 import { useSession } from "../state/session.ts";
 import { clearSpotifyCache } from "../queries/spotify.ts";
 import type { Quality, Settings as S } from "../state/settings.ts";
@@ -77,6 +78,36 @@ function Storage() {
       </div>
       <button type="button" className="btn ghost sm" disabled={!bytes} onClick={() => void removeAllDownloads().then(() => toast("Removed all downloads"))}>Remove all</button>
     </div>
+  );
+}
+
+function PhotoSetting() {
+  const qc = useQueryClient();
+  const { data: me } = useMe();
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const done = () => qc.invalidateQueries({ queryKey: keys.me });
+  const upload = async (file: File) => {
+    setBusy(true);
+    try {
+      await api.setPhoto(await squarePhoto(file));
+      await done();
+      toast("Photo updated");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn’t save that photo");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Row title="Your photo" hint="Shown on every device. Stored on the Pi with Needle’s data.">
+      <div className="photo-set">
+        <span className="avatar"><AvatarFace px={44} /></span>
+        <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
+        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Saving…" : me?.photo ? "Change" : "Choose photo"}</button>
+        {me?.photo ? <button type="button" className="btn ghost sm" onClick={() => void api.removePhoto().then(done)}>Remove</button> : null}
+      </div>
+    </Row>
   );
 }
 
@@ -171,8 +202,11 @@ function SpotifySettings() {
   }
   return (
     <>
-      {!caps.data.spotifyReconnect ? (
-        <Row title="Spotify is connected" hint="Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium.">
+      <Row title="Use Spotify in Needle" hint="When off, no device asks Spotify for anything and Spotify stays out of Home, Search and your library. You stay connected.">
+        <button type="button" className="toggle" role="switch" aria-checked={caps.data.spotifyEnabled} aria-label="Use Spotify in Needle" onClick={() => void api.spotifyEnabled(!caps.data?.spotifyEnabled).then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))} />
+      </Row>
+      {!caps.data.spotifyEnabled || !caps.data.spotifyReconnect ? (
+        <Row title="Spotify is connected" hint={caps.data.spotifyEnabled ? "Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium." : "Switched off above. Disconnect to remove Needle's access to your Spotify account."}>
           <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => { clearSpotifyCache(); return qc.invalidateQueries({ queryKey: keys.capabilities }); })}>Disconnect</button>
         </Row>
       ) : (
@@ -180,7 +214,7 @@ function SpotifySettings() {
           <button type="button" className="btn light sm" onClick={connect}>Reconnect</button>
         </Row>
       )}
-      <SpotifyImport />
+      {caps.data.spotifyEnabled ? <SpotifyImport /> : null}
     </>
   );
 }
@@ -259,6 +293,7 @@ export default function SettingsPage() {
         <Row title={`Navidrome ${ping?.serverVersion ? ping.serverVersion.split(" ")[0] : ""}`.trim()} hint={`Signed in as ${user ?? ""}.${lastScan !== null ? ` Library last scanned ${lastScan < 1 ? "just now" : lastScan < 60 ? `${lastScan} minutes ago` : `${Math.round(lastScan / 60)} hours ago`}.` : ""}${scan?.count !== undefined ? ` ${plural(scan.count, "song")}.` : ""}`}>
           <span className="ok">Connected</span>
         </Row>
+        <PhotoSetting />
         <Row title="Get music through Lidarr" hint={caps.data?.lidarr ? "Search offers albums you don’t have yet, and Lidarr fetches them." : "Needs Lidarr set up on the Needle server, and a Navidrome admin account."}>
           {caps.data?.lidarr ? <span className="ok">On</span> : <span className="muted">Off</span>}
         </Row>

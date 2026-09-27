@@ -46,7 +46,7 @@ export default function AlbumPage() {
   const fmt = commonFormat(songs);
   const artistName = album.displayArtist ?? album.artist ?? "Unknown artist";
   const others = (artist?.album ?? []).filter((a) => a.id !== album.id);
-  const notOwned = (missing.data ?? []).filter((m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase()).slice(0, 3);
+  const notOwned = (missing.data?.albums ?? []).filter((m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase()).slice(0, 3);
   const kind = releaseKind(album.songCount, album.duration, album.isCompilation);
   const plays = songs.reduce((n, s) => n + (s.playCount ?? 0), 0);
 

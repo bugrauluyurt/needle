@@ -33,7 +33,7 @@ export default defineConfig({
     react(),
     precompress(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       injectRegister: null,
       manifest: false,
       workbox: {

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
-import { player, warmSpotify } from "../player/controller.ts";
+import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyOn } from "../queries/spotify.ts";
 import { current, usePlayer } from "../player/store.ts";
@@ -72,12 +72,12 @@ function useShortcuts() {
         case "ArrowRight":
           handled();
           if (e.shiftKey) void player.next();
-          else player.seekBy(10);
+          else player.seekBy(SEEK_STEP_S);
           break;
         case "ArrowLeft":
           handled();
           if (e.shiftKey) void player.previous();
-          else player.seekBy(-10);
+          else player.seekBy(-SEEK_STEP_S);
           break;
         case "ArrowUp":
           if ((e.target as HTMLElement | null)?.closest("[role=row],[role=slider]")) return;
@@ -182,6 +182,7 @@ export function Shell() {
   const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   useShortcuts();
   useEffect(() => {
+    allowSpotify(spotifyPlayback);
     if (spotifyPlayback) warmSpotify();
   }, [spotifyPlayback]);
   if (mobile) {

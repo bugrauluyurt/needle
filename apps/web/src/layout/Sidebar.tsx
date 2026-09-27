@@ -7,7 +7,7 @@ import { SearchField } from "../components/SearchField.tsx";
 import type { CollectionItem, SortOption } from "../components/Collection.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
-import { useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
+import { useAllAlbums, useArtists, useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
 import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
 import { matchesTerms, queryTerms } from "@needle/shared";
 import { spId } from "../lib/spotify.ts";
@@ -30,6 +30,8 @@ export const useLibrarySort = (fallback: CollectionView = "list") => useCollecti
 export function useLibraryEntries(filter: LibraryFilter, query: string, sort: SortKey): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
+  const { data: albums = [] } = useAllAlbums();
+  const { data: artists = [] } = useArtists();
   const collections = useOffline((s) => s.collections);
   const { data: spLiked } = useSpotifyLiked();
   const { data: spPlaylists = [] } = useSpotifyPlaylists();
@@ -39,18 +41,19 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
       { key: "liked", to: "/liked", art: () => <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), added: "9999", pinned: true },
+      ...(starred?.album?.length ? [{ key: "liked-albums", to: "/albums/starred", art: () => <LikedArt className="albums" />, title: "Liked albums", subtitle: `Albums, ${plural(starred.album.length, "album")}`, kind: "albums", contextId: "liked-albums", downloaded: false, added: "9997", pinned: true } satisfies LibraryEntry] : []),
       ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
       ...playlists.map((p): LibraryEntry => ({
         key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} px={px} />, title: p.name,
         subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "", kind: "playlists", contextId: p.id, downloaded: down.has(p.id), added: p.changed ?? p.created ?? "",
       })),
-      ...(starred?.album ?? []).map((a): LibraryEntry => ({
+      ...albums.map((a): LibraryEntry => ({
         key: `al-${a.id}`, to: `/album/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} />, title: a.name,
-        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`, by: a.displayArtist ?? a.artist ?? "", kind: "albums", contextId: a.id, downloaded: down.has(a.id), added: a.starred ?? "",
+        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`, by: a.displayArtist ?? a.artist ?? "", kind: "albums", contextId: a.id, downloaded: down.has(a.id), added: a.created ?? "",
       })),
-      ...(starred?.artist ?? []).map((a): LibraryEntry => ({
+      ...artists.map((a): LibraryEntry => ({
         key: `ar-${a.id}`, to: `/artist/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} round fallback="artist" />, title: a.name,
-        subtitle: "Artist", by: a.name, kind: "artists", contextId: a.id, downloaded: false, added: a.starred ?? "",
+        subtitle: "Artist", by: a.name, kind: "artists", contextId: a.id, downloaded: false, added: "",
       })),
       ...spPlaylists.map((p): LibraryEntry => ({
         key: `sp-pl-${p.id}`, to: `/spotify/playlist/${p.id}`, art: (px) => <Art images={p.images} px={px} />, title: p.name,
@@ -77,10 +80,10 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
     return sortItems(shown, sort);
-  }, [playlists, starred, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort]);
+  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort]);
 }
 
-const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "Downloaded"]];
+const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "On this device"]];
 
 export function LibraryChips() {
   const filter = useUi((s) => s.libraryFilter);
@@ -98,15 +101,15 @@ export function LibraryChips() {
 
 const EMPTY: Record<Exclude<LibraryFilter, null>, string> = {
   playlists: "Your playlists show up here. Create one with the + button.",
-  albums: "Albums you like here, or save on Spotify, show up here.",
-  artists: "Artists you like here, or follow on Spotify, show up here.",
+  albums: "Albums in your library, and ones you save on Spotify, show up here. Get more from Search.",
+  artists: "Artists in your library, and ones you follow on Spotify, show up here.",
   spotify: "Nothing from Spotify yet.",
-  downloaded: "Nothing downloaded yet. Use the download button on an album or playlist.",
+  downloaded: "Nothing kept on this device yet. Use the download button on an album or playlist to listen offline.",
 };
 
 export function libraryEmptyText(filter: LibraryFilter, query: string): string {
   if (query.trim()) return `Nothing in your library matches “${query.trim()}”.`;
-  return filter ? EMPTY[filter] : "Like albums and artists, or create a playlist.";
+  return filter ? EMPTY[filter] : "Your albums, artists and playlists show up here. Get music from Search.";
 }
 
 export function useNewPlaylist() {

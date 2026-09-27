@@ -41,6 +41,7 @@ export function spotifyAlbumItem(album: SpAlbumRef & { added_at?: string }, subt
     title: album.name,
     subtitle: subtitle ?? [releaseYear(album), by].filter(Boolean).join(", "),
     by,
+    contextId: spId(album.id),
     ...(Number.isNaN(year) ? {} : { year }),
     ...(album.added_at ? { added: album.added_at } : {}),
     onPlay: () => void playSpotifyAlbum(album.id).catch(failed),
@@ -55,6 +56,7 @@ export function spotifyArtistItem(artist: SpArtist): CollectionItem {
     title: artist.name,
     subtitle: "Artist",
     by: artist.name,
+    contextId: spId(artist.id),
     onPlay: () => void playSpotifyArtist(artist.id).catch(failed),
   };
 }
@@ -68,6 +70,7 @@ export function spotifyPlaylistItem(playlist: SpPlaylist): CollectionItem {
     title: playlist.name,
     subtitle: `Playlist, ${by}`,
     by,
+    contextId: spId(playlist.id),
     onPlay: () => void playSpotifyPlaylist(playlist.id).catch(failed),
   };
 }

@@ -7,10 +7,9 @@ import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
 import { useArtistCover, useCapabilities } from "./hooks.ts";
 import { useSession } from "../state/session.ts";
-import { fold } from "@needle/shared";
+import { fold, HOUR_MS } from "@needle/shared";
 
-const HOUR = 60 * 60_000;
-const LIBRARY_STALE = 6 * HOUR;
+const LIBRARY_STALE = 6 * HOUR_MS;
 const CACHE_PREFIX = "needle.sp.";
 const PERSISTED = new Set(["me", "playlists", "liked", "albums", "followed", "artistImage"]);
 
@@ -27,7 +26,7 @@ export const spKeys = {
   search: (q: string) => ["sp", "search", q] as const,
 };
 
-queryClient.setQueryDefaults(["sp"], { refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, staleTime: HOUR });
+queryClient.setQueryDefaults(["sp"], { refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, staleTime: HOUR_MS });
 
 const cacheKey = (key: readonly unknown[]) => `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(key)}`;
 
@@ -65,7 +64,8 @@ function cached<T>(key: readonly unknown[], on: boolean): { initialData?: T; ini
 }
 
 export function useSpotifyOn(): boolean {
-  const connected = Boolean(useCapabilities().data?.spotifyConnected);
+  const caps = useCapabilities().data;
+  const connected = Boolean(caps?.spotifyConnected && caps.spotifyEnabled);
   const blocked = useSpotifyStatus((s) => s.blocked);
   return connected && !blocked;
 }

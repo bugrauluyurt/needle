@@ -17,7 +17,7 @@ export async function mockSpotify(page: Page): Promise<Mock> {
   const mock: Mock = { plays: [], saved: [] };
   await page.route("**/api/capabilities", async (route) => {
     const res = await route.fetch();
-    await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true, spotifyReconnect: false } });
+    await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true, spotifyReconnect: false, spotifyEnabled: true } });
   });
   await page.route("**/api/spotify/token", (route) => route.fulfill({ json: { accessToken: "fake", expiresAt: Date.now() + 3_600_000 } }));
   await page.route("https://i.scdn.co/**", (route) => route.fulfill({ body: PNG, contentType: "image/png", headers: { "access-control-allow-origin": "*" } }));

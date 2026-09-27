@@ -20,6 +20,14 @@ function fakeNavidrome() {
     if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: true } });
     if (url.pathname.startsWith("/rest/getCoverArt")) return Promise.resolve(new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/jpeg", etag: "x" } }));
     if (url.pathname.startsWith("/rest/getAlbumList2")) return json({ albumList2: { album: [{ id: "a", name: "Album" }] } });
+    if (url.pathname.startsWith("/rest/getScanStatus")) return json({ scanStatus: { lastScan: "2026-09-27", count: 3 } });
+    if (url.pathname.startsWith("/rest/search3")) {
+      return json({ searchResult3: { album: [
+        { id: "a1", name: "Night Transit", coverArt: "c1", year: 2022, genres: [{ name: "Synthwave" }], created: "2026-09-01" },
+        { id: "a2", name: "Pulse Theory", coverArt: "c2", year: 2005, genre: "Synthwave", created: "2026-09-02" },
+        { id: "a3", name: "Blue Minutes", year: 1998, genre: "Jazz", created: "2026-09-03" },
+      ] } });
+    }
     if (url.pathname.startsWith("/rest/stream")) {
       const range = (init?.headers as Headers | undefined)?.get("range");
       return Promise.resolve(new Response("abcdef".slice(range ? 2 : 0), { status: range ? 206 : 200, headers: { "content-type": "audio/flac", ...(range ? { "content-range": "bytes 2-5/6" } : {}) } }));
@@ -53,8 +61,32 @@ describe("server", () => {
     expect((await app.request("/api/stats?period=decade", { headers: good })).status).toBe(400);
   });
 
+  it("keeps an account photo for every device", async () => {
+    const me = async () => (await (await app.request("/api/me", { headers: good })).json()) as { user: string; photo: string | null };
+    expect(await me()).toEqual({ user: "bugra", photo: null });
+    const put = (type: string, body: Uint8Array<ArrayBuffer>) => app.request("/api/me/photo", { method: "PUT", headers: { ...good, "content-type": type }, body });
+    expect((await put("image/gif", new Uint8Array([1]))).status).toBe(415);
+    expect((await put("image/webp", new Uint8Array(500_000))).status).toBe(413);
+    expect((await put("image/webp", new Uint8Array([1, 2, 3]))).status).toBe(204);
+    expect((await me()).photo).toBe("data:image/webp;base64,AQID");
+    await app.request("/api/me/photo", { method: "DELETE", headers: good });
+    expect((await me()).photo).toBeNull();
+  });
+
+  it("builds browse tiles from the library in one request", async () => {
+    const tiles = (await (await app.request("/api/browse", { headers: good })).json()) as { name: string; covers: { id: string }[] }[];
+    expect(tiles.map((t) => t.name)).toEqual(expect.arrayContaining(["Synthwave", "2020s", "2000s", "Recently added", "Surprise me"]));
+    expect(tiles.find((t) => t.name === "Synthwave")?.covers.map((c) => c.id)).toEqual(["a2", "a1"]);
+    expect(tiles.some((t) => t.name === "Jazz")).toBe(false);
+  });
+
+  it("lists requests and needs slskd for songs", async () => {
+    expect(await (await app.request("/api/requests", { headers: good })).json()).toEqual([]);
+    expect((await app.request("/api/songs/search?q=one", { headers: good })).status).toBe(404);
+  });
+
   it("reports what's switched on", async () => {
-    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, publicUrl: null });
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, spotifyEnabled: false, songs: false, publicUrl: null });
     expect((await app.request("/api/lidarr/search?q=air", { headers: good })).status).toBe(404);
   });
 

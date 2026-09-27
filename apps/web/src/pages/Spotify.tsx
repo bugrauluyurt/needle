@@ -201,7 +201,7 @@ export function SpotifyAlbumPage() {
   const getAlbum = async () => {
     setBusy(true);
     try {
-      const [hit] = await api.lidarrSearch(`${album.artists?.[0]?.name ?? ""} ${album.name}`);
+      const { albums: [hit] } = await api.lidarrSearch(`${album.artists?.[0]?.name ?? ""} ${album.name}`);
       if (!hit) toast("Lidarr couldn’t find this album");
       else {
         await api.lidarrGet(hit.foreignAlbumId);

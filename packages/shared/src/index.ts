@@ -58,6 +58,8 @@ export type LidarrAlbum = {
   progress: number | null;
 };
 
+export type LidarrSearch = { albums: LidarrAlbum[]; artists: LidarrArtist[] };
+
 export type LidarrArtist = {
   foreignArtistId: string;
   name: string;
@@ -71,6 +73,8 @@ export type Capabilities = {
   spotifyConnected: boolean;
   spotifyPlayback: boolean;
   spotifyReconnect: boolean;
+  spotifyEnabled: boolean;
+  songs: boolean;
   publicUrl: string | null;
 };
 
@@ -131,7 +135,29 @@ export type ImportResult = {
   missing: ImportedTrack[];
 };
 
+export type SongCandidate = { id: string; title: string; artist: string; album: string | null; duration: number | null; year: number | null; coverUrl: string | null };
+
+export type SongState = "searching" | "downloading" | "moving" | "available" | "failed";
+
+export type RequestItem = {
+  id: number;
+  kind: "album" | "song";
+  ref: string;
+  title: string;
+  artist: string;
+  coverUrl: string | null;
+  state: LidarrState | SongState;
+  progress: number | null;
+  detail: string | null;
+  created: number;
+};
+
+export type Me = { user: string; photo: string | null };
+
+export type BrowseTile = { name: string; subtitle: string; to: string; covers: { id: string; coverArt?: string }[] };
+
 export const AUTH_HEADERS = { user: "x-needle-user", token: "x-needle-token", salt: "x-needle-salt" } as const;
 
 export type * from "./subsonic.ts";
 export * from "./search.ts";
+export * from "./time.ts";

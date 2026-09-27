@@ -73,6 +73,15 @@ export class Spotify {
     return Boolean(this.db.prepare("SELECT 1 FROM spotify_tokens WHERE user = ?").get(user));
   }
 
+  enabled(user: string): boolean {
+    const row = this.db.prepare("SELECT enabled FROM spotify_tokens WHERE user = ?").get(user) as { enabled: number } | undefined;
+    return row?.enabled !== 0;
+  }
+
+  setEnabled(user: string, on: boolean) {
+    this.db.prepare("UPDATE spotify_tokens SET enabled = ? WHERE user = ?").run(on ? 1 : 0, user);
+  }
+
   private scopes(user: string): Set<string> {
     const row = this.db.prepare("SELECT scope FROM spotify_tokens WHERE user = ?").get(user) as { scope: string } | undefined;
     return new Set(row?.scope.split(" "));
@@ -88,6 +97,7 @@ export class Spotify {
   }
 
   async token(user: string): Promise<{ accessToken: string; expiresAt: number }> {
+    if (!this.enabled(user)) throw new SpotifyError(409, "Spotify is switched off in Needle");
     const accessToken = await this.access(user);
     const row = this.db.prepare("SELECT expires_at FROM spotify_tokens WHERE user = ?").get(user) as { expires_at: number };
     return { accessToken, expiresAt: row.expires_at };

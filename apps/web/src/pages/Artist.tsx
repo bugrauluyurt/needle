@@ -1,15 +1,15 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import type { LidarrArtist, Song } from "@needle/shared";
+import type { Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { LikeButton } from "../components/Buttons.tsx";
 import { albumItem, ArtistCard, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
 import { Collection, RELEASE_SORTS } from "../components/Collection.tsx";
+import { GetArtistCard } from "../components/GetCard.tsx";
 import { ActBar, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
-import { api } from "../lib/api.ts";
 import { count, plural, releaseKind } from "../lib/format.ts";
 import { sub } from "../lib/subsonic.ts";
 import { useTone } from "../lib/tone.ts";
@@ -20,40 +20,12 @@ import { player } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
 import { useArtist, useArtistInfo, useCapabilities, useLidarrArtists, useStarredIds, useTopSongs } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
-import { toast } from "../state/ui.ts";
 
 const cleanBio = (html: string | undefined) => html?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() ?? "";
 
-function MissingArtist({ a }: { a: LidarrArtist }) {
-  const [state, setState] = useState<"idle" | "busy" | "added">(a.inLidarr ? "added" : "idle");
-  const add = async () => {
-    setState("busy");
-    try {
-      await api.lidarrAddArtist(a.foreignArtistId);
-      setState("added");
-      toast(`Lidarr is fetching ${a.name}’s latest album`);
-    } catch (e) {
-      setState("idle");
-      toast(e instanceof Error ? e.message : "Lidarr didn’t take the request");
-    }
-  };
-  return (
-    <div className="get-card">
-      <div className="art round get-art">{a.imageUrl ? <img src={a.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="art-fallback"><Icon name="user" size={28} /></span>}</div>
-      <div className="get-text">
-        <div className="t">{a.name}</div>
-        <div className="s">Artist</div>
-        {state === "added" ? (
-          <div className="get-state ok">In Lidarr</div>
-        ) : (
-          <button type="button" className="btn light sm" disabled={state === "busy"} onClick={() => void add()}>
-            <Icon name="plus" size={15} />{state === "busy" ? "Adding…" : "Add artist"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+
+const POPULAR_FEW = 5;
+const POPULAR_MORE = 10;
 
 export default function ArtistPage() {
   const { id } = useParams();
@@ -70,8 +42,8 @@ export default function ArtistPage() {
     queries: top.length >= 3 ? [] : albums.slice(0, 6).map((a) => ({ queryKey: keys.album(a.id), queryFn: () => sub.album(a.id), staleTime: 300_000 })),
   });
   const popular: Song[] = useMemo(() => {
-    if (top.length >= 3) return top.slice(0, 10);
-    return albumQueries.flatMap((q) => q.data?.song ?? []).sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0)).slice(0, 10);
+    if (top.length >= 3) return top.slice(0, POPULAR_MORE);
+    return albumQueries.flatMap((q) => q.data?.song ?? []).sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0)).slice(0, POPULAR_MORE);
   }, [top, albumQueries]);
   const inLibrary = (info?.similarArtist ?? []).filter((a) => a.id);
   const missingNames = (info?.similarArtist ?? []).filter((a) => !a.id).map((a) => a.name).slice(0, 6);
@@ -116,9 +88,9 @@ export default function ArtistPage() {
       </ActBar>
       <div className={bio ? "a-grid with-about" : "a-grid"}>
         <section>
-          <RowHeader title="Popular" action={popular.length > 5 ? <button type="button" className="show-all" onClick={() => setShowAllPopular(!showAllPopular)}>{showAllPopular ? "Show less" : "See more"}</button> : undefined} />
+          <RowHeader title="Popular" action={popular.length > POPULAR_FEW ? <button type="button" className="show-all" onClick={() => setShowAllPopular(!showAllPopular)}>{showAllPopular ? "Show less" : "See more"}</button> : undefined} />
           {popular.length ? (
-            <TrackList songs={popular} context={context} art header={false} limit={showAllPopular ? 10 : 5} column={{ label: "Plays", value: (s) => (s.playCount ? count(s.playCount) : "") }} />
+            <TrackList songs={popular} context={context} art header={false} limit={showAllPopular ? POPULAR_MORE : POPULAR_FEW} column={{ label: "Plays", value: (s) => (s.playCount ? count(s.playCount) : "") }} />
           ) : (
             <p className="muted">No plays yet. Popular songs appear as you listen.</p>
           )}
@@ -145,7 +117,7 @@ export default function ArtistPage() {
         {lidarrOn && missing.data?.length ? (
           <>
             <RowHeader title="Similar artists you don’t have" subtitle="Picked from Last.fm. Add one and Lidarr fetches their latest album." />
-            <div className="get">{missing.data.map((a) => <MissingArtist key={a.foreignArtistId} a={a} />)}</div>
+            <div className="get">{missing.data.map((a) => <GetArtistCard key={a.foreignArtistId} artist={a} />)}</div>
           </>
         ) : null}
       </div>

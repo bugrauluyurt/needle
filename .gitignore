@@ -6,6 +6,8 @@ playwright-report/
 e2e/.library/
 e2e/.navidrome/
 e2e/.data/
+e2e/.soulseek/
+e2e/.singles/
 *.tsbuildinfo
 .env
 .env.local

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { Album, Artist, Song } from "@needle/shared";
 import { player } from "../player/controller.ts";
+import { useContextPlaying } from "../player/store.ts";
 import { sub } from "../lib/subsonic.ts";
 import { artistPath } from "../lib/paths.ts";
 import { isSpotify } from "../lib/spotify.ts";
@@ -17,9 +18,11 @@ type CardProps = {
   subtitle?: ReactNode;
   onPlay?: () => void;
   playLabel?: string;
+  playingId?: string;
 };
 
-export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel }: CardProps) {
+export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel, playingId }: CardProps) {
+  const { current, playing } = useContextPlaying(playingId);
   return (
     <article className="card">
       <Link to={to} className="card-link">
@@ -28,8 +31,8 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
         {subtitle ? <div className="s">{subtitle}</div> : null}
       </Link>
       {onPlay ? (
-        <button type="button" className="hover-play" aria-label={playLabel ?? `Play ${title}`} onClick={onPlay}>
-          <Icon name="play" size={18} />
+        <button type="button" className={current ? "hover-play on" : "hover-play"} aria-label={playing ? `Pause ${title}` : playLabel ?? `Play ${title}`} onClick={current ? player.toggle : onPlay}>
+          <Icon name={playing ? "pause" : "play"} size={18} />
         </button>
       ) : null}
     </article>
@@ -61,6 +64,7 @@ export function albumItem(album: Album, subtitle?: string): CollectionItem {
     title: album.name,
     subtitle: subtitle ?? [album.year, by].filter(Boolean).join(", "),
     by,
+    contextId: album.id,
     ...(album.year ? { year: album.year } : {}),
     ...(album.created ? { added: album.created } : {}),
     onPlay: () => void playAlbum(album.id, album.name),
@@ -75,6 +79,7 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
     title: artist.name,
     subtitle,
     by: artist.name,
+    contextId: artist.id,
     ...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) }),
   };
 }
@@ -82,7 +87,7 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
 const CARD_ART = 180;
 
 export function ItemCard({ item }: { item: CollectionItem }) {
-  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} />;
+  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} {...(item.contextId ? { playingId: item.contextId } : {})} />;
 }
 
 export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => <ItemCard item={albumItem(album, subtitle)} />;

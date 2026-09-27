@@ -1,4 +1,6 @@
+import { MIN_REPORT_MS } from "../player/controller.ts";
 import { useState } from "react";
+import { HOUR_MS, QUARTER_DAYS } from "@needle/shared";
 import { Link } from "react-router";
 import type { Period, Stats } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
@@ -12,7 +14,7 @@ import { useArtists, useStats } from "../queries/hooks.ts";
 import { albumPath, artistPath } from "../lib/paths.ts";
 import { isSpotify } from "../lib/spotify.ts";
 
-const PERIODS: [Period, string][] = [["month", "This month"], ["quarter", "Last 3 months"], ["year", "This year"], ["all", "All time"]];
+const PERIODS: [Period, string][] = [["month", "This month"], ["quarter", `Last ${QUARTER_DAYS} days`], ["year", "This year"], ["all", "All time"]];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function hourLabel(h: number): string {
@@ -32,15 +34,15 @@ function when(h: number | null): string | null {
 
 function headline(s: Stats, period: Period): { lead: string; accent: string | null } {
   const now = new Date();
-  const span = period === "month" ? `in ${MONTHS[now.getMonth()]}` : period === "quarter" ? "in the last 3 months" : period === "year" ? `in ${now.getFullYear()}` : "so far";
+  const span = period === "month" ? `in ${MONTHS[now.getMonth()]}` : period === "quarter" ? `in the last ${QUARTER_DAYS} days` : period === "year" ? `in ${now.getFullYear()}` : "so far";
   return { lead: `${hours(s.msPlayed)} of music ${span}`, accent: when(s.peakHour) };
 }
 
 function comparison(s: Stats, period: Period): string {
   const base = `${plural(s.songs, "song")} from ${plural(s.artists, "artist")}.`;
   if (period === "all" || !s.prevMsPlayed) return base;
-  const diffH = Math.round((s.msPlayed - s.prevMsPlayed) / 3_600_000);
-  const prev = period === "month" ? MONTHS[(new Date().getMonth() + 11) % 12] : period === "year" ? String(new Date().getFullYear() - 1) : "the 3 months before";
+  const diffH = Math.round((s.msPlayed - s.prevMsPlayed) / HOUR_MS);
+  const prev = period === "month" ? MONTHS[(new Date().getMonth() + 11) % 12] : period === "year" ? String(new Date().getFullYear() - 1) : `the ${QUARTER_DAYS} days before`;
   if (diffH === 0) return `${base} About the same as ${prev}.`;
   return `${base} That’s ${plural(Math.abs(diffH), "hour")} ${diffH > 0 ? "more" : "less"} than ${prev}.`;
 }
@@ -132,7 +134,7 @@ export default function StatsPage() {
             </div>
           </>
         )}
-        <p className="help"><Icon name="info" size={15} />Counted from every song you play for 30 seconds or more, on any device signed in as you.</p>
+        <p className="help"><Icon name="info" size={15} />Counted from every song you play for {MIN_REPORT_MS / 1000} seconds or more, on any device signed in as you.</p>
       </div>
     </>
   );

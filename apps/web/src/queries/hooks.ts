@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router";
+import { HOUR_MS, MINUTE_MS } from "@needle/shared";
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { QueryClient } from "@tanstack/react-query";
-import type { Album, Artist, Period, PlaylistWithSongs, Song } from "@needle/shared";
+import type { Query, QueryClient } from "@tanstack/react-query";
+import type { Album, Artist, Period, PlaylistWithSongs, RequestItem, Song, SongCandidate } from "@needle/shared";
 import { api } from "../lib/api.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
@@ -8,8 +10,8 @@ import { isSpotify } from "../lib/spotify.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
 import { keys } from "./keys.ts";
+import { queryClient } from "./client.ts";
 
-const HOUR = 3_600_000;
 
 export const useAlbum = (id: string | undefined) =>
   useQuery({ queryKey: keys.album(id ?? ""), queryFn: () => sub.album(id ?? ""), enabled: Boolean(id) });
@@ -25,22 +27,81 @@ export const albumListOptions = (type: AlbumListType, size = 20, opts: ListOpts 
 
 export const useAlbumList = (type: AlbumListType, size = 20, opts: ListOpts = {}) => useQuery(albumListOptions(type, size, opts));
 
-export const tileCoversOptions = (to: string, type: AlbumListType, opts: ListOpts = {}) =>
-  queryOptions({ queryKey: ["tileCovers", to], queryFn: () => sub.albumList(type, { size: 3, ...opts }), staleTime: HOUR });
+const browseOptions = queryOptions({ queryKey: keys.browse, queryFn: api.browse, staleTime: HOUR_MS });
 
-const mixesOptions = queryOptions({ queryKey: keys.mixes, queryFn: api.mixes, staleTime: HOUR });
-const genresOptions = queryOptions({ queryKey: keys.genres, queryFn: sub.genres, staleTime: HOUR });
+export const useBrowse = () => useQuery(browseOptions);
+
+export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: HOUR_MS });
+
+const ACTIVE = new Set(["searching", "downloading", "importing", "moving"]);
+const REQUEST_POLL_MS = 4_000;
+const WAITING_POLL_MS = 60_000;
+
+const LIBRARY_KEYS = [keys.allAlbums, keys.artists, ["albumList"], keys.browse, ["search"], ["songCandidates"], ["lidarrSearch"], keys.genres];
+let arrived: Set<number> | null = null;
+
+queryClient.getQueryCache().subscribe((e) => {
+  if (e.type !== "updated") return;
+  const query = e.query as Query<RequestItem[]>;
+  if (query.queryKey[0] !== keys.requests[0]) return;
+  const done = new Set(query.state.data?.filter((r) => r.state === "available").map((r) => r.id));
+  const fresh = arrived !== null && [...done].some((id) => !arrived?.has(id));
+  arrived = done;
+  if (fresh) for (const queryKey of LIBRARY_KEYS) void queryClient.invalidateQueries({ queryKey });
+});
+
+export const useRequests = () =>
+  useQuery({
+    queryKey: keys.requests,
+    queryFn: api.requests,
+    refetchInterval: (q) => {
+      const states = q.state.data?.map((r) => r.state) ?? [];
+      return states.some((s) => ACTIVE.has(s)) ? REQUEST_POLL_MS : states.includes("wanted") ? WAITING_POLL_MS : false;
+    },
+  });
+
+export const useSongCandidates = (q: string, enabled: boolean) =>
+  useQuery({ queryKey: keys.songCandidates(q), queryFn: () => api.songSearch(q), enabled: enabled && q.trim().length > 1, staleTime: HOUR_MS });
+
+export function useGetSong() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  return (song: SongCandidate) =>
+    api.getSong(song).then(
+      async () => {
+        await qc.refetchQueries({ queryKey: keys.requests });
+        toast(`Looking for “${song.title}” on Soulseek`, { label: "Requests", run: () => void navigate("/requests") });
+      },
+      (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t start the download"),
+    );
+}
+
+const mixesOptions = queryOptions({ queryKey: keys.mixes, queryFn: api.mixes, staleTime: HOUR_MS });
+const genresOptions = queryOptions({ queryKey: keys.genres, queryFn: sub.genres, staleTime: HOUR_MS });
 
 export function prefetchStart(qc: QueryClient) {
   for (const o of [albumListOptions("recent", 12), albumListOptions("newest", 12)]) void qc.prefetchQuery(o);
   void qc.prefetchQuery(mixesOptions);
-  void qc.prefetchQuery(genresOptions);
+  void qc.prefetchQuery(browseOptions);
 }
 
 export const useArtist = (id: string | undefined) =>
   useQuery({ queryKey: keys.artist(id ?? ""), queryFn: () => sub.artist(id ?? ""), enabled: Boolean(id) });
 
-export const useArtists = () => useQuery({ queryKey: keys.artists, queryFn: sub.artists, staleTime: HOUR });
+export const useArtists = () => useQuery({ queryKey: keys.artists, queryFn: sub.artists, staleTime: 60_000 });
+
+const ALBUM_PAGE = 500;
+
+async function allAlbums(): Promise<Album[]> {
+  const out: Album[] = [];
+  for (let offset = 0; ; offset += ALBUM_PAGE) {
+    const page = await sub.albumList("newest", { size: ALBUM_PAGE, offset });
+    out.push(...page);
+    if (page.length < ALBUM_PAGE) return out;
+  }
+}
+
+export const useAllAlbums = () => useQuery({ queryKey: keys.allAlbums, queryFn: allAlbums, staleTime: 60_000 });
 
 export function useArtistCover(id: string | undefined): string | undefined {
   const { data } = useArtists();
@@ -50,10 +111,10 @@ export function useArtistCover(id: string | undefined): string | undefined {
 const navidromeId = (id: string | undefined) => Boolean(id) && !isSpotify(id ?? "");
 
 export const useArtistInfo = (id: string | undefined) =>
-  useQuery({ queryKey: keys.artistInfo(id ?? ""), queryFn: () => sub.artistInfo(id ?? "", 12, true), enabled: navidromeId(id), staleTime: HOUR });
+  useQuery({ queryKey: keys.artistInfo(id ?? ""), queryFn: () => sub.artistInfo(id ?? "", 12, true), enabled: navidromeId(id), staleTime: HOUR_MS });
 
 export const useTopSongs = (name: string | undefined) =>
-  useQuery({ queryKey: keys.topSongs(name ?? ""), queryFn: () => sub.topSongs(name ?? "", 10), enabled: Boolean(name), staleTime: HOUR });
+  useQuery({ queryKey: keys.topSongs(name ?? ""), queryFn: () => sub.topSongs(name ?? "", 10), enabled: Boolean(name), staleTime: HOUR_MS });
 
 export const usePlaylists = () => useQuery({ queryKey: keys.playlists, queryFn: sub.playlists });
 
@@ -88,7 +149,7 @@ export const useCapabilities = () => useQuery({ queryKey: keys.capabilities, que
 
 export const useIsAdmin = () => {
   const user = useSession((s) => s.credentials?.user ?? "");
-  return useQuery({ queryKey: keys.user(user), queryFn: () => sub.user(user), enabled: Boolean(user), staleTime: HOUR }).data?.adminRole ?? false;
+  return useQuery({ queryKey: keys.user(user), queryFn: () => sub.user(user), enabled: Boolean(user), staleTime: HOUR_MS }).data?.adminRole ?? false;
 };
 
 export const useLidarrSearch = (q: string, enabled: boolean) =>
@@ -96,8 +157,7 @@ export const useLidarrSearch = (q: string, enabled: boolean) =>
     queryKey: keys.lidarrSearch(q),
     queryFn: () => api.lidarrSearch(q),
     enabled: enabled && q.trim().length >= 2,
-    staleTime: 30_000,
-    refetchInterval: (query) => (query.state.data?.some((a) => a.state === "searching" || a.state === "downloading" || a.state === "importing") ? 5_000 : false),
+    staleTime: 5 * MINUTE_MS,
   });
 
 export const useLidarrArtists = (names: string[], enabled: boolean) =>
@@ -105,11 +165,11 @@ export const useLidarrArtists = (names: string[], enabled: boolean) =>
     queryKey: keys.lidarrArtists(names.join("|")),
     queryFn: () => api.lidarrArtists(names),
     enabled: enabled && names.length > 0,
-    staleTime: HOUR,
+    staleTime: HOUR_MS,
   });
 
 export const useSimilarSongs = (id: string | undefined) =>
-  useQuery({ queryKey: keys.similar(id ?? ""), queryFn: () => sub.similarSongs(id ?? "", 20), enabled: Boolean(id), staleTime: HOUR });
+  useQuery({ queryKey: keys.similar(id ?? ""), queryFn: () => sub.similarSongs(id ?? "", 20), enabled: Boolean(id), staleTime: HOUR_MS });
 
 type StarKind = "song" | "album" | "artist";
 type Starred = { song?: Song[]; album?: Album[]; artist?: Artist[] };

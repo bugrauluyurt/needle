@@ -34,8 +34,8 @@ test("finds text anywhere in names, in search and in the library list", async ({
   const side = page.locator("nav.side");
   await side.getByRole("button", { name: "Search in your library" }).click();
   await side.getByRole("searchbox", { name: "Search in your library" }).fill("field");
-  await expect(side.locator(".lib-item")).toHaveCount(1);
-  await expect(side.locator(".lib-item")).toContainText("Weightless Hours");
+  await expect(side.locator(".lib-item", { hasText: "Weightless Hours" })).toBeVisible();
+  await expect(side.locator(".lib-item", { hasText: "Night Transit" })).toHaveCount(0);
   await side.getByRole("searchbox", { name: "Search in your library" }).fill("zzzz");
   await expect(side.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
 });
@@ -58,4 +58,19 @@ test("offers albums you don't have and fetches them through Lidarr", async ({ pa
   await card.getByRole("button", { name: "Get album" }).click();
   await expect(card.getByText("Searching indexers")).toBeVisible();
   await expect(card.getByText(/Downloading, \d+%/)).toBeVisible({ timeout: 15_000 });
+});
+
+test("fetches a single song from Soulseek and follows it on the Requests page", async ({ page }) => {
+  await signIn(page, "/search?q=undertow");
+  await page.getByRole("group", { name: "Filter results" }).getByRole("button", { name: "Get music", exact: true }).click();
+  const card = page.locator(".get-card", { hasText: "Undertow" });
+  await expect(card).toContainText("Glass Harbor, Tidal, 3:32");
+  await card.getByRole("button", { name: "Get song" }).click();
+  await page.getByRole("button", { name: "Requests" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+  const row = page.locator(".req-row", { hasText: "Undertow" });
+  await expect(row).toContainText("Song, Glass Harbor");
+  await expect(row).toContainText("In your library", { timeout: 20_000 });
+  await row.getByRole("button", { name: "Remove Undertow from this list" }).click();
+  await expect(row).toHaveCount(0);
 });

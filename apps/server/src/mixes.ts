@@ -1,11 +1,12 @@
 import type { Album, AlbumWithSongs, Genre, Mix, Song } from "@needle/shared";
+import { DAY_MS, QUARTER_DAYS } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { PlayLog } from "./stats.ts";
 
 const MIX_COUNT = 6;
 const MIX_SIZE = 40;
 const MIN_SONGS = 8;
-const LOOKBACK = 90 * 86_400_000;
+const LOOKBACK = QUARTER_DAYS * DAY_MS;
 const DECADES = [2020, 2010, 2000, 1990, 1980, 1970, 1960];
 const ALBUMS_PER_DECADE = 12;
 

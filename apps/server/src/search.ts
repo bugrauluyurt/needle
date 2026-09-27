@@ -1,10 +1,17 @@
-import type { Album, Artist, SearchResult3, Song } from "@needle/shared";
-import { fold, matchesTerms, queryTerms } from "@needle/shared";
+import type { Album, Artist, BrowseTile, SearchResult3, Song } from "@needle/shared";
+import { fold, matchesTerms, queryTerms, songKey } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
 
 const PAGE = 500;
 const CHECK_EVERY_MS = 60_000;
 const LIMITS = { songs: 50, albums: 24, artists: 16 };
+const TOP_GENRES = 12;
+const DECADES = 6;
+const COVERS = 3;
+
+const newest = (albums: Album[]) => albums.toSorted((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
+const covers = (albums: Album[]) => albums.filter((a) => a.coverArt).slice(0, COVERS).map((a) => ({ id: a.id, ...(a.coverArt ? { coverArt: a.coverArt } : {}) }));
+const genresOf = (a: Album) => (a.genres?.length ? a.genres.map((g) => g.name) : a.genre ? [a.genre] : []);
 
 type Index = { songs: Song[]; albums: Album[]; artists: Artist[]; scan: string; checked: number };
 
@@ -39,6 +46,32 @@ export class LibrarySearch {
       album: ranked(index.albums, terms, (a) => a.name, (a) => [a.name, a.artist, a.displayArtist], LIMITS.albums),
       artist: ranked(index.artists, terms, (a) => a.name, (a) => [a.name], LIMITS.artists),
     };
+  }
+
+  async songKeys(auth: Auth): Promise<Set<string>> {
+    const { songs } = await this.index(auth);
+    return new Set(songs.map((s) => songKey(s.artist ?? "", s.title)));
+  }
+
+  async browse(auth: Auth, random = Math.random): Promise<BrowseTile[]> {
+    const { albums } = await this.index(auth);
+    const byGenre = new Map<string, Album[]>();
+    for (const a of albums) for (const g of genresOf(a)) byGenre.set(g, [...(byGenre.get(g) ?? []), a]);
+    const genres = [...byGenre.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, TOP_GENRES).map(([name, list]): BrowseTile => ({
+      name, subtitle: `${list.length} ${list.length === 1 ? "album" : "albums"}`, to: `/genre/${encodeURIComponent(name)}`, covers: covers(newest(list)),
+    }));
+    const year = new Date().getFullYear();
+    const decades = Array.from({ length: DECADES }, (_, i): BrowseTile => {
+      const from = year - (year % 10) - i * 10;
+      return { name: `${from}s`, subtitle: "Decade", to: `/albums/byYear?from=${from}&to=${from + 9}`, covers: covers(newest(albums.filter((a) => (a.year ?? 0) >= from && (a.year ?? 0) <= from + 9))) };
+    });
+    const shuffled = albums.map((a) => ({ a, k: random() })).sort((x, y) => x.k - y.k).map((x) => x.a);
+    return [
+      ...genres,
+      ...decades,
+      { name: "Recently added", subtitle: "Newest first", to: "/albums/newest", covers: covers(newest(albums)) },
+      { name: "Surprise me", subtitle: "Random albums", to: "/albums/random", covers: covers(shuffled) },
+    ].filter((t) => t.covers.length);
   }
 
   private async scanKey(auth: Auth): Promise<string> {

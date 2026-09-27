@@ -1,27 +1,24 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useIsFetching, useQueries } from "@tanstack/react-query";
-import { GetCard } from "../components/GetCard.tsx";
-import type { Song } from "@needle/shared";
+import { useIsFetching } from "@tanstack/react-query";
+import { GetArtistCard, GetCard, GetSongCard } from "../components/GetCard.tsx";
+import type { BrowseTile, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "../components/Cards.tsx";
 import { Collection, SORT_LABELS } from "../components/Collection.tsx";
 import type { CollectionItem, SortOption } from "../components/Collection.tsx";
 import { Icon } from "../components/Icon.tsx";
-import { SearchField } from "../components/SearchField.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { artistName, clock, plural } from "../lib/format.ts";
-import type { AlbumListType } from "../lib/subsonic.ts";
 import { useDebounced, useDelayed } from "../lib/useDelayed.ts";
 import { TILE_COLORS } from "../lib/palette.ts";
 
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
-import { tileCoversOptions, useCapabilities, useGenres, useLidarrSearch, usePlaylists, useSearch } from "../queries/hooks.ts";
-import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
-import { TopBar } from "../layout/TopBar.tsx";
-import { MobileHeader } from "../layout/Mobile.tsx";
+import { useBrowse, useCapabilities, useLidarrSearch, usePlaylists, useRequests, useSearch, useSongCandidates } from "../queries/hooks.ts";
+import { usePageTone } from "../layout/Shell.tsx";
+import { SearchHeader } from "../layout/SearchHeader.tsx";
 import { albumPath } from "../lib/paths.ts";
 import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch } from "../queries/spotify.ts";
 import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylistItem } from "../components/SpotifyCards.tsx";
@@ -29,7 +26,7 @@ import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylist
 const tile = (i: number) => TILE_COLORS[i % TILE_COLORS.length] ?? "#1E3C78";
 
 const RECENT_KEY = "needle.recentSearches";
-const FILTERS = ["All", "Songs", "Albums", "Artists", "Playlists", "Get albums"] as const;
+const FILTERS = ["All", "Songs", "Albums", "Artists", "Playlists", "Get music"] as const;
 type Filter = (typeof FILTERS)[number];
 
 function loadRecent(): string[] {
@@ -48,66 +45,24 @@ function saveRecent(list: string[]) {
   }
 }
 
-function SearchBox({ value, onChange, onCommit }: { value: string; onChange: (v: string) => void; onCommit: () => void }) {
-  const mobile = useIsMobile();
-  const [focused, setFocused] = useState(false);
-  const busy = useIsFetching({ predicate: (query) => query.queryKey.includes("search") }) > 0 && Boolean(value.trim());
-  const field = (
-    <SearchField
-      variant={mobile ? "page" : "top"}
-      value={value}
-      onChange={onChange}
-      onCommit={onCommit}
-      onFocusChange={setFocused}
-      autoFocus={!mobile}
-      busy={busy}
-      label="Search"
-      placeholder="What do you want to listen to?"
-    />
-  );
-  if (!mobile) return field;
-  return (
-    <div className={focused ? "psearch-row focused" : "psearch-row"}>
-      {field}
-      <button type="button" className="psearch-cancel" tabIndex={focused ? 0 : -1} onPointerDown={(e) => e.preventDefault()} onClick={() => { onChange(""); (document.activeElement as HTMLElement | null)?.blur(); }}>
-        Cancel
-      </button>
-    </div>
-  );
-}
-
-type Tile = { name: string; subtitle: string; to: string; type: AlbumListType; opts?: { genre?: string; fromYear?: number; toYear?: number } };
-
-function GenreTile({ tile, color, covers }: { tile: Tile; color: string; covers: { id: string; coverArt?: string }[] }) {
+function GenreTile({ tile, color }: { tile: BrowseTile; color: string }) {
   return (
     <Link to={tile.to} className="genre" style={{ "--g": color } as React.CSSProperties}>
       <b>{tile.name}</b>
       <small>{tile.subtitle}</small>
       <div className="fan" aria-hidden="true">
-        {covers.map((a) => <Art key={a.id} id={a.coverArt} px={84} />)}
+        {tile.covers.map((a) => <Art key={a.id} id={a.coverArt} px={84} />)}
       </div>
     </Link>
   );
 }
 
 function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPick: (q: string) => void; onRemove: (q: string) => void; onClear: () => void }) {
-  const genres = useGenres();
+  const tiles = useBrowse();
   const caps = useCapabilities();
-  const tiles = useMemo((): Tile[] => {
-    const year = new Date().getFullYear();
-    const decade = year - (year % 10);
-    const top = (genres.data ?? []).filter((g) => g.songCount > 0).sort((a, b) => b.albumCount - a.albumCount).slice(0, 12);
-    return [
-      ...top.map((g): Tile => ({ name: g.value, subtitle: `${g.albumCount} ${g.albumCount === 1 ? "album" : "albums"}`, to: `/genre/${encodeURIComponent(g.value)}`, type: "byGenre", opts: { genre: g.value } })),
-      ...[0, 10, 20, 30, 40, 50].map((back): Tile => ({ name: `${decade - back}s`, subtitle: "Decade", to: `/albums/byYear?from=${decade - back}&to=${decade - back + 9}`, type: "byYear", opts: { fromYear: decade - back, toYear: decade - back + 9 } })),
-      { name: "Recently added", subtitle: "Newest first", to: "/albums/newest", type: "newest" },
-      { name: "Surprise me", subtitle: "Random albums", to: "/albums/random", type: "random" },
-    ];
-  }, [genres.data]);
-  const covers = useQueries({ queries: tiles.map((t) => tileCoversOptions(t.to, t.type, t.opts)) });
-  const pending = genres.isPending || covers.some((q) => q.isPending);
+  const pending = tiles.isPending;
   const skeleton = useDelayed(pending);
-  const shown = tiles.map((t, i) => ({ t, covers: covers[i]?.data ?? [] })).filter((x) => x.covers.length);
+  const shown = tiles.data ?? [];
   return (
     <>
       {recent.length ? (
@@ -129,7 +84,7 @@ function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPic
         <>
           <RowHeader title="Browse your library" subtitle="Genres come from your files’ tags" />
           <div className="genres">
-            {shown.map((x, i) => <GenreTile key={x.t.to} tile={x.t} color={tile(i)} covers={x.covers} />)}
+            {shown.map((t, i) => <GenreTile key={t.to} tile={t} color={tile(i)} />)}
           </div>
         </>
       ) : (
@@ -331,21 +286,57 @@ function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; se
   );
 }
 
-function LidarrSource({ q, filter }: { q: string; filter: Filter }) {
-  const missing = useLidarrSearch(q, true);
+const GETS: Record<"albums" | "artists" | "songs", Filter[]> = { albums: ["All", "Albums", "Get music"], artists: ["All", "Artists", "Get music"], songs: ["All", "Songs", "Get music"] };
+
+function GetSource({ q, filter, albumsOn, songsOn }: { q: string; filter: Filter; albumsOn: boolean; songsOn: boolean }) {
+  const showAlbums = albumsOn && GETS.albums.includes(filter);
+  const showArtists = albumsOn && GETS.artists.includes(filter);
+  const showSongs = songsOn && GETS.songs.includes(filter);
+  const lidarr = useLidarrSearch(q, showAlbums || showArtists);
+  const songs = useSongCandidates(q, showSongs);
+  const { data: requests = [] } = useRequests();
+  const byRef = new Map(requests.map((r) => [`${r.kind}:${r.ref}`, r]));
+  const few = filter === "All";
+  const albums = lidarr.data?.albums ?? [];
+  const artists = lidarr.data?.artists ?? [];
+  const asking = lidarr.isPending || lidarr.isFetching;
+  const heading = [showArtists, showAlbums, showSongs].filter(Boolean).length > 1;
   return (
     <section className="res-source" aria-label="Not in your library yet">
       <div className="source-h">
         <h2>Not in your library yet</h2>
-        <p className="sub">Found on MusicBrainz. Lidarr downloads what you pick, and it shows up in your library when it’s ready.</p>
+        <p className="sub">Found on MusicBrainz. {albumsOn && songsOn ? "Albums come through Lidarr and single songs from Soulseek." : albumsOn ? "Lidarr downloads the albums you pick." : "Soulseek provides the songs you pick."} They show up in your library when they’re ready.</p>
       </div>
-      {missing.data?.length ? (
-        <div className="get">{(filter === "All" ? missing.data.slice(0, 6) : missing.data).map((a) => <GetCard key={a.foreignAlbumId} album={a} />)}</div>
-      ) : missing.isPending || missing.isFetching ? (
-        <p className="muted source-note"><span className="spin" />Asking Lidarr about “{q}”…</p>
-      ) : (
-        <p className="muted source-note">Lidarr found no other albums for “{q}”.</p>
-      )}
+      {showArtists && artists.length ? (
+        <>
+          {heading ? <RowHeader title="Artists" /> : null}
+          <div className="get">{(few ? artists.slice(0, 3) : artists).map((a) => <GetArtistCard key={a.foreignArtistId} artist={a} />)}</div>
+        </>
+      ) : null}
+      {showAlbums ? (
+        <>
+          {heading ? <RowHeader title="Albums" /> : null}
+          {albums.length ? (
+            <div className="get">{(few ? albums.slice(0, 6) : albums).map((a) => <GetCard key={a.foreignAlbumId} album={a} request={byRef.get(`album:${a.foreignAlbumId}`)} />)}</div>
+          ) : asking ? (
+            <p className="muted source-note"><span className="spin" />Asking Lidarr about “{q}”…</p>
+          ) : (
+            <p className="muted source-note">Lidarr found no other albums for “{q}”.</p>
+          )}
+        </>
+      ) : null}
+      {showSongs ? (
+        <>
+          {heading ? <RowHeader title="Songs" /> : null}
+          {songs.data?.length ? (
+            <div className="get">{(few ? songs.data.slice(0, 4) : songs.data).map((s) => <GetSongCard key={s.id} song={s} request={byRef.get(`song:${s.id}`)} />)}</div>
+          ) : songs.isPending || songs.isFetching ? (
+            <p className="muted source-note"><span className="spin" />Looking up songs for “{q}”…</p>
+          ) : (
+            <p className="muted source-note">{songs.isError ? "MusicBrainz didn’t answer. Try again in a moment." : `No other songs found for “${q}”.`}</p>
+          )}
+        </>
+      ) : null}
     </section>
   );
 }
@@ -353,25 +344,26 @@ function LidarrSource({ q, filter }: { q: string; filter: Filter }) {
 function Results({ q }: { q: string }) {
   const [filter, setFilter] = useState<Filter>("All");
   const { isFetching } = useSearch(q);
-  const lidarrOn = Boolean(useCapabilities().data?.lidarr);
+  const caps = useCapabilities().data;
+  const albumsOn = Boolean(caps?.lidarr);
+  const songsOn = Boolean(caps?.songs);
   const spotifyOn = useSpotifyOn();
-  const local = filter !== "Get albums";
+  const local = filter !== "Get music";
   return (
     <div className={isFetching ? "results fetching" : "results"}>
       <div className="chips filter-chips" role="group" aria-label="Filter results">
-        {FILTERS.filter((f) => f !== "Get albums" || lidarrOn).map((f) => (
+        {FILTERS.filter((f) => f !== "Get music" || albumsOn || songsOn).map((f) => (
           <button key={f} type="button" className="pill" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
         ))}
       </div>
       {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} /> : null}
       {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} /> : null}
-      {lidarrOn && (filter === "All" || filter === "Albums" || filter === "Get albums") ? <LidarrSource q={q} filter={filter} /> : null}
+      {(albumsOn || songsOn) && filter !== "Playlists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
     </div>
   );
 }
 
 export default function Search() {
-  const mobile = useIsMobile();
   const [params, setParams] = useSearchParams();
   const urlQ = params.get("q") ?? "";
   const [text, setText] = useState(urlQ);
@@ -391,20 +383,13 @@ export default function Search() {
     setRecent(next);
     saveRecent(next);
   };
-  const box = <SearchBox value={text} onChange={setText} onCommit={() => text.trim() && remember(text.trim())} />;
   const q = urlQ.trim();
+  const busy = useIsFetching({ predicate: (query) => query.queryKey.includes("search") }) > 0 && Boolean(text.trim());
 
 
   return (
     <>
-      {mobile ? (
-        <>
-          <MobileHeader title="Search" />
-          <div className="psearch-wrap">{box}</div>
-        </>
-      ) : (
-        <TopBar>{box}</TopBar>
-      )}
+      <SearchHeader title="Search" label="Search" placeholder="What do you want to listen to?" value={text} onChange={setText} onCommit={() => text.trim() && remember(text.trim())} busy={busy} autoFocus />
       <div className="pad">
         {q ? (
           <Results q={q} />

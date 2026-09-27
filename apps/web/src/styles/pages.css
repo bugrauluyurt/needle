@@ -581,7 +581,7 @@
   font-size: 14.5px;
 }
 
-.set-row > div > span {
+.set-row > div:first-child > span {
   display: block;
   color: var(--sleeve);
   font-size: 13px;
@@ -918,4 +918,73 @@
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 16px;
+}
+
+.photo-set {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.photo-set .avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  margin-right: 6px;
+}
+
+.req-intro {
+  margin: -4px 0 20px;
+}
+
+.req-list {
+  display: grid;
+  gap: 4px;
+}
+
+.req-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 10px;
+  transition: background-color 0.15s;
+}
+
+.req-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.req-row .get-art {
+  width: 64px;
+  height: 64px;
+  flex: none;
+}
+
+.req-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.req-text .t {
+  color: var(--label);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.req-text .s {
+  font-size: 13px;
+  margin: 2px 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.req-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
 }

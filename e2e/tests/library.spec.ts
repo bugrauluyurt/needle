@@ -19,16 +19,21 @@ test("likes a song and finds it in Liked songs", async ({ page }) => {
   await expect(page.locator(".tr")).toHaveCount(0);
 });
 
-test("saves an album to the library and shows it in the sidebar", async ({ page }) => {
+test("lists every album in the library and likes one", async ({ page }) => {
   await signIn(page);
+  const side = page.locator(".side");
+  await side.getByRole("button", { name: "Albums", exact: true }).click();
+  await expect(side.locator(".lib-item", { hasText: "Pulse Theory" })).toBeVisible();
+  await expect(side.locator(".lib-item", { hasText: "Late night drive" })).toHaveCount(0);
+  await side.getByRole("button", { name: "Albums", exact: true }).click();
   await openAlbum(page, "Pulse Theory");
-  await page.getByRole("button", { name: "Add to your library" }).click();
-  await expect(page.locator(".lib-item", { hasText: "Pulse Theory" })).toBeVisible();
-  await page.getByRole("button", { name: "Albums" }).first().click();
-  await expect(page.locator(".side .lib-item", { hasText: "Late night drive" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Albums" }).first().click();
-  await page.getByRole("button", { name: "Remove from your library" }).click();
-  await expect(page.locator(".side .lib-item", { hasText: "Pulse Theory" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Add to your liked albums" }).click();
+  await side.locator(".lib-item", { hasText: "Liked albums" }).click();
+  await expect(page.locator(".card", { hasText: "Pulse Theory" })).toBeVisible();
+  await openAlbum(page, "Pulse Theory");
+  await page.getByRole("button", { name: "Remove from your liked albums" }).click();
+  await page.goto("/albums/starred");
+  await expect(page.locator(".card", { hasText: "Pulse Theory" })).toHaveCount(0);
 });
 
 test("creates, fills, renames, reorders and deletes a playlist", async ({ page }) => {

@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { useSession } from "../state/session.ts";
+import { useUpdate } from "../state/update.ts";
 import { image } from "../lib/spotify.ts";
 import { useSpotifyMe } from "../queries/spotify.ts";
+import { useMe } from "../queries/hooks.ts";
 import { useUi } from "../state/ui.ts";
 
 let maxIdx = 0;
@@ -17,8 +19,9 @@ function historyIdx(): number {
 
 export function AvatarFace({ px }: { px: number }) {
   const user = useSession((s) => s.credentials?.user ?? "");
+  const { data: profile } = useMe();
   const { data: me } = useSpotifyMe();
-  const photo = image(me?.images, px * 2);
+  const photo = profile?.photo ?? image(me?.images, px * 2);
   return photo ? <img src={photo} alt="" draggable={false} /> : <>{(me?.display_name ?? user).slice(0, 1).toUpperCase()}</>;
 }
 
@@ -26,20 +29,35 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
   const user = useSession((s) => s.credentials?.user ?? "");
   const signOut = useSession((s) => s.signOut);
   const navigate = useNavigate();
+  const update = useUpdate((s) => s.apply);
 
   return (
     <DM.Root modal={false}>
       <DM.Trigger asChild>
-        <button type="button" className="avatar" style={{ width: size, height: size }} aria-label={`Account, signed in as ${user}`}>
+        <button type="button" className="avatar" style={{ width: size, height: size }} aria-label={update ? `Account, signed in as ${user}, update ready` : `Account, signed in as ${user}`}>
           <AvatarFace px={size} />
+          {update ? <span className="update-dot" aria-hidden="true" /> : null}
         </button>
       </DM.Trigger>
       <DM.Portal>
         <DM.Content className="menu" align="end" sideOffset={8} collisionPadding={12}>
           <DM.Label className="menu-heading">Signed in as {user}</DM.Label>
+          {update ? (
+            <>
+              <DM.Item className="menu-item update-item" onSelect={update}>
+                <Icon name="refresh" size={18} />
+                <span className="menu-label">Update Needle<small>A new version is ready. Reloads the page.</small></span>
+              </DM.Item>
+              <DM.Separator className="menu-sep" />
+            </>
+          ) : null}
           <DM.Item className="menu-item" onSelect={() => void navigate("/stats")}>
             <Icon name="chart" size={18} />
             <span className="menu-label">Your listening</span>
+          </DM.Item>
+          <DM.Item className="menu-item" onSelect={() => void navigate("/requests")}>
+            <Icon name="import" size={18} />
+            <span className="menu-label">Requests</span>
           </DM.Item>
           <DM.Item className="menu-item" onSelect={() => void navigate("/downloads")}>
             <Icon name="download" size={18} />

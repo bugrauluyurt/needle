@@ -191,6 +191,11 @@
   flex: 1;
 }
 
+.lib-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
+}
+
 .lib-item {
   display: flex;
   align-items: center;
@@ -327,13 +332,35 @@
   place-items: center;
   box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35);
   flex: none;
-  overflow: hidden;
+}
+
+.avatar {
+  position: relative;
+}
+
+.update-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.update-item .menu-label small {
+  display: block;
+  color: var(--sleeve);
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
 .avatar.tiny {

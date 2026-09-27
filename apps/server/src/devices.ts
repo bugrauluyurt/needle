@@ -1,4 +1,5 @@
 import type { WebSocket } from "ws";
+import { REPLACED_CLOSE_CODE } from "@needle/shared";
 import type { ClientMessage, Device, ServerMessage } from "@needle/shared";
 
 type Conn = { socket: WebSocket; user: string; device: Device | null };
@@ -30,7 +31,7 @@ export class DeviceHub {
     }
     if (msg.type === "hello") {
       for (const other of this.conns) {
-        if (other !== conn && other.user === conn.user && other.device?.id === msg.device.id) other.socket.close(4000, "replaced");
+        if (other !== conn && other.user === conn.user && other.device?.id === msg.device.id) other.socket.close(REPLACED_CLOSE_CODE, "replaced");
       }
       conn.device = { ...msg.device, lastSeen: Date.now(), state: null };
       this.broadcast(conn.user);

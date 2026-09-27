@@ -11,6 +11,7 @@ import { InstallHint } from "../components/InstallHint.tsx";
 const LINKS: [string, IconName, string, string][] = [
   ["/stats", "chart", "Your listening", "Hours, top artists and when you listen"],
   ["/downloads", "download", "Downloads", "Music kept on this phone"],
+  ["/requests", "import", "Requests", "Albums and songs you asked for, with progress"],
   ["/radio", "radio", "Radio", "Song, artist and internet radio"],
   ["/settings", "settings", "Settings", "Playback, quality and your server"],
 ];

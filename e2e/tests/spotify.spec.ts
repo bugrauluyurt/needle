@@ -76,7 +76,7 @@ test("searches your library and Spotify in separate sections, and the filters ap
   await filters.getByRole("button", { name: "Playlists", exact: true }).click();
   await expect(library.getByText("No playlists in your library match “neon”.")).toBeVisible();
   await expect(spotify.locator(".card", { hasText: "Chill Hits" })).toBeVisible();
-  await filters.getByRole("button", { name: "Get albums", exact: true }).click();
+  await filters.getByRole("button", { name: "Get music", exact: true }).click();
   await expect(library).toHaveCount(0);
   await expect(spotify).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Not in your library yet" })).toBeVisible();
@@ -126,4 +126,23 @@ test("hides Spotify and stops calling it while Spotify refuses requests", async 
   await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toHaveCount(0);
   expect(calls).toBe(before);
+});
+
+test("never calls Spotify when it's switched off in Needle", async ({ page }) => {
+  await mockSpotify(page);
+  let calls = 0;
+  page.on("request", (r) => {
+    if (r.url().startsWith("https://api.spotify.com/") || r.url().startsWith("https://sdk.scdn.co/")) calls += 1;
+  });
+  await page.route("**/api/capabilities", async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true, spotifyEnabled: false } });
+  });
+  await signIn(page);
+  await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
+  await page.goto("/search?q=glass");
+  await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
+  await page.goto("/settings");
+  await expect(page.getByRole("switch", { name: "Use Spotify in Needle" })).toHaveAttribute("aria-checked", "false");
+  expect(calls).toBe(0);
 });

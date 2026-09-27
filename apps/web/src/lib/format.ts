@@ -1,4 +1,5 @@
 import type { Song } from "@needle/shared";
+import { DAY_MS, HOUR_MS } from "@needle/shared";
 
 const nf = new Intl.NumberFormat("en-US");
 
@@ -25,7 +26,7 @@ export function longDuration(seconds: number): string {
 }
 
 export function hours(ms: number): string {
-  const h = ms / 3_600_000;
+  const h = ms / HOUR_MS;
   if (h < 1) return plural(Math.round(ms / 60_000), "minute");
   return plural(Math.round(h), "hour");
 }
@@ -33,7 +34,7 @@ export function hours(ms: number): string {
 export function ago(iso: string | undefined, now = Date.now()): string {
   if (!iso) return "";
   const then = new Date(iso);
-  const days = Math.floor((new Date(now).setHours(0, 0, 0, 0) - new Date(then).setHours(0, 0, 0, 0)) / 86_400_000);
+  const days = Math.floor((new Date(now).setHours(0, 0, 0, 0) - new Date(then).setHours(0, 0, 0, 0)) / DAY_MS);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
@@ -65,7 +66,7 @@ export function formatLong(song: Song): string {
 export const artistName = (s: Pick<Song, "displayArtist" | "artist">) => s.displayArtist ?? s.artist ?? "Unknown artist";
 
 export function hoursSince(iso: string, now = Date.now()): number {
-  return Math.round((now - Date.parse(iso)) / 3_600_000);
+  return Math.round((now - Date.parse(iso)) / HOUR_MS);
 }
 
 export function minutesSince(iso: string, now = Date.now()): number {

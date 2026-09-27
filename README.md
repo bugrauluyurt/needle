@@ -14,16 +14,21 @@ installs on the iPhone as a home-screen app.
 - **Lyrics** that follow the song and seek when a line is tapped.
 - **Your listening:** hours, top artists and albums, genres and time of day, for any
   period, from Needle's own play log.
-- **Fetching music:** search also lists albums you don't have. **Get album** asks
-  Lidarr and the card follows it through searching, downloading and importing.
-  Artist pages offer similar artists you don't have.
+- **Search** matches text anywhere in titles, artists and albums, across your library
+  and (optionally) Spotify, with list or grid views and sorting everywhere.
+- **Fetching music:** search also lists albums and songs you don't have. **Get album**
+  asks Lidarr; **Get song** fetches one song from Soulseek (slskd). The **Requests**
+  page follows both through searching, downloading and into the library. Artist pages
+  offer similar artists you don't have.
 - **Devices:** every open Needle signed in as you is listed. Pause or skip on another
   device, send your queue there, or pull its music over. A device that stopped
   somewhere else offers to pick up at the same second.
 - **Offline:** download albums, playlists or liked songs to the device (needs the
   `https://` address).
-- **Spotify import** (optional): playlists and liked songs become Navidrome
-  playlists; what you don't own can go to Lidarr.
+- **Spotify** (optional): your Spotify library, search and playback (Premium, not on
+  iPhone) next to your own music, with an account-wide on/off switch. Playlists can
+  also be copied into Navidrome.
+- **Your photo** in the corner, uploaded once and shown on every device.
 - Internet radio, keyboard shortcuts (`?` lists them), lock-screen controls.
 
 ## How it's built
@@ -31,9 +36,11 @@ installs on the iPhone as a home-screen app.
 ```
 apps/web       React 19 + Vite, the app itself (CSS by hand, no framework)
 apps/server    Node 24 + Hono: serves the app, proxies Navidrome, and owns the
-               play log (SQLite), mixes, Lidarr, Spotify and the device hub
-packages/shared  types shared by both (Subsonic and Needle's own API)
-e2e            Playwright tests, a generated test library and a mock Lidarr
+               play log and requests (SQLite), the search index, mixes, Lidarr,
+               slskd + MusicBrainz (single songs), Spotify and the device hub
+packages/shared  types and text matching shared by both
+e2e            Playwright tests, a generated test library, a mock Lidarr and a
+               mock slskd/MusicBrainz
 ```
 
 The browser only talks to the Needle server. `/rest/*` is Navidrome's Subsonic API
@@ -43,7 +50,8 @@ is a WebSocket for the device hub. The Lidarr API key stays on the server, and o
 Navidrome admins can ask Lidarr for music.
 
 The server runs TypeScript directly (Node's type stripping); there's no build step
-for it.
+for it. **[docs/architecture.md](docs/architecture.md)** explains the request paths,
+caching, search, Spotify handling and song downloads with flow charts.
 
 ## Develop
 
@@ -61,8 +69,8 @@ pnpm test                  # unit tests (Vitest)
 pnpm --filter @needle/web build && pnpm e2e   # end-to-end, desktop and iPhone sizes
 ```
 
-`pnpm e2e` starts everything it needs: the test Navidrome, a mock Lidarr and a
-Needle server on the production build.
+`pnpm e2e` starts everything it needs: the test Navidrome, a mock Lidarr, a mock
+slskd/MusicBrainz and a Needle server on the production build.
 
 ## Run
 
@@ -77,9 +85,14 @@ docker run -p 4535:4535 -v needle-data:/data \
 | `NAVIDROME_URL` | Navidrome as the server reaches it |
 | `LIDARR_URL`, `LIDARR_API_KEY` | Optional: turns on fetching music |
 | `LIDARR_QUALITY_PROFILE`, `LIDARR_ROOT_FOLDER` | Optional: otherwise the root folder's defaults |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Optional: the Spotify import |
+| `SLSKD_URL`, `SLSKD_API_KEY` | Optional: turns on single songs from Soulseek |
+| `SOULSEEK_DIR` | slskd's downloads folder as mounted in Needle (default `/soulseek`) |
+| `SINGLES_DIR` | Where fetched songs go; a Navidrome library (default `/singles`) |
+| `MUSICBRAINZ_URL` | Default `https://musicbrainz.org/ws/2`; the tests point it at a mock |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Optional: Spotify |
 | `PUBLIC_URL` | The `https://` address people use; needed for the Spotify sign-in |
-| `DATA_DIR` | Where the play log lives (`/data` in the image) |
+| `DATA_DIR` | Where `needle.db` lives: plays, requests, photos, Spotify sign-in (`/data` in the image) |
 
-In the arr-stack it runs as the `needle` service on port 4535; see that repo's
-`docs/03-clients.md`.
+In the arr-stack it runs as the `needle` service, HTTPS on port 4535 through Tailscale
+Serve; see that repo's `docs/10-music.md` (how it connects to Navidrome, Lidarr and
+slskd) and `docs/03-clients.md` (using it).

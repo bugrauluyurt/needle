@@ -229,6 +229,11 @@
   transform: none;
 }
 
+.card .hover-play.on {
+  opacity: 1;
+  transform: none;
+}
+
 .card .hover-play:hover {
   background: var(--amber-hi);
   transform: scale(1.05);
@@ -1401,6 +1406,10 @@ kbd {
   background: var(--amber);
 }
 
+.get-state.bad {
+  color: var(--live);
+}
+
 .get-state.ok {
   color: var(--ok);
 }
@@ -1650,6 +1659,10 @@ kbd {
   from {
     opacity: 0;
   }
+}
+
+.liked-art.albums {
+  background: linear-gradient(135deg, #7aa2ff, #5b3fd1 55%, #2a1b5e);
 }
 
 .liked-art.sp-liked {

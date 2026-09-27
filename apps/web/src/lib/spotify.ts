@@ -1,4 +1,5 @@
 import type { Song, SpotifyToken } from "@needle/shared";
+import { HOUR_MS, MINUTE_MS } from "@needle/shared";
 import { create } from "zustand";
 import { api } from "./api.ts";
 
@@ -54,8 +55,8 @@ export async function spotifyToken(force = false): Promise<string> {
 
 const BLOCK_KEY = "needle.spotifyBlockedUntil";
 const SHORT_WAIT_S = 5;
-const QUOTA_WAIT_MS = 60 * 60_000;
-const DOWN_WAIT_MS = 5 * 60_000;
+const QUOTA_WAIT_MS = HOUR_MS;
+const DOWN_WAIT_MS = 5 * MINUTE_MS;
 
 export const useSpotifyStatus = create<{ blocked: boolean; until: number }>(() => ({ blocked: false, until: 0 }));
 let unblock: ReturnType<typeof setTimeout> | undefined;

@@ -1,18 +1,87 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { LidarrAlbum } from "@needle/shared";
+import type { LidarrAlbum, LidarrArtist, RequestItem, SongCandidate } from "@needle/shared";
 import { api } from "../lib/api.ts";
 import { toast } from "../state/ui.ts";
+import { keys } from "../queries/keys.ts";
+import { clock } from "../lib/format.ts";
+import { useGetSong } from "../queries/hooks.ts";
 import { Icon } from "./Icon.tsx";
+import { RequestState } from "./RequestState.tsx";
 
-export function GetCard({ album }: { album: LidarrAlbum }) {
+export function RemoteCover({ url, round = false }: { url: string | null; round?: boolean }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className={round ? "art round get-art" : "art get-art"}>
+      {url && !broken ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} /> : <span className="art-fallback"><Icon name={round ? "user" : "album"} size={28} /></span>}
+    </div>
+  );
+}
+
+export function GetArtistCard({ artist }: { artist: LidarrArtist }) {
+  const [state, setState] = useState<"idle" | "busy" | "added">(artist.inLidarr ? "added" : "idle");
+  const add = async () => {
+    setState("busy");
+    try {
+      await api.lidarrAddArtist(artist.foreignArtistId);
+      setState("added");
+      toast(`Lidarr is fetching ${artist.name}’s latest album`);
+    } catch (e) {
+      setState("idle");
+      toast(e instanceof Error ? e.message : "Lidarr didn’t take the request");
+    }
+  };
+  return (
+    <div className="get-card">
+      <RemoteCover url={artist.imageUrl} round />
+      <div className="get-text">
+        <div className="t">{artist.name}</div>
+        <div className="s">Artist</div>
+        {state === "added" ? (
+          <div className="get-state ok">In Lidarr</div>
+        ) : (
+          <button type="button" className="btn light sm" disabled={state === "busy"} onClick={() => void add()}>
+            <Icon name="plus" size={15} />{state === "busy" ? "Adding…" : "Add artist"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function GetSongCard({ song, request }: { song: SongCandidate; request?: RequestItem | undefined }) {
+  const getSong = useGetSong();
+  const [busy, setBusy] = useState(false);
+  const idle = !request || request.state === "failed";
+  return (
+    <div className="get-card">
+      <RemoteCover url={song.coverUrl} />
+      <div className="get-text">
+        <div className="t">{song.title}</div>
+        <div className="s">{[song.artist, song.album, song.duration ? clock(song.duration) : null].filter(Boolean).join(", ")}</div>
+        {idle ? (
+          <>
+            {request ? <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} /> : null}
+            <button type="button" className="btn light sm" disabled={busy} onClick={() => { setBusy(true); void getSong(song).finally(() => setBusy(false)); }}>
+              <Icon name="download" size={15} />{busy ? "Starting…" : request ? "Try again" : "Get song"}
+            </button>
+          </>
+        ) : (
+          <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function GetCard({ album, request }: { album: LidarrAlbum; request?: RequestItem | undefined }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const get = async () => {
     setBusy(true);
     try {
-      const updated = await api.lidarrGet(album.foreignAlbumId);
-      qc.setQueriesData<LidarrAlbum[]>({ queryKey: ["lidarrSearch"] }, (old) => old?.map((a) => (a.foreignAlbumId === album.foreignAlbumId ? { ...a, ...updated, state: updated.state === "missing" || updated.state === "wanted" ? "searching" : updated.state } : a)));
+      await api.lidarrGet(album.foreignAlbumId);
+      await qc.refetchQueries({ queryKey: keys.requests });
       toast(`Lidarr is looking for ${album.title}`);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Lidarr didn’t take the request");
@@ -20,25 +89,20 @@ export function GetCard({ album }: { album: LidarrAlbum }) {
       setBusy(false);
     }
   };
-  const state = album.state;
+  const state = request?.state ?? album.state;
+  const progress = request ? request.progress : album.progress;
   return (
     <div className="get-card">
-      <div className="art get-art">{album.coverUrl ? <img src={album.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="art-fallback"><Icon name="album" size={28} /></span>}</div>
+      <RemoteCover url={album.coverUrl} />
       <div className="get-text">
         <div className="t">{album.title}</div>
         <div className="s">{[album.artist, album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(", ")}</div>
-        {state === "missing" || state === "wanted" ? (
+        {state === "missing" || (state === "wanted" && !request) ? (
           <button type="button" className="btn light sm" disabled={busy} onClick={() => void get()}>
             <Icon name="download" size={15} />{busy ? "Asking Lidarr…" : "Get album"}
           </button>
-        ) : state === "searching" ? (
-          <div className="get-state"><span className="spin" />Searching indexers</div>
-        ) : state === "downloading" ? (
-          <div className="get-state"><div className="line static" style={{ "--p": `${Math.round((album.progress ?? 0) * 100)}%` } as React.CSSProperties}><i /></div>Downloading, {Math.round((album.progress ?? 0) * 100)}%</div>
-        ) : state === "importing" ? (
-          <div className="get-state"><span className="spin" />Adding to your library</div>
         ) : (
-          <div className="get-state ok">In your library</div>
+          <RequestState state={state} progress={progress} />
         )}
       </div>
     </div>

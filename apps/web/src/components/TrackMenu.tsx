@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { create } from "zustand";
 import type { Song } from "@needle/shared";
 import { player } from "../player/controller.ts";
-import { useAddToPlaylist, useCapabilities, useCreatePlaylist, usePlaylists, useStarredIds, useToggleStar } from "../queries/hooks.ts";
+import { useAddToPlaylist, useCapabilities, useCreatePlaylist, useGetSong, usePlaylists, useStarredIds, useToggleStar } from "../queries/hooks.ts";
 import { useSpotifyPlaylistEdits, useSpotifyPlaylists, useSpotifySaved, useToggleSpotifySave } from "../queries/spotify.ts";
 import { api } from "../lib/api.ts";
 import { spotifyLink } from "../lib/spotify.ts";
@@ -99,7 +99,9 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
   const star = useToggleStar();
   const saved = useSpotifySaved();
   const save = useToggleSpotifySave();
-  const lidarr = Boolean(useCapabilities().data?.lidarr);
+  const caps = useCapabilities().data;
+  const lidarr = Boolean(caps?.lidarr);
+  const getSong = useGetSong();
   const song = songs[0];
   if (!song) return null;
   const spotify = songs.every((s) => s.source === "spotify");
@@ -109,7 +111,7 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
   const { artistId, albumId } = song;
   const toggleLike = () => songs.forEach((s) => (s.source === "spotify" ? save.mutate({ song: s, on: !liked }) : star.mutate({ kind: "song", item: s, on: !liked })));
   const getAlbum = async () => {
-    const [hit] = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => []);
+    const { albums: [hit] } = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => ({ albums: [] }));
     if (!hit) {
       toast("Lidarr couldn’t find that album");
       return;
@@ -134,6 +136,11 @@ function Items({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | und
       <DM.Item className="menu-item" onSelect={toggleLike}>
         <Row icon={liked ? "heartFill" : "heart"}>{liked ? `Remove from ${spotify ? "Spotify " : ""}liked songs` : `Add to ${spotify ? "Spotify " : ""}liked songs`}</Row>
       </DM.Item>
+      {single && spotify && caps?.songs ? (
+        <DM.Item className="menu-item" onSelect={() => void getSong({ id: song.id, title: song.title, artist: song.artists?.[0]?.name ?? song.artist ?? "", album: song.album ?? null, duration: song.duration ?? null, year: song.year ?? null, coverUrl: song.coverArt ?? null })}>
+          <Row icon="download">Get this song</Row>
+        </DM.Item>
+      ) : null}
       {single && spotify && lidarr ? (
         <DM.Item className="menu-item" onSelect={() => void getAlbum()}>
           <Row icon="download">Get this album through Lidarr</Row>
