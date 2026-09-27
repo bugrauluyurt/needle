@@ -7,6 +7,7 @@ import { loadOffline } from "./offline/store.ts";
 import { startPlayer } from "./player/controller.ts";
 import { queryClient } from "./queries/client.ts";
 import { prefetchStart } from "./queries/hooks.ts";
+import { clearSpotifyCache } from "./queries/spotify.ts";
 import { startRemote, stopRemote } from "./remote/client.ts";
 import { useSession } from "./state/session.ts";
 import { Login } from "./pages/Login.tsx";
@@ -74,6 +75,7 @@ export function App() {
     if (!signedIn) {
       stopRemote();
       queryClient.clear();
+      clearSpotifyCache();
       return;
     }
     prefetchStart(queryClient);

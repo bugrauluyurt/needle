@@ -12,3 +12,12 @@ export function useDelayed(active: boolean, ms = 350): boolean {
   }, [active, ms]);
   return active && shown;
 }
+
+export function useDebounced<T>(value: T, ms = 450): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}

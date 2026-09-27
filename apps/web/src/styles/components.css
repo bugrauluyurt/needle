@@ -1262,6 +1262,10 @@ kbd {
   margin-top: 0;
 }
 
+.res-top > section {
+  min-width: 0;
+}
+
 .top-card {
   background: var(--groove);
   border-radius: 12px;

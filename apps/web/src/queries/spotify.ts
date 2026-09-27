@@ -1,13 +1,18 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Query } from "@tanstack/react-query";
 import type { Song } from "@needle/shared";
-import { albumSongs, image, isSpotify, rawId, sp, SpotifyApiError, toSong } from "../lib/spotify.ts";
+import { albumSongs, image, isSpotify, rawId, sp, SpotifyApiError, toSong, useSpotifyStatus } from "../lib/spotify.ts";
 import type { SpArtist, SpPlaylist } from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
 import { useArtistCover, useCapabilities } from "./hooks.ts";
+import { useSession } from "../state/session.ts";
 import { fold } from "@needle/shared";
 
-const TEN_MIN = 10 * 60_000;
+const HOUR = 60 * 60_000;
+const LIBRARY_STALE = 6 * HOUR;
+const CACHE_PREFIX = "needle.sp.";
+const PERSISTED = new Set(["me", "playlists", "liked", "albums", "followed", "artistImage"]);
 
 export const spKeys = {
   me: ["sp", "me"] as const,
@@ -22,13 +27,52 @@ export const spKeys = {
   search: (q: string) => ["sp", "search", q] as const,
 };
 
+queryClient.setQueryDefaults(["sp"], { refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, staleTime: HOUR });
+
+const cacheKey = (key: readonly unknown[]) => `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(key)}`;
+
+queryClient.getQueryCache().subscribe((e) => {
+  if (e.type !== "updated") return;
+  const { queryKey, state } = e.query as Query;
+  if (queryKey[0] !== "sp" || !PERSISTED.has(String(queryKey[1])) || state.status !== "success") return;
+  try {
+    localStorage.setItem(cacheKey(queryKey), JSON.stringify({ at: state.dataUpdatedAt, data: state.data }));
+  } catch {
+    return;
+  }
+});
+
+useSpotifyStatus.subscribe((s) => {
+  if (s.blocked) queryClient.removeQueries({ queryKey: ["sp"] });
+});
+
+export function clearSpotifyCache() {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
+  } catch {
+    return;
+  }
+}
+
+function cached<T>(key: readonly unknown[], on: boolean): { initialData?: T; initialDataUpdatedAt?: number } {
+  if (!on) return {};
+  try {
+    const hit = JSON.parse(localStorage.getItem(cacheKey(key)) ?? "null") as { at: number; data: T } | null;
+    return hit ? { initialData: hit.data, initialDataUpdatedAt: hit.at } : {};
+  } catch {
+    return {};
+  }
+}
+
 export function useSpotifyOn(): boolean {
-  return Boolean(useCapabilities().data?.spotifyConnected);
+  const connected = Boolean(useCapabilities().data?.spotifyConnected);
+  const blocked = useSpotifyStatus((s) => s.blocked);
+  return connected && !blocked;
 }
 
 export const useSpotifyMe = () => {
   const on = useSpotifyOn();
-  return useQuery({ queryKey: spKeys.me, queryFn: sp.me, enabled: on, staleTime: Infinity });
+  return useQuery({ queryKey: spKeys.me, queryFn: sp.me, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.me, on) });
 };
 
 export type SpotifyPlaylistEntry = SpPlaylist & { mine: boolean };
@@ -40,7 +84,8 @@ export function useSpotifyPlaylists() {
     queryKey: spKeys.playlists,
     queryFn: async (): Promise<SpotifyPlaylistEntry[]> => (await sp.playlists()).map((p) => ({ ...p, mine: p.owner.id === me.data?.id || p.collaborative })),
     enabled: on && Boolean(me.data),
-    staleTime: TEN_MIN,
+    staleTime: LIBRARY_STALE,
+    ...cached<SpotifyPlaylistEntry[]>(spKeys.playlists, on),
   });
 }
 
@@ -54,7 +99,6 @@ export const spotifyPlaylistQuery = (id: string) => queryOptions({
     });
     return { meta, songs };
   },
-  staleTime: 60_000,
 });
 
 export function useSpotifyPlaylist(id: string | undefined) {
@@ -64,7 +108,7 @@ export function useSpotifyPlaylist(id: string | undefined) {
 
 export function useSpotifyLiked() {
   const on = useSpotifyOn();
-  return useQuery({ queryKey: spKeys.liked, queryFn: sp.liked, enabled: on, staleTime: TEN_MIN });
+  return useQuery({ queryKey: spKeys.liked, queryFn: sp.liked, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.liked, on) });
 }
 
 export function useSpotifySaved(): Set<string> {
@@ -74,12 +118,12 @@ export function useSpotifySaved(): Set<string> {
 
 export function useSpotifyAlbums() {
   const on = useSpotifyOn();
-  return useQuery({ queryKey: spKeys.albums, queryFn: sp.albums, enabled: on, staleTime: TEN_MIN });
+  return useQuery({ queryKey: spKeys.albums, queryFn: sp.albums, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.albums, on) });
 }
 
 export function useSpotifyFollowed() {
   const on = useSpotifyOn();
-  return useQuery({ queryKey: spKeys.followed, queryFn: sp.followed, enabled: on, staleTime: TEN_MIN });
+  return useQuery({ queryKey: spKeys.followed, queryFn: sp.followed, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.followed, on) });
 }
 
 export function useToggleSpotifyFollow() {
@@ -109,7 +153,6 @@ export const spotifyAlbumQuery = (id: string) => queryOptions({
     const album = await sp.album(id);
     return { album, songs: albumSongs(album) };
   },
-  staleTime: TEN_MIN,
 });
 
 export function useSpotifyAlbum(id: string | undefined) {
@@ -123,7 +166,6 @@ export const spotifyArtistQuery = (id: string) => queryOptions({
     const [artist, albums] = await Promise.all([sp.artist(id), sp.artistAlbums(id)]);
     return { artist, albums };
   },
-  staleTime: TEN_MIN,
 });
 
 export async function spotifyArtistSongs(id: string, albumLimit = 3): Promise<{ artist: SpArtist; songs: Song[] }> {
@@ -154,8 +196,7 @@ export function useSpotifySearch(q: string) {
     },
     enabled: on && q.trim().length > 0,
     placeholderData: keepPreviousData,
-    staleTime: 60_000,
-  });
+    });
 }
 
 export function useToggleSpotifySave() {
@@ -252,6 +293,7 @@ export function useArtistImage(id: string | undefined, name: string | undefined)
     },
     enabled: on && !spotify && !local && Boolean(name),
     staleTime: Infinity,
+    ...cached<string | null>(spKeys.artistImage(name ?? ""), on),
   });
   return spotify ? image(artist?.artist.images, 640) : (local ?? found ?? undefined);
 }

@@ -5,6 +5,7 @@ import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
 import { player, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
+import { useSpotifyOn } from "../queries/spotify.ts";
 import { current, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
@@ -177,7 +178,8 @@ export function Shell() {
   const shortcuts = useUi((s) => s.shortcutsOpen);
   const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station));
   const wide = useMediaQuery("(min-width: 1180px)");
-  const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback);
+  const spotifyOn = useSpotifyOn();
+  const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   useShortcuts();
   useEffect(() => {
     if (spotifyPlayback) warmSpotify();

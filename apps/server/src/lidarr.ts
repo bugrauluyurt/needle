@@ -63,7 +63,7 @@ export class Lidarr {
 
   private cover(images: Image[] | undefined): string | null {
     const img = images?.find((i) => i.coverType === "cover") ?? images?.[0];
-    return img?.remoteUrl ?? null;
+    return img?.remoteUrl ?? (img?.url?.startsWith("http") ? img.url : null);
   }
 
   private async activity(): Promise<{ queue: Map<number, QueueRecord>; searching: Set<number> }> {

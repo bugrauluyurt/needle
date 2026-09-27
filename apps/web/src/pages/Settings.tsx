@@ -15,6 +15,7 @@ import { canCrossfade } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSession } from "../state/session.ts";
+import { clearSpotifyCache } from "../queries/spotify.ts";
 import type { Quality, Settings as S } from "../state/settings.ts";
 import { useSettings } from "../state/settings.ts";
 import { toast, useUi } from "../state/ui.ts";
@@ -172,7 +173,7 @@ function SpotifySettings() {
     <>
       {!caps.data.spotifyReconnect ? (
         <Row title="Spotify is connected" hint="Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium.">
-          <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))}>Disconnect</button>
+          <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => { clearSpotifyCache(); return qc.invalidateQueries({ queryKey: keys.capabilities }); })}>Disconnect</button>
         </Row>
       ) : (
         <Row title="Reconnect Spotify" hint="Needle needs a few more Spotify permissions, to play songs, edit playlists and follow artists. Reconnect once to grant them.">

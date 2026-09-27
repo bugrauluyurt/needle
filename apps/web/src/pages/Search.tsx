@@ -13,7 +13,7 @@ import { SearchField } from "../components/SearchField.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { artistName, clock, plural } from "../lib/format.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
-import { useDelayed } from "../lib/useDelayed.ts";
+import { useDebounced, useDelayed } from "../lib/useDelayed.ts";
 import { TILE_COLORS } from "../lib/palette.ts";
 
 import { player } from "../player/controller.ts";
@@ -291,7 +291,7 @@ function LibrarySource({ q, filter, setFilter }: { q: string; filter: Filter; se
 }
 
 function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; setFilter: (f: Filter) => void }) {
-  const { data, isError } = useSpotifySearch(q);
+  const { data, isError } = useSpotifySearch(useDebounced(q));
   const { data: own = [] } = useSpotifyPlaylists();
   const songs = data?.songs ?? [];
   const albums = data?.albums ?? [];
@@ -315,6 +315,7 @@ function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; se
     cardBlock("Artists", artists.map(spotifyArtistItem)),
     cardBlock("Playlists", playlists.map(spotifyPlaylistItem)),
   ];
+  if (isError) return null;
   return (
     <Source
       title="On Spotify"

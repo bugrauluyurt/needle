@@ -106,3 +106,24 @@ test("plays Spotify songs through the Web Playback SDK and moves on when one end
   await expect(bar(page).getByRole("button", { name: "Add to liked songs" })).toBeVisible();
   await expect.poll(() => mock.saved).toEqual(["DELETE spotify:track:t2"]);
 });
+
+test("hides Spotify and stops calling it while Spotify refuses requests", async ({ page }) => {
+  await mockSpotify(page);
+  let calls = 0;
+  await page.route("https://api.spotify.com/v1/**", (route) => {
+    calls += 1;
+    return route.fulfill({ status: 429, headers: { "retry-after": "33000", "access-control-allow-origin": "*" }, json: { error: { status: 429, message: "Too many requests", reason: "QUOTA_EXCEEDED" } } });
+  });
+  await signIn(page);
+  await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
+  await expect.poll(() => calls).toBeGreaterThan(0);
+  await expect(page.getByRole("heading", { name: "Your Spotify playlists" })).toHaveCount(0);
+  await expect(page.locator("nav.side .lib-item", { hasText: "Liked on Spotify" })).toHaveCount(0);
+  const before = calls;
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
+  await page.goto("/search?q=glass");
+  await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toHaveCount(0);
+  expect(calls).toBe(before);
+});

@@ -84,13 +84,13 @@ function SpotifyRows() {
   const mine = (playlists.data ?? []).toSorted((a, b) => Number(b.mine) - Number(a.mine));
   return (
     <>
-      {playlists.isPending || mine.length ? (
+      {playlists.isLoading || mine.length ? (
         <>
           <RowHeader title="Your Spotify playlists" to="/library" />
-          <CardRow>{playlists.isPending ? <CardSkeletons /> : mine.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />)}</CardRow>
+          <CardRow>{playlists.isLoading ? <CardSkeletons /> : mine.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />)}</CardRow>
         </>
       ) : null}
-      {albums.isPending || albums.data?.length ? (
+      {albums.isLoading || albums.data?.length ? (
         <>
           <RowHeader title="Albums you saved on Spotify" to="/library" />
           <CardRow>{albums.data ? albums.data.map((a) => <SpotifyAlbumCard key={a.id} album={a} />) : <CardSkeletons />}</CardRow>

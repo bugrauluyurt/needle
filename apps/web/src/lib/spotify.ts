@@ -1,4 +1,5 @@
 import type { Song, SpotifyToken } from "@needle/shared";
+import { create } from "zustand";
 import { api } from "./api.ts";
 
 export const SPOTIFY_API = "https://api.spotify.com/v1";
@@ -51,22 +52,61 @@ export async function spotifyToken(force = false): Promise<string> {
   return token.accessToken;
 }
 
+const BLOCK_KEY = "needle.spotifyBlockedUntil";
+const SHORT_WAIT_S = 5;
+const QUOTA_WAIT_MS = 60 * 60_000;
+const DOWN_WAIT_MS = 5 * 60_000;
+
+export const useSpotifyStatus = create<{ blocked: boolean; until: number }>(() => ({ blocked: false, until: 0 }));
+let unblock: ReturnType<typeof setTimeout> | undefined;
+
+function blockUntil(until: number) {
+  clearTimeout(unblock);
+  const ms = until - Date.now();
+  if (ms <= 0) return;
+  useSpotifyStatus.setState({ blocked: true, until });
+  unblock = setTimeout(() => useSpotifyStatus.setState({ blocked: false, until: 0 }), ms);
+}
+
+function block(ms: number) {
+  const until = Date.now() + ms;
+  try {
+    localStorage.setItem(BLOCK_KEY, String(until));
+  } catch {
+    return blockUntil(until);
+  }
+  blockUntil(until);
+}
+
+try {
+  blockUntil(Number(localStorage.getItem(BLOCK_KEY) ?? 0));
+} catch {
+  blockUntil(0);
+}
+
 async function req<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, "Spotify is unavailable for now");
   const url = path.startsWith("http") ? path : `${SPOTIFY_API}${path}`;
   const headers = new Headers(init.headers);
-  headers.set("authorization", `Bearer ${await spotifyToken()}`);
+  const bearer = await spotifyToken().catch((e: unknown) => {
+    block(DOWN_WAIT_MS);
+    throw e;
+  });
+  headers.set("authorization", `Bearer ${bearer}`);
   if (init.body) headers.set("content-type", "application/json");
   const res = await fetch(url, { ...init, headers });
   if (res.status === 401 && retry) {
     await spotifyToken(true);
     return req<T>(path, init, false);
   }
-  if (res.status === 429 && retry) {
-    await new Promise((r) => setTimeout(r, Number(res.headers.get("retry-after") ?? 2) * 1000));
+  const wait = Number(res.headers.get("retry-after") ?? Number.NaN);
+  if (res.status === 429 && retry && wait <= SHORT_WAIT_S) {
+    await new Promise((r) => setTimeout(r, wait * 1000));
     return req<T>(path, init, false);
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    if (res.status === 429) block(Number.isNaN(wait) ? QUOTA_WAIT_MS : wait * 1000);
     throw new SpotifyApiError(res.status, body?.error?.message ?? `Spotify answered ${res.status}`);
   }
   const text = await res.text();

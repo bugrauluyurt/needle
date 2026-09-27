@@ -46,7 +46,7 @@ describe("Lidarr", () => {
         { album: { id: 1, title: "Moon Safari", foreignAlbumId: "f1", albumType: "Album", monitored: true, releaseDate: "1998-01-16T00:00:00Z", artist: { artistName: "Air", foreignArtistId: "a1" }, images: [{ coverType: "cover", remoteUrl: "https://img/1" }] } },
         { album: { id: 2, title: "Talkie Walkie", foreignAlbumId: "f2", albumType: "Album", artist: { artistName: "Air", foreignArtistId: "a1" } } },
         { album: { id: 3, title: "Pocket Symphony", foreignAlbumId: "f3", albumType: "Album", artist: { artistName: "Air", foreignArtistId: "a1" } } },
-        { album: { title: "Love 2", foreignAlbumId: "f4", albumType: "Album", artist: { artistName: "Air", foreignArtistId: "a1" }, releases: [{ trackCount: 12, monitored: true }] } },
+        { album: { title: "Love 2", foreignAlbumId: "f4", albumType: "Album", artist: { artistName: "Air", foreignArtistId: "a1" }, releases: [{ trackCount: 12, monitored: true }], images: [{ coverType: "cover", url: "https://img/4" }, { coverType: "disc", url: "/MediaCover/4/disc.jpg" }] } },
         { album: { title: "Remix Single", foreignAlbumId: "f5", albumType: "Single", artist: { artistName: "Air", foreignArtistId: "a1" } } },
         { artist: { artistName: "Air", foreignArtistId: "a1" } },
       ]],
@@ -60,6 +60,7 @@ describe("Lidarr", () => {
     ]);
     const albums = await lidarr.searchAlbums("air");
     expect(albums.map((a) => [a.title, a.state])).toEqual([["Moon Safari", "searching"], ["Pocket Symphony", "downloading"], ["Love 2", "missing"]]);
+    expect(albums.map((a) => a.coverUrl)).toEqual(["https://img/1", null, "https://img/4"]);
     expect(albums[0]).toMatchObject({ year: 1998, trackCount: 10, coverUrl: "https://img/1", artist: "Air" });
     expect(albums[1]?.progress).toBeCloseTo(0.64);
     expect(albums[2]?.trackCount).toBe(12);
