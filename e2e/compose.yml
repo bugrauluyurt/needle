@@ -1,0 +1,23 @@
+name: needle-test
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    user: "${UID:-1000}:${GID:-1000}"
+    ports: ["127.0.0.1:14533:4533"]
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_DEVAUTOCREATEADMINPASSWORD: needle-test
+      ND_SCANSCHEDULE: "0"
+      ND_SCANNER_PURGEMISSING: always
+      ND_AGENTS: ""
+      ND_LASTFM_ENABLED: "false"
+      ND_ENABLEINSIGHTSCOLLECTOR: "false"
+      ND_LOGLEVEL: warn
+    volumes:
+      - ./.library:/music:ro
+      - ./.navidrome:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4533/ping"]
+      interval: 2s
+      retries: 30

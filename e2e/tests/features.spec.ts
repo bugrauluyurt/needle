@@ -1,0 +1,80 @@
+import { expect, test } from "@playwright/test";
+import { bar, openAlbum, playContext, position, signIn } from "./helpers.ts";
+
+test("follows the lyrics line by line and seeks when a line is clicked", async ({ page }) => {
+  await signIn(page);
+  await openAlbum(page, "Afterglow Avenue");
+  await playContext(page);
+  await bar(page).getByRole("button", { name: "Lyrics" }).click();
+  await expect(page).toHaveURL(/\/lyrics$/);
+  await expect(page.getByText("Lyrics, timed, from the song’s file")).toBeVisible();
+  await expect(page.locator(".lyric.now")).toHaveText("Streetlights hum a quiet tune", { timeout: 8_000 });
+  await page.locator(".lyric", { hasText: "Every story fades by noon" }).click();
+  await expect(page.locator(".lyric.now")).toHaveText("Every story fades by noon");
+  expect(await position(page)).toBeGreaterThanOrEqual(18);
+
+  await bar(page).getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("No lyrics for this song")).toBeVisible();
+});
+
+test("shows listening stats for each period", async ({ page }) => {
+  await signIn(page, "/stats");
+  await expect(page.locator(".stat-lede")).toContainText("hours of music");
+  await expect(page.locator(".stat-box", { hasText: "Top artists" }).locator(".rank")).toHaveCount(5);
+  await expect(page.locator(".hours i")).toHaveCount(24);
+  await page.getByRole("button", { name: "All time" }).click();
+  await expect(page.locator(".stat-lede")).toContainText("so far");
+});
+
+test("plays internet radio through the Needle server", async ({ page }) => {
+  await signIn(page, "/radio");
+  const station = page.locator(".station", { hasText: "Test Signal" });
+  await station.getByRole("button", { name: "Play Test Signal" }).click();
+  await expect(bar(page).locator(".np-t")).toHaveText("Test Signal");
+  await expect(bar(page).locator(".live")).toBeVisible();
+  await expect(station.getByText("Playing")).toBeVisible({ timeout: 10_000 });
+  await station.getByRole("button", { name: "Stop Test Signal" }).click();
+  await expect(station.getByText("Playing")).toHaveCount(0);
+});
+
+test("starts an artist radio", async ({ page }) => {
+  await signIn(page);
+  await openAlbum(page, "Night Transit");
+  await page.locator(".meta-artist").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Neon Harbor" })).toBeVisible();
+  await page.getByRole("button", { name: "Artist radio" }).click();
+  await expect(bar(page).locator(".np-t")).not.toHaveText("Nothing playing");
+});
+
+test("downloads an album and plays it with no connection", async ({ page, context }) => {
+  await signIn(page);
+  await openAlbum(page, "Salt & Signal");
+  await page.locator(".actbar").getByRole("button", { name: "Download" }).click();
+  await expect(page.getByRole("button", { name: "Remove download" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".tr .dlmark")).toHaveCount(5);
+
+  await page.goto("/downloads");
+  await expect(page.locator(".dl-row", { hasText: "Salt & Signal" })).toContainText("5 songs");
+  await context.setOffline(true);
+  await page.locator(".dl-row", { hasText: "Salt & Signal" }).getByRole("button", { name: "Play Salt & Signal" }).click();
+  await expect(bar(page).locator(".np-t")).toHaveText("Salt & Signal");
+  await expect.poll(() => position(page), { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
+  await context.setOffline(false);
+
+  await page.locator(".dl-row", { hasText: "Salt & Signal" }).getByRole("button", { name: "Remove Salt & Signal from this device" }).click();
+  await expect(page.locator(".dl-row", { hasText: "Salt & Signal" })).toHaveCount(0);
+});
+
+test("changes settings and keeps them", async ({ page }) => {
+  await signIn(page, "/settings");
+  await page.getByRole("radio", { name: "Per song" }).click();
+  await page.getByRole("switch", { name: "Colour from album art" }).click();
+  await page.getByLabel("Device name").fill("Test bench");
+  await page.getByLabel("Device name").press("Enter");
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "Per song" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("switch", { name: "Colour from album art" })).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByLabel("Device name")).toHaveValue("Test bench");
+  await expect(page.getByText("Import from Spotify")).toBeVisible();
+  await expect(page.getByText("Get music through Lidarr")).toBeVisible();
+});

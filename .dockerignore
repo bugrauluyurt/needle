@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+e2e/.library
+e2e/.navidrome
+e2e/.data
+test-results
+playwright-report
+.git
+data

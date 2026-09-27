@@ -1,0 +1,28 @@
+import type { Period } from "@needle/shared";
+import type { AlbumListType } from "../lib/subsonic.ts";
+
+export const keys = {
+  album: (id: string) => ["album", id] as const,
+  albumList: (type: AlbumListType, size: number, extra = "") => ["albumList", type, size, extra] as const,
+  artist: (id: string) => ["artist", id] as const,
+  artists: ["artists"] as const,
+  artistInfo: (id: string) => ["artistInfo", id] as const,
+  topSongs: (name: string) => ["topSongs", name] as const,
+  playlists: ["playlists"] as const,
+  playlist: (id: string) => ["playlist", id] as const,
+  starred: ["starred"] as const,
+  genres: ["genres"] as const,
+  genreSongs: (genre: string) => ["genreSongs", genre] as const,
+  search: (q: string) => ["search", q] as const,
+  mixes: ["mixes"] as const,
+  stats: (period: Period) => ["stats", period] as const,
+  lyrics: (id: string) => ["lyrics", id] as const,
+  radios: ["radios"] as const,
+  capabilities: ["capabilities"] as const,
+  lidarrSearch: (q: string) => ["lidarrSearch", q] as const,
+  lidarrArtists: (names: string) => ["lidarrArtists", names] as const,
+  scan: ["scan"] as const,
+  similar: (id: string) => ["similar", id] as const,
+  spotifyPlaylists: ["spotifyPlaylists"] as const,
+  user: (name: string) => ["user", name] as const,
+};

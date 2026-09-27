@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+e2e/.library/
+e2e/.navidrome/
+e2e/.data/
+*.tsbuildinfo
+.env
+.env.local
+data/
