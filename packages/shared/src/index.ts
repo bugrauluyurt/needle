@@ -160,7 +160,7 @@ export type RequestItem = {
   user?: string;
 };
 
-export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean };
+export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean; lastSeen: number | null };
 
 export type Me = { user: string; photo: string | null };
 

@@ -49,7 +49,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     ? new SongDownloads({ slskd, requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
     : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
-  const people = new People(db, navidrome);
+  const people = new People(db);
   const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer });
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
@@ -63,6 +63,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     const r = await navidrome.call<{ user: { adminRole?: boolean } }>(auth, "getUser", { username: auth.user });
     const admin = Boolean(r.user.adminRole);
     admins.set(auth.user, { admin, until: Date.now() + ADMIN_TTL });
+    people.seen(auth.user, admin);
     return admin;
   };
 
@@ -240,15 +241,15 @@ export function createApp(config: Config, db: DatabaseSync) {
   app.get("/api/people", async (c) => {
     const auth = c.get("auth");
     if (!(await isAdmin(auth))) return refuse(c, "Only Navidrome admins can see people");
-    return c.json(await people.list(auth));
+    return c.json(people.list());
   });
 
   app.put("/api/people/:user", async (c) => {
     const auth = c.get("auth");
     if (!(await isAdmin(auth))) return refuse(c, "Only Navidrome admins can change people");
-    const person = (await people.list(auth)).find((p) => p.user === c.req.param("user"));
-    if (!person) return c.json({ error: "No such Navidrome user" }, 404);
-    return c.json(people.set(person, await c.req.json<PersonPatch>()));
+    const user = c.req.param("user").trim();
+    if (!user) return c.json({ error: "Which user?" }, 400);
+    return c.json(people.set(user, await c.req.json<PersonPatch>()));
   });
 
   app.get("/api/requests", async (c) => {

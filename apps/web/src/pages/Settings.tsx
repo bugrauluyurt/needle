@@ -6,7 +6,7 @@ import type { CheckState, ImportResult, Person } from "@needle/shared";
 import { Icon } from "../components/Icon.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { api } from "../lib/api.ts";
-import { minutesSince, plural, sizeLabel } from "../lib/format.ts";
+import { ago, minutesSince, plural, sizeLabel } from "../lib/format.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { AvatarFace, TopBar } from "../layout/TopBar.tsx";
@@ -266,7 +266,7 @@ function PersonRow({ p }: { p: Person }) {
     <div className="set-row person-row">
       <div>
         <b>{p.user}{p.admin ? <span className="person-badge">Admin</span> : null}</b>
-        <span>{p.admin ? "Manages Navidrome, and can always request music." : "Listens with their own likes, playlists and stats."}</span>
+        <span>{p.admin ? "Manages Navidrome, and can always request music." : p.lastSeen ? `Last here ${ago(new Date(p.lastSeen).toISOString())}.` : "Hasn’t opened Needle yet."}</span>
       </div>
       <label className="person-switch">
         <span>Request music</span>
@@ -285,7 +285,7 @@ function People() {
   return (
     <>
       <h2>People</h2>
-      <p className="conn-lede">Everyone with a Navidrome account can sign in to Needle. Create accounts in Navidrome; switch on what each person may do here.</p>
+      <p className="conn-lede">Everyone with a Navidrome account can sign in to Needle, and shows up here once they have. Create accounts in Navidrome (or with add-viewer.py); switch on what each person may do here.</p>
       {isPending ? <p className="muted source-note"><span className="spin" />Loading people…</p> : people.map((p) => <PersonRow key={p.user} p={p} />)}
     </>
   );

@@ -7,6 +7,12 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+### Fixed
+- Settings → People only listed the admin: Navidrome's Subsonic API won't list other
+  users, even to admins. Needle now remembers everyone who opens it, and admins (or
+  arr-stack's add-viewer.py) can set up someone who hasn't opened it yet; they show as
+  "Hasn't opened Needle yet".
+
 ## 1.2.0 - 2026-09-28
 
 ### Added

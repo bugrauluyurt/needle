@@ -181,7 +181,6 @@ describe("people and permissions", () => {
       const json = (body: object) => Promise.resolve(new Response(JSON.stringify({ "subsonic-response": { status: "ok", ...body } })));
       if (!url.pathname.startsWith("/rest/")) return Promise.resolve(new Response("[]"));
       if (url.pathname.startsWith("/rest/ping")) return json({});
-      if (url.pathname.startsWith("/rest/getUsers")) return json({ users: { user: USERS } });
       if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: me?.adminRole ?? false } });
       return Promise.resolve(new Response("?", { status: 404 }));
     }));
@@ -202,7 +201,7 @@ describe("people and permissions", () => {
     expect((await app.request("/api/spotify/token", { headers: as("sam") })).status).toBe(403);
 
     const put = await app.request("/api/people/sam", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true, canSpotify: true }) });
-    expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true });
+    expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true, lastSeen: expect.any(Number) as number });
     expect(await caps("sam")).toMatchObject({ lidarr: true, spotify: true });
   });
 
@@ -214,6 +213,12 @@ describe("people and permissions", () => {
     expect((await app.request("/api/requests?everyone=1", { headers: as("sam") })).status).toBe(403);
     const list = (await (await app.request("/api/people", { headers: as("alex") })).json()) as { user: string; canRequest: boolean }[];
     expect(list.map((p) => [p.user, p.canRequest])).toEqual([["alex", true], ["sam", true]]);
-    expect((await app.request("/api/people/nobody", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: "{}" })).status).toBe(404);
+  });
+
+  it("lets admins set up someone who hasn't opened Needle yet", async () => {
+    const put = await app.request("/api/people/newcomer", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true }) });
+    expect(await put.json()).toEqual({ user: "newcomer", admin: false, canRequest: true, canSpotify: false, lastSeen: null });
+    const list = (await (await app.request("/api/people", { headers: as("alex") })).json()) as { user: string; lastSeen: number | null }[];
+    expect(list.map((p) => [p.user, p.lastSeen === null])).toEqual([["alex", false], ["newcomer", true]]);
   });
 });
