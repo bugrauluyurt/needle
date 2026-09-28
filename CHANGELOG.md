@@ -11,6 +11,13 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 - Albums with no cover show a record illustration in Search's "Not in your library
   yet" and on the Requests page, like everywhere else.
 
+### Fixed
+- Downloads Lidarr couldn't import (such as "Album match is not close enough") can be
+  removed from Downloading now, or replaced with **Find another copy**, which blocks
+  that release and has Lidarr search for a different one.
+- On phones, the Requests page's buttons no longer run off the screen when a status
+  message is long.
+
 ## 1.0.0 - 2026-09-28
 
 The first public release.

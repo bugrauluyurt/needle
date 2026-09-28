@@ -113,6 +113,17 @@ describe("Lidarr", () => {
 });
 
 describe("Lidarr downloads", () => {
+  it("removes a download and blocks that release, optionally searching for another", async () => {
+    const calls = mockFetch([[/DELETE \/api\/v1\/queue\/7/, () => ({})]]);
+    const lidarr = new Lidarr({ url: "http://lidarr", apiKey: "k", qualityProfile: null, rootFolder: null });
+    await lidarr.removeDownload(7, true);
+    await lidarr.removeDownload(7, false);
+    expect(calls.map((c) => new URL(c.url).search)).toEqual([
+      "?removeFromClient=true&blocklist=true&skipRedownload=false",
+      "?removeFromClient=true&blocklist=true&skipRedownload=true",
+    ]);
+  });
+
   it("lists everything in Lidarr's queue with progress and failures", async () => {
     mockFetch([[/GET \/api\/v1\/queue/, () => ({ records: [
       { id: 1, size: 100, sizeleft: 25, status: "downloading", trackedDownloadState: "downloading", album: { title: "Tidal Lines", foreignAlbumId: "f", images: [{ coverType: "cover", remoteUrl: "https://c/1" }] }, artist: { artistName: "Glass Harbor", foreignArtistId: "a" } },

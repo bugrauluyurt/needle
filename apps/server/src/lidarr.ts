@@ -218,6 +218,11 @@ export class Lidarr {
       .sort((a, b) => Number(Boolean(b.id)) - Number(Boolean(a.id)) || (b.ratings?.votes ?? 0) - (a.ratings?.votes ?? 0))[0];
   }
 
+  async removeDownload(id: number, findAnother: boolean): Promise<void> {
+    const q = new URLSearchParams({ removeFromClient: "true", blocklist: "true", skipRedownload: String(!findAnother) });
+    await this.req(`/queue/${id}?${q.toString()}`, { method: "DELETE" });
+  }
+
   async downloads(): Promise<DownloadItem[]> {
     const { records } = await this.req<{ records: QueueRecord[] }>("/queue?pageSize=100&includeAlbum=true&includeArtist=true");
     return records.map((r): DownloadItem => {

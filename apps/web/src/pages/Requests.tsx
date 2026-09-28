@@ -44,6 +44,16 @@ function RequestRow({ r }: { r: RequestItem }) {
 const ACTIVE_SONG = new Set<RequestItem["state"]>(["searching", "downloading", "moving"]);
 
 function DownloadRow({ d }: { d: DownloadItem }) {
+  const qc = useQueryClient();
+  const remove = (findAnother: boolean) =>
+    void api.removeDownload(d.id, findAnother).then(
+      () => {
+        toast(findAnother ? `Looking for another copy of ${d.title}` : `Removed ${d.title}`);
+        void qc.invalidateQueries({ queryKey: keys.downloads });
+        void qc.invalidateQueries({ queryKey: keys.requests });
+      },
+      (e: unknown) => toast(e instanceof Error ? e.message : "Lidarr didn’t remove it"),
+    );
   return (
     <li className="req-row">
       <RemoteCover url={d.coverUrl} record={String(d.id)} />
@@ -51,6 +61,12 @@ function DownloadRow({ d }: { d: DownloadItem }) {
         <div className="t">{d.title}</div>
         <div className="s">Album, {d.artist}</div>
         <RequestState state={d.state} progress={d.progress} detail={d.detail} />
+      </div>
+      <div className="req-acts">
+        {d.state === "failed" ? <button type="button" className="btn ghost sm" onClick={() => remove(true)}>Find another copy</button> : null}
+        <button type="button" className="icon-btn" aria-label={`Remove ${d.title} from downloads`} onClick={() => remove(false)}>
+          <Icon name="close" size={18} />
+        </button>
       </div>
     </li>
   );

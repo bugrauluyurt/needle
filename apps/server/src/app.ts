@@ -263,6 +263,13 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json(await r.lidarr.downloads());
   });
 
+  app.delete("/api/lidarr/downloads/:id", async (c) => {
+    const r = await needLidarr(c);
+    if (r.error) return r.error;
+    await r.lidarr.removeDownload(Number(c.req.param("id")), c.req.query("find") === "1");
+    return c.body(null, 204);
+  });
+
   app.get("/api/spotify/login", (c) => {
     const r = needSpotify(c);
     return r.error ?? c.json({ url: r.spotify.authorizeUrl(c.get("auth").user) });

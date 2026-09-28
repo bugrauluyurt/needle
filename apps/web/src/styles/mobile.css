@@ -1238,3 +1238,27 @@
   padding: 12px;
   font-size: 14px;
 }
+
+.phone-app .req-row {
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.phone-app .req-row .get-art {
+  width: 52px;
+  height: 52px;
+}
+
+.phone-app .req-row:has(.req-acts .btn) {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.phone-app .req-row:has(.req-acts .btn) .req-acts {
+  flex-basis: 100%;
+  padding-left: 62px;
+}
+
+.phone-app .req-acts .icon-btn {
+  margin-left: auto;
+}

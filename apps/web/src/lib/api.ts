@@ -54,6 +54,7 @@ export const api = {
   lidarrGet: (foreignAlbumId: string) => post<LidarrAlbum>(`/lidarr/albums/${encodeURIComponent(foreignAlbumId)}`),
   lidarrArtists: (names: string[]) => request<LidarrArtist[]>(`/lidarr/artists?names=${names.map(encodeURIComponent).join("|")}`),
   lidarrDownloads: () => request<DownloadItem[]>("/lidarr/downloads"),
+  removeDownload: (id: number, findAnother: boolean) => request<void>(`/lidarr/downloads/${id}${findAnother ? "?find=1" : ""}`, { method: "DELETE" }),
   spotifyLogin: () => request<{ url: string }>("/spotify/login"),
   spotifyToken: () => request<SpotifyToken>("/spotify/token"),
   spotifyDisconnect: () => request<void>("/spotify", { method: "DELETE" }),
