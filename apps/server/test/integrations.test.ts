@@ -217,6 +217,15 @@ describe("library search", () => {
     expect((await search.search(auth, "  ")).song).toBeUndefined();
   });
 
+  it("lists every song, newest first", async () => {
+    mockFetch([
+      [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "1", count: 2 } })],
+      [/POST \/rest\/search3/, () => ok({ searchResult3: { song: [{ id: "old", title: "A", created: "2024-01-01" }, { id: "new", title: "B", created: "2025-06-01" }] } })],
+    ]);
+    const songs = await new LibrarySearch(new Navidrome("http://nd")).songs(auth);
+    expect(songs.map((s) => s.id)).toEqual(["new", "old"]);
+  });
+
   it("builds the index once and rebuilds it after a new scan", async () => {
     let calls = mockFetch(library("1"));
     const search = new LibrarySearch(new Navidrome("http://nd"));

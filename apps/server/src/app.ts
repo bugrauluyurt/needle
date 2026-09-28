@@ -4,6 +4,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { compress } from "hono/compress";
 import type { Capabilities, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
 import { songKey } from "@needle/shared";
 import type { Config } from "./config.ts";
@@ -144,6 +145,7 @@ export function createApp(config: Config, db: DatabaseSync) {
   });
 
   app.get("/api/search", async (c) => c.json(await library.search(c.get("auth"), c.req.query("q") ?? "")));
+  app.get("/api/library/songs", compress(), async (c) => c.json(await library.songs(c.get("auth"))));
 
   app.get("/api/me", (c) => {
     const { user } = c.get("auth");

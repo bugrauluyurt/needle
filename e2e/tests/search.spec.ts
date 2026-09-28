@@ -43,6 +43,17 @@ test("finds text anywhere in names, in search and in the library list", async ({
   await expect(results.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
 });
 
+test("your library opens unfiltered, filters like search and lists every song", async ({ page }) => {
+  await signIn(page, "/library");
+  const chips = page.getByRole("group", { name: "Filter your library" });
+  await expect(chips.getByRole("button")).toHaveText(["All", "Songs", "Albums", "Artists", "Playlists"]);
+  await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+  await chips.getByRole("button", { name: "Songs" }).click();
+  await expect(page.locator(".library-page .tr").first()).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search in your library" }).fill("harbor");
+  await expect(page.locator(".library-page .top-card h2")).toHaveText("Neon Harbor");
+});
+
 test("remembers recent searches", async ({ page }) => {
   await signIn(page, "/search");
   await page.getByRole("searchbox", { name: "Search", exact: true }).fill("Kasa");

@@ -1,4 +1,4 @@
-import type { BrowseTile, Capabilities, ConnectionCheck, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { BrowseTile, Capabilities, ConnectionCheck, Song, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -46,6 +46,7 @@ export const api = {
   removeRequest: (id: number) => request<void>(`/requests/${id}`, { method: "DELETE" }),
   setPhoto: (photo: Blob) => request<void>("/me/photo", { method: "PUT", body: photo, headers: { "content-type": photo.type } }),
   removePhoto: () => request<void>("/me/photo", { method: "DELETE" }),
+  librarySongs: () => request<Song[]>("/library/songs"),
   search: (q: string, signal?: AbortSignal) => request<SearchResult3>(`/search?q=${encodeURIComponent(q)}`, signal ? { signal } : {}),
   lidarrSearch: (q: string) => request<LidarrSearch>(`/lidarr/search?q=${encodeURIComponent(q)}`),
   lidarrAlbums: (ids: string[]) => request<LidarrAlbum[]>(`/lidarr/albums?ids=${ids.map(encodeURIComponent).join(",")}`),

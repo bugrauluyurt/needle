@@ -48,6 +48,11 @@ export class LibrarySearch {
     };
   }
 
+  async songs(auth: Auth): Promise<Song[]> {
+    const { songs } = await this.index(auth);
+    return songs.toSorted((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
+  }
+
   async songKeys(auth: Auth): Promise<Set<string>> {
     const { songs } = await this.index(auth);
     return new Set(songs.map((s) => songKey(s.artist ?? "", s.title)));

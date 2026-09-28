@@ -40,7 +40,7 @@ const ACTIVE = new Set(["searching", "downloading", "importing", "moving"]);
 const REQUEST_POLL_MS = 4_000;
 const WAITING_POLL_MS = 60_000;
 
-const LIBRARY_KEYS = [keys.allAlbums, keys.artists, ["albumList"], keys.browse, ["search"], ["songCandidates"], ["lidarrSearch"], keys.genres];
+const LIBRARY_KEYS = [keys.allAlbums, keys.artists, keys.librarySongs, ["albumList"], keys.browse, ["search"], ["songCandidates"], ["lidarrSearch"], keys.genres];
 let arrived: Set<number> | null = null;
 
 queryClient.getQueryCache().subscribe((e) => {
@@ -100,6 +100,8 @@ export function prefetchStart(qc: QueryClient) {
 
 export const useArtist = (id: string | undefined) =>
   useQuery({ queryKey: keys.artist(id ?? ""), queryFn: () => sub.artist(id ?? ""), enabled: Boolean(id) });
+
+export const useLibrarySongs = (enabled: boolean) => useQuery({ queryKey: keys.librarySongs, queryFn: api.librarySongs, enabled, staleTime: 60_000 });
 
 export const useArtists = () => useQuery({ queryKey: keys.artists, queryFn: sub.artists, staleTime: 60_000 });
 

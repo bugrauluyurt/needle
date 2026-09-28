@@ -21,6 +21,7 @@ export const keys = {
   requests: ["requests"] as const,
   downloads: ["downloads"] as const,
   status: ["status"] as const,
+  librarySongs: ["librarySongs"] as const,
   songCandidates: (q: string) => ["songCandidates", q] as const,
   mixes: ["mixes"] as const,
   stats: (period: Period) => ["stats", period] as const,

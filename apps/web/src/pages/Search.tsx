@@ -1,22 +1,20 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useIsFetching } from "@tanstack/react-query";
+import type { BrowseTile } from "@needle/shared";
 import { GetCard, GetSongCard } from "../components/GetCard.tsx";
-import type { BrowseTile, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
-import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "../components/Cards.tsx";
-import { Collection, SORT_LABELS } from "../components/Collection.tsx";
-import type { CollectionItem, SortOption } from "../components/Collection.tsx";
+import { RowHeader } from "../components/Cards.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
-import { artistName, clock, plural } from "../lib/format.ts";
+import { cardBlock, FILTERS, FilterChips, LIBRARY_FILTERS, LibrarySource, Source } from "../components/SearchResults.tsx";
+import type { Block, Filter, Top } from "../components/SearchResults.tsx";
+import { artistName } from "../lib/format.ts";
 import { useDebounced, useDelayed } from "../lib/useDelayed.ts";
 import { TILE_COLORS } from "../lib/palette.ts";
-
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
-import { useBrowse, useCapabilities, useLidarrSearch, usePlaylists, useRequests, useSearch, useSongCandidates } from "../queries/hooks.ts";
+import { useBrowse, useCapabilities, useLidarrSearch, useRequests, useSearch, useSongCandidates } from "../queries/hooks.ts";
 import { usePageTone } from "../layout/Shell.tsx";
 import { SearchHeader } from "../layout/SearchHeader.tsx";
 import { albumPath } from "../lib/paths.ts";
@@ -26,8 +24,6 @@ import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylist
 const tile = (i: number) => TILE_COLORS[i % TILE_COLORS.length] ?? "#1E3C78";
 
 const RECENT_KEY = "needle.recentSearches";
-const FILTERS = ["All", "Songs", "Albums", "Artists", "Playlists", "Get music"] as const;
-type Filter = (typeof FILTERS)[number];
 
 function loadRecent(): string[] {
   try {
@@ -94,154 +90,6 @@ function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPic
         </div>
       )}
     </>
-  );
-}
-
-type Top = { to: string; art: ReactNode; title: string; subtitle: string; onPlay: () => void };
-
-function TopResult({ top }: { top: Top }) {
-  return (
-    <div className="top-card">
-      <Link to={top.to} className="top-link">
-        {top.art}
-        <h2>{top.title}</h2>
-        <div className="muted">{top.subtitle}</div>
-      </Link>
-      <button type="button" className="bigplay" aria-label={`Play ${top.title}`} onClick={top.onPlay}>
-        <Icon name="play" size={22} />
-      </button>
-    </div>
-  );
-}
-
-function SongsMini({ songs, context }: { songs: Song[]; context: PlayContext }) {
-  return (
-    <div className="songs-mini">
-      {songs.slice(0, 4).map((s, i) => (
-        <button key={s.id} type="button" className="song-mini" onClick={() => player.playSongs(songs, i, context)}>
-          <Art id={s.coverArt} px={40} />
-          <div className="mini-text">
-            <div className="t">{s.title}</div>
-            <div className="s">{artistName(s)}, {s.album}</div>
-          </div>
-          <span className="tabular muted">{clock(s.duration)}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-type Kind = "Songs" | "Albums" | "Artists" | "Playlists";
-type Block = { kind: Kind; count: number; row: ReactNode; all: ReactNode };
-type SourceProps = {
-  title: string;
-  subtitle?: string;
-  filter: Filter;
-  setFilter: (f: Filter) => void;
-  blocks: Block[];
-  top?: Top | undefined;
-  songs?: Song[];
-  context: PlayContext;
-  status: "loading" | "error" | "ok";
-  empty: (kind: string) => string;
-};
-
-const SEARCH_SORTS: Record<Exclude<Kind, "Songs">, SortOption[]> = {
-  Albums: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year]],
-  Artists: [["default", "Most relevant"], ["title", SORT_LABELS.title]],
-  Playlists: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Creator"]],
-};
-
-function cardBlock(kind: Exclude<Kind, "Songs">, items: CollectionItem[]): Block {
-  return {
-    kind,
-    count: items.length,
-    row: <CardRow>{items.map((i) => <ItemCard key={i.key} item={i} />)}</CardRow>,
-    all: <Collection id={`search-${kind.toLowerCase()}`} title={kind} items={items} sorts={SEARCH_SORTS[kind]} />,
-  };
-}
-
-function Source({ title, subtitle, filter, setFilter, blocks, top, songs = [], context, status, empty }: SourceProps) {
-  const kind = filter === "All" ? null : filter;
-  const visible = blocks.filter((b) => b.count && (!kind || b.kind === kind));
-  const body = () => {
-    if (status === "loading") return <p className="muted source-note"><span className="spin" />Searching…</p>;
-    if (status === "error") return <p className="muted source-note">{title} didn’t answer. Try again in a moment.</p>;
-    if (!visible.length) return <p className="muted source-note">{empty(kind?.toLowerCase() ?? "")}</p>;
-    if (kind) return visible[0]?.all;
-    return (
-      <>
-        {top || songs.length ? (
-          <div className="res-top">
-            {top ? (
-              <section>
-                <RowHeader title="Top result" />
-                <TopResult top={top} />
-              </section>
-            ) : null}
-            {songs.length ? (
-              <section>
-                <RowHeader title="Songs" action={<button type="button" className="show-all" onClick={() => setFilter("Songs")}>Show all</button>} />
-                <SongsMini songs={songs} context={context} />
-              </section>
-            ) : null}
-          </div>
-        ) : null}
-        {visible.filter((b) => b.kind !== "Songs").map((b) => (
-          <Fragment key={b.kind}>
-            <RowHeader title={b.kind} action={<button type="button" className="show-all" onClick={() => setFilter(b.kind)}>Show all</button>} />
-            {b.row}
-          </Fragment>
-        ))}
-      </>
-    );
-  };
-  return (
-    <section className="res-source" aria-label={title}>
-      <div className="source-h">
-        <h2>{title}</h2>
-        {subtitle ? <p className="sub">{subtitle}</p> : null}
-      </div>
-      {body()}
-    </section>
-  );
-}
-
-function LibrarySource({ q, filter, setFilter }: { q: string; filter: Filter; setFilter: (f: Filter) => void }) {
-  const { data, isError } = useSearch(q);
-  const { data: playlists = [] } = usePlaylists();
-  const matchingPlaylists = playlists.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
-  const songs = data?.song ?? [];
-  const albums = data?.album ?? [];
-  const artists = data?.artist ?? [];
-  const context: PlayContext = { kind: "search", name: `Search for “${q}”` };
-  const artist = artists.find((a) => a.name.toLowerCase() === q.toLowerCase()) ?? artists[0];
-  const song = songs[0];
-  const top: Top | undefined = artist
-    ? { to: `/artist/${artist.id}`, art: <Art id={artist.coverArt} px={104} round fallback="artist" />, title: artist.name, subtitle: `Artist${artist.albumCount ? `, ${plural(artist.albumCount, "album")} in your library` : ""}`, onPlay: () => void playArtist(artist) }
-    : song
-      ? { to: song.albumId ? albumPath(song.albumId) : "#", art: <Art id={song.coverArt} px={104} />, title: song.title, subtitle: `Song, ${artistName(song)}`, onPlay: () => player.playSongs([song], 0, context) }
-      : undefined;
-  const blocks: Block[] = [
-    { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album /> },
-    cardBlock("Albums", albums.map((a) => albumItem(a))),
-    cardBlock("Artists", artists.map((a) => artistItem(a))),
-    cardBlock("Playlists", matchingPlaylists.map((p): CollectionItem => ({
-      key: p.id, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />, title: p.name, subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "",
-    }))),
-  ];
-  return (
-    <Source
-      title="In your library"
-      filter={filter}
-      setFilter={setFilter}
-      blocks={blocks}
-      top={top}
-      songs={songs}
-      context={context}
-      status={data ? "ok" : isError ? "error" : "loading"}
-      empty={(kind) => (kind ? `No ${kind} in your library match “${q}”.` : `Nothing in your library matches “${q}”.`)}
-    />
   );
 }
 
@@ -343,11 +191,7 @@ function Results({ q }: { q: string }) {
   const local = filter !== "Get music";
   return (
     <div className={isFetching ? "results fetching" : "results"}>
-      <div className="chips filter-chips" role="group" aria-label="Filter results">
-        {FILTERS.filter((f) => f !== "Get music" || albumsOn || songsOn).map((f) => (
-          <button key={f} type="button" className="pill" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
-        ))}
-      </div>
+      <FilterChips filters={albumsOn || songsOn ? FILTERS : LIBRARY_FILTERS} value={filter} onChange={setFilter} label="Filter results" />
       {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} /> : null}
       {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} /> : null}
       {(albumsOn || songsOn) && filter !== "Playlists" && filter !== "Artists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}

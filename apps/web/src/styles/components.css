@@ -1256,6 +1256,25 @@ kbd {
   padding: 0 0 18px;
 }
 
+.filter-chips .get-pill {
+  position: relative;
+  margin-left: 13px;
+}
+
+.filter-chips .get-pill::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 7px;
+  bottom: 7px;
+  width: 1px;
+  background: var(--ridge);
+}
+
+.get-pill:not([aria-pressed="true"]) .i {
+  color: var(--amber);
+}
+
 .res-source + .res-source {
   margin-top: 40px;
   padding-top: 28px;

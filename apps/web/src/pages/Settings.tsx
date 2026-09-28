@@ -221,16 +221,30 @@ const CHECK_WORDS: Record<CheckState, string> = { ok: "Working", warn: "Needs a 
 
 function Connections({ publicUrl }: { publicUrl: string | null }) {
   const qc = useQueryClient();
-  const { data, isFetching } = useQuery({ queryKey: keys.status, queryFn: () => api.status(false), staleTime: 30_000 });
-  const again = () => void qc.fetchQuery({ queryKey: keys.status, queryFn: () => api.status(true), staleTime: 0 });
-  const checks = [...browserChecks(publicUrl, location.origin, window.isSecureContext), ...(data?.checks ?? [])];
+  const { data, isFetching, dataUpdatedAt } = useQuery({ queryKey: keys.status, queryFn: () => api.status(false), staleTime: 30_000 });
+  const local = browserChecks(publicUrl, location.origin, window.isSecureContext);
+  const checks = [...local, ...(data?.checks ?? [])];
+  const again = async () => {
+    const fresh = await qc.fetchQuery({ queryKey: keys.status, queryFn: () => api.status(true), staleTime: 0 }).catch(() => null);
+    if (!fresh) {
+      toast("Needle’s server didn’t answer. Try again in a moment.");
+      return;
+    }
+    const bad = [...local, ...fresh.checks].filter((c) => c.state === "warn" || c.state === "fail").length;
+    toast(bad ? `${plural(bad, "connection")} need${bad === 1 ? "s" : ""} a look` : "Everything is working");
+  };
   return (
     <>
       <div className="conn-head">
         <h2>Connections</h2>
-        <button type="button" className="btn ghost sm" disabled={isFetching} onClick={again}><Icon name="refresh" size={15} />Check again</button>
+        <button type="button" className="btn ghost sm" disabled={isFetching} onClick={() => void again()}>
+          {isFetching ? <><span className="spin" />Checking…</> : <><Icon name="refresh" size={15} />Check again</>}
+        </button>
       </div>
-      <p className="conn-lede">What Needle and its server can reach. Only admins see this.</p>
+      <p className="conn-lede">
+        What Needle and its server can reach. Only admins see this.
+        {dataUpdatedAt ? ` Checked at ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.` : ""}
+      </p>
       {checks.map((c) => (
         <Row key={c.id} title={c.label} hint={<>{c.detail}{c.fix && c.state !== "ok" ? <em className="conn-fix">{c.fix}</em> : null}</>}>
           <span className={`conn-state ${c.state}`}>{CHECK_WORDS[c.state]}</span>
