@@ -7,6 +7,8 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+## 1.2.1 - 2026-09-28
+
 ### Fixed
 - Settings → People only listed the admin: Navidrome's Subsonic API won't list other
   users, even to admins. Needle now remembers everyone who opens it, and admins (or
