@@ -245,7 +245,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
           <span className="r" role="columnheader">#</span>
           <span role="columnheader">Title</span>
           {album ? <span role="columnheader">Album</span> : null}
-          {column ? <span role="columnheader">{column.label}</span> : null}
+          {column ? <span className="col" role="columnheader">{column.label}</span> : null}
           <span className="r" role="columnheader" aria-label="Duration">
             <Icon name="clock" size={16} />
           </span>

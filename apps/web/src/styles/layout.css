@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 2px 12px 14px;
+  padding: 0 12px 12px 6px;
   font-family: var(--display);
   font-weight: 800;
   font-size: 21px;

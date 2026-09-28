@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { coverUrl } from "../lib/subsonic.ts";
+import { hashPalette } from "../lib/palette.ts";
 import { image } from "../lib/spotify.ts";
 import type { SpImage } from "../lib/spotify.ts";
 import { Icon } from "./Icon.tsx";
@@ -25,6 +26,19 @@ type ArtProps = {
   fallback?: "album" | "artist";
 };
 
+function RecordArt({ seed }: { seed: string }) {
+  const [, label] = hashPalette(seed);
+  return (
+    <svg className="art-record" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="40" fill="#0f0e13" />
+      {[34, 28, 22].map((r) => <circle key={r} cx="50" cy="50" r={r} className="groove" />)}
+      <path d="M22.3 34A32 32 0 0 1 39.1 19.9" className="sheen" />
+      <circle cx="50" cy="50" r="13" fill={label} />
+      <circle cx="50" cy="50" r="2.2" fill="#0f0e13" />
+    </svg>
+  );
+}
+
 function ArtImpl({ id, images, version, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
   const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px), version);
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
@@ -45,7 +59,7 @@ function ArtImpl({ id, images, version, px, round = false, className, alt = "", 
       ) : null}
       {state === "failed" || !url ? (
         <span className="art-fallback">
-          <Icon name={fallback === "artist" ? "user" : "album"} size={Math.max(18, Math.min(48, px / 3))} />
+          {fallback === "artist" ? <Icon name="user" size={Math.max(18, Math.min(48, px / 3))} /> : <RecordArt seed={id ?? alt} />}
         </span>
       ) : null}
     </div>

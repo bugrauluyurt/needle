@@ -138,7 +138,7 @@ export function Sidebar() {
     <nav className="side" aria-label="Main">
       <div className="panel side-top">
         <Link to="/" className="brand" aria-label="Needle home">
-          <Logo />
+          <Logo size={34} />
           <span>Needle</span>
         </Link>
         <Nav to="/" icon="home" label="Home" />

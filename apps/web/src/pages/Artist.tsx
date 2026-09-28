@@ -19,7 +19,7 @@ import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
-import { useArtist, useArtistInfo, useCapabilities, useLidarrArtists, useStarredIds, useTopSongs } from "../queries/hooks.ts";
+import { useArtist, useArtistInfo, useArtists, useCapabilities, useLidarrArtists, useStarredIds, useTopSongs } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
 
 const BIO_SOURCE = "From Last.fm, through Navidrome";
@@ -85,8 +85,11 @@ export default function ArtistPage() {
     if (top.length >= 3) return top.slice(0, POPULAR_MORE);
     return albumQueries.flatMap((q) => q.data?.song ?? []).sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0)).slice(0, POPULAR_MORE);
   }, [top, albumQueries]);
-  const inLibrary = (info?.similarArtist ?? []).filter((a) => a.id);
-  const missingNames = (info?.similarArtist ?? []).filter((a) => !a.id).map((a) => a.name).slice(0, 6);
+  const { data: library } = useArtists();
+  const known = useMemo(() => new Set((library ?? []).map((a) => a.id)), [library]);
+  const similar = info?.similarArtist ?? [];
+  const inLibrary = similar.filter((a) => known.has(a.id));
+  const missingNames = similar.filter((a) => !known.has(a.id)).map((a) => a.name).slice(0, 6);
   const lidarrOn = Boolean(caps.data?.lidarr);
   const missing = useLidarrArtists(missingNames, lidarrOn);
   const banner = useArtistImage(artist?.id, artist?.name);
@@ -95,7 +98,7 @@ export default function ArtistPage() {
   const [showAllPopular, setShowAllPopular] = useState(false);
 
   if (isLoading) return <PageSkeleton />;
-  if (isError || !artist) return <NotFoundState what="artist" error={error} retry={() => void refetch()} />;
+  if (isError || !artist || !albums.length) return <NotFoundState what="artist" error={error} retry={() => void refetch()} name={artist?.name} />;
 
   const songCount = albums.reduce((n, a) => n + a.songCount, 0);
   const plays = albums.reduce((n, a) => n + (a.playCount ?? 0), 0);

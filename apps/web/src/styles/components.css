@@ -42,6 +42,24 @@
   background: linear-gradient(135deg, var(--groove), var(--ridge));
 }
 
+.art-record {
+  width: 100%;
+  height: 100%;
+}
+
+.art-record .groove {
+  fill: none;
+  stroke: rgba(243, 239, 232, 0.09);
+  stroke-width: 0.7;
+}
+
+.art-record .sheen {
+  fill: none;
+  stroke: rgba(243, 239, 232, 0.22);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
 .art.collage {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -72,6 +90,7 @@
   justify-content: space-between;
   padding: 12px 12px 10px;
   color: #fff;
+  container-type: inline-size;
 }
 
 .mix-art small {
@@ -84,12 +103,12 @@
 .mix-art b {
   font-family: var(--display);
   font-weight: 800;
-  font-size: clamp(18px, 1.9vw, 25px);
+  font-size: clamp(13px, 15.5cqi, 25px);
   line-height: 0.95;
   letter-spacing: -0.03em;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   position: relative;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .mix-art::after {
@@ -499,7 +518,8 @@
 
 /* tracks */
 .tracks {
-  --cols: 44px minmax(0, 1fr) 132px;
+  --cols: 44px minmax(0, 1fr) 120px;
+  container: tracks / inline-size;
   padding-bottom: 8px;
 }
 
@@ -508,15 +528,28 @@
 }
 
 .tracks.with-col {
-  --cols: 44px minmax(0, 1fr) var(--col, 110px) 132px;
+  --cols: 44px minmax(0, 1fr) var(--col, 64px) 120px;
 }
 
 .tracks.with-album {
-  --cols: 44px minmax(0, 1.5fr) minmax(0, 1fr) 132px;
+  --cols: 44px minmax(0, 1.5fr) minmax(0, 1fr) 120px;
 }
 
 .tracks.with-album.with-col {
-  --cols: 44px minmax(0, 1.5fr) minmax(0, 1fr) var(--col, 120px) 132px;
+  --cols: 44px minmax(0, 1.5fr) minmax(0, 1fr) var(--col, 80px) 120px;
+}
+
+@media (min-width: 768px) {
+  @container tracks (max-width: 560px) {
+    .with-col .th,
+    .with-col .tr {
+      grid-template-columns: 44px minmax(0, 1fr) 120px;
+    }
+
+    .with-col .col {
+      display: none;
+    }
+  }
 }
 
 .th,
@@ -662,9 +695,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tr .col {
   font-variant-numeric: tabular-nums;
 }
 
@@ -1661,7 +1691,7 @@ kbd {
 }
 
 .liked-art.artists {
-  background: linear-gradient(135deg, #ff9a6b, #d9446b 55%, #5b1f4f);
+  background: linear-gradient(135deg, #7fe0d0, #1fb5a0 50%, #0f5750);
 }
 
 .liked-art.albums {
@@ -1676,9 +1706,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 10px;
+  height: 24px;
+  padding: 0 9px 0 6px;
+  border-radius: 12px;
   background: rgb(61 220 132 / 0.16);
   color: #6fe7a6;
   font-family: var(--ui);
@@ -1960,8 +1990,8 @@ kbd {
 }
 
 .sp-badge.compact {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   justify-content: center;
   border-radius: 50%;

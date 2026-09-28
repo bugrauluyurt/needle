@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router";
 import { MobileBack } from "../layout/Mobile.tsx";
 import { useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
@@ -77,21 +78,38 @@ export function PageSkeleton() {
   );
 }
 
-export function NotFoundState({ what, error, retry }: { what: string; error?: unknown; retry?: () => void }) {
+export function NotFoundState({ what, error, retry, name }: { what: string; error?: unknown; retry?: () => void; name?: string | undefined }) {
   const mobile = useIsMobile();
+  const navigate = useNavigate();
   const missing = !error || (error instanceof SubsonicError && error.code === 70);
+  const back = <button type="button" className="btn ghost" onClick={() => void navigate(-1)}>Go back</button>;
   return (
     <>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="empty">
         <div className="empty-in">
-          <h1>{missing ? `This ${what} isn’t here` : "Couldn’t reach your music"}</h1>
-          <p>{missing ? "It may have been removed from Navidrome, or the link is wrong." : "Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it."}</p>
-          {!missing && retry ? (
-            <div className="acts">
-              <button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button>
-            </div>
-          ) : null}
+          {!missing ? (
+            <>
+              <h1>Couldn’t reach your music</h1>
+              <p>Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it.</p>
+              {retry ? <div className="acts"><button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button></div> : null}
+            </>
+          ) : name ? (
+            <>
+              <h1>{name} isn’t in your library</h1>
+              <p>None of their music is in your library. Search for them to find their albums and songs.</p>
+              <div className="acts">
+                <button type="button" className="btn primary" onClick={() => void navigate(`/search?q=${encodeURIComponent(name)}`)}><Icon name="search" size={16} />Search for {name}</button>
+                {back}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1>This {what} isn’t here</h1>
+              <p>It may have been removed from Navidrome, or the link is wrong.</p>
+              <div className="acts">{back}</div>
+            </>
+          )}
         </div>
       </div>
     </>
