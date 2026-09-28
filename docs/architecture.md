@@ -1,9 +1,9 @@
 # Needle architecture
 
 How the app is put together, how a request travels, where data lives, and the
-flows that are easy to get wrong (Spotify's limits, fetching songs). For how Needle
-sits inside the home server (Navidrome, Lidarr, slskd, Tailscale), see arr-stack's
-`docs/10-music.md`.
+flows that are easy to get wrong (Spotify's limits, fetching songs). For installing
+Needle and connecting it to Navidrome, Lidarr, slskd and Spotify, see the
+[README](../README.md).
 
 ## The big picture
 
@@ -86,7 +86,9 @@ Spotify (configured, connected, allowed to play, needs reconnecting, switched on
  every search ──► all words must appear somewhere in title/artist/album (accents folded,
                   Turkish ı/İ handled); title matches rank first
  browse tiles ──► built from the same index: top genres, decades, recently added, random
- index freshness ──► getScanStatus checked at most once a minute; rebuilt when it changes
+ index freshness ──► getScanStatus checked at most every 10 s; rebuilt when it changes
+                     (the app keeps search results for 5 s, so a new song shows up
+                      within seconds of Navidrome's scan)
 ```
 
 ## Playback
@@ -158,9 +160,19 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
 
 ## Updates
 
-The service worker (`vite-plugin-pwa`, auto-update) checks for a new version when
-the tab becomes visible. When the new one takes over, the app reloads, but only
-once nothing is playing.
+The service worker (`vite-plugin-pwa`, prompt mode) checks for a new version when
+the tab becomes visible. A new version waits until you choose **Update Needle** in
+the account menu (a dot on the avatar says one is ready), so music never stops on
+its own. **Refresh page** in the same menu reloads without updating.
+
+## Offline downloads
+
+Albums and playlists saved for offline listening live in the browser, not on the
+server: audio files in Cache Storage, the list of saved songs in IndexedDB, both
+private to the site's origin on that one device. A browser can't show them as a
+folder. The Downloads page says so and shows each album's size and the space used
+and left (`navigator.storage.estimate()`). A download that stalls for 60 s fails
+that song; unfinished albums resume when the app opens, or with **Try again**.
 
 ## Tests
 

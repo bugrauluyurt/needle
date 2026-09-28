@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { songKey } from "@needle/shared";
 import { openDatabase } from "../src/db.ts";
@@ -10,6 +13,9 @@ import { Requests } from "../src/requests.ts";
 import { pickFiles, singlePath } from "../src/soulseek.ts";
 import type { SlskdFile } from "../src/soulseek.ts";
 import { matchKey, normalize, Spotify } from "../src/spotify.ts";
+import { loadConfig } from "../src/config.ts";
+import { Slskd } from "../src/soulseek.ts";
+import { Status } from "../src/status.ts";
 
 type Route = [RegExp, (url: URL, init?: RequestInit) => unknown];
 
@@ -125,7 +131,7 @@ describe("Lidarr downloads", () => {
 describe("Spotify import", () => {
   it("matches tracks against the library and writes a Navidrome playlist", async () => {
     const db = openDatabase(":memory:");
-    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at) VALUES ('bugra', 'tok', 'ref', ?)").run(Date.now() + 3_600_000);
+    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at) VALUES ('alex', 'tok', 'ref', ?)").run(Date.now() + 3_600_000);
     const calls = mockFetch([
       [/GET \/v1\/playlists\/p1$/, () => ({ name: "Road trip" })],
       [/GET \/v1\/playlists\/p1\/items/, () => ({
@@ -145,7 +151,7 @@ describe("Spotify import", () => {
       [/POST \/rest\/createPlaylist/, () => ok({ playlist: { id: "pl9", name: "Road trip (from Spotify)" } })],
     ]);
     const spotify = new Spotify({ clientId: "id", clientSecret: "secret", publicUrl: "https://needle", db, navidrome: new Navidrome("http://nd") });
-    const r = await spotify.import({ user: "bugra", token: "t", salt: "s" }, "p1");
+    const r = await spotify.import({ user: "alex", token: "t", salt: "s" }, "p1");
     expect(r).toMatchObject({ source: "Road trip", total: 3, matched: 2, playlistId: "pl9" });
     expect(r.missing).toEqual([{ title: "Nowhere", artist: "Nobody", album: "Missing" }]);
     const create = calls.find((c) => c.url.endsWith("/rest/createPlaylist"));
@@ -156,7 +162,7 @@ describe("Spotify import", () => {
   it("builds a PKCE sign-in link and rejects unknown states", async () => {
     const db = openDatabase(":memory:");
     const spotify = new Spotify({ clientId: "id", clientSecret: "secret", publicUrl: "https://needle.example", db, navidrome: new Navidrome("http://nd") });
-    const url = new URL(spotify.authorizeUrl("bugra"));
+    const url = new URL(spotify.authorizeUrl("alex"));
     expect(url.searchParams.get("redirect_uri")).toBe("https://needle.example/api/spotify/callback");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("scope")).toContain("user-library-read");
@@ -165,27 +171,27 @@ describe("Spotify import", () => {
 
   it("refreshes an expired token, keeps its scope, and reports whether it can play", async () => {
     const db = openDatabase(":memory:");
-    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES ('bugra', 'old', 'ref', ?, 'streaming user-library-read')").run(Date.now() - 1000);
+    db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES ('alex', 'old', 'ref', ?, 'streaming user-library-read')").run(Date.now() - 1000);
     db.prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES ('guest', 'tok', 'ref', ?, 'user-library-read')").run(Date.now() + 3_600_000);
     const calls = mockFetch([[/POST \/api\/token/, () => ({ access_token: "fresh", expires_in: 3600 })]]);
     const spotify = new Spotify({ clientId: "id", clientSecret: "secret", publicUrl: "https://needle", db, navidrome: new Navidrome("http://nd") });
-    const t = await spotify.token("bugra");
+    const t = await spotify.token("alex");
     expect(t.accessToken).toBe("fresh");
     expect(t.expiresAt).toBeGreaterThan(Date.now());
     expect(new URLSearchParams(calls[0]?.body).get("refresh_token")).toBe("ref");
-    expect(spotify.canPlay("bugra")).toBe(true);
+    expect(spotify.canPlay("alex")).toBe(true);
     expect(spotify.canPlay("guest")).toBe(false);
     expect(spotify.canPlay("nobody")).toBe(false);
-    expect(spotify.needsReconnect("bugra")).toBe(true);
+    expect(spotify.needsReconnect("alex")).toBe(true);
     expect(spotify.needsReconnect("nobody")).toBe(false);
-    spotify.setEnabled("bugra", false);
-    expect(spotify.enabled("bugra")).toBe(false);
-    await expect(spotify.token("bugra")).rejects.toMatchObject({ status: 409 });
+    spotify.setEnabled("alex", false);
+    expect(spotify.enabled("alex")).toBe(false);
+    await expect(spotify.token("alex")).rejects.toMatchObject({ status: 409 });
   });
 });
 
 describe("library search", () => {
-  const auth = { user: "bugra", token: "t", salt: "s" };
+  const auth = { user: "alex", token: "t", salt: "s" };
   const library = (scan: string) => [
     [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: scan, count: 3 } })],
     [/POST \/rest\/search3/, () => ok({ searchResult3: {
@@ -275,12 +281,12 @@ describe("single songs", () => {
 
   it("keeps one request per item and marks interrupted songs", () => {
     const requests = new Requests(openDatabase(":memory:"));
-    const first = requests.add({ user: "bugra", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
+    const first = requests.add({ user: "alex", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
     requests.update(first.id, { state: "failed", detail: "nope" });
-    const again = requests.add({ user: "bugra", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
+    const again = requests.add({ user: "alex", kind: "song", ref: "r1", title: "T", artist: "A", cover_url: null, state: "searching" });
     expect(again.id).toBe(first.id);
     expect(again.detail).toBeNull();
-    expect(requests.list("bugra")).toHaveLength(1);
+    expect(requests.list("alex")).toHaveLength(1);
     expect(requests.active().map((r) => r.id)).toEqual([first.id]);
   });
 });
@@ -310,5 +316,58 @@ describe("artist catalogues", () => {
   it("matches owned songs even with remaster notes in the title", () => {
     expect(songKey("Metallica", "Enter Sandman (Remastered 2021)")).toBe(songKey("metallica", "Enter Sandman"));
     expect(songKey("Queen", "Bohemian Rhapsody - Remastered 2011")).toBe(songKey("Queen", "Bohemian Rhapsody"));
+  });
+});
+
+describe("connections check", () => {
+  const auth = { user: "alex", token: "t", salt: "s" };
+
+  async function setup(songSize: number) {
+    const root = await mkdtemp(join(tmpdir(), "needle-status-"));
+    const [downloads, singles] = [join(root, "downloads"), join(root, "singles")];
+    await mkdir(join(singles, "Artist"), { recursive: true });
+    await mkdir(downloads);
+    await writeFile(join(singles, "Artist", "Artist - Song.flac"), "12345");
+    mockFetch([
+      [/POST \/rest\/ping/, () => ok({ serverVersion: "0.64.2" })],
+      [/POST \/rest\/getMusicFolders/, () => ok({ musicFolders: { musicFolder: [{ id: 1, name: "Music" }, { id: 2, name: "Singles" }] } })],
+      [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "1", count: 1 } })],
+      [/POST \/rest\/search3/, () => ok({ searchResult3: { song: [{ id: "s1", title: "Song", artist: "Artist", size: songSize, suffix: "flac" }] } })],
+      [/GET \/api\/v1\/system\/status/, () => ({ version: "3.1.2" })],
+      [/GET \/api\/v1\/rootfolder/, () => [{ path: "/music" }]],
+      [/GET \/api\/v1\/qualityprofile/, () => [{ id: 1, name: "Lossless" }]],
+      [/GET \/api\/v0\/application/, () => ({ version: { current: "0.26.0" }, server: { state: "Connected, LoggedIn", isLoggedIn: true } })],
+      [/GET \/ws\/2\/recording/, () => ({ recordings: [] })],
+      [/GET \/search\/artist/, () => ({ data: [] })],
+    ]);
+    const config = loadConfig({
+      navidromeUrl: "http://nd", publicUrl: null, spotify: { clientId: "id", clientSecret: "secret" },
+      lidarr: { url: "http://lidarr", apiKey: "k", qualityProfile: "Missing", rootFolder: null },
+      soulseek: { url: "http://slskd", apiKey: "k", downloadsDir: downloads, singlesDir: singles },
+      musicbrainzUrl: "http://mb/ws/2", deezerUrl: "http://deezer",
+    });
+    const navidrome = new Navidrome(config.navidromeUrl);
+    const status = new Status({
+      config, navidrome, library: new LibrarySearch(navidrome), lidarr: new Lidarr(config.lidarr ?? { url: "", apiKey: "", qualityProfile: null, rootFolder: null }),
+      slskd: new Slskd("http://slskd", "k"), musicbrainz: new MusicBrainz(config.musicbrainzUrl), deezer: new Deezer(config.deezerUrl),
+    });
+    return Object.fromEntries((await status.checks(auth)).map((c) => [c.id, c]));
+  }
+
+  it("reports each connection with a fix when something is off", async () => {
+    const checks = await setup(5);
+    expect(checks.navidrome).toMatchObject({ state: "ok", detail: "Version 0.64.2. Libraries: Music, Singles" });
+    expect(checks.lidarr).toMatchObject({ state: "warn", fix: "LIDARR_QUALITY_PROFILE Missing isn't one of Lidarr's quality profiles" });
+    expect(checks.slskd?.state).toBe("ok");
+    expect(checks.folders?.state).toBe("ok");
+    expect(checks["singles-library"]?.state).toBe("ok");
+    expect(checks.lookups?.state).toBe("ok");
+    expect(checks.spotify).toMatchObject({ state: "warn" });
+  });
+
+  it("fails the singles check when Navidrome doesn't list the fetched files", async () => {
+    const checks = await setup(999);
+    expect(checks["singles-library"]).toMatchObject({ state: "fail", detail: "Navidrome doesn't list the songs in SINGLES_DIR" });
+    expect(checks["singles-library"]?.fix).toContain("add a library");
   });
 });

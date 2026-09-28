@@ -83,6 +83,10 @@ export class Slskd {
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
+  application() {
+    return this.req<{ version: { current: string }; server: { state: string; isLoggedIn: boolean } }>("/application");
+  }
+
   async search(text: string): Promise<SlskdResponse[]> {
     const search = await this.req<Search>("/searches", { method: "POST", body: JSON.stringify({ searchText: text }) });
     const until = Date.now() + SEARCH_WAIT_MS;

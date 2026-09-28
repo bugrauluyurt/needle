@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
@@ -11,6 +11,7 @@ import { usePlayer } from "../player/store.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { Art } from "./Art.tsx";
 import { Eq, Icon } from "./Icon.tsx";
+import { SpotifyMark } from "./SpotifyMark.tsx";
 import { useScrollContainer } from "./ScrollContext.ts";
 import type { TrackMenuExtra } from "./TrackMenu.tsx";
 import { openTrackMenu, TrackMoreButton } from "./TrackMenu.tsx";
@@ -47,6 +48,7 @@ type RowProps = {
   paused: boolean;
   liked: boolean;
   downloaded: boolean;
+  fromSpotify: boolean;
   selected: boolean;
   draggable: boolean;
   extra: TrackMenuExtra[] | undefined;
@@ -141,6 +143,7 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           <div className="name">{p.song.title}</div>
           <div className="by">
             {p.downloaded ? <span className="dlmark" title="Downloaded"><Icon name="downloaded" size={13} /></span> : null}
+            {p.fromSpotify ? <SpotifyMark compact /> : null}
             {p.song.artistId ? <Link to={artistPath(p.song.artistId)}>{artistName(p.song)}</Link> : artistName(p.song)}
           </div>
         </div>
@@ -173,6 +176,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   const paused = usePlayer((s) => !s.playing);
   const likes = useSongLikes();
   const downloaded = useOffline((s) => s.songs);
+  const mixed = useMemo(() => songs.some((s) => s.source === "spotify") && songs.some((s) => s.source !== "spotify"), [songs]);
   const [selected, setSelected] = useState<number | null>(null);
   const dragFrom = useRef<number | null>(null);
   const shown = limit ? songs.slice(0, limit) : songs;
@@ -217,6 +221,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       paused={paused}
       liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
+      fromSpotify={mixed && song.source === "spotify"}
       selected={selected === i}
       draggable={Boolean(onReorder)}
       extra={menuExtra?.(song, i)}

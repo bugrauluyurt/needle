@@ -12,3 +12,4 @@ e2e/.singles/
 .env
 .env.local
 data/
+examples/config/

@@ -14,7 +14,8 @@ import { api } from "../lib/api.ts";
 import { ago, count, longDuration, plural, releaseKind } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
 import { image, sp, spId, spotifyLink } from "../lib/spotify.ts";
-import { playSpotifyArtist, releaseYear, SpotifyBadge, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
+import { playSpotifyArtist, releaseYear, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
+import { SpotifyMark } from "../components/SpotifyMark.tsx";
 import { useTone } from "../lib/tone.ts";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { MobileBack } from "../layout/Mobile.tsx";
@@ -270,7 +271,7 @@ export function SpotifyArtistPage() {
       <div className="a-hero">
         <div className="bg"><Art images={artist.images} px={900} eager fallback="artist" /></div>
         <div className="a-hero-text">
-          <div className="kind"><SpotifyBadge /> Artist</div>
+          <div className="kind"><SpotifyMark /> Artist</div>
           <h1 style={{ "--title": `${artist.name.length > 14 ? 76 : 112}px` } as React.CSSProperties}>{artist.name}</h1>
           <p>{artist.followers ? `${count(artist.followers.total)} followers on Spotify. ` : ""}{plural(albums.length, "release")}.</p>
         </div>

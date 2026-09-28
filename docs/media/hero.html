@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Bricolage Grotesque"; src: url("../../apps/web/public/fonts/bricolage-grotesque-latin.woff2") format("woff2"); font-weight: 200 800; }
+  @font-face { font-family: "Instrument Sans"; src: url("../../apps/web/public/fonts/instrument-sans-latin.woff2") format("woff2"); font-weight: 400 700; }
+  :root { --ink: #0f0e13; --groove: #221f29; --label: #f3efe8; --sleeve: #a7a0b1; --amber: #f6b23c; }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; background: var(--ink); }
+  .stage { position: relative; width: 1280px; height: 640px; overflow: hidden; font-family: "Instrument Sans", sans-serif; color: var(--label); }
+  .record {
+    position: absolute; left: -290px; top: 150px; width: 1100px; height: 1100px; border-radius: 50%;
+    background:
+      radial-gradient(circle, var(--amber) 0 84px, #0f0e13 84px 92px, transparent 92px),
+      repeating-radial-gradient(circle, rgba(243, 239, 232, 0.07) 0 1px, transparent 1px 7px),
+      radial-gradient(circle, #1b1921 0, #141219 60%, #0f0e13 72%);
+    -webkit-mask: radial-gradient(circle, #000 60%, transparent 71%);
+    mask: radial-gradient(circle, #000 60%, transparent 71%);
+  }
+  .text { position: absolute; left: 76px; top: 96px; width: 470px; }
+  .mark { display: block; width: 58px; height: 58px; margin-bottom: 26px; }
+  h1 { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 136px; line-height: 0.86; letter-spacing: -0.045em; }
+  p { margin-top: 26px; font-size: 25px; line-height: 1.32; color: var(--sleeve); max-width: 440px; text-wrap: balance; }
+  p b { color: var(--label); font-weight: 600; }
+  .desk { position: absolute; left: 540px; top: 78px; width: 700px; border-radius: 12px; box-shadow: 0 34px 90px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .phone { position: absolute; left: 1036px; top: 176px; width: 210px; border-radius: 30px; border: 6px solid #1b1921; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1); }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="record"></div>
+    <div class="text">
+      <img class="mark" src="../../apps/web/public/icons/icon.svg" alt="">
+      <h1>Needle</h1>
+      <p>A music player for your <b>Navidrome</b> library, in the browser and on your phone.</p>
+    </div>
+    <img class="desk" src="home.png" alt="">
+    <img class="phone" src="phone-player.png" alt="">
+  </div>
+</body>
+</html>

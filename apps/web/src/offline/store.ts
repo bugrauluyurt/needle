@@ -16,9 +16,8 @@ export type Job = { done: number; total: number; waiting: boolean; failed: numbe
 type OfflineState = {
   ready: boolean;
   supported: boolean;
-  songs: Set<string>;
+  songs: Map<string, number>;
   collections: OfflineCollection[];
-  bytes: number;
   jobs: Record<string, Job>;
 };
 
@@ -27,11 +26,13 @@ export const offlineSupported = typeof window !== "undefined" && "caches" in win
 export const useOffline = create<OfflineState>(() => ({
   ready: false,
   supported: offlineSupported,
-  songs: new Set(),
+  songs: new Map(),
   collections: [],
-  bytes: 0,
   jobs: {},
 }));
+
+export const bytesOf = (songs: Map<string, number>, ids?: string[]) =>
+  (ids ?? [...songs.keys()]).reduce((n, id) => n + (songs.get(id) ?? 0), 0);
 
 const key = (id: string) => `/offline/${encodeURIComponent(id)}`;
 
@@ -43,9 +44,8 @@ export async function loadOffline() {
   const [songs, collections] = await Promise.all([idbAll<OfflineSong>("songs"), idbAll<OfflineCollection>("collections")]);
   useOffline.setState({
     ready: true,
-    songs: new Set(songs.map((s) => s.id)),
+    songs: new Map(songs.map((s) => [s.id, s.bytes])),
     collections: collections.sort((a, b) => b.savedAt - a.savedAt),
-    bytes: songs.reduce((n, s) => n + s.bytes, 0),
   });
   void navigator.storage?.persist?.().catch(() => false);
   const have = useOffline.getState().songs;
@@ -152,7 +152,7 @@ async function fetchAll(collection: Omit<OfflineCollection, "savedAt" | "songIds
           partial.set(id, f);
           report();
         });
-        useOffline.setState((s) => ({ songs: new Set(s.songs).add(id), bytes: s.bytes + bytes }));
+        useOffline.setState((s) => ({ songs: new Map(s.songs).set(id, bytes) }));
         job.done++;
       } catch {
         job.failed++;
@@ -183,25 +183,22 @@ export async function removeDownload(collectionId: string) {
   const remaining = state.collections.filter((c) => c.id !== collectionId);
   const stillNeeded = new Set(remaining.flatMap((c) => c.songIds));
   const cache = await caches.open(CACHE);
-  let freed = 0;
-  const songs = new Set(state.songs);
+  const songs = new Map(state.songs);
   for (const id of target.songIds) {
     if (stillNeeded.has(id)) continue;
-    const row = await idbGet<OfflineSong>("songs", id);
-    freed += row?.bytes ?? 0;
     await cache.delete(key(id));
     await idbDelete("songs", id);
     songs.delete(id);
   }
   await idbDelete("collections", collectionId);
   setJob(collectionId, null);
-  useOffline.setState({ collections: remaining, songs, bytes: Math.max(0, state.bytes - freed) });
+  useOffline.setState({ collections: remaining, songs });
 }
 
 export async function removeAllDownloads() {
   for (const c of useOffline.getState().collections) await removeDownload(c.id);
   if (offlineSupported) await caches.delete(CACHE);
-  useOffline.setState({ songs: new Set(), bytes: 0, jobs: {} });
+  useOffline.setState({ songs: new Map(), jobs: {} });
 }
 
 export function useIsDownloaded(collectionId: string | undefined): boolean {

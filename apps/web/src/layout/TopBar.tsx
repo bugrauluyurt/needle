@@ -71,6 +71,10 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
             <Icon name="keyboard" size={18} />
             <span className="menu-label">Keyboard shortcuts</span>
           </DM.Item>
+          <DM.Item className="menu-item" onSelect={() => location.reload()}>
+            <Icon name="refresh" size={18} />
+            <span className="menu-label">Refresh page</span>
+          </DM.Item>
           <DM.Separator className="menu-sep" />
           <DM.Item className="menu-item" onSelect={signOut}>
             <Icon name="logout" size={18} />

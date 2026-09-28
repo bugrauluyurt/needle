@@ -1,0 +1,4 @@
+{$NEEDLE_DOMAIN:music.example.com} {
+	encode zstd gzip
+	reverse_proxy needle:4535
+}

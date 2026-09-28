@@ -8,13 +8,13 @@ import { openDatabase } from "../src/db.ts";
 import { DeviceHub } from "../src/devices.ts";
 
 const ND = "http://navidrome.test";
-const good = { "x-needle-user": "bugra", "x-needle-token": "tok", "x-needle-salt": "salt" };
+const good = { "x-needle-user": "alex", "x-needle-token": "tok", "x-needle-salt": "salt" };
 
 function fakeNavidrome() {
   vi.stubGlobal("fetch", vi.fn((input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
     const params = init?.body instanceof URLSearchParams ? init.body : url.searchParams;
-    const authed = params.get("u") === "bugra" && params.get("t") === "tok";
+    const authed = params.get("u") === "alex" && params.get("t") === "tok";
     const json = (body: object) => Promise.resolve(new Response(JSON.stringify({ "subsonic-response": { status: authed ? "ok" : "failed", ...(authed ? body : { error: { code: 40, message: "Wrong username or password" } }) } }), { headers: { "content-type": "application/json" } }));
     if (url.pathname.startsWith("/rest/ping")) return json({});
     if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: true } });
@@ -63,7 +63,7 @@ describe("server", () => {
 
   it("keeps an account photo for every device", async () => {
     const me = async () => (await (await app.request("/api/me", { headers: good })).json()) as { user: string; photo: string | null };
-    expect(await me()).toEqual({ user: "bugra", photo: null });
+    expect(await me()).toEqual({ user: "alex", photo: null });
     const put = (type: string, body: Uint8Array<ArrayBuffer>) => app.request("/api/me/photo", { method: "PUT", headers: { ...good, "content-type": type }, body });
     expect((await put("image/gif", new Uint8Array([1]))).status).toBe(415);
     expect((await put("image/webp", new Uint8Array(500_000))).status).toBe(413);
@@ -91,16 +91,16 @@ describe("server", () => {
   });
 
   it("proxies Navidrome, caching covers for a year and passing ranges through", async () => {
-    const cover = await app.request("/rest/getCoverArt.view?id=al-1&u=bugra&t=tok&s=salt");
+    const cover = await app.request("/rest/getCoverArt.view?id=al-1&u=alex&t=tok&s=salt");
     expect(cover.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
-    const part = await app.request("/rest/stream.view?id=1&u=bugra&t=tok&s=salt", { headers: { range: "bytes=2-" } });
+    const part = await app.request("/rest/stream.view?id=1&u=alex&t=tok&s=salt", { headers: { range: "bytes=2-" } });
     expect(part.status).toBe(206);
     expect(part.headers.get("content-range")).toBe("bytes 2-5/6");
     expect(await part.text()).toBe("cdef");
   });
 
   it("gzips JSON when the browser accepts it", async () => {
-    const r = await app.request("/rest/getAlbumList2.view?u=bugra&t=tok&s=salt&f=json", { headers: { "accept-encoding": "gzip, br" } });
+    const r = await app.request("/rest/getAlbumList2.view?u=alex&t=tok&s=salt&f=json", { headers: { "accept-encoding": "gzip, br" } });
     expect(r.headers.get("content-encoding")).toBe("gzip");
     const body = JSON.parse(gunzipSync(Buffer.from(await r.arrayBuffer())).toString()) as { "subsonic-response": { albumList2: unknown } };
     expect(body["subsonic-response"].albumList2).toBeTruthy();
@@ -135,8 +135,8 @@ describe("device hub", () => {
     const mac = new FakeSocket();
     const phone = new FakeSocket();
     const stranger = new FakeSocket();
-    hub.attach(mac as never, "bugra");
-    hub.attach(phone as never, "bugra");
+    hub.attach(mac as never, "alex");
+    hub.attach(phone as never, "alex");
     hub.attach(stranger as never, "guest");
     mac.say({ type: "hello", device: { id: "mac", name: "Chrome on Mac", kind: "desktop" } });
     phone.say({ type: "hello", device: { id: "phone", name: "iPhone", kind: "phone" } });
@@ -159,11 +159,11 @@ describe("device hub", () => {
     const hub = new DeviceHub();
     const first = new FakeSocket();
     const second = new FakeSocket();
-    hub.attach(first as never, "bugra");
-    hub.attach(second as never, "bugra");
+    hub.attach(first as never, "alex");
+    hub.attach(second as never, "alex");
     first.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
     second.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
     expect(first.readyState).toBe(3);
-    expect(hub.devices("bugra")).toHaveLength(1);
+    expect(hub.devices("alex")).toHaveLength(1);
   });
 });

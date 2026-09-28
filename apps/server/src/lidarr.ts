@@ -168,6 +168,20 @@ export class Lidarr {
     return { rootFolderPath: root.path, qualityProfileId: quality, metadataProfileId: meta };
   }
 
+  async check(): Promise<{ version: string; rootFolder: string | null; problems: string[] }> {
+    const [status, roots, qualities] = await Promise.all([
+      this.req<{ version: string }>("/system/status"),
+      this.req<RootFolder[]>("/rootfolder"),
+      this.req<Profile[]>("/qualityprofile"),
+    ]);
+    const problems = [
+      !roots.length && "Lidarr has no root folder",
+      this.rootFolder && !roots.some((r) => r.path === this.rootFolder) && `LIDARR_ROOT_FOLDER ${this.rootFolder} isn't one of Lidarr's root folders`,
+      this.qualityProfile && !qualities.some((q) => q.name === this.qualityProfile) && `LIDARR_QUALITY_PROFILE ${this.qualityProfile} isn't one of Lidarr's quality profiles`,
+    ].filter((p): p is string => Boolean(p));
+    return { version: status.version, rootFolder: (roots.find((r) => r.path === this.rootFolder) ?? roots[0])?.path ?? null, problems };
+  }
+
   async getAlbum(foreignAlbumId: string): Promise<LidarrAlbum> {
     const existing = (await this.req<RawAlbum[]>(`/album?foreignAlbumId=${encodeURIComponent(foreignAlbumId)}`))[0];
     let id = existing?.id;

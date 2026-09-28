@@ -21,6 +21,7 @@ export type CollectionItem = {
   contextId?: string;
   downloaded?: boolean;
   pinned?: boolean;
+  source?: "spotify";
   onPlay?: () => void;
 };
 

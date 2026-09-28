@@ -63,6 +63,7 @@ createServer((req, res) => {
       }));
       return json(res, { records });
     }
+    if (path === "/api/v1/system/status") return json(res, { version: "3.0.0-mock" });
     if (path === "/api/v1/rootfolder") return json(res, [{ path: "/music", defaultQualityProfileId: 1, defaultMetadataProfileId: 1 }]);
     if (path === "/api/v1/qualityprofile" || path === "/api/v1/metadataprofile") return json(res, [{ id: 1, name: "Standard" }]);
     if (path === "/api/v1/artist/lookup") return json(res, [{ artistName: url.searchParams.get("term"), foreignArtistId: `mb-${url.searchParams.get("term") ?? ""}`, images: [] }]);

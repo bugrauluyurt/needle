@@ -131,6 +131,7 @@ export const sub = {
     .then((r) => r.internetRadioStations.internetRadioStation ?? []),
   addRadio: (name: string, streamUrl: string, homepageUrl?: string) => call("createInternetRadioStation", { name, streamUrl, homepageUrl }),
   deleteRadio: (id: string) => call("deleteInternetRadioStation", { id }),
+  updateRadio: (id: string, name: string, streamUrl: string, homepageUrl?: string) => call("updateInternetRadioStation", { id, name, streamUrl, homepageUrl }),
 
   startScan: () => call<{ scanStatus: ScanStatus }>("startScan").then((r) => r.scanStatus),
   scanStatus: () => call<{ scanStatus: ScanStatus }>("getScanStatus").then((r) => r.scanStatus),

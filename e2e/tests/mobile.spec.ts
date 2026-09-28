@@ -27,6 +27,27 @@ test("moves between tabs and plays from the mini player", async ({ page }) => {
   await expect(sheet).toBeHidden();
 });
 
+test("song options open as a sheet, and Go to album minimizes the player", async ({ page }) => {
+  await signIn(page, "/library");
+  await page.locator(".lib-item", { hasText: "Late night drive" }).click();
+  await page.locator(".tr").first().tap();
+  await page.locator(".miniplayer").getByRole("button", { name: "Open now playing" }).tap();
+  const player = page.getByRole("dialog", { name: "Now playing" });
+  await player.getByRole("button", { name: "More options" }).tap();
+
+  const sheet = page.locator(".action-sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".as-quick button")).toHaveText(["Add to queue", "Play next", /Like/]);
+  await sheet.getByRole("button", { name: "Add to playlist" }).tap();
+  await expect(sheet.getByRole("textbox", { name: "Find a playlist" })).toBeVisible();
+  await sheet.getByRole("button", { name: "Back" }).tap();
+  await sheet.getByRole("button", { name: "Go to album" }).tap();
+
+  await expect(sheet).toBeHidden();
+  await expect(player).toBeHidden();
+  await expect(page).toHaveURL(/\/album\//);
+});
+
 test("searches with the mobile search box", async ({ page }) => {
   await signIn(page, "/search");
   await page.getByRole("searchbox", { name: "Search", exact: true }).fill("okto");

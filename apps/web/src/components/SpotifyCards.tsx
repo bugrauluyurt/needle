@@ -77,7 +77,3 @@ export function spotifyPlaylistItem(playlist: SpPlaylist): CollectionItem {
 
 export const SpotifyAlbumCard = ({ album, subtitle }: { album: SpAlbumRef; subtitle?: string }) => <ItemCard item={spotifyAlbumItem(album, subtitle)} />;
 export const SpotifyPlaylistCard = ({ playlist }: { playlist: SpPlaylist }) => <ItemCard item={spotifyPlaylistItem(playlist)} />;
-
-export function SpotifyBadge() {
-  return <span className="sp-badge">Spotify</span>;
-}

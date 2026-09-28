@@ -13,7 +13,7 @@ import { isIOS, isStandalone } from "../lib/device.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
-import { TrackMenuHost } from "../components/TrackMenu.tsx";
+import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
@@ -171,6 +171,15 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
   );
 }
 
+function useCloseOverlaysOnNavigate() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    closeTrackMenu();
+    if (useUi.getState().fullScreen) setFullScreen(false);
+    useUi.setState({ nowPlayingOpen: false });
+  }, [pathname]);
+}
+
 export function Shell() {
   const mobile = useIsMobile();
   const panel = useUi((s) => s.rightPanel);
@@ -181,6 +190,7 @@ export function Shell() {
   const spotifyOn = useSpotifyOn();
   const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   useShortcuts();
+  useCloseOverlaysOnNavigate();
   useEffect(() => {
     allowSpotify(spotifyPlayback);
     if (spotifyPlayback) warmSpotify();
@@ -194,7 +204,7 @@ export function Shell() {
         <MiniPlayer />
         <TabBar />
         <NowPlayingSheet />
-        <TrackMenuHost />
+        <TrackMenuHost mobile={mobile} />
         {isIOS && !isStandalone ? <InstallHint /> : null}
         <Toasts />
       </div>
@@ -210,7 +220,7 @@ export function Shell() {
       </Main>
       {showRight ? <RightPanel /> : null}
       <PlayerBar />
-      <TrackMenuHost />
+      <TrackMenuHost mobile={mobile} />
       <Tooltips />
       {fullScreen ? <Suspense fallback={null}><FullScreenPlayer /></Suspense> : null}
       {shortcuts ? <Suspense fallback={null}><ShortcutsDialog /></Suspense> : null}

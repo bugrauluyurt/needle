@@ -5,7 +5,7 @@ import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
-import { artistName, count, formatLong } from "../lib/format.ts";
+import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import type { QueueItem } from "../player/queue.ts";
 import { userItemsAfter } from "../player/queue.ts";
@@ -115,7 +115,7 @@ export function QueueView() {
 function AboutArtist({ song }: { song: Song }) {
   const { data } = useArtistInfo(song.artistId);
   const cover = useArtistImage(song.artistId, song.artists?.[0]?.name ?? song.artist);
-  const bio = data?.biography?.replace(/<a [^>]*>.*?<\/a>/g, "").replace(/<[^>]+>/g, "").trim();
+  const bio = plainBio(data?.biography);
   if (!song.artistId) return null;
   return (
     <Link to={artistPath(song.artistId)} className="rp-card about-card">

@@ -1,3 +1,4 @@
+import { SpotifyMark } from "../components/SpotifyMark.tsx";
 import { MIN_REPORT_MS } from "../player/controller.ts";
 import { useState } from "react";
 import { HOUR_MS, QUARTER_DAYS } from "@needle/shared";
@@ -88,7 +89,7 @@ export default function StatsPage() {
                     <span className="n">{i + 1}</span>
                     <Art id={cover(a.id)} px={44} round fallback="artist" />
                     <div>
-                      <div className="t">{a.name}</div>
+                      <div className="t">{a.name}{isSpotify(a.id) ? <SpotifyMark compact /> : null}</div>
                       <div className="bar-in"><i style={{ width: `${(a.plays / (s.topArtists[0]?.plays ?? 1)) * 100}%` }} /></div>
                     </div>
                     <span className="c">{count(a.plays)}</span>
@@ -102,7 +103,7 @@ export default function StatsPage() {
                     <span className="n">{i + 1}</span>
                     <Art id={a.coverArt} px={44} />
                     <div>
-                      <div className="t">{a.name}</div>
+                      <div className="t">{a.name}{isSpotify(a.id) ? <SpotifyMark compact /> : null}</div>
                       <div className="bar-in"><i style={{ width: `${(a.plays / (s.topAlbums[0]?.plays ?? 1)) * 100}%` }} /></div>
                     </div>
                     <span className="c">{count(a.plays)}</span>

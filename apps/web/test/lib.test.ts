@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { ago, clock, formatLabel, hours, longDuration, plural, releaseKind } from "../src/lib/format.ts";
+import { ago, clock, formatLabel, hours, longDuration, paragraphs, plainBio, plural, releaseKind } from "../src/lib/format.ts";
 import { lineAt, pickLyrics } from "../src/lib/lyrics.ts";
 import { md5 } from "../src/lib/md5.ts";
 import { toneFromPixels } from "../src/lib/tone.ts";
 import { dbToGain } from "../src/player/engine.ts";
 import { albumPath, artistPath } from "../src/lib/paths.ts";
+import { browserChecks } from "../src/lib/connections.ts";
 import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
 
 describe("md5", () => {
@@ -60,6 +61,16 @@ describe("format", () => {
     expect(releaseKind(5, 2400)).toBe("Album");
     expect(releaseKind(12, 2800)).toBe("Album");
     expect(releaseKind(3, 300, true)).toBe("Compilation");
+  });
+});
+
+describe("artist bio", () => {
+  it("drops links and tags", () => {
+    expect(plainBio('Great band.  <a href="https://last.fm">Read more on Last.fm</a>.')).toBe("Great band.");
+  });
+
+  it("groups sentences into paragraphs", () => {
+    expect(paragraphs("One. Two! Three? Four. Five 2.0 rocks. “Six” said.")).toEqual(["One. Two! Three?", "Four. Five 2.0 rocks. “Six” said."]);
   });
 });
 
@@ -164,5 +175,18 @@ describe("spotify", () => {
     expect(artistPath("sp:ar1")).toBe("/spotify/artist/ar1");
     expect(artistPath("nd2")).toBe("/artist/nd2");
     expect(spotifyLink("track", "sp:t1")).toBe("https://open.spotify.com/track/t1");
+  });
+});
+
+describe("browser connection checks", () => {
+  it("warns without HTTPS and when PUBLIC_URL differs from the page", () => {
+    const [https, address] = browserChecks("https://music.example.com", "http://192.168.1.5:4535", false);
+    expect(https?.state).toBe("warn");
+    expect(address).toMatchObject({ state: "warn", detail: "PUBLIC_URL is https://music.example.com, but this page is http://192.168.1.5:4535" });
+  });
+
+  it("is happy on the public HTTPS address, and off without PUBLIC_URL", () => {
+    expect(browserChecks("https://music.example.com", "https://music.example.com", true).map((c) => c.state)).toEqual(["ok", "ok"]);
+    expect(browserChecks(null, "https://music.example.com", true)[1]?.state).toBe("off");
   });
 });

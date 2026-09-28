@@ -87,3 +87,14 @@ export function greeting(date = new Date()): string {
   if (h < 18) return "Good afternoon";
   return "Good evening";
 }
+
+export function sizeLabel(bytes: number): string {
+  return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
+}
+
+export const plainBio = (html: string | undefined) => html?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() ?? "";
+
+export function paragraphs(text: string, sentences = 3): string[] {
+  const all = text.split(/(?<=[.!?])\s+(?=[\p{Lu}\p{N}“"‘'])/u);
+  return Array.from({ length: Math.ceil(all.length / sentences) }, (_, i) => all.slice(i * sentences, (i + 1) * sentences).join(" "));
+}

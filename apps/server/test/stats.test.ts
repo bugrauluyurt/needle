@@ -27,13 +27,13 @@ describe("play log", () => {
     const log = new PlayLog(openDatabase(":memory:"));
     const now = new Date(2026, 8, 20, 23, 30);
     const at = (d: number, h: number) => new Date(2026, 8, d, h).getTime();
-    log.record("bugra", play(), at(20, 22));
-    log.record("bugra", play({ songId: "s2" }), at(20, 22));
-    log.record("bugra", play({ songId: "s3", artist: "Lumen Field", artistId: "ar2", album: "Weightless", albumId: "al2", genre: "Ambient" }), at(19, 9));
-    log.record("bugra", play({ msPlayed: 100_000 }), at(15, 3) - 40 * 86_400_000);
+    log.record("alex", play(), at(20, 22));
+    log.record("alex", play({ songId: "s2" }), at(20, 22));
+    log.record("alex", play({ songId: "s3", artist: "Lumen Field", artistId: "ar2", album: "Weightless", albumId: "al2", genre: "Ambient" }), at(19, 9));
+    log.record("alex", play({ msPlayed: 100_000 }), at(15, 3) - 40 * 86_400_000);
     log.record("someone-else", play(), at(20, 22));
 
-    const s = log.stats("bugra", "month", now);
+    const s = log.stats("alex", "month", now);
     expect(s.msPlayed).toBe(540_000);
     expect(s.prevMsPlayed).toBe(100_000);
     expect(s.songs).toBe(3);
@@ -44,7 +44,7 @@ describe("play log", () => {
     expect(s.hours[9]).toBe(180_000);
     expect(s.genres.map((g) => g.name)).toEqual(["Synthwave", "Ambient"]);
     expect(s.genres[0]?.share).toBeCloseTo(2 / 3);
-    expect(log.topGenres("bugra", 0, 1)).toEqual(["Synthwave"]);
+    expect(log.topGenres("alex", 0, 1)).toEqual(["Synthwave"]);
   });
 
   it("returns empty stats for someone who hasn't played anything", () => {

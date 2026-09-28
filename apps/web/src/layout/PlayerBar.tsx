@@ -12,6 +12,8 @@ import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
 
+export const LiveLabel = () => <span className="live">Live radio</span>;
+
 export function SeekBar({ className = "seek", times = "side" }: { className?: string; times?: "side" | "below" | "remaining" }) {
   const position = useProgress((p) => Math.floor(p.position * 4) / 4);
   const duration = useProgress((p) => p.duration);
@@ -19,13 +21,7 @@ export function SeekBar({ className = "seek", times = "side" }: { className?: st
   const station = usePlayer((s) => s.station);
   const [preview, setPreview] = useState<number | null>(null);
   const shown = preview ?? position;
-  if (station) {
-    return (
-      <div className={className}>
-        <span className="live">Live</span>
-      </div>
-    );
-  }
+  if (station) return <div className={className} aria-hidden="true" />;
   const slider = (
     <Slider
       value={shown}
@@ -147,7 +143,7 @@ export function PlayerBar() {
             <div className="art station-art"><Icon name="radio" size={24} /></div>
             <div className="np-text">
               <div className="np-t">{station.name}</div>
-              <div className="np-a">Internet radio</div>
+              <div className="np-a"><LiveLabel /></div>
             </div>
           </>
         ) : song ? (

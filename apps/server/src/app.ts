@@ -20,6 +20,7 @@ import { Requests, toItem } from "./requests.ts";
 import { Slskd, SlskdError, SongDownloads } from "./soulseek.ts";
 import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
+import { Status } from "./status.ts";
 import { PlayLog } from "./stats.ts";
 
 type Env = { Variables: { auth: Auth } };
@@ -39,10 +40,12 @@ export function createApp(config: Config, db: DatabaseSync) {
   const requests = new Requests(db);
   const musicbrainz = new MusicBrainz(config.musicbrainzUrl);
   const deezer = new Deezer(config.deezerUrl);
-  const songs = config.soulseek
-    ? new SongDownloads({ slskd: new Slskd(config.soulseek.url, config.soulseek.apiKey), requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
+  const slskd = config.soulseek ? new Slskd(config.soulseek.url, config.soulseek.apiKey) : null;
+  const songs = config.soulseek && slskd
+    ? new SongDownloads({ slskd, requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
     : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
+  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer });
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
     : null;
@@ -119,6 +122,12 @@ export function createApp(config: Config, db: DatabaseSync) {
       publicUrl: config.publicUrl,
     };
     return c.json(caps);
+  });
+
+  app.get("/api/status", async (c) => {
+    const auth = c.get("auth");
+    if (!(await isAdmin(auth))) return c.json({ error: "Only Navidrome admins can see connections" }, 403);
+    return c.json({ checks: await status.checks(auth, c.req.query("fresh") === "1") });
   });
 
   app.post("/api/plays", async (c) => {

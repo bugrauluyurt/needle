@@ -1,7 +1,8 @@
 import type { LidarrAlbum, SongCandidate } from "@needle/shared";
 import { fold, HOUR_MS, OTHER_VERSIONS, queryTerms } from "@needle/shared";
+import pkg from "../package.json" with { type: "json" };
 
-const USER_AGENT = "Needle/1.0 ( https://github.com/bugrauluyurt/needle )";
+const USER_AGENT = `Needle/${pkg.version} ( ${pkg.homepage} )`;
 const MIN_GAP_MS = 1100;
 const CACHE_MS = HOUR_MS;
 const LIMIT = 25;
@@ -88,6 +89,10 @@ export class MusicBrainz {
           coverUrl: `https://coverartarchive.org/release-group/${g.id}/front-250`, state: "missing", progress: null,
         };
       });
+  }
+
+  async ping(): Promise<void> {
+    await this.get("recording", { query: "needle", limit: "1" });
   }
 
   private async search(query: string): Promise<Recording[]> {

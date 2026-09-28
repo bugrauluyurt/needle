@@ -22,7 +22,7 @@ export function Login() {
     } catch (err) {
       setError(err instanceof SubsonicError && err.code === 40
         ? "That username and password don’t match a Navidrome account."
-        : "Couldn’t reach Navidrome. Check that the Pi is on and you’re on the tailnet.");
+        : "Couldn’t reach Navidrome. Check that it’s running and that Needle’s server can reach it.");
     } finally {
       setBusy(false);
     }
@@ -39,7 +39,7 @@ export function Login() {
           Needle
         </div>
         <h1>Sign in to your music</h1>
-        <p>Use your Navidrome account. Needle only works on your tailnet.</p>
+        <p>Use your Navidrome account.</p>
         <label className="field">
           <span>Server</span>
           <input value={location.host} readOnly aria-readonly="true" tabIndex={-1} />

@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
 import { CollectionTools, ItemList, SORT_LABELS, sortItems, useCollectionView } from "../components/Collection.tsx";
-import { SearchField } from "../components/SearchField.tsx";
 import type { CollectionItem, SortOption } from "../components/Collection.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
@@ -131,10 +130,9 @@ function Nav({ to, icon, label }: { to: string; icon: IconName; label: string })
 
 export function Sidebar() {
   const filter = useUi((s) => s.libraryFilter);
-  const [query, setQuery] = useState("");
-  const [focused, setFocused] = useState(false);
   const { sort, setSort } = useLibrarySort();
-  const entries = useLibraryEntries(filter, query, sort);
+  const entries = useLibraryEntries(filter, "", sort);
+  const navigate = useNavigate();
   const newPlaylist = useNewPlaylist();
   return (
     <nav className="side" aria-label="Main">
@@ -154,16 +152,20 @@ export function Sidebar() {
             <Icon name="library" size={22} />
             <span>Your library</span>
           </Link>
-          <button type="button" className="icon-btn" aria-label="Create playlist" onClick={newPlaylist}>
-            <Icon name="plus" />
-          </button>
+          <div className="lib-head-acts">
+            <button type="button" className="icon-btn" aria-label="Search in your library" onClick={() => void navigate("/library?find=1")}>
+              <Icon name="search" size={19} />
+            </button>
+            <button type="button" className="icon-btn" aria-label="Create playlist" onClick={newPlaylist}>
+              <Icon name="plus" />
+            </button>
+          </div>
         </div>
         <LibraryChips />
-        <div className={focused || query ? "lib-tools searching" : "lib-tools"}>
-          <SearchField variant="inline" collapsible className="sf-wide" value={query} onChange={setQuery} onFocusChange={setFocused} label="Search in your library" />
+        <div className="lib-tools">
           <CollectionTools sorts={LIBRARY_SORTS} sort={sort} onSort={setSort} />
         </div>
-        <ItemList items={entries} empty={libraryEmptyText(filter, query)} />
+        <ItemList items={entries} empty={libraryEmptyText(filter, "")} />
       </div>
     </nav>
   );

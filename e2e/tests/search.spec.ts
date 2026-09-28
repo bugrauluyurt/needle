@@ -31,13 +31,16 @@ test("searches as you type, with a top result and filters", async ({ page }) => 
 test("finds text anywhere in names, in search and in the library list", async ({ page }) => {
   await signIn(page, "/search?q=arbor");
   await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
-  const side = page.locator("nav.side");
-  await side.getByRole("button", { name: "Search in your library" }).click();
-  await side.getByRole("searchbox", { name: "Search in your library" }).fill("field");
-  await expect(side.locator(".lib-item", { hasText: "Weightless Hours" })).toBeVisible();
-  await expect(side.locator(".lib-item", { hasText: "Night Transit" })).toHaveCount(0);
-  await side.getByRole("searchbox", { name: "Search in your library" }).fill("zzzz");
-  await expect(side.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
+  await page.locator("nav.side").getByRole("button", { name: "Search in your library" }).click();
+  await expect(page).toHaveURL(/\/library/);
+  const find = page.getByRole("searchbox", { name: "Search in your library" });
+  await expect(find).toBeFocused();
+  await find.fill("field");
+  const results = page.locator(".library-page");
+  await expect(results.getByText("Weightless Hours")).toBeVisible();
+  await expect(results.getByText("Night Transit")).toHaveCount(0);
+  await find.fill("zzzz");
+  await expect(results.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
 });
 
 test("remembers recent searches", async ({ page }) => {

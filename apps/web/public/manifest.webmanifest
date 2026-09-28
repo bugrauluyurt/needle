@@ -1,7 +1,7 @@
 {
   "name": "Needle",
   "short_name": "Needle",
-  "description": "Your music, from the Pi.",
+  "description": "A music player for your Navidrome library.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

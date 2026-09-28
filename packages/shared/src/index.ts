@@ -80,6 +80,10 @@ export type Capabilities = {
   publicUrl: string | null;
 };
 
+export type CheckState = "ok" | "warn" | "off" | "fail";
+
+export type ConnectionCheck = { id: string; label: string; state: CheckState; detail: string; fix?: string };
+
 export type SpotifyToken = { accessToken: string; expiresAt: number };
 
 export type DeviceKind = "desktop" | "phone" | "tablet";

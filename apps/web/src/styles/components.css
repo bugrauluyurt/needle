@@ -1675,6 +1675,7 @@ kbd {
 .sp-badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   height: 20px;
   padding: 0 8px;
   border-radius: 10px;
@@ -1956,4 +1957,32 @@ kbd {
 
 .lib-list.compact .lib-item .s {
   margin-top: 0;
+}
+
+.sp-badge.compact {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: 6px;
+  flex: none;
+}
+
+.tr .by .sp-badge.compact {
+  margin: 0;
+}
+
+.card-src {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  background: rgba(15, 14, 19, 0.78);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.rank .t {
+  display: flex;
+  align-items: center;
 }

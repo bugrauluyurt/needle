@@ -37,5 +37,9 @@ anything that touches the UI or the player.
 - `apps/web/src/offline`: downloads in Cache Storage, metadata in IndexedDB.
 - `apps/web/src/remote`: the device hub client.
 - `apps/server/src`: `app.ts` wires the routes; one file per integration.
+  `status.ts` is Settings → Connections: add a check there when adding an integration.
+- `examples/`: compose files, `.env.example` and a Caddyfile that the README walks
+  through. Validate with `docker compose -f … config` after changing them.
+- `docs/media/`: README images; `make-hero.sh` renders `hero.html` (with `home.png` and `phone-player.png`) to `hero.png` and `social-preview.png` in headless Chromium.
 - `e2e/fixtures`: `make-library.ts` generates the test library, `seed.ts` resets
   the test Navidrome and play log.

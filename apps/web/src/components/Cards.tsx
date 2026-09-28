@@ -9,6 +9,7 @@ import { artistPath } from "../lib/paths.ts";
 import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
+import { SpotifyMark } from "./SpotifyMark.tsx";
 import type { CollectionItem } from "./Collection.tsx";
 
 type CardProps = {
@@ -19,14 +20,15 @@ type CardProps = {
   onPlay?: () => void;
   playLabel?: string;
   playingId?: string;
+  source?: "spotify";
 };
 
-export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel, playingId }: CardProps) {
+export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel, playingId, source }: CardProps) {
   const { current, playing } = useContextPlaying(playingId);
   return (
     <article className="card">
       <Link to={to} className="card-link">
-        <div className="card-art">{art}</div>
+        <div className="card-art">{art}{source === "spotify" ? <SpotifyMark className="card-src" /> : null}</div>
         <div className="t">{title}</div>
         {subtitle ? <div className="s">{subtitle}</div> : null}
       </Link>
@@ -80,6 +82,7 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
     subtitle,
     by: artist.name,
     contextId: artist.id,
+    ...(isSpotify(artist.id) ? { source: "spotify" as const } : {}),
     ...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) }),
   };
 }
@@ -87,7 +90,7 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
 const CARD_ART = 180;
 
 export function ItemCard({ item }: { item: CollectionItem }) {
-  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} {...(item.contextId ? { playingId: item.contextId } : {})} />;
+  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} {...(item.contextId ? { playingId: item.contextId } : {})} {...(item.source ? { source: item.source } : {})} />;
 }
 
 export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => <ItemCard item={albumItem(album, subtitle)} />;

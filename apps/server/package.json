@@ -1,6 +1,9 @@
 {
   "name": "@needle/server",
+  "version": "1.0.0",
   "private": true,
+  "homepage": "https://github.com/bugrauluyurt/needle",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "node --watch --disable-warning=ExperimentalWarning --env-file-if-exists=../../.env src/index.ts",

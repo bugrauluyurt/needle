@@ -3,7 +3,7 @@ import { fold, matchesTerms, queryTerms, songKey } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
 
 const PAGE = 500;
-const CHECK_EVERY_MS = 60_000;
+const CHECK_EVERY_MS = 10_000;
 const LIMITS = { songs: 50, albums: 24, artists: 16 };
 const TOP_GENRES = 12;
 const DECADES = 6;
@@ -51,6 +51,11 @@ export class LibrarySearch {
   async songKeys(auth: Auth): Promise<Set<string>> {
     const { songs } = await this.index(auth);
     return new Set(songs.map((s) => songKey(s.artist ?? "", s.title)));
+  }
+
+  async hasFile(auth: Auth, size: number, suffix: string): Promise<boolean> {
+    const { songs } = await this.index(auth);
+    return songs.some((s) => s.size === size && s.suffix?.toLowerCase() === suffix);
   }
 
   async browse(auth: Auth, random = Math.random): Promise<BrowseTile[]> {

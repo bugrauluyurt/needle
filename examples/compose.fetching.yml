@@ -1,0 +1,49 @@
+services:
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    ports: ["8686:8686"]
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./config/lidarr:/config
+      - ${MUSIC_DIR:?set MUSIC_DIR in .env}:/music
+      - ${DOWNLOADS_DIR:?set DOWNLOADS_DIR in .env}:/downloads
+    restart: unless-stopped
+
+  slskd:
+    image: slskd/slskd:latest
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports: ["5030:5030"]
+    environment:
+      SLSKD_SLSK_USERNAME: ${SOULSEEK_USER:?set SOULSEEK_USER in .env}
+      SLSKD_SLSK_PASSWORD: ${SOULSEEK_PASS:?set SOULSEEK_PASS in .env}
+      SLSKD_USERNAME: admin
+      SLSKD_PASSWORD: ${SLSKD_PASSWORD:?set SLSKD_PASSWORD in .env}
+      SLSKD_API_KEY: ${SLSKD_API_KEY:?set SLSKD_API_KEY in .env}
+      SLSKD_DOWNLOADS_DIR: /downloads
+      SLSKD_INCOMPLETE_DIR: /incomplete
+      SLSKD_SHARED_DIR: /music
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./config/slskd:/app
+      - ${SOULSEEK_DIR:?set SOULSEEK_DIR in .env}/downloads:/downloads
+      - ${SOULSEEK_DIR}/incomplete:/incomplete
+      - ${MUSIC_DIR}:/music:ro
+    restart: unless-stopped
+
+  navidrome:
+    volumes:
+      - ${SINGLES_DIR:?set SINGLES_DIR in .env}:/singles:ro
+
+  needle:
+    environment:
+      LIDARR_URL: http://lidarr:8686
+      LIDARR_API_KEY: ${LIDARR_API_KEY:-}
+      SLSKD_URL: http://slskd:5030
+      SLSKD_API_KEY: ${SLSKD_API_KEY}
+    volumes:
+      - ${SOULSEEK_DIR}/downloads:/soulseek
+      - ${SINGLES_DIR}:/singles
+    depends_on: [lidarr, slskd]

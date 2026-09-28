@@ -8,7 +8,7 @@ import { player } from "../player/controller.ts";
 import { useCurrentSong, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi } from "../state/ui.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
-import { LikeCurrent, SeekBar, Transport, Volume } from "./PlayerBar.tsx";
+import { LikeCurrent, LiveLabel, SeekBar, Transport, Volume } from "./PlayerBar.tsx";
 
 export default function FullScreenPlayer() {
   const open = useUi((s) => s.fullScreen);
@@ -49,7 +49,7 @@ export default function FullScreenPlayer() {
         {station ? <div className="art station-art"><Icon name="radio" size={96} /></div> : <Art id={song?.coverArt} px={520} eager />}
         <div className="full-info">
           <h2>{station?.name ?? song?.title}</h2>
-          <div className="by">{station ? "Internet radio" : song ? artistName(song) : ""}</div>
+          <div className="by">{station ? <LiveLabel /> : song ? artistName(song) : ""}</div>
           {lyrics && song ? (
             <div className="full-lyrics"><LyricsView song={song} variant="panel" /></div>
           ) : upNext.length ? (

@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
-import type { ImportResult } from "@needle/shared";
+import type { CheckState, ImportResult } from "@needle/shared";
 import { Icon } from "../components/Icon.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { api } from "../lib/api.ts";
-import { minutesSince, plural } from "../lib/format.ts";
+import { minutesSince, plural, sizeLabel } from "../lib/format.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { AvatarFace, TopBar } from "../layout/TopBar.tsx";
-import { removeAllDownloads, useOffline } from "../offline/store.ts";
+import { bytesOf, removeAllDownloads, useOffline } from "../offline/store.ts";
 import { canCrossfade } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
-import { useCapabilities, useMe } from "../queries/hooks.ts";
+import { useCapabilities, useIsAdmin, useMe, useStorageEstimate } from "../queries/hooks.ts";
+import { browserChecks } from "../lib/connections.ts";
 import { squarePhoto } from "../lib/photo.ts";
 import { useSession } from "../state/session.ts";
 import { clearSpotifyCache } from "../queries/spotify.ts";
@@ -52,15 +53,12 @@ function Toggle<K extends keyof S>({ k, label }: { k: K; label: string }) {
 
 const QUALITY: [Quality, string][] = [["original", "Original"], ["320", "320 kbps"], ["192", "192 kbps"]];
 
-function gb(bytes: number): string {
-  return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
-}
 
 function Storage() {
-  const bytes = useOffline((s) => s.bytes);
+  const bytes = useOffline((s) => bytesOf(s.songs));
   const collections = useOffline((s) => s.collections);
   const supported = useOffline((s) => s.supported);
-  const { data: quota } = useQuery({ queryKey: ["quota"], queryFn: () => navigator.storage?.estimate?.() ?? Promise.resolve(null) });
+  const { data: quota } = useStorageEstimate();
   if (!supported) {
     return <Row title="Downloads aren’t available here" hint="Open Needle at its https:// address to keep music on this device." ><span /></Row>;
   }
@@ -72,8 +70,8 @@ function Storage() {
   return (
     <div className="set-row">
       <div>
-        <b>{gb(bytes)} used by downloads</b>
-        <span>{parts.length ? `${parts.join(", ")}.` : "Nothing downloaded yet."}{quota?.quota ? ` Room for about ${gb(quota.quota - (quota.usage ?? 0))} more.` : ""}</span>
+        <b>{sizeLabel(bytes)} used by downloads</b>
+        <span>{parts.length ? `${parts.join(", ")}.` : "Nothing downloaded yet."}{quota?.quota ? ` Room for about ${sizeLabel(quota.quota - (quota.usage ?? 0))} more.` : ""}</span>
         <div className="storage"><i style={{ width: `${Math.max(pct, bytes ? 2 : 0)}%` }} /></div>
       </div>
       <button type="button" className="btn ghost sm" disabled={!bytes} onClick={() => void removeAllDownloads().then(() => toast("Removed all downloads"))}>Remove all</button>
@@ -100,7 +98,7 @@ function PhotoSetting() {
     }
   };
   return (
-    <Row title="Your photo" hint="Shown on every device. Stored on the Pi with Needle’s data.">
+    <Row title="Your photo" hint="Shown on every device. Stored on the server with Needle’s data.">
       <div className="photo-set">
         <span className="avatar"><AvatarFace px={44} /></span>
         <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
@@ -188,7 +186,7 @@ function SpotifySettings() {
   const connect = () => void api.spotifyLogin().then(({ url }) => { location.href = url; });
   if (!caps.data?.spotify) {
     return (
-      <Row title="Connect Spotify" hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s settings on the Pi to turn this on.">
+      <Row title="Connect Spotify" hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s server settings to turn this on.">
         <button type="button" className="btn ghost sm" disabled>Connect Spotify</button>
       </Row>
     );
@@ -219,6 +217,29 @@ function SpotifySettings() {
   );
 }
 
+const CHECK_WORDS: Record<CheckState, string> = { ok: "Working", warn: "Needs a look", off: "Off", fail: "Not working" };
+
+function Connections({ publicUrl }: { publicUrl: string | null }) {
+  const qc = useQueryClient();
+  const { data, isFetching } = useQuery({ queryKey: keys.status, queryFn: () => api.status(false), staleTime: 30_000 });
+  const again = () => void qc.fetchQuery({ queryKey: keys.status, queryFn: () => api.status(true), staleTime: 0 });
+  const checks = [...browserChecks(publicUrl, location.origin, window.isSecureContext), ...(data?.checks ?? [])];
+  return (
+    <>
+      <div className="conn-head">
+        <h2>Connections</h2>
+        <button type="button" className="btn ghost sm" disabled={isFetching} onClick={again}><Icon name="refresh" size={15} />Check again</button>
+      </div>
+      <p className="conn-lede">What Needle and its server can reach. Only admins see this.</p>
+      {checks.map((c) => (
+        <Row key={c.id} title={c.label} hint={<>{c.detail}{c.fix && c.state !== "ok" ? <em className="conn-fix">{c.fix}</em> : null}</>}>
+          <span className={`conn-state ${c.state}`}>{CHECK_WORDS[c.state]}</span>
+        </Row>
+      ))}
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const mobile = useIsMobile();
   const s = useSettings();
@@ -227,6 +248,7 @@ export default function SettingsPage() {
   const user = useSession((x) => x.credentials?.user);
   const signOut = useSession((x) => x.signOut);
   const caps = useCapabilities();
+  const admin = useIsAdmin();
   const [params, setParams] = useSearchParams();
   const [name, setName] = useState(deviceName);
   const { data: scan } = useQuery({ queryKey: keys.scan, queryFn: sub.scanStatus, staleTime: 60_000 });
@@ -268,7 +290,7 @@ export default function SettingsPage() {
         <Row title="On Wi-Fi" hint="Original is the file as it is, with no conversion.">
           <Seg label="Quality on Wi-Fi" value={s.wifiQuality} options={QUALITY} onChange={(v) => s.set("wifiQuality", v)} />
         </Row>
-        <Row title="On mobile data" hint="Converted on the Pi to Opus, or AAC on iPhone, which sound good at small sizes.">
+        <Row title="On mobile data" hint="Converted by Navidrome to Opus, or AAC on iPhone, which sound good at small sizes.">
           <Seg label="Quality on mobile data" value={s.cellularQuality} options={QUALITY} onChange={(v) => s.set("cellularQuality", v)} />
         </Row>
         <Row title="Downloads" hint="Quality of songs kept on this device.">
@@ -294,9 +316,13 @@ export default function SettingsPage() {
           <span className="ok">Connected</span>
         </Row>
         <PhotoSetting />
-        <Row title="Get music through Lidarr" hint={caps.data?.lidarr ? "Search offers albums you don’t have yet, and Lidarr fetches them." : "Needs Lidarr set up on the Needle server, and a Navidrome admin account."}>
-          {caps.data?.lidarr ? <span className="ok">On</span> : <span className="muted">Off</span>}
-        </Row>
+        {admin ? (
+          <Connections publicUrl={caps.data?.publicUrl ?? null} />
+        ) : (
+          <Row title="Get music through Lidarr" hint="Asking for albums and songs needs a Navidrome admin account.">
+            <span className="muted">Off</span>
+          </Row>
+        )}
         <h2>Spotify</h2>
         <SpotifySettings />
 

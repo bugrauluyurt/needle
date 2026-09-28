@@ -173,16 +173,10 @@
   font-size: 13px;
 }
 
-.lib-tools .coll-tools {
-  max-width: 200px;
-  overflow: hidden;
-  transition: max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
-}
-
-.lib-tools.searching .coll-tools {
-  max-width: 0;
-  opacity: 0;
-  pointer-events: none;
+.lib-head-acts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .lib-list {

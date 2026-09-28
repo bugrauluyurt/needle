@@ -70,7 +70,7 @@ export default function AlbumPage() {
           </>
         }
       />
-      <ActBar end={plays ? <span className="muted">{count(plays)} plays</span> : null}>
+      <ActBar end={plays ? <span className="muted">{plural(plays, "play")}</span> : null}>
         <PlayContextButton contextId={album.id} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
         <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <LikeButton kind="album" item={album} />

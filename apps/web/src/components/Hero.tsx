@@ -86,7 +86,7 @@ export function NotFoundState({ what, error, retry }: { what: string; error?: un
       <div className="empty">
         <div className="empty-in">
           <h1>{missing ? `This ${what} isn’t here` : "Couldn’t reach your music"}</h1>
-          <p>{missing ? "It may have been removed from Navidrome, or the link is wrong." : "Navidrome didn’t answer. Check that the Pi is on and you’re on the tailnet."}</p>
+          <p>{missing ? "It may have been removed from Navidrome, or the link is wrong." : "Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it."}</p>
           {!missing && retry ? (
             <div className="acts">
               <button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button>

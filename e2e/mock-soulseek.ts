@@ -23,6 +23,7 @@ createServer((req, res) => {
   if (path.startsWith("/deezer/")) return json(res, { data: [] });
   if (path === "/mb/recording") return json(res, { recordings: (url.searchParams.get("query") ?? "").toLowerCase().includes("undertow") ? [recording] : [] });
   if (req.headers["x-api-key"] !== "test-slskd") return json(res, { message: "Unauthorized" }, 401);
+  if (path === "/api/v0/application") return json(res, { version: { current: "0.0.0-mock" }, server: { state: "Connected, LoggedIn", isLoggedIn: true } });
   if (req.method === "POST" && path === "/api/v0/searches") return json(res, { id: "s1", isComplete: false });
   if (path === "/api/v0/searches/s1") return req.method === "DELETE" ? json(res, {}) : json(res, { id: "s1", isComplete: true });
   if (path === "/api/v0/searches/s1/responses") return json(res, [{ username: "peer", files: [FILE], hasFreeUploadSlot: true, uploadSpeed: 1_000_000, queueLength: 0 }]);

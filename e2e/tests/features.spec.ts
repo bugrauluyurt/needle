@@ -78,3 +78,12 @@ test("changes settings and keeps them", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Connect Spotify" })).toBeDisabled();
   await expect(page.getByText("Get music through Lidarr")).toBeVisible();
 });
+
+test("admins see what the server can reach", async ({ page }) => {
+  await signIn(page, "/settings");
+  await expect(page.getByRole("heading", { name: "Connections" })).toBeVisible();
+  for (const name of ["Navidrome", "Lidarr (albums)", "slskd (single songs)", "Song folders"]) {
+    await expect(page.locator(".set-row", { hasText: name }).locator(".conn-state")).toHaveText("Working");
+  }
+  await expect(page.locator(".set-row", { hasText: "Spotify" }).locator(".conn-state")).toHaveText("Off");
+});

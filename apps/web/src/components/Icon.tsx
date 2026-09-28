@@ -52,6 +52,7 @@ const PATHS = {
   logout: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10",
   signal: "M4 19v-3M9 19v-6M14 19v-9M19 19V6",
   import: "M12 3v12M7.5 10.5 12 15l4.5-4.5M4 15v5h16v-5",
+  waves: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM7 9.6c3.4-1 7.3-.6 10 1.1M7.6 12.8c2.9-.8 6-.4 8.3 1M8.2 15.9c2.3-.6 4.7-.3 6.5.8",
 } as const;
 
 export type IconName = keyof typeof PATHS;

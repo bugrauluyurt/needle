@@ -31,6 +31,9 @@ const browseOptions = queryOptions({ queryKey: keys.browse, queryFn: api.browse,
 
 export const useBrowse = () => useQuery(browseOptions);
 
+export const useStorageEstimate = () =>
+  useQuery({ queryKey: keys.storage, queryFn: async () => (await navigator.storage?.estimate?.()) ?? null, staleTime: 60_000 });
+
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: HOUR_MS });
 
 const ACTIVE = new Set(["searching", "downloading", "importing", "moving"]);
@@ -138,11 +141,14 @@ export const useGenres = () => useQuery(genresOptions);
 export const useGenreSongs = (genre: string | undefined) =>
   useQuery({ queryKey: keys.genreSongs(genre ?? ""), queryFn: () => sub.songsByGenre(genre ?? "", 500), enabled: Boolean(genre) });
 
+const SEARCH_FRESH_MS = 5_000;
+
 export const useSearch = (q: string) =>
   useQuery({
     queryKey: keys.search(q),
     queryFn: ({ signal }) => api.search(q, signal),
     enabled: q.trim().length > 0,
+    staleTime: SEARCH_FRESH_MS,
     placeholderData: keepPreviousData,
   });
 

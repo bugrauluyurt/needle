@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router";
+import { useDragToClose } from "../components/ActionSheet.tsx";
 import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
@@ -14,7 +15,7 @@ import { useCurrentSong, usePlayer } from "../player/store.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
 import { useSession } from "../state/session.ts";
 import { useUi } from "../state/ui.ts";
-import { LikeCurrent, SeekBar, Transport } from "./PlayerBar.tsx";
+import { LikeCurrent, LiveLabel, SeekBar, Transport } from "./PlayerBar.tsx";
 import { QueueView } from "./RightPanel.tsx";
 import { AccountMenu } from "./TopBar.tsx";
 
@@ -48,8 +49,7 @@ export function MiniPlayer() {
         <div className="mini-text">
           <div className="t">{station?.name ?? song?.title}</div>
           <div className="s">
-            <Icon name="devices" size={13} />
-            {station ? "Internet radio" : deviceName}
+            {station ? <LiveLabel /> : <><Icon name="devices" size={13} />{deviceName}</>}
           </div>
         </div>
       </button>
@@ -81,21 +81,6 @@ export function MobileBack() {
   );
 }
 
-function useSwipeDown(onClose: () => void) {
-  const start = useRef<number | null>(null);
-  return {
-    onTouchStart: (e: React.TouchEvent) => {
-      start.current = e.touches[0]?.clientY ?? null;
-    },
-    onTouchEnd: (e: React.TouchEvent) => {
-      const s = start.current;
-      const end = e.changedTouches[0]?.clientY;
-      if (s !== null && end !== undefined && end - s > 110) onClose();
-      start.current = null;
-    },
-  };
-}
-
 export function NowPlayingSheet() {
   const open = useUi((s) => s.nowPlayingOpen);
   const view = useUi((s) => s.mobileView);
@@ -106,7 +91,7 @@ export function NowPlayingSheet() {
   const deviceName = useSession((s) => s.deviceName);
   const tone = useTone(song?.coverArt);
   const close = () => useUi.setState({ nowPlayingOpen: false });
-  const swipe = useSwipeDown(close);
+  const { handlers: swipe } = useDragToClose(close);
   useEffect(() => {
     if (!open) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -158,7 +143,7 @@ export function NowPlayingSheet() {
           <div className="ti">
             <div>
               <h2>{station?.name ?? song?.title}</h2>
-              <p>{station ? "Internet radio" : song ? artistName(song) : ""}</p>
+              <p>{station ? <LiveLabel /> : song ? artistName(song) : ""}</p>
             </div>
             {song ? <LikeCurrent size={26} className="icon-btn big-heart" /> : null}
           </div>

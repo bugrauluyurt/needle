@@ -19,6 +19,10 @@ export class Deezer {
     return res?.ok ? ((await res.json()) as T) : null;
   }
 
+  async ping(): Promise<boolean> {
+    return (await this.get("/search/artist?q=needle&limit=1")) !== null;
+  }
+
   async topSongs(artistName: string): Promise<SongCandidate[]> {
     const key = fold(artistName);
     const hit = this.cache.get(key);

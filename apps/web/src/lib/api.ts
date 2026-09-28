@@ -1,4 +1,4 @@
-import type { BrowseTile, Capabilities, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { BrowseTile, Capabilities, ConnectionCheck, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -33,6 +33,7 @@ const put = send("PUT");
 
 export const api = {
   capabilities: () => request<Capabilities>("/capabilities"),
+  status: (fresh: boolean) => request<{ checks: ConnectionCheck[] }>(`/status${fresh ? "?fresh=1" : ""}`),
   reportPlay: (p: PlayReport) => post<void>("/plays", p),
   stats: (period: Period) => request<Stats>(`/stats?period=${period}`),
   mixes: () => request<Mix[]>("/mixes"),

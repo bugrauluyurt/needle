@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useSearchParams } from "react-router";
 import { CollectionBody, CollectionTools } from "../components/Collection.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
@@ -10,6 +11,9 @@ export default function LibraryPage() {
   const mobile = useIsMobile();
   const filter = useUi((s) => s.libraryFilter);
   const [query, setQuery] = useState("");
+  const [params] = useSearchParams();
+  const location = useLocation();
+  const find = params.has("find");
   const { sort, setSort, view, setView } = useLibrarySort(mobile ? "list" : "grid");
   const entries = useLibraryEntries(filter, query, sort);
   const newPlaylist = useNewPlaylist();
@@ -17,7 +21,7 @@ export default function LibraryPage() {
   const create = <button type="button" className="icon-btn light" aria-label="Create playlist" onClick={newPlaylist}><Icon name="plus" size={24} /></button>;
   return (
     <>
-      <SearchHeader title="Your library" label="Search in your library" placeholder="Search in your library" value={query} onChange={setQuery} actions={create} />
+      <SearchHeader key={find ? location.key : "library"} autoFocus={find} title="Your library" label="Search in your library" placeholder="Search in your library" value={query} onChange={setQuery} actions={create} />
       <div className="pad library-page">
         {!mobile ? (
           <div className="library-head">

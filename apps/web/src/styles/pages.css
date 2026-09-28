@@ -275,10 +275,42 @@
   line-height: 1.6;
 }
 
-.about .src {
+.about-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.about-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.about .src,
+.about-dialog .src {
   color: var(--dim);
   font-size: 12px;
-  margin-top: 10px;
+}
+
+.about-dialog {
+  width: min(680px, calc(100vw - 32px));
+}
+
+.about-full {
+  display: grid;
+  gap: 14px;
+  margin: 4px 0 20px;
+}
+
+.about-full p {
+  color: rgba(243, 239, 232, 0.86);
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 62ch;
 }
 
 /* playlist extras */
@@ -536,6 +568,10 @@
   font-weight: 600;
 }
 
+.station.on .t {
+  color: var(--amber);
+}
+
 .station .s {
   color: var(--sleeve);
   font-size: 12.5px;
@@ -588,6 +624,65 @@
   margin-top: 3px;
   max-width: 52ch;
   line-height: 1.45;
+}
+
+.conn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.set .conn-head h2 {
+  margin: 0;
+}
+
+.conn-lede {
+  color: var(--sleeve);
+  font-size: 13px;
+  margin: 4px 0 4px;
+}
+
+.set-row .conn-fix {
+  display: block;
+  font-style: normal;
+  color: rgba(243, 239, 232, 0.78);
+  margin-top: 4px;
+}
+
+.conn-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.conn-state::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn-state.ok {
+  color: var(--ok);
+}
+
+.conn-state.warn {
+  color: var(--amber);
+}
+
+.conn-state.off {
+  color: var(--dim);
+}
+
+.conn-state.fail {
+  color: var(--live);
 }
 
 .slider-row {
@@ -1005,4 +1100,26 @@
 
 a.get-card:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.dl-where {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 22px;
+  font-size: 13.5px;
+}
+
+.dl-where > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dl-where dt {
+  color: var(--dim);
+}
+
+.dl-where dd {
+  color: var(--sleeve);
+  line-height: 1.45;
 }
