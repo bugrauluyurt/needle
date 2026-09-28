@@ -7,6 +7,8 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+## 1.0.0 - 2026-09-28
+
 The first public release.
 
 ### Listening
