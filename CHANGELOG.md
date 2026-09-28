@@ -7,6 +7,8 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+## 1.1.0 - 2026-09-28
+
 ### Added
 - On phones, pages with a back button (albums, playlists, artists and more) have a header
   that turns to dark glass as you scroll and shows the page's title once it scrolls
