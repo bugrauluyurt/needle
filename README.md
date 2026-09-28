@@ -275,9 +275,7 @@ another user, set `user: "<uid>:<gid>"` on the `needle` service (the examples us
 ## Spotify
 
 Optional. It adds your Spotify library, search and playback beside your own music.
-Playback uses Spotify's Web Playback SDK, which needs Premium and a desktop or
-Android browser; on iPhone, Spotify songs can be browsed but not played. The server
-never downloads anything from Spotify.
+The server never downloads anything from Spotify.
 
 1. Create an app in the [Spotify developer dashboard](https://developer.spotify.com/dashboard)
    with the **Web API** and **Web Playback SDK**.
