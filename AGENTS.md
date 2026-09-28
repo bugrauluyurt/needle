@@ -47,6 +47,8 @@ typecheck and tests, bumps the versions, moves the notes into the release, commi
 - `apps/web/src/remote`: the device hub client.
 - `apps/server/src`: `app.ts` wires the routes; one file per integration.
   `status.ts` is Settings → Connections: add a check there when adding an integration.
+  `people.ts` decides who may request music or use Spotify: a new route that fetches
+  music or calls Spotify must go through `needLidarr` / `needSongs` / `needSpotify` in `app.ts`.
 - `examples/`: compose files, `.env.example` and a Caddyfile that the README walks
   through. Validate with `docker compose -f … config` after changing them.
 - `docs/media/`: README images; `make-hero.sh` renders `hero.html` (with `home.png` and `phone-player.png`) to `hero.png` and `social-preview.png` in headless Chromium.

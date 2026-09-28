@@ -51,15 +51,24 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
   period, from Needle's own play log.
 - **Search** matches text anywhere in titles, artists and albums, with list and grid
   views and sorting everywhere.
+- **Your library** lists every album, artist, playlist and song you have, filtered by
+  All / Songs / Albums / Artists / Playlists and searchable like Search. With Spotify on,
+  its sort menu also shows only your music, only Spotify, or both.
 - **Fetch music** (optional): search also lists albums and songs you don't have.
   **Get album** asks Lidarr; **Get song** fetches one song from Soulseek through slskd.
-  The Requests page follows both until they're in your library.
+  The Requests page follows both until they're in your library, and lets admins remove
+  a download Lidarr couldn't import or have it **find another copy**.
 - **Devices:** every open Needle signed in as you is listed. Pause or skip on another
   device, send your queue there, or pick up at the same second somewhere else.
 - **Offline:** download albums, playlists or liked songs to the device. They're kept
   in the browser on that device.
 - **Spotify** (optional): your Spotify library, search and playback next to your own
   music, with an on/off switch per account.
+- **On phones:** installs to the home screen, a mini player and full-screen player,
+  song options as a sheet from the bottom, and a header that turns to glass and shows
+  the page's title as you scroll.
+- **People:** everyone with a Navidrome account signs in with their own likes,
+  playlists, stats and mixes; admins choose who may request music or use Spotify.
 - Internet radio, keyboard shortcuts (`?` lists them), lock-screen controls, an
   account photo, and a Connections page that checks your setup.
 
@@ -345,16 +354,16 @@ nothing to set up. Choose qualities in Needle's Settings.
 
 ## Data, backups and updates
 
-- Back up `DATA_DIR` (`needle.db` holds plays, requests, photos and Spotify
-  sign-ins) along with Navidrome's data folder. Your music, playlists and likes live
+- Back up `DATA_DIR` (`needle.db` holds plays, requests, photos, Spotify sign-ins and
+  who may do what) along with Navidrome's data folder. Your music, playlists and likes live
   in Navidrome.
 - Offline downloads live in each browser and are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
   the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
   means your setup needs a change; the changelog says what.
-- **To update** a clone: `git fetch --tags && git checkout v1.2.0` (or `git pull` to
+- **To update** a clone: `git fetch --tags && git checkout vX.Y.Z` (or `git pull` to
   follow `main`), then `docker compose up -d --build needle`. Building without a clone,
-  point the build at a tag: `build: https://github.com/bugrauluyurt/needle.git#v1.2.0`.
+  point the build at a tag: `build: https://github.com/bugrauluyurt/needle.git#vX.Y.Z`.
 - The database migrates itself on start. Open apps show **Update Needle** in the
   account menu; the new version loads when you choose it, so music isn't cut off.
   Settings → This app shows which version you're running.
@@ -399,6 +408,21 @@ Common problems:
 - **Spotify sign-in fails:** the redirect URI in Spotify's dashboard must match
   `<PUBLIC_URL>/api/spotify/callback` exactly, and your Spotify account must be listed
   under User Management.
+- **Spotify disappears for a while:** Spotify rate-limited the app (`429`); Needle waits
+  as long as Spotify asks and brings it back. Every user shares one allowance.
+- **Someone is missing from Settings → People:** Navidrome won't list other users to
+  Needle, so People shows everyone who has opened Needle, plus anyone you've set up in
+  advance (PUT `/api/people/<name>`, which arr-stack-style scripts can call).
+- **An album stays at "Album match is not close enough":** Lidarr downloaded a copy
+  that doesn't match the album (another edition, a bootleg, missing tracks). On the
+  Requests page choose **Find another copy**, or × to drop it.
+- **Lidarr finds copies but takes none:** its search log says why; "X is not wanted in
+  profile" means the artist's quality profile excludes that format (a lossy-only
+  profile rejects FLAC). Set `LIDARR_QUALITY_PROFILE` for new albums, or change the
+  artist's profile in Lidarr.
+- **Get album never finds rare music through Soulseek:** if Lidarr uses slskd through
+  the Tubifarry plugin, that indexer's **automatic search** must be on (Lidarr leaves it
+  off for indexers without RSS), and a longer search timeout helps.
 - `docker logs needle` shows the server's errors.
 
 ## Development

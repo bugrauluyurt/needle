@@ -34,7 +34,9 @@ Keys for Lidarr, slskd and Spotify's client secret stay on the server.
 apps/web/src
   pages/        one file per screen (Home, Search, Album, Artist, Library, Requests, Spotify, ...)
   components/   shared UI: TrackList (virtualized), Cards, Collection (sort + view menu),
-                SearchField, GetCard (albums/songs you don't have), RequestState, Art, TrackMenu
+                SearchField, SearchResults (the "In your library" results Search and Your library
+                share), GetCard (albums/songs you don't have), RequestState, Art (with the record
+                fallback), TrackMenu (dropdown on desktop, ActionSheet on phones)
   layout/       Shell, Sidebar, TopBar, PlayerBar, RightPanel, Mobile (tab bar, mini player, player sheet)
   player/       controller.ts (queue, play/pause, scrobbling, queue sync), engine.ts (two <audio>
                 elements + Web Audio for crossfade and ReplayGain), spotify.ts (Web Playback SDK)
@@ -46,6 +48,9 @@ apps/web/src
   state/        zustand stores: session, settings, ui (persisted to localStorage)
 apps/server/src
   app.ts        every route; config.ts reads the environment; db.ts creates/migrates needle.db
+  people.ts     who has opened Needle and what each may do; status.ts Settings → Connections
+  one file per integration: navidrome.ts (+ proxy.ts), lidarr.ts, soulseek.ts, musicbrainz.ts,
+                deezer.ts, spotify.ts; search.ts, stats.ts, mixes.ts, requests.ts, profiles.ts, devices.ts
 packages/shared types used by both sides, plus fold/matchesTerms (accent-insensitive matching)
 e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + MusicBrainz
 ```
@@ -65,15 +70,33 @@ e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + M
  anything else  static files from apps/web/dist (Brotli/gzip precompressed), SPA fallback
 ```
 
-Admin-only features (Lidarr, single songs) check Navidrome's `adminRole` (cached
-10 min). `/api/capabilities` tells the app what's switched on: Lidarr, songs,
-Spotify (configured, connected, allowed to play, needs reconnecting, switched on).
+## Who may do what
+
+```
+ every /api request ─► isAdmin(user): Navidrome getUser → adminRole (cached 10 min)
+                         └► people.seen(user, admin)   (Navidrome won't list other users,
+                                                        so Needle remembers who has signed in)
+ people.allowed(user, admin, "request")  admins always; others when switched on in People
+ people.allowed(user, admin, "spotify")  admins unless switched off; others when switched on
+```
+
+| Needs | Routes |
+|---|---|
+| Request music | `GET /api/lidarr/search`, `/albums`, `/artists`, `POST /api/lidarr/albums/:id`, `/api/songs*`, `POST /api/requests/:id/retry`, `POST /api/spotify/missing` |
+| Spotify | `/api/spotify/*` (except the sign-in callback) |
+| Admin | `GET`/`DELETE /api/lidarr/downloads[/:id]`, `GET /api/status`, `GET`/`PUT /api/people[/:user]`, `GET /api/requests?everyone=1`, removing anyone's request |
+| Signed in | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests |
+
+`/api/capabilities` tells the app what this person may do: `admin`, `lidarr` and `songs`
+(may request), and Spotify (configured and allowed, connected, allowed to play, needs
+reconnecting, switched on). The app hides what isn't allowed; the server refuses it
+anyway (403).
 
 ## Where data lives
 
 | Where | What |
 |---|---|
-| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress) |
+| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress) |
 | Navidrome | The library, users, playlists, likes, the play queue each device syncs |
 | Browser localStorage | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil` |
 | Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art |
@@ -86,6 +109,8 @@ Spotify (configured, connected, allowed to play, needs reconnecting, switched on
  every search ──► all words must appear somewhere in title/artist/album (accents folded,
                   Turkish ı/İ handled); title matches rank first
  browse tiles ──► built from the same index: top genres, decades, recently added, random
+ Your library ──► GET /api/library/songs: every song from the same index, newest first
+                  (the Songs filter); a search uses /api/search like the Search page
  index freshness ──► getScanStatus checked at most every 10 s; rebuilt when it changes
                      (the app keeps search results for 5 s, so a new song shows up
                       within seconds of Navidrome's scan)
@@ -131,7 +156,10 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
  Album: "Get album" ─► POST /api/lidarr/albums/:id ─► Lidarr monitors that album and searches
                         └► requests row (kind album)
         Requests page ─► GET /api/requests ─► state merged live from Lidarr's queue and commands
-                      GET /api/lidarr/downloads ─► "Downloading now": Lidarr's whole queue
+                      GET /api/requests?everyone=1 ─► admins: other people's requests
+                      GET /api/lidarr/downloads ─► admins: "Downloading now", Lidarr's whole queue
+                      DELETE /api/lidarr/downloads/:id[?find=1] ─► remove from the queue and the
+                        download client, blocklist that release; find=1 also searches again
  Artist:  searching an artist's exact name also lists their studio albums
           (Lidarr's albums if it knows the artist, else MusicBrainz release groups)
 
