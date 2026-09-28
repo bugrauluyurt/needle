@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router";
+import { NavLink, useLocation, useNavigate } from "react-router";
 import { useDragToClose } from "../components/ActionSheet.tsx";
 import { Art } from "../components/Art.tsx";
+import { useScrollContainer } from "../components/ScrollContext.ts";
 import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
@@ -72,12 +73,42 @@ export function MobileHeader({ title, actions }: { title: string; actions?: Reac
   );
 }
 
+const GLASS_AFTER_PX = 160;
+
 export function MobileBack() {
   const navigate = useNavigate();
+  const { key } = useLocation();
+  const scroller = useScrollContainer();
+  const bar = useRef<HTMLDivElement>(null);
+  const title = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const main = scroller?.current;
+    const el = bar.current;
+    if (!main || !el) return;
+    const glass = () => el.style.setProperty("--p", String(Math.min(1, main.scrollTop / GLASS_AFTER_PX)));
+    glass();
+    main.addEventListener("scroll", glass, { passive: true });
+    const heading = main.querySelector("h1");
+    if (title.current) title.current.textContent = heading?.textContent ?? "";
+    const seen = heading
+      ? new IntersectionObserver(([e]) => el.classList.toggle("titled", Boolean(e && !e.isIntersecting && e.boundingClientRect.top < el.offsetHeight)), {
+          root: main,
+          rootMargin: `-${el.offsetHeight}px 0px 0px 0px`,
+        })
+      : null;
+    if (heading) seen?.observe(heading);
+    return () => {
+      main.removeEventListener("scroll", glass);
+      seen?.disconnect();
+    };
+  }, [scroller, key]);
   return (
-    <button type="button" className="icon-btn light mobile-back" aria-label="Go back" onClick={() => void navigate(-1)}>
-      <Icon name="back" size={24} />
-    </button>
+    <div ref={bar} className="mobile-bar">
+      <button type="button" className="icon-btn light mobile-back" aria-label="Go back" onClick={() => void navigate(-1)}>
+        <Icon name="back" size={24} />
+      </button>
+      <span ref={title} className="mobile-bar-title" aria-hidden="true" />
+    </div>
   );
 }
 

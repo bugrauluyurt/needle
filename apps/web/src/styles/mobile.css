@@ -13,12 +13,12 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   padding-top: var(--safe-top);
-  padding-bottom: calc(var(--tabbar-h) + 24px);
+  padding-bottom: calc(var(--tabbar-h) + 48px);
   -webkit-overflow-scrolling: touch;
 }
 
 .phone-app.has-mini .pmain {
-  padding-bottom: calc(var(--tabbar-h) + 96px);
+  padding-bottom: calc(var(--tabbar-h) + 120px);
 }
 
 .phone-app .pad {
@@ -62,15 +62,52 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.mobile-back {
+.mobile-bar {
+  --p: 0;
+  --bar-h: 52px;
   position: sticky;
-  top: 8px;
-  left: 8px;
-  margin: 8px 0 0 8px;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--bar-h) + var(--safe-top));
+  padding: var(--safe-top) 16px 0 8px;
+  margin-top: calc(-1 * var(--safe-top));
+  background: rgba(15, 14, 19, calc(var(--p) * 0.62));
+  -webkit-backdrop-filter: saturate(calc(100% + var(--p) * 70%)) blur(calc(var(--p) * 24px));
+  backdrop-filter: saturate(calc(100% + var(--p) * 70%)) blur(calc(var(--p) * 24px));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, calc(var(--p) * 0.06));
+}
+
+.mobile-bar:has(+ .hero, + .a-hero) {
+  margin-bottom: calc(-1 * var(--bar-h));
+}
+
+.mobile-back {
+  flex: none;
   width: 38px;
   height: 38px;
-  background: rgba(0, 0, 0, 0.35);
-  z-index: 5;
+  background: rgba(0, 0, 0, calc(0.35 - var(--p) * 0.35));
+}
+
+.mobile-bar-title {
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mobile-bar.titled .mobile-bar-title {
+  opacity: 1;
+  transform: none;
 }
 
 .psearch-wrap {
@@ -242,9 +279,8 @@
 .phone-app .hero {
   flex-direction: column;
   align-items: stretch;
-  padding: 0 16px;
+  padding: 16px 16px 0;
   gap: 20px;
-  margin-top: -30px;
 }
 
 .phone-app .hero-art {
@@ -361,10 +397,6 @@
 }
 
 /* artist on phone */
-.phone-app .artist-page > .mobile-back {
-  position: absolute;
-  top: calc(8px + var(--safe-top));
-}
 
 .phone-app .a-hero {
   height: 320px;

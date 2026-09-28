@@ -42,7 +42,14 @@ type RootFolder = { path: string; defaultQualityProfileId?: number; defaultMetad
 const KEEP_TYPES = new Set(["Album", "EP"]);
 const RESULTS = 6;
 
-export class LidarrError extends Error {}
+export class LidarrError extends Error {
+  readonly status: number | null;
+
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.status = status;
+  }
+}
 
 export class Lidarr {
   private readonly url: string;
@@ -65,7 +72,7 @@ export class Lidarr {
     }).catch(() => {
       throw new LidarrError("Lidarr isn't responding");
     });
-    if (!res.ok) throw new LidarrError(`Lidarr ${init.method ?? "GET"} ${path.split("?")[0]} answered ${res.status}`);
+    if (!res.ok) throw new LidarrError(`Lidarr ${init.method ?? "GET"} ${path.split("?")[0]} answered ${res.status}`, res.status);
     return (res.status === 204 ? undefined : await res.json()) as T;
   }
 
@@ -220,7 +227,9 @@ export class Lidarr {
 
   async removeDownload(id: number, findAnother: boolean): Promise<void> {
     const q = new URLSearchParams({ removeFromClient: "true", blocklist: "true", skipRedownload: String(!findAnother) });
-    await this.req(`/queue/${id}?${q.toString()}`, { method: "DELETE" });
+    await this.req(`/queue/${id}?${q.toString()}`, { method: "DELETE" }).catch((e: unknown) => {
+      if (!(e instanceof LidarrError && e.status === 404)) throw e;
+    });
   }
 
   async downloads(): Promise<DownloadItem[]> {

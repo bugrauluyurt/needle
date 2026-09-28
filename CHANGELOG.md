@@ -7,6 +7,11 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+### Added
+- On phones, pages with a back button (albums, playlists, artists and more) have a header
+  that turns to dark glass as you scroll and shows the page's title once it scrolls
+  away.
+
 ### Changed
 - Albums with no cover show a record illustration in Search's "Not in your library
   yet" and on the Requests page, like everywhere else.
@@ -17,6 +22,9 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
   that release and has Lidarr search for a different one.
 - On phones, the Requests page's buttons no longer run off the screen when a status
   message is long.
+- On phones, album and playlist pages no longer have a strip of plain background at
+  the top, and every page has more room at the bottom above the mini player.
+- Removing a download that Lidarr already dropped no longer shows an error.
 
 ## 1.0.0 - 2026-09-28
 
