@@ -7,6 +7,7 @@ import { usePageTone } from "../layout/Shell.tsx";
 import { AvatarFace } from "../layout/TopBar.tsx";
 import { useSession } from "../state/session.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
+import { useCanRequest } from "../queries/hooks.ts";
 
 const LINKS: [string, IconName, string, string][] = [
   ["/stats", "chart", "Your listening", "Hours, top artists and when you listen"],
@@ -20,6 +21,7 @@ export default function YouPage() {
   const user = useSession((s) => s.credentials?.user ?? "");
   const device = useSession((s) => s.deviceName);
   const signOut = useSession((s) => s.signOut);
+  const canRequest = useCanRequest();
   usePageTone(null);
   return (
     <>
@@ -34,7 +36,7 @@ export default function YouPage() {
         </div>
         {isIOS && !isStandalone ? <InstallHint inline /> : null}
         <ul className="you-links">
-          {LINKS.map(([to, icon, title, sub]) => (
+          {LINKS.filter(([to]) => to !== "/requests" || canRequest).map(([to, icon, title, sub]) => (
             <li key={to}>
               <Link to={to}>
                 <Icon name={icon} size={22} />

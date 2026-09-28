@@ -617,6 +617,31 @@
   font-size: 14.5px;
 }
 
+.person-badge {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 9px;
+  background: var(--groove);
+  color: var(--sleeve);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 2px;
+}
+
+.person-switch {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 11.5px;
+  color: var(--sleeve);
+}
+
+.person-switch .toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .set-row > div:first-child > span {
   display: block;
   color: var(--sleeve);

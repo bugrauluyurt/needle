@@ -6,7 +6,7 @@ import { useSession } from "../state/session.ts";
 import { useUpdate } from "../state/update.ts";
 import { image } from "../lib/spotify.ts";
 import { useSpotifyMe } from "../queries/spotify.ts";
-import { useMe } from "../queries/hooks.ts";
+import { useCanRequest, useMe } from "../queries/hooks.ts";
 import { useUi } from "../state/ui.ts";
 
 let maxIdx = 0;
@@ -30,6 +30,7 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
   const signOut = useSession((s) => s.signOut);
   const navigate = useNavigate();
   const update = useUpdate((s) => s.apply);
+  const canRequest = useCanRequest();
 
   return (
     <DM.Root modal={false}>
@@ -55,10 +56,12 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
             <Icon name="chart" size={18} />
             <span className="menu-label">Your listening</span>
           </DM.Item>
-          <DM.Item className="menu-item" onSelect={() => void navigate("/requests")}>
-            <Icon name="import" size={18} />
-            <span className="menu-label">Requests</span>
-          </DM.Item>
+          {canRequest ? (
+            <DM.Item className="menu-item" onSelect={() => void navigate("/requests")}>
+              <Icon name="import" size={18} />
+              <span className="menu-label">Requests</span>
+            </DM.Item>
+          ) : null}
           <DM.Item className="menu-item" onSelect={() => void navigate("/downloads")}>
             <Icon name="download" size={18} />
             <span className="menu-label">Downloads</span>

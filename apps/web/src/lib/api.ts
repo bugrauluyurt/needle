@@ -1,4 +1,4 @@
-import type { BrowseTile, Capabilities, ConnectionCheck, Song, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { BrowseTile, Capabilities, ConnectionCheck, Person, Song, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -43,6 +43,9 @@ export const api = {
   songSearch: (q: string) => request<SongCandidate[]>(`/songs/search?q=${encodeURIComponent(q)}`),
   getSong: (song: SongCandidate) => post<RequestItem>("/songs", song),
   requests: () => request<RequestItem[]>("/requests"),
+  everyonesRequests: () => request<RequestItem[]>("/requests?everyone=1"),
+  people: () => request<Person[]>("/people"),
+  setPerson: (user: string, patch: Partial<Pick<Person, "canRequest" | "canSpotify">>) => send("PUT")<Person>(`/people/${encodeURIComponent(user)}`, patch),
   retryRequest: (id: number) => post<RequestItem>(`/requests/${id}/retry`),
   removeRequest: (id: number) => request<void>(`/requests/${id}`, { method: "DELETE" }),
   setPhoto: (photo: Blob) => request<void>("/me/photo", { method: "PUT", body: photo, headers: { "content-type": photo.type } }),

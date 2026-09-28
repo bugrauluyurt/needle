@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
-import type { CheckState, ImportResult } from "@needle/shared";
+import type { CheckState, ImportResult, Person } from "@needle/shared";
 import { Icon } from "../components/Icon.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { api } from "../lib/api.ts";
@@ -13,7 +13,7 @@ import { AvatarFace, TopBar } from "../layout/TopBar.tsx";
 import { bytesOf, removeAllDownloads, useOffline } from "../offline/store.ts";
 import { canCrossfade } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
-import { useCapabilities, useIsAdmin, useMe, useStorageEstimate } from "../queries/hooks.ts";
+import { useCanRequest, useCapabilities, useIsAdmin, useMe, usePeople, useStorageEstimate } from "../queries/hooks.ts";
 import { browserChecks } from "../lib/connections.ts";
 import { VERSION } from "../lib/version.ts";
 import { squarePhoto } from "../lib/photo.ts";
@@ -255,6 +255,42 @@ function Connections({ publicUrl }: { publicUrl: string | null }) {
   );
 }
 
+function PersonRow({ p }: { p: Person }) {
+  const qc = useQueryClient();
+  const set = (patch: Partial<Pick<Person, "canRequest" | "canSpotify">>) =>
+    void api.setPerson(p.user, patch).then(
+      () => void qc.invalidateQueries({ queryKey: keys.people }),
+      (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t change that"),
+    );
+  return (
+    <div className="set-row person-row">
+      <div>
+        <b>{p.user}{p.admin ? <span className="person-badge">Admin</span> : null}</b>
+        <span>{p.admin ? "Manages Navidrome, and can always request music." : "Listens with their own likes, playlists and stats."}</span>
+      </div>
+      <label className="person-switch">
+        <span>Request music</span>
+        <button type="button" className="toggle" role="switch" aria-checked={p.canRequest} aria-label={`${p.user} can request music`} disabled={p.admin} onClick={() => set({ canRequest: !p.canRequest })} />
+      </label>
+      <label className="person-switch">
+        <span>Spotify</span>
+        <button type="button" className="toggle" role="switch" aria-checked={p.canSpotify} aria-label={`${p.user} can use Spotify`} onClick={() => set({ canSpotify: !p.canSpotify })} />
+      </label>
+    </div>
+  );
+}
+
+function People() {
+  const { data: people = [], isPending } = usePeople(true);
+  return (
+    <>
+      <h2>People</h2>
+      <p className="conn-lede">Everyone with a Navidrome account can sign in to Needle. Create accounts in Navidrome; switch on what each person may do here.</p>
+      {isPending ? <p className="muted source-note"><span className="spin" />Loading people…</p> : people.map((p) => <PersonRow key={p.user} p={p} />)}
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const mobile = useIsMobile();
   const s = useSettings();
@@ -264,6 +300,7 @@ export default function SettingsPage() {
   const signOut = useSession((x) => x.signOut);
   const caps = useCapabilities();
   const admin = useIsAdmin();
+  const canRequest = useCanRequest();
   const [params, setParams] = useSearchParams();
   const [name, setName] = useState(deviceName);
   const { data: scan } = useQuery({ queryKey: keys.scan, queryFn: sub.scanStatus, staleTime: 60_000 });
@@ -333,14 +370,21 @@ export default function SettingsPage() {
         </Row>
         <PhotoSetting />
         {admin ? (
-          <Connections publicUrl={caps.data?.publicUrl ?? null} />
+          <>
+            <Connections publicUrl={caps.data?.publicUrl ?? null} />
+            <People />
+          </>
         ) : (
-          <Row title="Get music through Lidarr" hint="Asking for albums and songs needs a Navidrome admin account.">
-            <span className="muted">Off</span>
+          <Row title="Request music" hint={canRequest ? "Search offers albums and songs you don’t have, and gets them for you." : "Ask an admin to let you request albums and songs."}>
+            {canRequest ? <span className="ok">On</span> : <span className="muted">Off</span>}
           </Row>
         )}
-        <h2>Spotify</h2>
-        <SpotifySettings />
+        {caps.data?.spotify || admin ? (
+          <>
+            <h2>Spotify</h2>
+            <SpotifySettings />
+          </>
+        ) : null}
 
         <h2>This app</h2>
         <Row title="Version" hint={health?.version && health.version !== VERSION ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.` : undefined}>

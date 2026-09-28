@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS requests (
   updated INTEGER NOT NULL,
   UNIQUE (user, kind, ref)
 );
+CREATE TABLE IF NOT EXISTS permissions (
+  user TEXT PRIMARY KEY,
+  can_request INTEGER NOT NULL,
+  can_spotify INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS profiles (
   user TEXT PRIMARY KEY,
   photo BLOB NOT NULL,

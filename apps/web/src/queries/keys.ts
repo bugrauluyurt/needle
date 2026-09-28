@@ -19,6 +19,8 @@ export const keys = {
   me: ["me"] as const,
   storage: ["storage"] as const,
   requests: ["requests"] as const,
+  everyonesRequests: ["requests", "everyone"] as const,
+  people: ["people"] as const,
   downloads: ["downloads"] as const,
   status: ["status"] as const,
   librarySongs: ["librarySongs"] as const,

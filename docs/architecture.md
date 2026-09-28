@@ -73,7 +73,7 @@ Spotify (configured, connected, allowed to play, needs reconnecting, switched on
 
 | Where | What |
 |---|---|
-| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress) |
+| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress) |
 | Navidrome | The library, users, playlists, likes, the play queue each device syncs |
 | Browser localStorage | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil` |
 | Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art |

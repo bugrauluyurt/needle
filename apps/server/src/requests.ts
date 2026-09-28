@@ -26,6 +26,8 @@ export const toItem = (r: RequestRow): RequestItem => ({
   id: r.id, kind: r.kind, ref: r.ref, title: r.title, artist: r.artist, coverUrl: r.cover_url, state: r.state, progress: r.progress, detail: r.detail, created: r.created,
 });
 
+export const toItemFor = (r: RequestRow): RequestItem => ({ ...toItem(r), user: r.user });
+
 export class Requests {
   private readonly db: DatabaseSync;
 
@@ -50,6 +52,10 @@ export class Requests {
     return this.db.prepare("SELECT * FROM requests WHERE user = ? ORDER BY created DESC LIMIT ?").all(user, LIST_LIMIT) as RequestRow[];
   }
 
+  others(user: string): RequestRow[] {
+    return this.db.prepare("SELECT * FROM requests WHERE user != ? ORDER BY created DESC LIMIT ?").all(user, LIST_LIMIT) as RequestRow[];
+  }
+
   active(): RequestRow[] {
     return this.db.prepare(`SELECT * FROM requests WHERE kind = 'song' AND state IN (${ACTIVE_SONG.map(() => "?").join(", ")})`).all(...ACTIVE_SONG) as RequestRow[];
   }
@@ -60,7 +66,8 @@ export class Requests {
     this.db.prepare(`UPDATE requests SET ${keys.map((k) => `${k} = ?`).join(", ")}, updated = ? WHERE id = ?`).run(...keys.map((k) => patch[k] ?? null), Date.now(), id);
   }
 
-  remove(user: string, id: number) {
-    this.db.prepare("DELETE FROM requests WHERE user = ? AND id = ?").run(user, id);
+  remove(user: string | null, id: number) {
+    if (user === null) this.db.prepare("DELETE FROM requests WHERE id = ?").run(id);
+    else this.db.prepare("DELETE FROM requests WHERE user = ? AND id = ?").run(user, id);
   }
 }

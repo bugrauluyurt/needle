@@ -53,6 +53,11 @@ queryClient.getQueryCache().subscribe((e) => {
   if (fresh) for (const queryKey of LIBRARY_KEYS) void queryClient.invalidateQueries({ queryKey });
 });
 
+export const useEveryonesRequests = (enabled: boolean) =>
+  useQuery({ queryKey: keys.everyonesRequests, queryFn: api.everyonesRequests, enabled, refetchInterval: enabled ? WAITING_POLL_MS : false });
+
+export const usePeople = (enabled: boolean) => useQuery({ queryKey: keys.people, queryFn: api.people, enabled });
+
 export const useRequests = () =>
   useQuery({
     queryKey: keys.requests,
@@ -164,6 +169,11 @@ export const useLyrics = (id: string | undefined) =>
 export const useRadios = () => useQuery({ queryKey: keys.radios, queryFn: sub.radios });
 
 export const useCapabilities = () => useQuery({ queryKey: keys.capabilities, queryFn: api.capabilities, staleTime: 5 * 60_000 });
+
+export const useCanRequest = () => {
+  const caps = useCapabilities().data;
+  return caps ? caps.lidarr || caps.songs : false;
+};
 
 export const useIsAdmin = () => {
   const user = useSession((s) => s.credentials?.user ?? "");

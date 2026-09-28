@@ -303,9 +303,19 @@ Every Navidrome user can sign in.
 | The queue, and picking up on another device | |
 | Spotify connection and its on/off switch; account photo | |
 
-Only Navidrome **admins** can ask for albums and songs, see Lidarr's queue, add
-radio stations and open Settings → Connections. Add users in Navidrome
-(**Settings → Users**).
+Add users in Navidrome (**Settings → Users**); keep them non-admin. What each person
+may do beyond listening is set in Needle, under **Settings → People** (admins only):
+
+| | Admins | Everyone else |
+|---|---|---|
+| **Request music** (Get album, Get song) | Always | When switched on in People |
+| **Spotify** | On unless switched off | When switched on in People |
+| Lidarr's download queue, Connections, People, radio stations | Yes | No |
+
+Requests go straight to Lidarr or slskd. Admins see everyone's requests on the Requests
+page and can remove any of them. Spotify's development mode only works for Spotify
+accounts listed under User Management in its dashboard, and everyone shares one
+Spotify allowance.
 
 ## Configuration reference
 

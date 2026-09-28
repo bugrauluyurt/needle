@@ -7,6 +7,16 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+### Added
+- Settings → People (admins): every Navidrome user, with switches for **Request music**
+  and **Spotify**. People who aren't Navidrome admins can now request albums and songs
+  when allowed, without getting control of Navidrome or Lidarr's queue.
+- Admins see everyone's requests on the Requests page, with who asked, and can remove them.
+
+### Changed
+- Requests only appears in the menu for people who can request music, and Spotify only
+  in Settings for people allowed to use it.
+
 ## 1.1.0 - 2026-09-28
 
 ### Added

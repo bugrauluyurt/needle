@@ -70,6 +70,7 @@ export type LidarrArtist = {
 export type DownloadItem = { id: number; title: string; artist: string; coverUrl: string | null; state: "queued" | "downloading" | "importing" | "failed"; progress: number | null; detail: string | null };
 
 export type Capabilities = {
+  admin: boolean;
   lidarr: boolean;
   spotify: boolean;
   spotifyConnected: boolean;
@@ -156,7 +157,10 @@ export type RequestItem = {
   progress: number | null;
   detail: string | null;
   created: number;
+  user?: string;
 };
+
+export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean };
 
 export type Me = { user: string; photo: string | null };
 

@@ -17,11 +17,13 @@ import { proxyToNavidrome } from "./proxy.ts";
 import { PHOTO_MAX_BYTES, PHOTO_TYPES, Profiles } from "./profiles.ts";
 import { MusicBrainz, MusicBrainzError } from "./musicbrainz.ts";
 import { Deezer } from "./deezer.ts";
-import { Requests, toItem } from "./requests.ts";
+import { Requests, toItem, toItemFor } from "./requests.ts";
 import { Slskd, SlskdError, SongDownloads } from "./soulseek.ts";
 import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
 import { Status } from "./status.ts";
+import { People } from "./people.ts";
+import type { Permission, PersonPatch } from "./people.ts";
 import { VERSION } from "./version.ts";
 import { PlayLog } from "./stats.ts";
 
@@ -47,6 +49,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     ? new SongDownloads({ slskd, requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
     : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
+  const people = new People(db, navidrome);
   const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer });
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
@@ -95,32 +98,45 @@ export function createApp(config: Config, db: DatabaseSync) {
     await next();
   });
 
+  const can = async (auth: Auth, what: Permission) => people.allowed(auth.user, await isAdmin(auth), what);
+  const refuse = (c: Context<Env>, error: string) => c.json({ error }, 403);
   const needLidarr = async (c: Context<Env>) => {
     if (!lidarr) return { error: c.json({ error: "Lidarr isn't set up on the Needle server" }, 404) };
-    if (!(await isAdmin(c.get("auth")))) return { error: c.json({ error: "Only Navidrome admins can add music" }, 403) };
+    if (!(await can(c.get("auth"), "request"))) return { error: refuse(c, "Ask an admin to let you request music") };
+    return { lidarr };
+  };
+  const needLidarrAdmin = async (c: Context<Env>) => {
+    if (!lidarr) return { error: c.json({ error: "Lidarr isn't set up on the Needle server" }, 404) };
+    if (!(await isAdmin(c.get("auth")))) return { error: refuse(c, "Only Navidrome admins can manage Lidarr's downloads") };
     return { lidarr };
   };
   const needSongs = async (c: Context<Env>) => {
     if (!songs) return { error: c.json({ error: "slskd isn't set up on the Needle server" }, 404) };
-    if (!(await isAdmin(c.get("auth")))) return { error: c.json({ error: "Only Navidrome admins can add music" }, 403) };
+    if (!(await can(c.get("auth"), "request"))) return { error: refuse(c, "Ask an admin to let you request music") };
     return { songs };
   };
   const recordAlbum = (user: string, a: LidarrAlbum) =>
     requests.add({ user, kind: "album", ref: a.foreignAlbumId, title: a.title, artist: a.artist, cover_url: a.coverUrl, state: a.state });
-  const needSpotify = (c: Context<Env>) => spotify
-    ? { spotify }
-    : { error: c.json({ error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" }, 404) };
+  const needSpotify = async (c: Context<Env>) => {
+    if (!spotify) return { error: c.json({ error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" }, 404) };
+    if (!(await can(c.get("auth"), "spotify"))) return { error: refuse(c, "Ask an admin to let you use Spotify in Needle") };
+    return { spotify };
+  };
 
   app.get("/api/capabilities", async (c) => {
     const auth = c.get("auth");
+    const admin = await isAdmin(auth);
+    const requests = people.allowed(auth.user, admin, "request");
+    const sp = people.allowed(auth.user, admin, "spotify") ? spotify : null;
     const caps: Capabilities = {
-      lidarr: Boolean(lidarr) && (await isAdmin(auth)),
-      spotify: Boolean(spotify),
-      spotifyConnected: spotify?.connected(auth.user) ?? false,
-      spotifyPlayback: spotify?.canPlay(auth.user) ?? false,
-      spotifyReconnect: spotify?.needsReconnect(auth.user) ?? false,
-      spotifyEnabled: spotify?.enabled(auth.user) ?? false,
-      songs: Boolean(songs) && (await isAdmin(auth)),
+      admin,
+      lidarr: Boolean(lidarr) && requests,
+      spotify: Boolean(sp),
+      spotifyConnected: sp?.connected(auth.user) ?? false,
+      spotifyPlayback: sp?.canPlay(auth.user) ?? false,
+      spotifyReconnect: sp?.needsReconnect(auth.user) ?? false,
+      spotifyEnabled: sp?.enabled(auth.user) ?? false,
+      songs: Boolean(songs) && requests,
       publicUrl: config.publicUrl,
     };
     return c.json(caps);
@@ -221,14 +237,31 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json(toItem(r.songs.start(c.get("auth"), await c.req.json<SongCandidate>())));
   });
 
+  app.get("/api/people", async (c) => {
+    const auth = c.get("auth");
+    if (!(await isAdmin(auth))) return refuse(c, "Only Navidrome admins can see people");
+    return c.json(await people.list(auth));
+  });
+
+  app.put("/api/people/:user", async (c) => {
+    const auth = c.get("auth");
+    if (!(await isAdmin(auth))) return refuse(c, "Only Navidrome admins can change people");
+    const person = (await people.list(auth)).find((p) => p.user === c.req.param("user"));
+    if (!person) return c.json({ error: "No such Navidrome user" }, 404);
+    return c.json(people.set(person, await c.req.json<PersonPatch>()));
+  });
+
   app.get("/api/requests", async (c) => {
-    const rows = requests.list(c.get("auth").user);
+    const auth = c.get("auth");
+    const everyone = c.req.query("everyone") === "1";
+    if (everyone && !(await isAdmin(auth))) return refuse(c, "Only Navidrome admins can see everyone's requests");
+    const rows = everyone ? requests.others(auth.user) : requests.list(auth.user);
     const albumIds = rows.filter((r) => r.kind === "album").map((r) => r.ref);
     const live = lidarr && albumIds.length ? await lidarr.albumStates(albumIds).catch(() => []) : [];
     const byId = new Map(live.map((a) => [a.foreignAlbumId, a]));
     return c.json(rows.map((row): RequestItem => {
       const a = row.kind === "album" ? byId.get(row.ref) : undefined;
-      return { ...toItem(row), ...(a ? { state: a.state, progress: a.progress, coverUrl: a.coverUrl ?? row.cover_url } : {}) };
+      return { ...(everyone ? toItemFor(row) : toItem(row)), ...(a ? { state: a.state, progress: a.progress, coverUrl: a.coverUrl ?? row.cover_url } : {}) };
     }));
   });
 
@@ -245,8 +278,9 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json(toItem(r.songs.start(c.get("auth"), { id: row.ref, title: row.title, artist: row.artist, album: null, duration: null, year: null, coverUrl: row.cover_url })));
   });
 
-  app.delete("/api/requests/:id", (c) => {
-    requests.remove(c.get("auth").user, Number(c.req.param("id")));
+  app.delete("/api/requests/:id", async (c) => {
+    const auth = c.get("auth");
+    requests.remove((await isAdmin(auth)) ? null : auth.user, Number(c.req.param("id")));
     return c.body(null, 204);
   });
 
@@ -258,32 +292,32 @@ export function createApp(config: Config, db: DatabaseSync) {
   });
 
   app.get("/api/lidarr/downloads", async (c) => {
-    const r = await needLidarr(c);
+    const r = await needLidarrAdmin(c);
     if (r.error) return r.error;
     return c.json(await r.lidarr.downloads());
   });
 
   app.delete("/api/lidarr/downloads/:id", async (c) => {
-    const r = await needLidarr(c);
+    const r = await needLidarrAdmin(c);
     if (r.error) return r.error;
     await r.lidarr.removeDownload(Number(c.req.param("id")), c.req.query("find") === "1");
     return c.body(null, 204);
   });
 
-  app.get("/api/spotify/login", (c) => {
-    const r = needSpotify(c);
+  app.get("/api/spotify/login", async (c) => {
+    const r = await needSpotify(c);
     return r.error ?? c.json({ url: r.spotify.authorizeUrl(c.get("auth").user) });
   });
 
-  app.delete("/api/spotify", (c) => {
-    const r = needSpotify(c);
+  app.delete("/api/spotify", async (c) => {
+    const r = await needSpotify(c);
     if (r.error) return r.error;
     r.spotify.disconnect(c.get("auth").user);
     return c.body(null, 204);
   });
 
   app.put("/api/spotify/enabled", async (c) => {
-    const r = needSpotify(c);
+    const r = await needSpotify(c);
     if (r.error) return r.error;
     const { on } = await c.req.json<{ on: boolean }>();
     r.spotify.setEnabled(c.get("auth").user, on);
@@ -291,17 +325,17 @@ export function createApp(config: Config, db: DatabaseSync) {
   });
 
   app.get("/api/spotify/token", async (c) => {
-    const r = needSpotify(c);
+    const r = await needSpotify(c);
     return r.error ?? c.json(await r.spotify.token(c.get("auth").user));
   });
 
   app.get("/api/spotify/playlists", async (c) => {
-    const r = needSpotify(c);
+    const r = await needSpotify(c);
     return r.error ?? c.json(await r.spotify.playlists(c.get("auth").user));
   });
 
   app.post("/api/spotify/import", async (c) => {
-    const r = needSpotify(c);
+    const r = await needSpotify(c);
     if (r.error) return r.error;
     const { source } = await c.req.json<{ source: string }>();
     return c.json(await r.spotify.import(c.get("auth"), source));

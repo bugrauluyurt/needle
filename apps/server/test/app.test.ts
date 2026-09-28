@@ -86,7 +86,7 @@ describe("server", () => {
   });
 
   it("reports what's switched on", async () => {
-    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, spotifyEnabled: false, songs: false, publicUrl: null });
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ admin: true, lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, spotifyEnabled: false, songs: false, publicUrl: null });
     expect((await app.request("/api/lidarr/search?q=air", { headers: good })).status).toBe(404);
   });
 
@@ -165,5 +165,55 @@ describe("device hub", () => {
     second.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
     expect(first.readyState).toBe(3);
     expect(hub.devices("alex")).toHaveLength(1);
+  });
+});
+
+describe("people and permissions", () => {
+  const as = (user: string) => ({ "x-needle-user": user, "x-needle-token": "tok", "x-needle-salt": "salt" });
+  const USERS = [{ username: "alex", adminRole: true }, { username: "sam", adminRole: false }];
+  let app: ReturnType<typeof createApp>["app"];
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn((input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+      const params = init?.body instanceof URLSearchParams ? init.body : url.searchParams;
+      const me = USERS.find((u) => u.username === params.get("u"));
+      const json = (body: object) => Promise.resolve(new Response(JSON.stringify({ "subsonic-response": { status: "ok", ...body } })));
+      if (!url.pathname.startsWith("/rest/")) return Promise.resolve(new Response("[]"));
+      if (url.pathname.startsWith("/rest/ping")) return json({});
+      if (url.pathname.startsWith("/rest/getUsers")) return json({ users: { user: USERS } });
+      if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: me?.adminRole ?? false } });
+      return Promise.resolve(new Response("?", { status: 404 }));
+    }));
+    const config = loadConfig({
+      navidromeUrl: ND, dataDir: ":memory:", webDist: "/nonexistent", publicUrl: "https://music.example.com",
+      lidarr: { url: "http://lidarr.test", apiKey: "k", qualityProfile: null, rootFolder: null }, spotify: { clientId: "id", clientSecret: "secret" },
+    });
+    app = createApp(config, openDatabase(":memory:")).app;
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const caps = async (user: string) => (await (await app.request("/api/capabilities", { headers: as(user) })).json()) as { admin: boolean; lidarr: boolean; spotify: boolean };
+
+  it("gives admins everything and other people nothing until an admin allows it", async () => {
+    expect(await caps("alex")).toMatchObject({ admin: true, lidarr: true, spotify: true });
+    expect(await caps("sam")).toMatchObject({ admin: false, lidarr: false, spotify: false });
+    expect((await app.request("/api/lidarr/search?q=ab", { headers: as("sam") })).status).toBe(403);
+    expect((await app.request("/api/spotify/token", { headers: as("sam") })).status).toBe(403);
+
+    const put = await app.request("/api/people/sam", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true, canSpotify: true }) });
+    expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true });
+    expect(await caps("sam")).toMatchObject({ lidarr: true, spotify: true });
+  });
+
+  it("keeps managing people and Lidarr's queue to admins", async () => {
+    await app.request("/api/people/sam", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true }) });
+    expect((await app.request("/api/people", { headers: as("sam") })).status).toBe(403);
+    expect((await app.request("/api/people/sam", { method: "PUT", headers: { ...as("sam"), "content-type": "application/json" }, body: "{}" })).status).toBe(403);
+    expect((await app.request("/api/lidarr/downloads", { headers: as("sam") })).status).toBe(403);
+    expect((await app.request("/api/requests?everyone=1", { headers: as("sam") })).status).toBe(403);
+    const list = (await (await app.request("/api/people", { headers: as("alex") })).json()) as { user: string; canRequest: boolean }[];
+    expect(list.map((p) => [p.user, p.canRequest])).toEqual([["alex", true], ["sam", true]]);
+    expect((await app.request("/api/people/nobody", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: "{}" })).status).toBe(404);
   });
 });
