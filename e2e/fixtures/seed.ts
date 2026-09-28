@@ -37,7 +37,7 @@ await call("star", { albumId: albums.slice(0, 2) });
 
 const { internetRadioStations } = await call<{ internetRadioStations: { internetRadioStation?: { id: string }[] } }>("getInternetRadioStations");
 for (const s of internetRadioStations.internetRadioStation ?? []) await call("deleteInternetRadioStation", { id: s.id });
-await call("createInternetRadioStation", { name: "Groove Salad", streamUrl: "https://ice.somafm.com/groovesalad-128-mp3", homepageUrl: "https://somafm.com/groovesalad/" });
+await call("createInternetRadioStation", { name: "Night Owl Radio", streamUrl: "https://radio.example.com/night-owl.mp3", homepageUrl: "https://radio.example.com/" });
 const stream = `${NAVIDROME}/rest/stream.view?${new URLSearchParams({ ...auth, id: songs[0]?.id ?? "" }).toString()}`;
 await call("createInternetRadioStation", { name: "Test Signal", streamUrl: stream, homepageUrl: "http://127.0.0.1/" });
 

@@ -52,7 +52,7 @@ function StationForm({ station, onDone }: { station?: InternetRadioStation; onDo
   return (
     <form onSubmit={submit}>
       <label className="field"><span>Name</span><input value={f.name} onChange={set("name")} required autoFocus /></label>
-      <label className="field"><span>Stream address</span><input type="url" value={f.url} onChange={set("url")} placeholder="https://ice.somafm.com/groovesalad-128-mp3" required /></label>
+      <label className="field"><span>Stream address</span><input type="url" value={f.url} onChange={set("url")} placeholder="https://radio.example.com/stream.mp3" required /></label>
       <label className="field"><span>Website (optional)</span><input type="url" value={f.home} onChange={set("home")} /></label>
       <div className={station ? "dialog-actions" : "dialog-actions end"}>
         {station ? <button type="button" className="btn ghost danger" onClick={() => remove(station)}><Icon name="trash" size={16} />Delete station</button> : null}

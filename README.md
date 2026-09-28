@@ -11,7 +11,7 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
 <table>
   <tr>
     <td width="50%"><img src="docs/media/album.png" alt="An album page on desktop"></td>
-    <td width="50%"><img src="docs/media/search.png" alt="Search, with albums and songs you don't have yet"></td>
+    <td width="50%"><img src="docs/media/search.png" alt="Search across your library"></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/media/stats.png" alt="Your listening: top artists, albums and hours"></td>
@@ -115,11 +115,11 @@ sequenceDiagram
   participant MB as MusicBrainz
   participant S as slskd
   participant ND as Navidrome
-  App->>Needle: search "fade to black"
+  App->>Needle: search "undertow"
   Needle->>MB: recording search (1 request a second)
   MB-->>Needle: studio versions, not in your library
   App->>Needle: Get song
-  Needle->>S: search "Metallica Fade to Black"
+  Needle->>S: search "Glass Harbor Undertow"
   S-->>Needle: files from peers
   Note over Needle: picks lossless, else 320 kbps,<br/>right length, no live or remix
   Needle->>S: download, then follow progress
@@ -250,8 +250,6 @@ separate folder that Navidrome reads as a second library:
 
 1. Run slskd with a Soulseek account (`SOULSEEK_USER`, `SOULSEEK_PASS`) and an API
    key (`SLSKD_API_KEY`, any long random string such as `openssl rand -hex 32`).
-   Soulseek expects you to share music back; the example shares your music folder
-   read-only.
 2. Mount slskd's downloads folder into Needle at `/soulseek` (read-write, because
    Needle moves files out of it), and a new, empty folder at `/singles`. Keep it
    separate from Lidarr's music folder so Lidarr never touches these songs.
@@ -269,10 +267,6 @@ docker compose -f compose.yml -f compose.fetching.yml up -d --build
 Needle picks the best copy it finds: lossless first, otherwise 320 kbps or better,
 the right length, and no live, remix or cover versions. If a peer fails it tries the
 next one, up to three. MusicBrainz is asked at most once a second, as it requires.
-
-Soulseek is peer-to-peer: your IP address is visible to the peers you download from.
-If that matters where you live, run slskd behind a VPN container (such as
-[gluetun](https://github.com/qdm12/gluetun)) and point `SLSKD_URL` at it.
 
 **File ownership:** the Needle image runs as uid 1000. If your media belongs to
 another user, set `user: "<uid>:<gid>"` on the `needle` service (the examples use

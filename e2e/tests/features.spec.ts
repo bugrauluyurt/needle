@@ -32,9 +32,9 @@ test("plays internet radio through the Needle server", async ({ page }) => {
   await station.getByRole("button", { name: "Play Test Signal" }).click();
   await expect(bar(page).locator(".np-t")).toHaveText("Test Signal");
   await expect(bar(page).locator(".live")).toBeVisible();
-  await expect(station.getByText("Playing")).toBeVisible({ timeout: 10_000 });
-  await station.getByRole("button", { name: "Stop Test Signal" }).click();
-  await expect(station.getByText("Playing")).toHaveCount(0);
+  await expect(station).toHaveClass(/on/);
+  await station.getByRole("button", { name: "Stop Test Signal" }).click({ timeout: 10_000 });
+  await expect(station.getByRole("button", { name: "Play Test Signal" })).toBeVisible();
 });
 
 test("starts an artist radio", async ({ page }) => {

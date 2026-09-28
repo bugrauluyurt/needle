@@ -115,14 +115,14 @@ describe("Lidarr", () => {
 describe("Lidarr downloads", () => {
   it("lists everything in Lidarr's queue with progress and failures", async () => {
     mockFetch([[/GET \/api\/v1\/queue/, () => ({ records: [
-      { id: 1, size: 100, sizeleft: 25, status: "downloading", trackedDownloadState: "downloading", album: { title: "Brave New World", foreignAlbumId: "f", images: [{ coverType: "cover", remoteUrl: "https://c/1" }] }, artist: { artistName: "Iron Maiden", foreignArtistId: "a" } },
-      { id: 2, size: 100, sizeleft: 0, status: "completed", trackedDownloadState: "importPending", album: { title: "Killers", foreignAlbumId: "g" }, artist: { artistName: "Iron Maiden", foreignArtistId: "a" } },
+      { id: 1, size: 100, sizeleft: 25, status: "downloading", trackedDownloadState: "downloading", album: { title: "Tidal Lines", foreignAlbumId: "f", images: [{ coverType: "cover", remoteUrl: "https://c/1" }] }, artist: { artistName: "Glass Harbor", foreignArtistId: "a" } },
+      { id: 2, size: 100, sizeleft: 0, status: "completed", trackedDownloadState: "importPending", album: { title: "Night Signals", foreignAlbumId: "g" }, artist: { artistName: "Glass Harbor", foreignArtistId: "a" } },
       { id: 3, status: "completed", trackedDownloadState: "importFailed", trackedDownloadStatus: "warning", statusMessages: [{ messages: ["No files found"] }], title: "Some.Release" },
     ] })]]);
     const lidarr = new Lidarr({ url: "http://lidarr", apiKey: "k", qualityProfile: null, rootFolder: null });
     expect(await lidarr.downloads()).toEqual([
-      { id: 1, title: "Brave New World", artist: "Iron Maiden", coverUrl: "https://c/1", state: "downloading", progress: 0.75, detail: null },
-      { id: 2, title: "Killers", artist: "Iron Maiden", coverUrl: null, state: "importing", progress: 1, detail: null },
+      { id: 1, title: "Tidal Lines", artist: "Glass Harbor", coverUrl: "https://c/1", state: "downloading", progress: 0.75, detail: null },
+      { id: 2, title: "Night Signals", artist: "Glass Harbor", coverUrl: null, state: "importing", progress: 1, detail: null },
       { id: 3, title: "Some.Release", artist: "", coverUrl: null, state: "failed", progress: null, detail: "No files found" },
     ]);
   });
@@ -196,23 +196,23 @@ describe("library search", () => {
     [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: scan, count: 3 } })],
     [/POST \/rest\/search3/, () => ok({ searchResult3: {
       song: [
-        { id: "s1", title: "Bad Guy", artist: "Billie Eilish", album: "When We All Fall Asleep" },
-        { id: "s2", title: "Guy Who Sings", artist: "Someone", album: "Eilish Tribute" },
+        { id: "s1", title: "Paper Kite", artist: "Mara Veil", album: "Quiet Rooms" },
+        { id: "s2", title: "Kite Who Sings", artist: "Someone", album: "Veil Tribute" },
         { id: "s3", title: "İstanbul'da Gece", artist: "Kasa Kaan", album: "Gece" },
       ],
-      album: [{ id: "a1", name: "Happier Than Ever", artist: "Billie Eilish" }],
-      artist: [{ id: "r1", name: "Billie Eilish" }, { id: "r2", name: "Kasa Kaan" }],
+      album: [{ id: "a1", name: "Harbor Lights", artist: "Mara Veil" }],
+      artist: [{ id: "r1", name: "Mara Veil" }, { id: "r2", name: "Kasa Kaan" }],
     } })],
   ] satisfies Route[];
 
   it("matches text anywhere in titles, artists and albums, ignoring accents", async () => {
     mockFetch(library("1"));
     const search = new LibrarySearch(new Navidrome("http://nd"));
-    const r = await search.search(auth, "ilish");
+    const r = await search.search(auth, "eil");
     expect(r.song?.map((s) => s.id)).toEqual(["s1", "s2"]);
     expect(r.album?.map((a) => a.id)).toEqual(["a1"]);
     expect(r.artist?.map((a) => a.id)).toEqual(["r1"]);
-    expect((await search.search(auth, "guy eilish")).song?.map((s) => s.id)).toEqual(["s2", "s1"]);
+    expect((await search.search(auth, "kite veil")).song?.map((s) => s.id)).toEqual(["s2", "s1"]);
     expect((await search.search(auth, "istanbul")).song?.map((s) => s.id)).toEqual(["s3"]);
     expect((await search.search(auth, "  ")).song).toBeUndefined();
   });
@@ -220,7 +220,7 @@ describe("library search", () => {
   it("builds the index once and rebuilds it after a new scan", async () => {
     let calls = mockFetch(library("1"));
     const search = new LibrarySearch(new Navidrome("http://nd"));
-    await search.search(auth, "bad");
+    await search.search(auth, "paper");
     await search.search(auth, "guy");
     expect(calls.filter((c) => c.url.endsWith("/search3"))).toHaveLength(1);
     vi.setSystemTime(Date.now() + 120_000);
@@ -232,51 +232,51 @@ describe("library search", () => {
 });
 
 describe("single songs", () => {
-  const want = { title: "Fade to Black", artist: "Metallica", duration: 417 };
+  const want = { title: "Undertow", artist: "Glass Harbor", duration: 417 };
   const peer = (username: string, files: SlskdFile[], extra = {}) => ({ username, files, hasFreeUploadSlot: true, uploadSpeed: 2_000_000, queueLength: 0, ...extra });
 
   it("picks the best matching copy", () => {
     const picks = pickFiles([
-      peer("mp3", [{ filename: "Music\\Metallica\\Ride\\04 Fade to Black.mp3", size: 1, bitRate: 320, length: 417 }]),
-      peer("flac", [{ filename: "Music\\Metallica - Ride the Lightning\\04 - Fade To Black.flac", size: 2, length: 416 }]),
-      peer("live", [{ filename: "Bootlegs\\Metallica\\Fade to Black (Live).flac", size: 3, length: 417 }]),
-      peer("short", [{ filename: "x\\Fade to Black.flac", size: 4, length: 200 }]),
-      peer("low", [{ filename: "x\\Metallica\\Fade to Black.mp3", size: 5, bitRate: 128, length: 417 }]),
-      peer("busy", [{ filename: "Metallica\\Fade to Black.flac", size: 6, length: 417 }], { hasFreeUploadSlot: false, queueLength: 50, uploadSpeed: 0 }),
+      peer("mp3", [{ filename: "Music\\Glass Harbor\\Tidal\\04 Undertow.mp3", size: 1, bitRate: 320, length: 417 }]),
+      peer("flac", [{ filename: "Music\\Glass Harbor - Tidal Lines\\04 - UnderTow.flac", size: 2, length: 416 }]),
+      peer("live", [{ filename: "Concerts\\Glass Harbor\\Undertow (Live).flac", size: 3, length: 417 }]),
+      peer("short", [{ filename: "x\\Undertow.flac", size: 4, length: 200 }]),
+      peer("low", [{ filename: "x\\Glass Harbor\\Undertow.mp3", size: 5, bitRate: 128, length: 417 }]),
+      peer("busy", [{ filename: "Glass Harbor\\Undertow.flac", size: 6, length: 417 }], { hasFreeUploadSlot: false, queueLength: 50, uploadSpeed: 0 }),
     ], want);
     expect(picks.map((p) => p.username)).toEqual(["flac", "busy", "mp3"]);
   });
 
   it("names the file after the artist and title", () => {
-    expect(singlePath("/singles", { title: "One/Two?", artist: "AC/DC" }, { filename: "x\\a.FLAC", size: 1, extension: "FLAC" })).toBe("/singles/AC_DC/AC_DC - One_Two_.flac");
+    expect(singlePath("/singles", { title: "One/Two?", artist: "Stop/Go" }, { filename: "x\\a.FLAC", size: 1, extension: "FLAC" })).toBe("/singles/Stop_Go/Stop_Go - One_Two_.flac");
   });
 
   it("turns MusicBrainz recordings into songs, once each", () => {
-    const rec = (id: string, title: string) => ({ id, title, length: 417_000, "artist-credit": [{ name: "Metallica" }], releases: [{ title: "Ride the Lightning", date: "1984-07-27", status: "Official", "release-group": { id: "rg1", "primary-type": "Album" } }] });
-    expect(toCandidates([rec("r1", "Fade to Black"), rec("r2", "Fade To Black")])).toEqual([
-      { id: "r1", title: "Fade to Black", artist: "Metallica", album: "Ride the Lightning", duration: 417, year: 1984, coverUrl: "https://coverartarchive.org/release-group/rg1/front-250" },
+    const rec = (id: string, title: string) => ({ id, title, length: 417_000, "artist-credit": [{ name: "Glass Harbor" }], releases: [{ title: "Tidal Lines", date: "1984-07-27", status: "Official", "release-group": { id: "rg1", "primary-type": "Album" } }] });
+    expect(toCandidates([rec("r1", "Undertow"), rec("r2", "UnderTow")])).toEqual([
+      { id: "r1", title: "Undertow", artist: "Glass Harbor", album: "Tidal Lines", duration: 417, year: 1984, coverUrl: "https://coverartarchive.org/release-group/rg1/front-250" },
     ]);
   });
 
   it("ranks the song that matches both artist and title first, and skips live versions", () => {
     const rec = (id: string, artist: string, title: string, disambiguation = "") => ({ id, title, disambiguation, "artist-credit": [{ name: artist }] });
     const songs = toCandidates([
-      rec("a", "Fade to Black", "Black Box"),
-      rec("b", "Metallica", "Fade to Black (Live)"),
-      rec("c", "Metallica", "Fade to Black", "live, 1997"),
-      rec("d", "Metallica", "Fade to Black"),
-    ], "fade to black metallica");
+      rec("a", "Undertow", "Glass Box"),
+      rec("b", "Glass Harbor", "Undertow (Live)"),
+      rec("c", "Glass Harbor", "Undertow", "live, 1997"),
+      rec("d", "Glass Harbor", "Undertow"),
+    ], "undertow glass harbor");
     expect(songs.map((x) => x.id)).toEqual(["d", "a"]);
   });
 
   it("prefers the song whose artist and title add nothing to the search", () => {
     const rec = (id: string, artist: string, title: string) => ({ id, title, "artist-credit": [{ name: artist }] });
     const songs = toCandidates([
-      rec("muppets", "Queen + The Muppets", "Bohemian Rhapsody"),
-      rec("tribute", "Bohemian Rhapsody", "White Queen (As It Began)"),
-      { ...rec("queen", "Queen", "Bohemian Rhapsody"), disambiguation: "2002 5.1 mix" },
-    ], "bohemian rhapsody queen");
-    expect(songs.map((x) => x.id)).toEqual(["queen", "muppets", "tribute"]);
+      rec("guests", "Northern Choir + The Puppets", "Silver Line"),
+      rec("tribute", "Silver Line", "White Northern Choir (As It Began)"),
+      { ...rec("choir", "Northern Choir", "Silver Line"), disambiguation: "2002 5.1 mix" },
+    ], "silver line northern choir");
+    expect(songs.map((x) => x.id)).toEqual(["choir", "guests", "tribute"]);
   });
 
   it("keeps one request per item and marks interrupted songs", () => {
@@ -294,28 +294,28 @@ describe("single songs", () => {
 describe("artist catalogues", () => {
   it("lists an artist's studio albums from MusicBrainz, newest first", async () => {
     mockFetch([[/GET \/ws\/2\/release-group/, () => ({ "release-groups": [
-      { id: "rg1", title: "Kill 'Em All", "first-release-date": "1983-07-25", "primary-type": "Album" },
-      { id: "rg2", title: "Master of Puppets", "first-release-date": "1986-03-03", "primary-type": "Album" },
-      { id: "rg3", title: "S&M", "first-release-date": "1999-11-23", "primary-type": "Album", "secondary-types": ["Live"] },
+      { id: "rg1", title: "First Tide", "first-release-date": "1983-07-25", "primary-type": "Album" },
+      { id: "rg2", title: "Deep Water", "first-release-date": "1986-03-03", "primary-type": "Album" },
+      { id: "rg3", title: "Live at the Pier", "first-release-date": "1999-11-23", "primary-type": "Album", "secondary-types": ["Live"] },
     ] })]]);
-    const albums = await new MusicBrainz("https://musicbrainz.org/ws/2").albumsBy("mbid", "Metallica");
-    expect(albums.map((a) => [a.title, a.year, a.state])).toEqual([["Master of Puppets", 1986, "missing"], ["Kill 'Em All", 1983, "missing"]]);
+    const albums = await new MusicBrainz("https://musicbrainz.org/ws/2").albumsBy("mbid", "Glass Harbor");
+    expect(albums.map((a) => [a.title, a.year, a.state])).toEqual([["Deep Water", 1986, "missing"], ["First Tide", 1983, "missing"]]);
   });
 
   it("gets an artist's popular songs from Deezer only for an exact name", async () => {
     const calls = mockFetch([
-      [/GET \/search\/artist/, () => ({ data: [{ id: 7, name: "Metallica Tribute" }, { id: 119, name: "Metallica" }] })],
-      [/GET \/artist\/119\/top/, () => ({ data: [{ id: 1, title: "Enter Sandman", duration: 331, artist: { name: "Metallica" }, album: { title: "Metallica", cover_medium: "https://c/1" } }] })],
+      [/GET \/search\/artist/, () => ({ data: [{ id: 7, name: "Glass Harbor Tribute" }, { id: 119, name: "Glass Harbor" }] })],
+      [/GET \/artist\/119\/top/, () => ({ data: [{ id: 1, title: "Undertow", duration: 331, artist: { name: "Glass Harbor" }, album: { title: "Tidal Lines", cover_medium: "https://c/1" } }] })],
     ]);
-    const songs = await new Deezer("https://api.deezer.com").topSongs("metallica");
-    expect(songs).toEqual([{ id: "deezer:1", title: "Enter Sandman", artist: "Metallica", album: "Metallica", duration: 331, year: null, coverUrl: "https://c/1" }]);
-    expect(await new Deezer("https://api.deezer.com").topSongs("metallica ride")).toEqual([]);
+    const songs = await new Deezer("https://api.deezer.com").topSongs("glass harbor");
+    expect(songs).toEqual([{ id: "deezer:1", title: "Undertow", artist: "Glass Harbor", album: "Tidal Lines", duration: 331, year: null, coverUrl: "https://c/1" }]);
+    expect(await new Deezer("https://api.deezer.com").topSongs("glass harbor tidal")).toEqual([]);
     expect(calls.filter((c) => c.url.includes("/top"))).toHaveLength(1);
   });
 
   it("matches owned songs even with remaster notes in the title", () => {
-    expect(songKey("Metallica", "Enter Sandman (Remastered 2021)")).toBe(songKey("metallica", "Enter Sandman"));
-    expect(songKey("Queen", "Bohemian Rhapsody - Remastered 2011")).toBe(songKey("Queen", "Bohemian Rhapsody"));
+    expect(songKey("Glass Harbor", "Undertow (Remastered 2021)")).toBe(songKey("glass harbor", "Undertow"));
+    expect(songKey("Northern Choir", "Silver Line - Remastered 2011")).toBe(songKey("Northern Choir", "Silver Line"));
   });
 });
 

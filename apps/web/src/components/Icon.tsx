@@ -83,10 +83,10 @@ export function Icon({ name, size = 20, className }: { name: IconName; size?: nu
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
-      <circle cx="256" cy="256" r="190" fill="#2F2B38" />
-      <circle cx="256" cy="256" r="136" fill="none" stroke="#F3EFE8" strokeOpacity=".2" strokeWidth="16" />
-      <circle cx="256" cy="256" r="88" fill="none" stroke="#F3EFE8" strokeOpacity=".12" strokeWidth="16" />
-      <circle cx="256" cy="256" r="48" fill="#F6B23C" />
+      <circle cx="256" cy="256" r="214" fill="#2F2B38" />
+      <circle cx="256" cy="256" r="153" fill="none" stroke="#F3EFE8" strokeOpacity=".2" strokeWidth="16" />
+      <circle cx="256" cy="256" r="99" fill="none" stroke="#F3EFE8" strokeOpacity=".12" strokeWidth="16" />
+      <circle cx="256" cy="256" r="54" fill="#F6B23C" />
       <path d="M440 72 344 184" stroke="#F3EFE8" strokeWidth="38" strokeLinecap="round" />
       <circle cx="440" cy="72" r="38" fill="#F3EFE8" />
     </svg>
