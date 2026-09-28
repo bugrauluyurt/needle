@@ -7,6 +7,8 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+## 1.2.0 - 2026-09-28
+
 ### Added
 - Settings → People (admins): every Navidrome user, with switches for **Request music**
   and **Spotify**. People who aren't Navidrome admins can now request albums and songs
