@@ -33,6 +33,7 @@ const put = send("PUT");
 
 export const api = {
   capabilities: () => request<Capabilities>("/capabilities"),
+  health: () => request<{ ok: boolean; version: string }>("/health"),
   status: (fresh: boolean) => request<{ checks: ConnectionCheck[] }>(`/status${fresh ? "?fresh=1" : ""}`),
   reportPlay: (p: PlayReport) => post<void>("/plays", p),
   stats: (period: Period) => request<Stats>(`/stats?period=${period}`),

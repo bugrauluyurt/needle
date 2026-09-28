@@ -15,6 +15,7 @@ import { canCrossfade } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
 import { useCapabilities, useIsAdmin, useMe, useStorageEstimate } from "../queries/hooks.ts";
 import { browserChecks } from "../lib/connections.ts";
+import { VERSION } from "../lib/version.ts";
 import { squarePhoto } from "../lib/photo.ts";
 import { useSession } from "../state/session.ts";
 import { clearSpotifyCache } from "../queries/spotify.ts";
@@ -267,6 +268,7 @@ export default function SettingsPage() {
   const [name, setName] = useState(deviceName);
   const { data: scan } = useQuery({ queryKey: keys.scan, queryFn: sub.scanStatus, staleTime: 60_000 });
   const { data: ping } = useQuery({ queryKey: ["ping"], queryFn: () => sub.ping(), staleTime: 300_000 });
+  const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, staleTime: 300_000 });
   usePageTone(null);
 
   useEffect(() => {
@@ -341,6 +343,9 @@ export default function SettingsPage() {
         <SpotifySettings />
 
         <h2>This app</h2>
+        <Row title="Version" hint={health?.version && health.version !== VERSION ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.` : undefined}>
+          <span className="muted tabular">Needle {VERSION}</span>
+        </Row>
         <Row title="Keyboard shortcuts">
           <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}><Icon name="keyboard" size={16} />Show shortcuts</button>
         </Row>

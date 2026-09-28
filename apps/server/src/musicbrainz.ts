@@ -1,8 +1,8 @@
 import type { LidarrAlbum, SongCandidate } from "@needle/shared";
 import { fold, HOUR_MS, OTHER_VERSIONS, queryTerms } from "@needle/shared";
-import pkg from "../package.json" with { type: "json" };
+import { HOMEPAGE, VERSION } from "./version.ts";
 
-const USER_AGENT = `Needle/${pkg.version} ( ${pkg.homepage} )`;
+const USER_AGENT = `Needle/${VERSION} ( ${HOMEPAGE} )`;
 const MIN_GAP_MS = 1100;
 const CACHE_MS = HOUR_MS;
 const LIMIT = 25;

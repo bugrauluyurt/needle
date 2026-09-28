@@ -341,9 +341,15 @@ nothing to set up. Choose qualities in Needle's Settings.
   sign-ins) along with Navidrome's data folder. Your music, playlists and likes live
   in Navidrome.
 - Offline downloads live in each browser and are never on the server.
-- To update: `git pull`, then `docker compose up -d --build needle`. The database
-  migrates itself on start. Open apps show **Update Needle** in the account menu; the
-  new version loads when you choose it, so music isn't cut off.
+- **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
+  the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
+  means your setup needs a change; the changelog says what.
+- **To update** a clone: `git fetch --tags && git checkout v1.2.0` (or `git pull` to
+  follow `main`), then `docker compose up -d --build needle`. Building without a clone,
+  point the build at a tag: `build: https://github.com/bugrauluyurt/needle.git#v1.2.0`.
+- The database migrates itself on start. Open apps show **Update Needle** in the
+  account menu; the new version loads when you choose it, so music isn't cut off.
+  Settings → This app shows which version you're running.
 
 ## Security
 

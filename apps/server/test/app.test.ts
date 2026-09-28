@@ -45,7 +45,7 @@ describe("server", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("answers health checks without signing in", async () => {
-    expect(await (await app.request("/api/health")).json()).toEqual({ ok: true });
+    expect(await (await app.request("/api/health")).json()).toEqual({ ok: true, version: expect.any(String) as string });
   });
 
   it("turns away requests without valid Navidrome credentials", async () => {

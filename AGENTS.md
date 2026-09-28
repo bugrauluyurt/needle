@@ -15,6 +15,15 @@ pnpm dev           # server + Vite against the test Navidrome
 Run lint, typecheck and the unit tests after every change; run the e2e suite after
 anything that touches the UI or the player.
 
+## Releases
+
+One version for the whole repo, in every `package.json`. Add what changed under
+**Unreleased** in `CHANGELOG.md` as you go (Added / Changed / Fixed, written for
+people running Needle). Run the e2e suite, then `pnpm release x.y.z --dry-run`, then
+`pnpm release x.y.z`: it checks for a clean `main` matching GitHub, runs lint,
+typecheck and tests, bumps the versions, moves the notes into the release, commits
+"Release x.y.z", tags `vx.y.z`, pushes and creates the GitHub release.
+
 ## Conventions
 
 - `type`, never `interface`; never `any`; `??` over `||`.

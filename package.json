@@ -1,5 +1,6 @@
 {
   "name": "needle",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -16,7 +17,8 @@
     "e2e": "playwright test",
     "fixtures": "node e2e/fixtures/make-library.ts",
     "navidrome:test": "docker compose -f e2e/compose.yml up -d --wait",
-    "seed": "node --disable-warning=ExperimentalWarning e2e/fixtures/seed.ts"
+    "seed": "node --disable-warning=ExperimentalWarning e2e/fixtures/seed.ts",
+    "release": "node --disable-warning=ExperimentalWarning scripts/release.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

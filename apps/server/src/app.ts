@@ -22,6 +22,7 @@ import { Slskd, SlskdError, SongDownloads } from "./soulseek.ts";
 import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
 import { Status } from "./status.ts";
+import { VERSION } from "./version.ts";
 import { PlayLog } from "./stats.ts";
 
 type Env = { Variables: { auth: Auth } };
@@ -71,7 +72,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json({ error: "Something went wrong on the Needle server" }, 500);
   });
 
-  app.get("/api/health", (c) => c.json({ ok: true }));
+  app.get("/api/health", (c) => c.json({ ok: true, version: VERSION }));
 
   app.get("/api/spotify/callback", async (c) => {
     const code = c.req.query("code");
