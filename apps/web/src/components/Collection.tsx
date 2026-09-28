@@ -57,29 +57,48 @@ export function useCollectionView(id: string, sorts: SortOption[], fallback: Col
 
 const VIEWS: [CollectionView, string, IconName][] = [["compact", "Compact", "rows"], ["list", "List", "list"], ["dense", "Compact grid", "gridDense"], ["grid", "Grid", "grid"]];
 
-export function CollectionTools<K extends string>({ sorts, sort, onSort, view, onView }: {
+export type ShowFilter<S extends string> = { value: S; options: [S, string][]; onChange: (s: S) => void };
+
+export function CollectionTools<K extends string, S extends string = string>({ sorts, sort, onSort, view, onView, show }: {
   sorts: [K, string][];
-  sort: K;
-  onSort: (k: K) => void;
+  sort?: K;
+  onSort?: (k: K) => void;
   view?: CollectionView;
   onView?: (v: CollectionView) => void;
+  show?: ShowFilter<S> | undefined;
 }) {
-  const label = sorts.find(([k]) => k === sort)?.[1] ?? sorts[0]?.[1] ?? "";
+  const sortLabel = sorts.length > 1 ? (sorts.find(([k]) => k === sort)?.[1] ?? sorts[0]?.[1]) : undefined;
+  const showLabel = show && show.value !== show.options[0]?.[0] ? show.options.find(([v]) => v === show.value)?.[1] : undefined;
+  const label = [showLabel, sortLabel].filter(Boolean).join(", ") || (show?.options[0]?.[1] ?? "");
   const views = Boolean(view && onView);
-  if (sorts.length < 2 && !views) return null;
+  if (sorts.length < 2 && !views && !show) return null;
   const icon = VIEWS.find(([v]) => v === view)?.[2] ?? "sort";
   return (
     <div className="coll-tools">
       <DM.Root modal={false}>
         <DM.Trigger asChild>
-          <button type="button" className="coll-sort" aria-label={views ? `Sort by ${label}, view as ${view ?? ""}` : `Sort by ${label}`} data-no-tip>
+          <button type="button" className="coll-sort" aria-label={`${show ? "Show and sort" : "Sort"}: ${label}${views ? `, view as ${view ?? ""}` : ""}`} data-no-tip>
             <span>{label}</span>
             <Icon name={icon} size={16} />
           </button>
         </DM.Trigger>
         <DM.Portal>
           <DM.Content className="menu coll-menu" align="end" sideOffset={6} collisionPadding={12}>
-            {sorts.length > 1 ? (
+            {show ? (
+              <>
+                <DM.Label className="menu-heading">Show</DM.Label>
+                <DM.RadioGroup value={show.value} onValueChange={(v) => show.onChange(v as S)}>
+                  {show.options.map(([v, l]) => (
+                    <DM.RadioItem key={v} value={v} className="menu-item">
+                      <span className="menu-label">{l}</span>
+                      <DM.ItemIndicator className="menu-end"><Icon name="check" size={16} /></DM.ItemIndicator>
+                    </DM.RadioItem>
+                  ))}
+                </DM.RadioGroup>
+                {sorts.length > 1 || views ? <DM.Separator className="menu-sep" /> : null}
+              </>
+            ) : null}
+            {sorts.length > 1 && onSort ? (
               <>
                 <DM.Label className="menu-heading">Sort by</DM.Label>
                 <DM.RadioGroup value={sort} onValueChange={(v) => onSort(v as K)}>

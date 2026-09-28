@@ -632,14 +632,13 @@
   padding-right: 1px;
 }
 
-.tr:hover .n > .num,
-.tr:hover .n > .eq,
-.tr:focus-within .n > .num {
+.tr:hover .n > :is(.num, .eq),
+.tr:is(:focus-visible, :has(:focus-visible)) .n > :is(.num, .eq) {
   visibility: hidden;
 }
 
 .tr:hover .row-play,
-.tr:focus-within .row-play {
+.tr:is(:focus-visible, :has(:focus-visible)) .row-play {
   display: grid;
 }
 

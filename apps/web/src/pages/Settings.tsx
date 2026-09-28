@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import type { CheckState, ImportResult, Person } from "@needle/shared";
 import { Icon } from "../components/Icon.tsx";
+import { Seg } from "../components/Seg.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { api } from "../lib/api.ts";
 import { ago, minutesSince, plural, sizeLabel } from "../lib/format.ts";
@@ -32,16 +33,6 @@ function Row({ title, hint, children }: { title: string; hint?: ReactNode; child
         {hint ? <span>{hint}</span> : null}
       </div>
       {children}
-    </div>
-  );
-}
-
-function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: [T, string][]; onChange: (v: T) => void; label: string }) {
-  return (
-    <div className="seg" role="radiogroup" aria-label={label}>
-      {options.map(([v, l]) => (
-        <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}>{l}</button>
-      ))}
     </div>
   );
 }

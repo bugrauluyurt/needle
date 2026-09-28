@@ -7,9 +7,16 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+### Added
+- While Spotify is on, Your library's sort menu starts with **Show: Both / Your music /
+  Spotify**, so you can see only your own library, only Spotify, or both. It applies to
+  albums, artists, playlists, songs and searches.
+
 ## 1.2.1 - 2026-09-28
 
 ### Fixed
+- In song tables, the playing song's bars no longer overlap its pause button after you
+  click it; the button only replaces the bars on hover or keyboard focus.
 - Settings → People only listed the admin: Navidrome's Subsonic API won't list other
   users, even to admins. Needle now remembers everyone who opens it, and admins (or
   arr-stack's add-viewer.py) can set up someone who hasn't opened it yet; they show as

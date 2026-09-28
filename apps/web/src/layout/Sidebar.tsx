@@ -22,11 +22,15 @@ export type LibraryEntry = CollectionItem & {
   added: string;
 };
 
+export type Origin = "all" | "server" | "spotify";
+
+export const ORIGINS: [Origin, string][] = [["all", "Both"], ["server", "Your music"], ["spotify", "Spotify"]];
+
 export const LIBRARY_SORTS: SortOption[] = [["default", "Recents"], ["title", SORT_LABELS.title], ["by", "Creator"]];
 
 export const useLibrarySort = (fallback: CollectionView = "list") => useCollectionView("library", LIBRARY_SORTS, fallback);
 
-export function useLibraryEntries(filter: LibraryFilter, query: string, sort: SortKey): LibraryEntry[] {
+export function useLibraryEntries(filter: LibraryFilter, query: string, sort: SortKey, origin: Origin = "all"): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
   const { data: albums = [] } = useAllAlbums();
@@ -70,6 +74,7 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
     ];
     const terms = queryTerms(query);
     const matches = (e: LibraryEntry) => {
+      if (origin !== "all" && (origin === "spotify") !== Boolean(e.spotify)) return false;
       if (filter === "downloaded") return e.downloaded;
       if (filter === "spotify") return Boolean(e.spotify);
       return !filter || e.kind === filter;
@@ -80,7 +85,7 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
     return sortItems(shown, sort);
-  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort]);
+  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort, origin]);
 }
 
 const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "On this device"]];
