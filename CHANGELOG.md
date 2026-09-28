@@ -7,6 +7,8 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+## 1.3.0 - 2026-09-28
+
 ### Added
 - While Spotify is on, Your library's sort menu starts with **Show: Both / Your music /
   Spotify**, so you can see only your own library, only Spotify, or both. It applies to
