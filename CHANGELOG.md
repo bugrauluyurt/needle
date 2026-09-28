@@ -7,6 +7,10 @@ a minor version adds features, and a patch fixes bugs. Write new entries under
 
 ## Unreleased
 
+### Changed
+- Albums with no cover show a record illustration in Search's "Not in your library
+  yet" and on the Requests page, like everywhere else.
+
 ## 1.0.0 - 2026-09-28
 
 The first public release.

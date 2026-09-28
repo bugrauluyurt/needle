@@ -26,7 +26,7 @@ type ArtProps = {
   fallback?: "album" | "artist";
 };
 
-function RecordArt({ seed }: { seed: string }) {
+export function RecordArt({ seed }: { seed: string }) {
   const [, label] = hashPalette(seed);
   return (
     <svg className="art-record" viewBox="0 0 100 100" aria-hidden="true">

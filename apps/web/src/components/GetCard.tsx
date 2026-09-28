@@ -7,14 +7,16 @@ import { toast } from "../state/ui.ts";
 import { keys } from "../queries/keys.ts";
 import { clock } from "../lib/format.ts";
 import { useGetSong } from "../queries/hooks.ts";
+import { RecordArt } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 import { RequestState } from "./RequestState.tsx";
 
-export function RemoteCover({ url, round = false }: { url: string | null; round?: boolean }) {
+export function RemoteCover({ url, round = false, record }: { url: string | null; round?: boolean; record?: string | undefined }) {
   const [broken, setBroken] = useState(false);
+  const fallback = record === undefined ? <Icon name={round ? "user" : "album"} size={28} /> : <RecordArt seed={record} />;
   return (
     <div className={round ? "art round get-art" : "art get-art"}>
-      {url && !broken ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} /> : <span className="art-fallback"><Icon name={round ? "user" : "album"} size={28} /></span>}
+      {url && !broken ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} /> : <span className="art-fallback">{fallback}</span>}
     </div>
   );
 }
@@ -76,7 +78,7 @@ export function GetCard({ album, request }: { album: LidarrAlbum; request?: Requ
   const progress = request ? request.progress : album.progress;
   return (
     <div className="get-card">
-      <RemoteCover url={album.coverUrl} />
+      <RemoteCover url={album.coverUrl} record={album.foreignAlbumId} />
       <div className="get-text">
         <div className="t">{album.title}</div>
         <div className="s">{[album.artist, album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(", ")}</div>

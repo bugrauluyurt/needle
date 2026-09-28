@@ -21,7 +21,7 @@ function RequestRow({ r }: { r: RequestItem }) {
   const retry = () => void api.retryRequest(r.id).then(refresh, (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t try again"));
   return (
     <li className="req-row">
-      <RemoteCover url={r.coverUrl} />
+      <RemoteCover url={r.coverUrl} record={r.kind === "album" ? r.ref : undefined} />
       <div className="req-text">
         <div className="t">{r.title}</div>
         <div className="s">{r.kind === "album" ? "Album" : "Song"}, {r.artist}, {ago(new Date(r.created).toISOString())}</div>
@@ -46,7 +46,7 @@ const ACTIVE_SONG = new Set<RequestItem["state"]>(["searching", "downloading", "
 function DownloadRow({ d }: { d: DownloadItem }) {
   return (
     <li className="req-row">
-      <RemoteCover url={d.coverUrl} />
+      <RemoteCover url={d.coverUrl} record={String(d.id)} />
       <div className="req-text">
         <div className="t">{d.title}</div>
         <div className="s">Album, {d.artist}</div>
