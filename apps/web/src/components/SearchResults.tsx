@@ -132,7 +132,7 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, blo
     );
   };
   return (
-    <section className="res-source" aria-label={title}>
+    <section className={heading ? "res-source" : "res-source bare"} aria-label={title}>
       {heading ? (
         <div className="source-h">
           <h2>{title}</h2>

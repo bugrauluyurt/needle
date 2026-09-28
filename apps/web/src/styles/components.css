@@ -1315,6 +1315,10 @@ kbd {
   margin-top: 0;
 }
 
+.res-source.bare {
+  padding-top: 14px;
+}
+
 .res-top > section {
   min-width: 0;
 }
