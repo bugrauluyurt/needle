@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Enforce Conventional Commits on the summary line, the format `cz commit` writes (see CONTRIBUTING.md).
+
+summary=$(grep -v '^#' "$1" | grep -m1 -v '^[[:space:]]*$')
+
+[[ $summary =~ ^(Merge\ |Revert\ \"|fixup!\ |squash!\ |amend!\ ) ]] && exit 0
+
+types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+pattern="^($types)(\([a-z0-9._/-]+\))?!?: [a-z0-9\`].*[^.]$"
+
+if [[ $summary =~ $pattern ]] && [ ${#summary} -le 72 ]; then
+  exit 0
+fi
+
+echo "Commit summary must be a Conventional Commit of at most 72 characters:"
+echo "  <type>(<scope>)!: <imperative summary, lowercase, no period>"
+echo "  e.g. fix(glance): show youtube uploads again"
+echo "Types: ${types//|/, }. See CONTRIBUTING.md."
+echo "Got (${#summary} chars): $summary"
+exit 1
