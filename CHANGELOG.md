@@ -20,6 +20,11 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 ### Fixed
 - The song table in Your library lines up with the page edges, without extra side padding.
 - Sorting in the sidebar no longer switches the Your library page to list view.
+- The layout at 768–1023 pixels wide (tablets and narrow windows) works again: lists
+  and sort menus show on every page, and the icon sidebar names its links in tooltips
+  and keeps the library search and new playlist buttons. Below 1180 pixels the player
+  bar fits, with lyrics and full screen under More and volume in a pop-up, queue and
+  Now playing open as a panel over the page, and long titles shrink to fit.
 
 ## 1.5.0 - 2026-09-29
 
