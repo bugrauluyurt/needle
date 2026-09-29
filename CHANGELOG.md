@@ -2,12 +2,11 @@
 
 What changed in each release. Needle uses [semantic versioning](https://semver.org):
 a major version means you need to change your setup (a renamed setting, a new mount),
-a minor version adds features, and a patch fixes bugs. Write new entries under
-**Unreleased**, under the heading that sets the next version: Breaking or Removed
-for a major, Added, Changed or Deprecated for a minor, Fixed or Security for a patch.
-A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
-
-## Unreleased
+a minor version adds features, and a patch fixes bugs. Each change adds its entry as a
+file in [`changelog.d/`](changelog.d/README.md), named for the heading that sets the next
+version: breaking or removed for a major, added, changed or deprecated for a minor, fixed
+or security for a patch. A bot keeps a release pull request open with them; merging it
+writes the entries here and releases.
 
 ## 1.6.0 - 2026-09-29
 

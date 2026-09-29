@@ -5,6 +5,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
 
   # Keeps the digest-pinned Node base image current. A new Node major is a deliberate upgrade;
   # while one is out, Dependabot would propose it instead of the digest refresh.
@@ -12,6 +15,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
@@ -20,6 +26,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
     groups:
       minor-and-patch:
         update-types: [minor, patch]

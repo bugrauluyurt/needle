@@ -17,14 +17,16 @@ anything that touches the UI or the player.
 
 ## Releases
 
-One version for the whole repo, in every `package.json`. Add what changed under
-**Unreleased** in `CHANGELOG.md` as you go, written for people running Needle, under
-the heading that sets the next version: Breaking or Removed (major), Added, Changed
-or Deprecated (minor), Fixed or Security (patch). `scripts/changelog.py` reads them;
-it is shared with homelab-media-stack, so keep the two copies identical.
+One version for the whole repo, in every `package.json`. Add what changed as a file,
+`changelog.d/<name>.<heading>.md`, written for people running Needle, never as an edit
+to `CHANGELOG.md`. The heading sets the next version: breaking or removed (major),
+added, changed or deprecated (minor), fixed or security (patch); `changelog.d/README.md`
+has the format. One file per change keeps pull requests from conflicting over the
+changelog. `scripts/changelog.py` reads them; it is shared with homelab-media-stack, so
+keep the two copies identical.
 
 On every push to `main` a bot keeps a "Release vX.Y.Z" pull request open that bumps
-the versions and moves the notes into the release. GitHub holds its CI until a
+the versions and writes the entries into `CHANGELOG.md`. GitHub holds its CI until a
 maintainer approves the run (**Approve workflows to run** on the pull request). Once
 `checks` passes and the e2e suite does too, approve the pull request and merge it:
 that tags `vX.Y.Z`, publishes the GitHub release with the source archive and its
