@@ -1,0 +1,47 @@
+name: Release PR
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: true
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Open, update or close the release PR
+        run: |
+          version=$(python3 scripts/changelog.py next package.json)
+          open_pr=$(gh pr list --head release/next --state open --json number --jq '.[0].number // empty')
+
+          if [[ -z $version ]]; then
+            if [[ -n $open_pr ]]; then
+              gh pr close "$open_pr" --delete-branch
+            fi
+            exit 0
+          fi
+
+          git switch -C release/next
+          python3 scripts/changelog.py cut "$version" package.json apps/web/package.json apps/server/package.json packages/shared/package.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --quiet --all --message "Release v$version"
+          git push --force origin release/next
+
+          notes=$(python3 scripts/changelog.py notes "$version")
+          if [[ -n $open_pr ]]; then
+            gh pr edit "$open_pr" --title "Release v$version" --body "$notes"
+          else
+            gh pr create --base main --head release/next --title "Release v$version" --body "$notes"
+          fi
