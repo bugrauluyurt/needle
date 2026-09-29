@@ -16,6 +16,9 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
   `ghcr.io/bugrauluyurt/needle:1`; building from source still works.
 - Releases are cut automatically from this changelog.
 
+### Fixed
+- Listening stats include a play recorded at the very moment you open them.
+
 ## 1.3.0 - 2026-09-28
 
 ### Added
