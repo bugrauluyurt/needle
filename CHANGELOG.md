@@ -16,6 +16,12 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 - The sidebar's Your library menu has the same Show: Both, Your music or Spotify choice
   as the Your library page, and the two stay in step. It replaces the Spotify chip.
 - Songs in Your library can be sorted.
+- ListenBrainz discovery: connect your ListenBrainz token in Settings and Home shows
+  the playlists ListenBrainz makes for you (Weekly Exploration, Weekly Jams, Daily
+  Jams). Each plays the songs you have, gets the missing ones from Soulseek with
+  **Get N missing**, and saves as a Navidrome playlist. Give your Navidrome password
+  once to turn on scrobbling in Navidrome; it is never stored. Set `LISTENBRAINZ_URL`
+  only to use another ListenBrainz server.
 
 ### Fixed
 - The song table in Your library lines up with the page edges, without extra side padding.
