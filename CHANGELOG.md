@@ -9,6 +9,13 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 
+### Added
+- Ready-made images for x86-64 (amd64) and ARM64 on `ghcr.io/bugrauluyurt/needle`,
+  tagged `X.Y.Z`, `X.Y`, `X` and `latest`, with build provenance, so you no longer
+  need to build Needle yourself. The example compose file now uses
+  `ghcr.io/bugrauluyurt/needle:1`; building from source still works.
+- Releases are cut automatically from this changelog.
+
 ## 1.3.0 - 2026-09-28
 
 ### Added

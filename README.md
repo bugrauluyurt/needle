@@ -143,16 +143,16 @@ search, Spotify's rate limits and offline downloads.
 
 ## Quick start
 
-You need Docker with Compose, and a folder of music. Needle's image is built from
-this repository and runs the same on x86-64 (amd64) and ARM64 (Raspberry Pi 4/5,
-Apple silicon): its base image is multi-arch and it has no native modules.
+You need Docker with Compose, and a folder of music. Needle's image,
+`ghcr.io/bugrauluyurt/needle`, runs on x86-64 (amd64) and ARM64 (Raspberry Pi 4/5,
+Apple silicon).
 
 ```bash
 git clone https://github.com/bugrauluyurt/needle.git
 cd needle/examples
 cp .env.example .env            # set MUSIC_DIR, PUID/PGID (id -u, id -g) and TZ
 mkdir -p config/navidrome config/needle
-docker compose up -d --build
+docker compose up -d
 ```
 
 This starts Navidrome on port 4533 and Needle on port 4535
@@ -168,13 +168,13 @@ Already running Navidrome? Add only the `needle` service to your compose file an
 point `NAVIDROME_URL` at Navidrome as the Needle container reaches it (for example
 `http://navidrome:4533` on the same Docker network).
 
-To build without cloning, use the repository as the build context:
-`build: https://github.com/bugrauluyurt/needle.git`. To publish your own image for
-both architectures:
+The compose file uses `ghcr.io/bugrauluyurt/needle:1`, which follows every 1.x
+release; none of them needs a change to your setup. To update only when you choose,
+pin a version such as `:1.4.0`.
 
-```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/needle:latest --push .
-```
+To build from source instead, replace the `needle` service's `image:` line with
+`build: ..` (this clone) or `build: https://github.com/bugrauluyurt/needle.git#vX.Y.Z`
+(no clone needed), and run `docker compose up -d --build`.
 
 ## HTTPS
 
@@ -270,7 +270,7 @@ separate folder that Navidrome reads as a second library:
 
 ```bash
 mkdir -p config/lidarr config/slskd "$SINGLES_DIR" "$SOULSEEK_DIR"/{downloads,incomplete}
-docker compose -f compose.yml -f compose.fetching.yml up -d --build
+docker compose -f compose.yml -f compose.fetching.yml up -d
 ```
 
 Needle picks the best copy it finds: lossless first, otherwise 320 kbps or better,
@@ -360,10 +360,13 @@ nothing to set up. Choose qualities in Needle's Settings.
 - Offline downloads live in each browser and are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
   the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
-  means your setup needs a change; the changelog says what.
-- **To update** a clone: `git fetch --tags && git checkout vX.Y.Z` (or `git pull` to
-  follow `main`), then `docker compose up -d --build needle`. Building without a clone,
-  point the build at a tag: `build: https://github.com/bugrauluyurt/needle.git#vX.Y.Z`.
+  means your setup needs a change; the changelog says what. Each release publishes
+  images tagged `X.Y.Z`, `X.Y`, `X` and `latest`, with build provenance you can check:
+  `gh attestation verify oci://ghcr.io/bugrauluyurt/needle:1 --owner bugrauluyurt`.
+- **To update**: `docker compose pull needle && docker compose up -d needle` (change
+  the tag first if you pinned a version). Building from source, point `build:` at the
+  new tag, or in a clone run `git fetch --tags && git checkout vX.Y.Z`, then
+  `docker compose up -d --build needle`.
 - The database migrates itself on start. Open apps show **Update Needle** in the
   account menu; the new version loads when you choose it, so music isn't cut off.
   Settings → This app shows which version you're running.
