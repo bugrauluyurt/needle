@@ -181,6 +181,11 @@ function spotifyEvents() {
     error: (message: string) => {
       if (backend === "spotify") set({ error: message, playing: false, buffering: false });
     },
+    lost: () => {
+      if (backend !== "spotify") return;
+      stopSpotifyTicker();
+      set({ playing: false, buffering: false, lastPosition: spotifyPlayer.position() });
+    },
   };
 }
 
@@ -224,10 +229,14 @@ async function startSpotify(item: Q.QueueItem, startAt: number) {
   }
 }
 
-function leaveSpotify() {
-  spotifyPlayer.stop();
+function stopSpotifyTicker() {
   if (spotifyTicker !== null) window.clearInterval(spotifyTicker);
   spotifyTicker = null;
+}
+
+function leaveSpotify() {
+  spotifyPlayer.stop();
+  stopSpotifyTicker();
   backend = "local";
 }
 

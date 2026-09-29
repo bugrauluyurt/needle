@@ -21,6 +21,7 @@ export type SpotifyEvents = {
   state: (s: { position: number; duration: number; paused: boolean }) => void;
   ended: () => void;
   error: (message: string) => void;
+  lost: () => void;
 };
 
 const SDK = "https://sdk.scdn.co/spotify-player.js";
@@ -56,9 +57,25 @@ function loadSdk(): Promise<void> {
   return sdk;
 }
 
+function positionMs(): number {
+  if (!last) return 0;
+  const { state, at } = last;
+  return state.paused ? state.position : state.position + (performance.now() - at);
+}
+
+function lose() {
+  if (!current) return;
+  current = null;
+  if (last) last = { state: { ...last.state, paused: true, position: positionMs() }, at: performance.now() };
+  events?.lost();
+}
+
 function onState(payload: unknown) {
   const state = payload as SdkState | null;
-  if (!state) return;
+  if (!state) {
+    lose();
+    return;
+  }
   const prev = last?.state;
   last = { state, at: performance.now() };
   const uri = state.track_window.current_track?.uri ?? null;
@@ -98,6 +115,7 @@ export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string>
         });
       }
       p.addListener("player_state_changed", onState);
+      p.addListener("not_ready", lose);
       void p.connect();
     });
     return id;
@@ -133,11 +151,7 @@ export const spotifyPlayer = {
   get playingUri() {
     return current;
   },
-  position(): number {
-    if (!last) return 0;
-    const { state, at } = last;
-    return (state.paused ? state.position : state.position + (performance.now() - at)) / 1000;
-  },
+  position: () => positionMs() / 1000,
   duration(): number {
     return (last?.state.duration ?? 0) / 1000;
   },
