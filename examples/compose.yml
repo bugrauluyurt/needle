@@ -15,8 +15,7 @@ services:
     restart: unless-stopped
 
   needle:
-    build: ${NEEDLE_SRC:-..}
-    image: needle:local
+    image: ghcr.io/bugrauluyurt/needle:1
     user: "${PUID:-1000}:${PGID:-1000}"
     ports: ["4535:4535"]
     environment:
