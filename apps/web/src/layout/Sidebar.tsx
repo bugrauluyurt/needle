@@ -128,7 +128,7 @@ export function useNewPlaylist() {
 
 function Nav({ to, icon, label }: { to: string; icon: IconName; label: string }) {
   return (
-    <NavLink to={to} end={to === "/"} className={({ isActive }) => (isActive ? "nav-btn on" : "nav-btn")}>
+    <NavLink to={to} end={to === "/"} aria-label={label} className={({ isActive }) => (isActive ? "nav-btn on" : "nav-btn")}>
       <Icon name={icon} size={22} />
       <span>{label}</span>
     </NavLink>
@@ -156,7 +156,7 @@ export function Sidebar() {
       </div>
       <div className="panel side-lib">
         <div className="lib-head">
-          <Link to="/library" className="lib-title">
+          <Link to="/library" className="lib-title" aria-label="Your library">
             <Icon name="library" size={22} />
             <span>Your library</span>
           </Link>
