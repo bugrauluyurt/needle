@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bar, openAlbum, signIn } from "./helpers.ts";
+import { openAlbum, signIn } from "./helpers.ts";
 
 test("opens search from the top bar on any page", async ({ page }) => {
   await signIn(page);
@@ -23,17 +23,24 @@ test("the slash key opens search with the field focused", async ({ page }) => {
   await expect(field).toHaveValue("neon");
 });
 
-test("shows the album's name and a play button in the top bar after scrolling", async ({ page }) => {
+test("shows the album's name and cover in the top bar after scrolling, moving search aside", async ({ page }) => {
   await signIn(page);
   await openAlbum(page, "Afterglow Avenue");
   const top = page.locator(".topbar");
-  const play = top.getByRole("button", { name: "Play Afterglow Avenue" });
-  await expect(play).toBeHidden();
+  const name = top.locator(".top-name");
+  const search = top.locator(".top-search .sf");
+  const left = async () => (await search.boundingBox())?.x ?? 0;
+  const centred = await left();
+  await expect(name).toBeHidden();
 
-  await page.locator("#main").evaluate((main) => main.scrollTo(0, main.scrollHeight));
-  await expect(top.locator(".top-name")).toHaveText("Afterglow Avenue");
-  await expect(top.locator(".top-name")).toBeVisible();
-  await play.click();
-  await expect(bar(page).locator(".np-t")).toHaveText("Afterglow Avenue");
-  await expect(top.getByRole("button", { name: "Pause Afterglow Avenue" })).toBeVisible();
+  const main = page.locator("#main");
+  await main.evaluate((m) => m.scrollTo(0, m.scrollHeight));
+  await expect(name).toHaveText("Afterglow Avenue");
+  await expect(name).toBeVisible();
+  await expect(top.locator(".top-cover img")).toBeVisible();
+  await expect.poll(left).toBeGreaterThan(centred + 40);
+
+  await main.evaluate((m) => m.scrollTo(0, 0));
+  await expect(name).toBeHidden();
+  await expect.poll(left).toBeCloseTo(centred, 0);
 });

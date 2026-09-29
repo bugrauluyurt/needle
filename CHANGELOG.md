@@ -30,8 +30,8 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 - The play button on song rows fades in smoothly on hover.
 - Search from every page: the search field sits in the middle of the top bar, and on
   phones a search button at the top right opens Search with the keyboard up.
-- Scroll past a page's title and its name appears in the top bar, with a play button
-  on albums, playlists, artists and anything else you can play.
+- Scroll past a page's title and its name and cover appear in the top bar, while the
+  search field slides aside to make room.
 
 ### Fixed
 - The song table in Your library lines up with the page edges, without extra side padding.
