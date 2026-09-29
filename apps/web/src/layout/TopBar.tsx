@@ -1,13 +1,20 @@
 import * as DM from "@radix-ui/react-dropdown-menu";
+import { useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "../components/Icon.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import { player } from "../player/controller.ts";
+import { usePlayer } from "../player/store.ts";
+import { usePagePlay } from "../state/pagePlay.ts";
+import type { PagePlay } from "../state/pagePlay.ts";
 import { useSession } from "../state/session.ts";
 import { useUpdate } from "../state/update.ts";
 import { image } from "../lib/spotify.ts";
 import { useSpotifyMe } from "../queries/spotify.ts";
 import { useCanRequest, useMe } from "../queries/hooks.ts";
 import { useUi } from "../state/ui.ts";
+import { useScrolledTitle } from "./useScrolledTitle.ts";
 
 let maxIdx = 0;
 
@@ -89,20 +96,60 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
   );
 }
 
+const SEARCH_PROXY = "search-focus-proxy";
+
+export function SearchFocusProxy() {
+  return <input id={SEARCH_PROXY} className="search-proxy" type="text" tabIndex={-1} aria-hidden="true" autoComplete="off" />;
+}
+
+export function useOpenSearch() {
+  const navigate = useNavigate();
+  return useCallback(() => {
+    document.getElementById(SEARCH_PROXY)?.focus({ preventScroll: true });
+    void navigate("/search?focus=1");
+  }, [navigate]);
+}
+
+export function ContextPlayButton({ contextId, onPlay, label, className, size }: PagePlay & { className: string; size: number }) {
+  const active = usePlayer((s) => s.context?.id === contextId);
+  const playing = usePlayer((s) => s.playing);
+  const on = active && playing;
+  return (
+    <button type="button" className={className} aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
+      <Icon name={on ? "pause" : "play"} size={size} />
+    </button>
+  );
+}
+
+function OpenSearchField() {
+  const openSearch = useOpenSearch();
+  return <SearchField variant="top" value="" onChange={openSearch} onFocusChange={(focused) => focused && openSearch()} label="Search" placeholder="What do you want to listen to?" />;
+}
+
 export function TopBar({ children, extra }: { children?: ReactNode; extra?: ReactNode }) {
   const navigate = useNavigate();
   const idx = historyIdx();
+  const bar = useRef<HTMLElement>(null);
+  const title = useRef<HTMLSpanElement>(null);
+  const play = usePagePlay((s) => s.entry);
+  useScrolledTitle(bar, title);
   return (
-    <header className="topbar">
-      <div className="hist">
-        <button type="button" className="circle" aria-label="Go back" disabled={idx === 0} onClick={() => void navigate(-1)}>
-          <Icon name="back" />
-        </button>
-        <button type="button" className="circle" aria-label="Go forward" disabled={idx >= maxIdx} onClick={() => void navigate(1)}>
-          <Icon name="forward" />
-        </button>
+    <header ref={bar} className="topbar">
+      <div className="top-left">
+        <div className="hist">
+          <button type="button" className="circle" aria-label="Go back" disabled={idx === 0} onClick={() => void navigate(-1)}>
+            <Icon name="back" />
+          </button>
+          <button type="button" className="circle" aria-label="Go forward" disabled={idx >= maxIdx} onClick={() => void navigate(1)}>
+            <Icon name="forward" />
+          </button>
+        </div>
+        <div className="top-title">
+          {play ? <ContextPlayButton {...play} className="top-play" size={18} /> : null}
+          <span ref={title} className="top-name" aria-hidden="true" />
+        </div>
       </div>
-      {children}
+      <div className="top-search">{children ?? <OpenSearchField />}</div>
       <div className="top-right">
         {extra}
         <AccountMenu />

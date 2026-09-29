@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { MobileBack } from "../layout/Mobile.tsx";
 import { useIsMobile } from "../layout/Shell.tsx";
-import { TopBar } from "../layout/TopBar.tsx";
-import { usePlayer } from "../player/store.ts";
-import { player } from "../player/controller.ts";
+import { ContextPlayButton, TopBar } from "../layout/TopBar.tsx";
+import { useShowPagePlay } from "../state/pagePlay.ts";
+import type { PagePlay } from "../state/pagePlay.ts";
 import { Icon } from "./Icon.tsx";
 import { SubsonicError } from "../lib/subsonic.ts";
 
@@ -35,15 +35,9 @@ export function Hero({ art, kind, title, description, meta }: { art: ReactNode; 
   );
 }
 
-export function PlayContextButton({ contextId, onPlay, label }: { contextId: string; onPlay: () => void; label: string }) {
-  const active = usePlayer((s) => s.context?.id === contextId);
-  const playing = usePlayer((s) => s.playing);
-  const on = active && playing;
-  return (
-    <button type="button" className="bigplay" aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
-      <Icon name={on ? "pause" : "play"} size={22} />
-    </button>
-  );
+export function PlayContextButton(props: PagePlay) {
+  useShowPagePlay(props);
+  return <ContextPlayButton {...props} className="bigplay" size={22} />;
 }
 
 export function ShuffleButton({ onShuffle, label }: { onShuffle: () => void; label: string }) {

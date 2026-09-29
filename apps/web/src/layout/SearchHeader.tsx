@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { useLocation, useSearchParams } from "react-router";
 import { SearchField } from "../components/SearchField.tsx";
 import { MobileHeader } from "./Mobile.tsx";
 import { useIsMobile } from "./Shell.tsx";
@@ -20,13 +21,17 @@ type Props = {
 export function SearchHeader({ title, label, placeholder, value, onChange, onCommit, busy = false, autoFocus = false, actions }: Props) {
   const mobile = useIsMobile();
   const [focused, setFocused] = useState(false);
+  const [params] = useSearchParams();
+  const { key } = useLocation();
+  const wanted = autoFocus && params.has("focus");
   const field = (
     <SearchField
       variant={mobile ? "page" : "top"}
       value={value}
       onChange={onChange}
       onFocusChange={setFocused}
-      autoFocus={autoFocus && !mobile}
+      autoFocus={autoFocus && (!mobile || wanted)}
+      focusKey={wanted ? key : undefined}
       busy={busy}
       label={label}
       placeholder={placeholder}

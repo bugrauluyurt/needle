@@ -89,7 +89,7 @@
   margin-bottom: calc(-1 * var(--bar-h));
 }
 
-.mobile-back {
+.mobile-bar-btn {
   flex: none;
   width: 38px;
   height: 38px;
@@ -97,6 +97,7 @@
 }
 
 .mobile-bar-title {
+  flex: 1;
   min-width: 0;
   font-family: var(--display);
   font-size: 16px;
@@ -123,6 +124,17 @@
   top: 0;
   z-index: 5;
   background: var(--ink);
+}
+
+.search-proxy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
 }
 
 .phone-app .chips {
