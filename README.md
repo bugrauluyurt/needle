@@ -2,6 +2,13 @@
   <img src="docs/media/hero.png" alt="Needle: a music player for your Navidrome library, on desktop and phone" width="100%">
 </p>
 
+<p align="center">
+  <a href="https://github.com/bugrauluyurt/needle/actions/workflows/ci.yml"><img src="https://github.com/bugrauluyurt/needle/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/bugrauluyurt/needle/releases/latest"><img src="https://img.shields.io/github/v/release/bugrauluyurt/needle" alt="Latest release"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/bugrauluyurt/needle"><img src="https://api.scorecard.dev/projects/github.com/bugrauluyurt/needle/badge" alt="OpenSSF Scorecard"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/bugrauluyurt/needle" alt="MIT license"></a>
+</p>
+
 # Needle
 
 A music player for your [Navidrome](https://www.navidrome.org) library. It runs in

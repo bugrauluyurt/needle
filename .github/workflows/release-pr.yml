@@ -36,12 +36,12 @@ jobs:
           git switch -C release/next
           python3 scripts/changelog.py cut "$version" package.json apps/web/package.json apps/server/package.json packages/shared/package.json
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit --quiet --all --message "Release v$version"
+            commit --quiet --all --message "chore(release): v$version"
           git push --force origin release/next
 
           notes=$(python3 scripts/changelog.py notes "$version")
           if [[ -n $open_pr ]]; then
-            gh pr edit "$open_pr" --title "Release v$version" --body "$notes"
+            gh pr edit "$open_pr" --title "chore(release): v$version" --body "$notes"
           else
-            gh pr create --base main --head release/next --title "Release v$version" --body "$notes"
+            gh pr create --base main --head release/next --title "chore(release): v$version" --body "$notes"
           fi

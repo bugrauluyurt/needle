@@ -25,7 +25,7 @@ has the format. One file per change keeps pull requests from conflicting over th
 changelog. `scripts/changelog.py` reads them; it is shared with homelab-media-stack, so
 keep the two copies identical.
 
-On every push to `main` a bot keeps a "Release vX.Y.Z" pull request open that bumps
+On every push to `main` a bot keeps a "chore(release): vX.Y.Z" pull request open that bumps
 the versions and writes the entries into `CHANGELOG.md`. GitHub holds its CI until a
 maintainer approves the run (**Approve workflows to run** on the pull request). Once
 `checks` passes and the e2e suite does too, approve the pull request and merge it:
@@ -36,6 +36,10 @@ another person's approval; maintainers merge their own through the admin bypass.
 
 ## Conventions
 
+- Commits and pull request titles follow Conventional Commits (`type(scope): summary`, at
+  most 72 characters, lowercase, imperative); the body says why. `CONTRIBUTING.md` has the
+  types and scopes, and `.githooks/commit-msg` checks them
+  (`git config core.hooksPath .githooks`).
 - `type`, never `interface`; never `any`; `??` over `||`.
 - Relative imports only (no `~/` or `@/` aliases). Other packages by name
   (`@needle/shared`).
