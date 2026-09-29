@@ -208,6 +208,8 @@
   position: relative;
   z-index: 1;
   min-width: 0;
+  flex: 1;
+  container-type: inline-size;
 }
 
 .a-hero .kind {
@@ -221,7 +223,7 @@
 .a-hero h1 {
   font-family: var(--display);
   font-weight: 800;
-  font-size: var(--title, 112px);
+  font-size: min(var(--title, 112px), 17cqi);
   letter-spacing: -0.055em;
   line-height: 0.9;
   font-variation-settings: "opsz" 96;

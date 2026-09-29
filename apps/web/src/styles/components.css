@@ -312,6 +312,7 @@
 .hero-text {
   min-width: 0;
   flex: 1;
+  container-type: inline-size;
 }
 
 .hero .kind {
@@ -322,7 +323,7 @@
 .hero h1 {
   font-family: var(--display);
   font-weight: 800;
-  font-size: var(--title, 96px);
+  font-size: min(var(--title, 96px), 17cqi);
   letter-spacing: -0.045em;
   line-height: 0.92;
   margin: 8px 0 16px;
