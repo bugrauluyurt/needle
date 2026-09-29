@@ -3,10 +3,12 @@ import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { usePlayer } from "../player/store.ts";
-import type { CollectionView, SortKey } from "../state/ui.ts";
+import type { CollectionState, CollectionView, SortKey } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 import { CardRow, ItemCard, RowHeader } from "./Cards.tsx";
 import { Eq, Icon } from "./Icon.tsx";
+import { applyOrder, compareText, directional, naturalOrder, pickOrder } from "../lib/order.ts";
+import type { Order } from "../lib/order.ts";
 import type { IconName } from "./Icon.tsx";
 
 export type CollectionItem = {
@@ -26,59 +28,67 @@ export type CollectionItem = {
 };
 
 export type SortOption = [SortKey, string];
+export type CollectionOrder = Order<SortKey>;
 
 const LIST_ART = 56;
 
-export const SORT_LABELS = { added: "Recently added", title: "Alphabetical", year: "Release date" } as const;
+export const SORT_LABELS = { added: "Date added", title: "Alphabetical", year: "Release date" } as const;
 
 export const RELEASE_SORTS: SortOption[] = [["year", SORT_LABELS.year], ["title", SORT_LABELS.title]];
 
-const compare = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
-const ORDER: Record<Exclude<SortKey, "default">, (a: CollectionItem, b: CollectionItem) => number> = {
-  added: (a, b) => (b.added ?? "").localeCompare(a.added ?? ""),
-  title: (a, b) => compare(a.title, b.title),
-  by: (a, b) => compare(a.by ?? "", b.by ?? "") || compare(a.title, b.title),
-  year: (a, b) => (b.year ?? 0) - (a.year ?? 0) || compare(a.title, b.title),
+const COMPARE: Record<Exclude<SortKey, "default">, (a: CollectionItem, b: CollectionItem) => number> = {
+  added: (a, b) => (a.added ?? "").localeCompare(b.added ?? ""),
+  title: (a, b) => compareText(a.title, b.title),
+  by: (a, b) => compareText(a.by ?? "", b.by ?? "") || compareText(a.title, b.title),
+  year: (a, b) => (a.year ?? 0) - (b.year ?? 0) || compareText(b.title, a.title),
 };
 
-export function sortItems<T extends CollectionItem>(items: T[], sort: SortKey): T[] {
-  if (sort === "default") return items;
-  return [...items.filter((i) => i.pinned), ...items.filter((i) => !i.pinned).toSorted(ORDER[sort])];
+export function sortItems<T extends CollectionItem>(items: T[], order: CollectionOrder): T[] {
+  if (order.key === "default") return items;
+  return [...items.filter((i) => i.pinned), ...applyOrder(items.filter((i) => !i.pinned), COMPARE[order.key], order.desc)];
 }
 
 export function useCollectionView(id: string, sorts: SortOption[], fallback: CollectionView = "grid") {
   const saved = useUi((s) => s.collections[id]);
-  const sort = sorts.some(([k]) => k === saved?.sort) ? (saved?.sort ?? "default") : (sorts[0]?.[0] ?? "default");
+  const key = sorts.some(([k]) => k === saved?.sort) ? (saved?.sort ?? "default") : (sorts[0]?.[0] ?? "default");
+  const order: CollectionOrder = { key, desc: key === saved?.sort ? (saved.desc ?? naturalOrder(key).desc) : naturalOrder(key).desc };
   const view = saved?.view ?? fallback;
-  const set = (patch: { view?: CollectionView; sort?: SortKey }) =>
-    useUi.setState((s) => ({ collections: { ...s.collections, [id]: { view, sort, ...patch } } }));
-  return { view, sort, setView: (v: CollectionView) => set({ view: v }), setSort: (k: SortKey) => set({ sort: k }) };
+  const set = (patch: CollectionState) => useUi.setState((s) => ({ collections: { ...s.collections, [id]: { ...s.collections[id], ...patch } } }));
+  return { view, order, setView: (v: CollectionView) => set({ view: v }), setOrder: (o: CollectionOrder) => set({ sort: o.key, desc: o.desc }) };
+}
+
+export function SortArrow({ desc }: { desc: boolean }) {
+  return <Icon name="arrow" size={14} className={desc ? "sort-arrow" : "sort-arrow up"} />;
 }
 
 const VIEWS: [CollectionView, string, IconName][] = [["compact", "Compact", "rows"], ["list", "List", "list"], ["dense", "Compact grid", "gridDense"], ["grid", "Grid", "grid"]];
 
 export type ShowFilter<S extends string> = { value: S; options: [S, string][]; onChange: (s: S) => void };
 
-export function CollectionTools<K extends string, S extends string = string>({ sorts, sort, onSort, view, onView, show }: {
+export function CollectionTools<K extends string, S extends string = string>({ sorts, order, onOrder, view, onView, show }: {
   sorts: [K, string][];
-  sort?: K;
-  onSort?: (k: K) => void;
+  order?: Order<K>;
+  onOrder?: (o: Order<K>) => void;
   view?: CollectionView;
   onView?: (v: CollectionView) => void;
   show?: ShowFilter<S> | undefined;
 }) {
-  const sortLabel = sorts.length > 1 ? (sorts.find(([k]) => k === sort)?.[1] ?? sorts[0]?.[1]) : undefined;
+  const sorting = sorts.length > 1 && order && onOrder ? { order, onOrder } : null;
+  const sortLabel = sorting ? (sorts.find(([k]) => k === sorting.order.key)?.[1] ?? sorts[0]?.[1]) : undefined;
+  const directed = Boolean(sorting && directional(sorting.order.key));
   const showLabel = show && show.value !== show.options[0]?.[0] ? show.options.find(([v]) => v === show.value)?.[1] : undefined;
   const label = [showLabel, sortLabel].filter(Boolean).join(", ") || (show?.options[0]?.[1] ?? "");
+  const direction = directed && sorting ? (sorting.order.desc ? ", descending" : ", ascending") : "";
   const views = Boolean(view && onView);
-  if (sorts.length < 2 && !views && !show) return null;
+  if (!sorting && !views && !show) return null;
   const icon = VIEWS.find(([v]) => v === view)?.[2] ?? "sort";
   return (
     <div className="coll-tools">
       <DM.Root modal={false}>
         <DM.Trigger asChild>
-          <button type="button" className="coll-sort" aria-label={`${show ? "Show and sort" : "Sort"}: ${label}${views ? `, view as ${view ?? ""}` : ""}`} data-no-tip>
+          <button type="button" className="coll-sort" aria-label={`${show ? "Show and sort" : "Sort"}: ${label}${direction}${views ? `, view as ${view ?? ""}` : ""}`} data-no-tip>
             <span>{label}</span>
+            {directed && sorting ? <SortArrow desc={sorting.order.desc} /> : null}
             <Icon name={icon} size={16} />
           </button>
         </DM.Trigger>
@@ -95,17 +105,20 @@ export function CollectionTools<K extends string, S extends string = string>({ s
                     </DM.RadioItem>
                   ))}
                 </DM.RadioGroup>
-                {sorts.length > 1 || views ? <DM.Separator className="menu-sep" /> : null}
+                {sorting || views ? <DM.Separator className="menu-sep" /> : null}
               </>
             ) : null}
-            {sorts.length > 1 && onSort ? (
+            {sorting ? (
               <>
                 <DM.Label className="menu-heading">Sort by</DM.Label>
-                <DM.RadioGroup value={sort} onValueChange={(v) => onSort(v as K)}>
+                <DM.RadioGroup value={sorting.order.key}>
                   {sorts.map(([k, l]) => (
-                    <DM.RadioItem key={k} value={k} className="menu-item">
+                    <DM.RadioItem key={k} value={k} className="menu-item" onSelect={(e) => {
+                      if (k === sorting.order.key && directional(k)) e.preventDefault();
+                      sorting.onOrder(pickOrder(sorting.order, k));
+                    }}>
                       <span className="menu-label">{l}</span>
-                      <DM.ItemIndicator className="menu-end"><Icon name="check" size={16} /></DM.ItemIndicator>
+                      <DM.ItemIndicator className="menu-end">{directional(k) ? <SortArrow desc={sorting.order.desc} /> : <Icon name="check" size={16} />}</DM.ItemIndicator>
                     </DM.RadioItem>
                   ))}
                 </DM.RadioGroup>
@@ -113,7 +126,7 @@ export function CollectionTools<K extends string, S extends string = string>({ s
             ) : null}
             {views && onView ? (
               <>
-                {sorts.length > 1 ? <DM.Separator className="menu-sep" /> : null}
+                {sorting ? <DM.Separator className="menu-sep" /> : null}
                 <DM.Label className="menu-heading">View as</DM.Label>
                 <DM.RadioGroup className="view-as" value={view} onValueChange={(v) => onView(v as CollectionView)}>
                   {VIEWS.map(([v, l, i]) => (
@@ -191,10 +204,10 @@ export function Collection({ id, title, subtitle, items, sorts, empty, loading, 
   fallback?: CollectionView;
 }) {
   const c = useCollectionView(id, sorts, fallback);
-  const sorted = useMemo(() => sortItems(items, c.sort), [items, c.sort]);
+  const sorted = useMemo(() => sortItems(items, c.order), [items, c.order]);
   return (
     <section className="collection">
-      <RowHeader title={title} {...(subtitle ? { subtitle } : {})} action={<CollectionTools sorts={sorts} sort={c.sort} onSort={c.setSort} view={c.view} onView={c.setView} />} />
+      <RowHeader title={title} {...(subtitle ? { subtitle } : {})} action={<CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />} />
       <CollectionBody items={sorted} view={c.view} {...(empty ? { empty } : {})} {...(loading ? { loading } : {})} />
     </section>
   );

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Collection, CollectionTools, RELEASE_SORTS } from "../components/Collection.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { LIKED_SORTS, shownSongs, SONG_SORTS } from "../lib/songs.ts";
-import type { SongSort } from "../lib/songs.ts";
+import { AS_GIVEN, LIKED_SORTS, RECENT_FIRST, shownSongs, SONG_SORTS } from "../lib/songs.ts";
+import type { SongOrder } from "../lib/songs.ts";
 import { Link, useParams } from "react-router";
 import type { Song } from "@needle/shared";
 import { Art, LikedArt } from "../components/Art.tsx";
@@ -80,9 +80,9 @@ export function SpotifyLikedPage() {
   const on = useSpotifyOn();
   const { data: songs, isLoading, isError, refetch } = useSpotifyLiked();
   const [filter, setFilter] = useState("");
-  const [sort, setSort] = useState<SongSort>("added");
+  const [order, setOrder] = useState<SongOrder>(RECENT_FIRST);
   usePageTone("#1F5A3A");
-  const shown = useMemo(() => shownSongs(songs ?? [], sort, filter), [songs, sort, filter]);
+  const shown = useMemo(() => shownSongs(songs ?? [], order, filter), [songs, order, filter]);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (isError || !songs) return <SpotifyError what="list" retry={() => void refetch()} />;
@@ -90,11 +90,11 @@ export function SpotifyLikedPage() {
   return (
     <div className="tinted">
       <Hero art={<LikedArt className="sp-liked" />} kind="Spotify" title="Liked on Spotify" meta={<span>{plural(songs.length, "song")}</span>} />
-      <ActBar end={<><SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" /><CollectionTools sorts={LIKED_SORTS} sort={sort} onSort={setSort} /></>}>
+      <ActBar end={<><SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" /><CollectionTools sorts={LIKED_SORTS} order={order} onOrder={setOrder} /></>}>
         <PlayContextButton contextId="sp:liked" label="Liked on Spotify" onPlay={() => player.playSongs(shown, 0, context)} />
         <ShuffleButton label="Liked on Spotify" onShuffle={() => player.playSongs(shown, 0, context, { shuffle: true })} />
       </ActBar>
-      <TrackList songs={shown} context={context} art album column={{ label: "Date added", value: (s) => ago(s.starred) }} onPlay={(i) => player.playSongs(shown, i, context)} />
+      <TrackList songs={shown} context={context} art album column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }} order={order} onOrder={setOrder} fallback={RECENT_FIRST} />
     </div>
   );
 }
@@ -107,8 +107,8 @@ export function SpotifyPlaylistPage() {
   const { data: playlists } = useSpotifyPlaylists();
   const mine = playlists?.find((p) => p.id === id)?.mine;
   const [filter, setFilter] = useState("");
-  const [sort, setSort] = useState<SongSort>("custom");
-  const shown = useMemo(() => (data?.songs ? shownSongs(data.songs, sort, filter) : null), [data, sort, filter]);
+  const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
+  const shown = useMemo(() => (data?.songs ? shownSongs(data.songs, order, filter) : null), [data, order, filter]);
   const tone = useTone(image(data?.meta.images, 64));
   usePageTone(tone);
   if (!on) return <NotConnected />;
@@ -117,7 +117,7 @@ export function SpotifyPlaylistPage() {
   const { meta, songs } = data;
   const context: PlayContext = { kind: "playlist", id: spId(id), name: meta.name };
   const total = meta.items?.total ?? meta.tracks?.total ?? songs?.length ?? 0;
-  const editable = Boolean(mine) && songs !== null && sort === "custom" && !filter;
+  const editable = Boolean(mine) && songs !== null && order.key === "custom" && !filter;
   return (
     <div className="tinted">
       <Hero
@@ -133,7 +133,7 @@ export function SpotifyPlaylistPage() {
         }
       />
       {songs ? (
-        <ActBar end={songs.length ? <><SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" /><CollectionTools sorts={SONG_SORTS} sort={sort} onSort={setSort} /></> : null}>
+        <ActBar end={songs.length ? <><SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" /><CollectionTools sorts={SONG_SORTS} order={order} onOrder={setOrder} /></> : null}>
           {songs.length ? (
             <>
               <PlayContextButton contextId={context.id ?? ""} label={meta.name} onPlay={() => player.playSongs(songs, 0, context)} />
@@ -155,8 +155,9 @@ export function SpotifyPlaylistPage() {
           context={context}
           art
           album
-          column={{ label: "Added", value: (s) => ago(s.created) }}
-          onPlay={(i) => player.playSongs(shown, i, context)}
+          column={{ label: "Added", value: (s) => ago(s.created), sort: "added" }}
+          order={order}
+          onOrder={setOrder}
           {...(editable ? {
             onReorder: (from: number, to: number) => void edits.reorder(id, from, to),
             menuExtra: (s: Song) => [{ label: "Remove from this playlist", icon: "trash" as const, run: () => void edits.remove(id, s) }],
@@ -241,7 +242,7 @@ export function SpotifyAlbumPage() {
         ) : null}
         <OpenInSpotify kind="album" id={album.id} />
       </ActBar>
-      <TrackList songs={songs} context={context} numbers="track" onPlay={(i) => player.playSongs(songs, i, context)} />
+      <TrackList songs={songs} context={context} numbers="track" />
       <div className="pad">
         {album.label || album.copyrights?.[0] ? <p className="album-foot muted">{[year, album.label, album.copyrights?.[0]?.text].filter(Boolean).join(". ")}</p> : null}
       </div>

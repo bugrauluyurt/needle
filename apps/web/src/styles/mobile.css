@@ -349,6 +349,11 @@
   padding: 0 4px 8px;
 }
 
+.phone-app .library-page .tracks {
+  margin-inline: -16px;
+  padding-inline: 0;
+}
+
 .phone-app .th {
   display: none;
 }

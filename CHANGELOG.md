@@ -9,6 +9,18 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 
+### Added
+- Click a column title in any song table to sort by it; click again to reverse, and a
+  third time to go back to the original order.
+- Every sort menu sorts both ways: pick the current sort again to reverse it.
+- The sidebar's Your library menu has the same Show: Both, Your music or Spotify choice
+  as the Your library page, and the two stay in step. It replaces the Spotify chip.
+- Songs in Your library can be sorted.
+
+### Fixed
+- The song table in Your library lines up with the page edges, without extra side padding.
+- Sorting in the sidebar no longer switches the Your library page to list view.
+
 ## 1.5.0 - 2026-09-29
 
 ### Added

@@ -2,8 +2,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
 import { CollectionTools } from "../components/Collection.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { shownSongs, SONG_SORTS } from "../lib/songs.ts";
-import type { SongSort } from "../lib/songs.ts";
+import { AS_GIVEN, shownSongs, SONG_SORTS } from "../lib/songs.ts";
+import type { SongOrder } from "../lib/songs.ts";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import type { PlaylistWithSongs, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
@@ -122,20 +122,20 @@ export default function PlaylistPage() {
   const me = useSession((s) => s.credentials?.user);
   const reorder = useReorderPlaylist();
   const update = useUpdatePlaylist();
-  const [sort, setSort] = useState<SongSort>("custom");
+  const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
   const [filter, setFilter] = useState("");
   const editing = params.get("edit") === "1";
   const tone = useTone(playlist?.coverArt);
   usePageTone(tone);
   const songs = useMemo(() => playlist?.entry ?? [], [playlist]);
-  const shown = useMemo(() => shownSongs(songs, sort, filter), [songs, sort, filter]);
+  const shown = useMemo(() => shownSongs(songs, order, filter), [songs, order, filter]);
 
   if (isLoading) return <PageSkeleton />;
   if (isError || !playlist) return <NotFoundState what="playlist" error={error} retry={() => void refetch()} />;
 
   const mine = playlist.owner === me && !playlist.readonly;
   const context = { kind: "playlist" as const, id: playlist.id, name: playlist.name };
-  const canReorder = mine && sort === "custom" && !filter;
+  const canReorder = mine && order.key === "custom" && !filter;
   const setEdit = (o: boolean) => setParams(o ? { edit: "1" } : {}, { replace: true });
 
   return (
@@ -156,7 +156,7 @@ export default function PlaylistPage() {
         end={
           <>
             <SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" />
-            <CollectionTools sorts={SONG_SORTS} sort={sort} onSort={setSort} />
+            <CollectionTools sorts={SONG_SORTS} order={order} onOrder={setOrder} />
           </>
         }
       >
@@ -174,8 +174,9 @@ export default function PlaylistPage() {
           context={context}
           art
           album
-          column={{ label: "Added", value: (s) => ago(s.created) }}
-          onPlay={(i) => player.playSongs(shown, i, context)}
+          column={{ label: "Added", value: (s) => ago(s.created), sort: "added" }}
+          order={order}
+          onOrder={setOrder}
           {...(canReorder ? {
             onReorder: (from: number, to: number) => {
               const ids = songs.map((s) => s.id);
@@ -184,7 +185,7 @@ export default function PlaylistPage() {
               reorder.mutate({ id: playlist.id, songIds: ids });
             },
           } : {})}
-          {...(mine && sort === "custom" && !filter ? {
+          {...(canReorder ? {
             menuExtra: (_s: Song, i: number) => [{ label: "Remove from this playlist", icon: "trash" as const, run: () => update.mutate({ id: playlist.id, removeIndex: [i] }, { onSuccess: () => toast("Removed from playlist") }) }],
           } : {})}
         />

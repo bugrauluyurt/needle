@@ -27,6 +27,7 @@ const PATHS = {
   back: "M15 18l-6-6 6-6",
   forward: "M9 18l6-6-6-6",
   down: "M6 9l6 6 6-6",
+  arrow: "M12 5v14M6.5 13.5 12 19l5.5-5.5",
   radio: "M4 9h16v11H4zM8 9l9-5M8 13.5a2 2 0 1 0 0 3.01M14 13h3M14 16h3",
   chart: "M5 20v-7M11 20V5M17 20v-10M3 20h18",
   settings: "M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1M15 5v4M9 10v4M17 15v4",
