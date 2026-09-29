@@ -370,12 +370,13 @@ export async function previous() {
   await loadCurrent(true);
 }
 
-export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean } = {}) {
+export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean; at?: number; autoplay?: boolean } = {}) {
   if (!songs.length) return;
   spotifyPlayer.activate();
   const shuffle = opts.shuffle ?? get().shuffle;
-  set({ ...Q.start(songs, startIndex, shuffle), shuffle, context, station: null, resume: null });
-  void loadCurrent(true);
+  const at = opts.at ?? 0;
+  set({ ...Q.start(songs, startIndex, shuffle), shuffle, context, station: null, resume: null, lastPosition: at });
+  void loadCurrent(opts.autoplay ?? true, at);
 }
 
 export function playQueueItem(uid: string) {

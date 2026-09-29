@@ -94,6 +94,7 @@ export type RemoteState = {
   title: string;
   artist: string;
   coverArt?: string;
+  uri?: string;
   position: number;
   duration: number;
   playing: boolean;

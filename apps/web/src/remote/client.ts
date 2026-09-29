@@ -23,12 +23,14 @@ const REMOTE_TICK = 250;
 const UNMUTE_TO = 0.5;
 const RETRY_MAX = 30_000;
 const TRANSFER_LIMIT = 300;
+const PULL_WAIT = 2_000;
 
 let socket: WebSocket | null = null;
 let retry = 1_000;
 let lastSent = "";
 let stateTimer: number | null = null;
 let stopped = false;
+let pullTimer: number | null = null;
 
 function send(msg: ClientMessage) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
@@ -43,6 +45,7 @@ function snapshot(): RemoteState | null {
     title: song.title,
     artist: artistName(song),
     ...(song.coverArt ? { coverArt: song.coverArt } : {}),
+    ...(song.uri ? { uri: song.uri } : {}),
     position: progress.get().position,
     duration: progress.get().duration > 0 ? progress.get().duration : (song.duration ?? 0),
     playing: s.playing,
@@ -75,6 +78,25 @@ export function command(deviceId: string, cmd: RemoteCommand) {
   send({ type: "command", to: deviceId, command: cmd });
 }
 
+function stopWaiting() {
+  if (pullTimer !== null) window.clearTimeout(pullTimer);
+  pullTimer = null;
+}
+
+function playHere(from: string, songs: Song[], index: number, position: number, playing: boolean) {
+  stopWaiting();
+  player.playSongs(songs, index, { kind: "queue", name: "Your queue" }, { shuffle: false, at: position, autoplay: playing });
+  const sender = useRemote.getState().devices.find((d) => d.id === from)?.name;
+  toast(sender ? `Now playing here, sent from ${sender}` : "Now playing here");
+}
+
+export function pullFrom(d: Device) {
+  command(d.id, { action: "pull" });
+  stopWaiting();
+  const state = d.state;
+  if (state) pullTimer = window.setTimeout(() => playHere(d.id, [remoteSong(state)], 0, remotePosition(state, Date.now()), true), PULL_WAIT);
+}
+
 function receive(from: string, cmd: RemoteCommand) {
   switch (cmd.action) {
     case "play":
@@ -98,13 +120,9 @@ function receive(from: string, cmd: RemoteCommand) {
     case "pull":
       transferTo(from);
       break;
-    case "transfer": {
-      player.playSongs(cmd.songs, cmd.index, { kind: "queue", name: "Your queue" }, { shuffle: false });
-      if (cmd.position > 1) window.setTimeout(() => player.seek(cmd.position), 400);
-      const sender = useRemote.getState().devices.find((d) => d.id === from)?.name;
-      toast(sender ? `Now playing here, sent from ${sender}` : "Now playing here");
+    case "transfer":
+      playHere(from, cmd.songs, cmd.index, cmd.position, cmd.playing);
       break;
-    }
   }
   window.setTimeout(() => publish(true), 300);
 }

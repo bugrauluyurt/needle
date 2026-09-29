@@ -30,9 +30,14 @@ describe("activeRemote", () => {
     expect(activeRemote(devices, "mac", "mac", NOW)).toBeNull();
   });
 
-  it("ignores a device that has not reported for a while", () => {
+  it("ignores a playing device that has not reported for a while", () => {
     const quiet = [device("mac"), device("phone", state({ updatedAt: NOW - FRESH_MS }))];
     expect(activeRemote(quiet, "phone", "mac", NOW)).toBeNull();
+  });
+
+  it("keeps a paused device active however long it has been paused", () => {
+    const paused = [device("mac"), device("phone", state({ playing: false, updatedAt: NOW - 10 * FRESH_MS }))];
+    expect(activeRemote(paused, "phone", "mac", NOW)?.id).toBe("phone");
   });
 
   it("ignores a device with nothing loaded or no active device", () => {
@@ -60,7 +65,7 @@ describe("remoteSong", () => {
     expect(remoteSong(state())).toEqual({ id: "s1", title: "Blue Minutes", artist: "The Quiet Hours", coverArt: "al-1", duration: 200 });
   });
 
-  it("marks Spotify songs", () => {
-    expect(remoteSong(state({ songId: "sp:abc", coverArt: undefined }))).toEqual({ id: "sp:abc", title: "Blue Minutes", artist: "The Quiet Hours", duration: 200, source: "spotify" });
+  it("marks Spotify songs and keeps their link", () => {
+    expect(remoteSong(state({ songId: "sp:abc", coverArt: undefined, uri: "spotify:track:abc" }))).toEqual({ id: "sp:abc", title: "Blue Minutes", artist: "The Quiet Hours", duration: 200, source: "spotify", uri: "spotify:track:abc" });
   });
 });

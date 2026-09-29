@@ -5,7 +5,7 @@ export const FRESH_MS = 15_000;
 
 export function activeRemote(devices: Device[], activeId: string | null, me: string, now: number): Device | null {
   const d = activeId === me ? undefined : devices.find((x) => x.id === activeId);
-  return d?.state && now - d.state.updatedAt < FRESH_MS ? d : null;
+  return d?.state && (!d.state.playing || now - d.state.updatedAt < FRESH_MS) ? d : null;
 }
 
 export function remotePosition(s: RemoteState, now: number): number {
@@ -20,4 +20,5 @@ export const remoteSong = (s: RemoteState): Song => ({
   ...(s.coverArt ? { coverArt: s.coverArt } : {}),
   duration: s.duration,
   ...(isSpotify(s.songId) ? { source: "spotify" as const } : {}),
+  ...(s.uri ? { uri: s.uri } : {}),
 });

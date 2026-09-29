@@ -16,7 +16,7 @@ test("sees another device, controls it and moves playback across", async ({ brow
 
   await second.goto("/");
   await bar(second).getByRole("button", { name: "Devices" }).click();
-  const other = second.locator(".dev", { hasText: "Blue Minutes" });
+  const other = second.locator("li.dev", { hasText: "Blue Minutes" });
   await expect(other).toContainText("Playing: Blue Minutes", { timeout: 15_000 });
   await other.getByRole("button", { name: /^Pause on / }).click();
   await expect(bar(laptop).getByRole("button", { name: "Play", exact: true })).toBeVisible();
@@ -57,6 +57,7 @@ test("offers to pick up where another device stopped", async ({ browser }) => {
 });
 
 test("shows the device that took over and controls it from here", async ({ browser }) => {
+  test.setTimeout(120_000);
   const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   const kitchen = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await signIn(desk);
@@ -90,6 +91,35 @@ test("shows the device that took over and controls it from here", async ({ brows
 
   await bar(desk).getByRole("button", { name: "Play", exact: true }).click();
   await expect(bar(kitchen).getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+  await expect(desk.locator(".tr.playing")).toBeVisible();
+  await expect(desk.locator(".tr.playing .eq")).toHaveCount(0);
+
+  await bar(desk).getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(bar(kitchen).getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  const left = await position(kitchen);
+  await desk.waitForTimeout(16_000);
+  await expect(desk.locator(".remote-strip")).toBeVisible();
+  await desk.locator(".remote-strip").click();
+  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Play here" }).click();
+  await expect(desk.locator(".remote-strip")).toHaveCount(0);
+  await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
+  await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+  await expect.poll(() => position(desk)).toBeGreaterThan(left);
+  await expect(kitchen.locator(".remote-strip")).toContainText("Playing on");
+
+  await playContext(kitchen);
+  await expect(desk.locator(".remote-strip")).toBeVisible();
+  await bar(desk).getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(bar(kitchen).getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  const busy = kitchen.evaluate(() => {
+    const until = Date.now() + 5_000;
+    while (Date.now() < until);
+  });
+  await desk.locator(".remote-strip").click();
+  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Play here" }).click();
+  await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 4_000 });
+  await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
+  await busy;
 
   await desk.close();
   await kitchen.close();
