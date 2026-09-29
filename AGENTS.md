@@ -24,9 +24,13 @@ or Deprecated (minor), Fixed or Security (patch). `scripts/changelog.py` reads t
 it is shared with homelab-media-stack, so keep the two copies identical.
 
 On every push to `main` a bot keeps a "Release vX.Y.Z" pull request open that bumps
-the versions and moves the notes into the release. Run the e2e suite, then merge it:
-that tags `vX.Y.Z`, publishes the GitHub release and pushes amd64 and arm64 images
-to `ghcr.io/bugrauluyurt/needle` with build provenance.
+the versions and moves the notes into the release. GitHub holds its CI until a
+maintainer approves the run (**Approve workflows to run** on the pull request). Once
+`checks` passes and the e2e suite does too, approve the pull request and merge it:
+that tags `vX.Y.Z`, publishes the GitHub release with the source archive and its
+provenance, and pushes amd64 and arm64 images to `ghcr.io/bugrauluyurt/needle` with
+build provenance. `main` takes a pull request only with a passing `checks` run and
+another person's approval; maintainers merge their own through the admin bypass.
 
 ## Conventions
 
