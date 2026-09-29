@@ -15,6 +15,7 @@ import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
+import { useActiveRemote } from "../remote/client.ts";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
@@ -209,7 +210,8 @@ export function Shell() {
   const panel = useUi((s) => s.rightPanel);
   const fullScreen = useUi((s) => s.fullScreen);
   const shortcuts = useUi((s) => s.shortcutsOpen);
-  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station));
+  const remote = useActiveRemote();
+  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station)) || Boolean(remote);
   const wide = useIsWide();
   const panelOver = usePanelOver(!wide && !mobile);
   const spotifyOn = useSpotifyOn();

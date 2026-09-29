@@ -9,6 +9,7 @@ import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { useLocate, usePlayer } from "../player/store.ts";
 import { useIsMobile } from "../layout/Shell.tsx";
+import { useActiveRemote } from "../remote/client.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { Art } from "./Art.tsx";
 import { Eq, Icon } from "./Icon.tsx";
@@ -63,6 +64,7 @@ type RowProps = {
   column: TrackColumn | undefined;
   playing: boolean;
   paused: boolean;
+  elsewhere: boolean;
   located: boolean;
   liked: boolean;
   downloaded: boolean;
@@ -150,7 +152,7 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
       {...drag}
     >
       <span className="n" role="cell">
-        {p.playing ? <Eq paused={p.paused} /> : <span className="num">{p.number}</span>}
+        {p.playing && !p.elsewhere ? <Eq paused={p.paused} /> : <span className="num">{p.number}</span>}
         <button type="button" className="row-play" aria-label={p.playing && !p.paused ? `Pause ${p.song.title}` : `Play ${p.song.title}`} onClick={() => (p.playing ? player.toggle() : p.onPlay(p.index))}>
           <Icon name={p.playing && !p.paused ? "pause" : "play"} size={14} />
         </button>
@@ -205,6 +207,7 @@ function SortHeader({ label, sort, order, onSort, className, children }: { label
 export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay, order, onOrder, fallback = AS_GIVEN }: TrackListProps) {
   const currentId = usePlayer((s) => s.items[s.index]?.song.id);
   const paused = usePlayer((s) => !s.playing);
+  const elsewhere = Boolean(useActiveRemote());
   const likes = useSongLikes();
   const downloaded = useOffline((s) => s.songs);
   const mixed = useMemo(() => songs.some((s) => s.source === "spotify") && songs.some((s) => s.source !== "spotify"), [songs]);
@@ -329,6 +332,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       column={column}
       playing={song.id === currentId}
       paused={paused}
+      elsewhere={elsewhere}
       located={located === i}
       liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
