@@ -6,11 +6,15 @@ updates:
     schedule:
       interval: weekly
 
-  # Keeps the digest-pinned Node base image current.
+  # Keeps the digest-pinned Node base image current. A new Node major is a deliberate upgrade;
+  # while one is out, Dependabot would propose it instead of the digest refresh.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /
