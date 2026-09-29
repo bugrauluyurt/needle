@@ -55,3 +55,42 @@ test("offers to pick up where another device stopped", async ({ browser }) => {
   await expect(bar(a).locator(".np-t")).toHaveText("Blue Minutes");
   await a.close();
 });
+
+test("shows the device that took over and controls it from here", async ({ browser }) => {
+  const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  const kitchen = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  await signIn(desk);
+  await signIn(kitchen);
+  await kitchen.goto("/settings");
+  await kitchen.getByLabel("Device name").fill("Kitchen speaker");
+  await kitchen.getByLabel("Device name").press("Enter");
+
+  await openAlbum(desk, "Pulse Theory");
+  await playContext(desk);
+  await expect.poll(() => position(desk)).toBeGreaterThanOrEqual(1);
+
+  await openAlbum(kitchen, "Blue Minutes");
+  await playContext(kitchen);
+  await expect.poll(() => position(kitchen)).toBeGreaterThanOrEqual(1);
+
+  await expect(desk.locator(".remote-strip")).toHaveText("Playing on Kitchen speaker", { timeout: 15_000 });
+  await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
+  await desk.locator(".remote-strip").click();
+  await expect(desk.locator(".dev.this")).toBeVisible();
+  await expect(desk.locator(".dev.this").getByRole("img", { name: "Playing" })).toHaveCount(0);
+  await expect(desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("img", { name: "Playing" })).toBeVisible();
+  await desk.keyboard.press("Escape");
+
+  await bar(desk).getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(bar(kitchen).getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  await expect(bar(desk).getByRole("button", { name: "Play", exact: true })).toBeVisible();
+  const paused = await position(kitchen);
+  await desk.waitForTimeout(1_500);
+  expect(await position(kitchen)).toBe(paused);
+
+  await bar(desk).getByRole("button", { name: "Play", exact: true }).click();
+  await expect(bar(kitchen).getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+
+  await desk.close();
+  await kitchen.close();
+});

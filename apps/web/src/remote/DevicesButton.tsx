@@ -9,9 +9,9 @@ import { useCurrentSong, usePlayer } from "../player/store.ts";
 import { useSession } from "../state/session.ts";
 import { command, transferTo, useRemote } from "./client.ts";
 
-const kindIcon = (kind: Device["kind"]): IconName => (kind === "desktop" ? "devices" : "signal");
+export const kindIcon = (kind: Device["kind"]): IconName => (kind === "desktop" ? "devices" : "signal");
 
-function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
+function RemoteDevice({ d, canSend, active }: { d: Device; canSend: boolean; active: boolean }) {
   const s = d.state;
   return (
     <li className="dev">
@@ -21,6 +21,7 @@ function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
           <b>{d.name}</b>
           <span className="ellipsis">{s ? `${s.playing ? "Playing" : "Paused"}: ${s.title}, ${s.artist}` : "Not playing"}</span>
         </div>
+        {active && s ? <Eq paused={!s.playing} /> : null}
       </div>
       <div className="dev-actions">
         {s ? (
@@ -52,6 +53,7 @@ function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
 export function DevicesPanel() {
   const devices = useRemote((s) => s.devices);
   const connected = useRemote((s) => s.connected);
+  const activeId = useRemote((s) => s.activeId);
   const me = useSession((s) => s.deviceId);
   const name = useSession((s) => s.deviceName);
   const song = useCurrentSong();
@@ -81,7 +83,7 @@ export function DevicesPanel() {
           <h4>Other devices</h4>
           <ul>
             {others.map((d) => (
-              <RemoteDevice key={d.id} d={d} canSend={Boolean(song)} />
+              <RemoteDevice key={d.id} d={d} canSend={Boolean(song)} active={d.id === activeId} />
             ))}
           </ul>
         </>

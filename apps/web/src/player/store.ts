@@ -75,3 +75,7 @@ export const current = (s: PlayerState = usePlayer.getState()): Song | null => s
 export function useCurrentSong(): Song | null {
   return usePlayer((s) => s.items[s.index]?.song ?? null);
 }
+
+export const useLocate = create<{ lists: number; request: number }>(() => ({ lists: 0, request: 0 }));
+
+export const locatePlaying = () => useLocate.setState((s) => ({ request: s.request + 1 }));

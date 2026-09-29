@@ -1,20 +1,26 @@
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { REPLACED_CLOSE_CODE } from "@needle/shared";
-import type { ClientMessage, Device, RemoteCommand, RemoteState, ServerMessage } from "@needle/shared";
+import type { ClientMessage, Device, InternetRadioStation, RemoteCommand, RemoteState, ServerMessage, Song } from "@needle/shared";
 import { devicesSocketUrl } from "../lib/api.ts";
 import { deviceKind } from "../lib/device.ts";
 import { artistName } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
-import { progress } from "../player/progress.ts";
-import { current, usePlayer } from "../player/store.ts";
+import { progress, useProgress } from "../player/progress.ts";
+import type { Progress } from "../player/progress.ts";
+import { current, useCurrentSong, usePlayer } from "../player/store.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
+import { activeRemote, remotePosition, remoteSong } from "./active.ts";
 
 type RemoteStore = { connected: boolean; devices: Device[]; activeId: string | null };
 
 export const useRemote = create<RemoteStore>(() => ({ connected: false, devices: [], activeId: null }));
 
 const STATE_EVERY = 5_000;
+const FRESH_CHECK_EVERY = 1_000;
+const REMOTE_TICK = 250;
+const UNMUTE_TO = 0.5;
 const RETRY_MAX = 30_000;
 const TRANSFER_LIMIT = 300;
 
@@ -147,4 +153,103 @@ export function stopRemote() {
   stopped = true;
   socket?.close();
   socket = null;
+}
+
+function watchRemote(cb: () => void) {
+  const off = useRemote.subscribe(cb);
+  const timer = window.setInterval(cb, FRESH_CHECK_EVERY);
+  return () => {
+    off();
+    window.clearInterval(timer);
+  };
+}
+
+export function useActiveRemote(): Device | null {
+  const me = useSession((s) => s.deviceId);
+  const id = useSyncExternalStore(watchRemote, () => {
+    const { devices, activeId } = useRemote.getState();
+    return activeRemote(devices, activeId, me, Date.now())?.id ?? null;
+  });
+  return useRemote((s) => s.devices.find((d) => d.id === id) ?? null);
+}
+
+export type Controls = {
+  toggle: () => void;
+  next: () => void;
+  previous: () => void;
+  seek: (seconds: number) => void;
+  setVolume: (volume: number) => void;
+  toggleMute: () => void;
+};
+
+const localControls: Controls = {
+  toggle: player.toggle,
+  next: () => void player.next(),
+  previous: () => void player.previous(),
+  seek: player.seek,
+  setVolume: player.setVolume,
+  toggleMute: player.toggleMute,
+};
+
+function patchRemote(id: string, patch: (s: RemoteState) => Partial<RemoteState>) {
+  useRemote.setState((r) => ({ devices: r.devices.map((d) => (d.id === id && d.state ? { ...d, state: { ...d.state, ...patch(d.state), updatedAt: Date.now() } } : d)) }));
+}
+
+function remoteControls(id: string): Controls {
+  const state = () => useRemote.getState().devices.find((d) => d.id === id)?.state;
+  const setVolume = (volume: number) => {
+    command(id, { action: "volume", volume });
+    patchRemote(id, () => ({ volume }));
+  };
+  return {
+    toggle: () => {
+      const playing = Boolean(state()?.playing);
+      command(id, { action: playing ? "pause" : "play" });
+      patchRemote(id, (s) => ({ playing: !playing, position: remotePosition(s, Date.now()) }));
+    },
+    next: () => command(id, { action: "next" }),
+    previous: () => command(id, { action: "previous" }),
+    seek: (position) => {
+      command(id, { action: "seek", position });
+      patchRemote(id, () => ({ position }));
+    },
+    setVolume,
+    toggleMute: () => setVolume(state()?.volume ? 0 : UNMUTE_TO),
+  };
+}
+
+export type Playback = {
+  remote: Device | null;
+  song: Song | null;
+  station: InternetRadioStation | null;
+  playing: boolean;
+  buffering: boolean;
+  volume: number;
+  controls: Controls;
+};
+
+export function usePlayback(): Playback {
+  const remote = useActiveRemote();
+  const song = useCurrentSong();
+  const station = usePlayer((s) => s.station);
+  const playing = usePlayer((s) => s.playing);
+  const buffering = usePlayer((s) => s.buffering);
+  const volume = usePlayer((s) => (s.muted ? 0 : s.volume));
+  const id = remote?.id;
+  const controls = useMemo(() => (id ? remoteControls(id) : localControls), [id]);
+  const state = remote?.state;
+  const shown = useMemo(() => (state ? remoteSong(state) : song), [state, song]);
+  if (!remote || !state) return { remote: null, song, station, playing, buffering, volume, controls };
+  return { remote, song: shown, station: null, playing: state.playing, buffering: false, volume: state.volume, controls };
+}
+
+export function useShownProgress<T>(remote: Device | null, select: (p: Progress) => T): T {
+  const local = useProgress(select);
+  const state = remote?.state;
+  const tick = useCallback((cb: () => void) => {
+    if (!state?.playing) return () => undefined;
+    const timer = window.setInterval(cb, REMOTE_TICK);
+    return () => window.clearInterval(timer);
+  }, [state]);
+  return useSyncExternalStore(tick, () => (state ? select({ position: remotePosition(state, Date.now()), duration: state.duration, buffered: state.duration }) : local));
 }
