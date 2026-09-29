@@ -4,10 +4,6 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { player } from "../player/controller.ts";
-import { usePlayer } from "../player/store.ts";
-import { usePagePlay } from "../state/pagePlay.ts";
-import type { PagePlay } from "../state/pagePlay.ts";
 import { useSession } from "../state/session.ts";
 import { useUpdate } from "../state/update.ts";
 import { image } from "../lib/spotify.ts";
@@ -110,17 +106,6 @@ export function useOpenSearch() {
   }, [navigate]);
 }
 
-export function ContextPlayButton({ contextId, onPlay, label, className, size }: PagePlay & { className: string; size: number }) {
-  const active = usePlayer((s) => s.context?.id === contextId);
-  const playing = usePlayer((s) => s.playing);
-  const on = active && playing;
-  return (
-    <button type="button" className={className} aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
-      <Icon name={on ? "pause" : "play"} size={size} />
-    </button>
-  );
-}
-
 function OpenSearchField() {
   const openSearch = useOpenSearch();
   return <SearchField variant="top" value="" onChange={openSearch} onFocusChange={(focused) => focused && openSearch()} label="Search" placeholder="What do you want to listen to?" />;
@@ -131,8 +116,8 @@ export function TopBar({ children, extra }: { children?: ReactNode; extra?: Reac
   const idx = historyIdx();
   const bar = useRef<HTMLElement>(null);
   const title = useRef<HTMLSpanElement>(null);
-  const play = usePagePlay((s) => s.entry);
-  useScrolledTitle(bar, title);
+  const cover = useRef<HTMLSpanElement>(null);
+  useScrolledTitle(bar, title, cover);
   return (
     <header ref={bar} className="topbar">
       <div className="top-left">
@@ -145,7 +130,7 @@ export function TopBar({ children, extra }: { children?: ReactNode; extra?: Reac
           </button>
         </div>
         <div className="top-title">
-          {play ? <ContextPlayButton {...play} className="top-play" size={18} /> : null}
+          <span ref={cover} className="top-cover" aria-hidden="true" hidden />
           <span ref={title} className="top-name" aria-hidden="true" />
         </div>
       </div>
