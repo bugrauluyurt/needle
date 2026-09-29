@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openAlbum, playContext, signIn } from "./helpers.ts";
+import { bar, openAlbum, playContext, signIn } from "./helpers.ts";
 
 test("likes a song and finds it in Liked songs", async ({ page }) => {
   await signIn(page);
@@ -121,4 +121,34 @@ test("plays a mix from Home and a genre", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Jazz" })).toBeVisible();
   await playContext(page);
   await expect(page.locator("footer.bar .np-a")).toHaveText("Okto Quartet");
+});
+
+test("jumps back to the playing song in a long list", async ({ page }) => {
+  await signIn(page, "/library");
+  await page.getByRole("button", { name: "Songs", exact: true }).click();
+  const playing = page.locator(".tr").nth(25);
+  const title = (await playing.locator(".name").textContent()) ?? "";
+  await playing.dblclick();
+  await expect(bar(page).locator(".np-t")).toHaveText(title);
+  const main = page.locator("#main");
+  const pill = page.locator(".np-pill");
+  await expect(pill).toBeHidden();
+
+  await main.evaluate((el) => el.scrollTo(0, 0));
+  await expect(pill).toHaveText(`Now playing · ${title}`);
+  await pill.click();
+  await expect(playing).toBeInViewport();
+  await expect(pill).toBeHidden();
+
+  await main.evaluate((el) => el.scrollTo(0, 0));
+  await expect(pill).toBeVisible();
+  await page.keyboard.press("Shift+L");
+  await expect(playing).toBeInViewport();
+  await expect(pill).toBeHidden();
+
+  await main.evaluate((el) => el.scrollTo(0, 0));
+  await expect(pill).toBeVisible();
+  await bar(page).getByRole("button", { name: `Show ${title} in the list` }).click();
+  await expect(playing).toBeInViewport();
+  await expect(pill).toBeHidden();
 });

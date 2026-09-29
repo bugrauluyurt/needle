@@ -6,7 +6,7 @@ import { DEFAULT_TONE } from "../lib/tone.ts";
 import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyOn } from "../queries/spotify.ts";
-import { current, usePlayer } from "../player/store.ts";
+import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
@@ -94,6 +94,12 @@ function useShortcuts() {
           break;
         case "l":
         case "L": {
+          if (e.shiftKey) {
+            if (!useLocate.getState().lists) return;
+            handled();
+            locatePlaying();
+            break;
+          }
           const song = current(s);
           if (!song) return;
           handled();

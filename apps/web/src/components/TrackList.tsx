@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
@@ -7,7 +7,8 @@ import { artistName, clock } from "../lib/format.ts";
 import { useOffline } from "../offline/store.ts";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
-import { usePlayer } from "../player/store.ts";
+import { useLocate, usePlayer } from "../player/store.ts";
+import { useIsMobile } from "../layout/Shell.tsx";
 import { useSongLikes } from "../queries/likes.ts";
 import { Art } from "./Art.tsx";
 import { Eq, Icon } from "./Icon.tsx";
@@ -43,6 +44,15 @@ type TrackListProps = {
 
 const ROW = 56;
 const VIRTUALIZE_AFTER = 80;
+const PULSE_MS = 1_000;
+const SCROLL_SETTLE_MS = 900;
+const CHROME = { desktop: { top: 100, bottom: 0 }, phone: { top: 56, bottom: 136 } };
+
+type Side = "up" | "down";
+
+let locateHandled = 0;
+
+const scrollBehavior = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
 
 type RowProps = {
   song: Song;
@@ -53,6 +63,7 @@ type RowProps = {
   column: TrackColumn | undefined;
   playing: boolean;
   paused: boolean;
+  located: boolean;
   liked: boolean;
   downloaded: boolean;
   fromSpotify: boolean;
@@ -108,7 +119,7 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
     : {};
   return (
     <div
-      className={`tr ${p.playing ? "playing" : ""} ${p.selected ? "sel" : ""} ${over ? "drop" : ""}`}
+      className={`tr ${p.playing ? "playing" : ""} ${p.located ? "located" : ""} ${p.selected ? "sel" : ""} ${over ? "drop" : ""}`}
       style={p.style}
       role="row"
       tabIndex={0}
@@ -213,7 +224,10 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   const scroller = useScrollContainer();
   const listRef = useRef<HTMLDivElement>(null);
   const [margin, setMargin] = useState(0);
+  const [rowH, setRowH] = useState(ROW);
   const virtual = shown.length > VIRTUALIZE_AFTER && Boolean(scroller);
+  const chrome = useIsMobile() ? CHROME.phone : CHROME.desktop;
+  const at = useMemo(() => (currentId ? shown.findIndex((s) => s.id === currentId) : -1), [shown, currentId]);
   useLayoutEffect(() => {
     if (!virtual || !listRef.current || !scroller?.current) return;
     const measure = () => {
@@ -229,10 +243,80 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   const v = useVirtualizer({
     count: virtual ? shown.length : 0,
     getScrollElement: () => scroller?.current ?? null,
-    estimateSize: () => ROW,
+    estimateSize: () => rowH,
     overscan: 12,
     scrollMargin: margin,
   });
+  const rendered = virtual && v.getVirtualItems().length > 0;
+  useLayoutEffect(() => {
+    const h = rendered ? listRef.current?.querySelector<HTMLElement>(".tr")?.offsetHeight : undefined;
+    if (h) setRowH(h);
+  }, [rendered, chrome]);
+  useLayoutEffect(() => v.measure(), [v, rowH]);
+
+  const [ioSide, setIoSide] = useState<Side | null>(null);
+  useEffect(() => {
+    const root = scroller?.current;
+    const target = !virtual && at >= 0 ? listRef.current?.children[at] : undefined;
+    if (!root || !target) return;
+    const io = new IntersectionObserver((entries) => {
+      const e = entries.at(-1);
+      if (e) setIoSide(e.intersectionRatio >= 0.5 ? null : e.boundingClientRect.top < (e.rootBounds?.top ?? 0) ? "up" : "down");
+    }, { root, rootMargin: `-${chrome.top}px 0px -${chrome.bottom}px 0px`, threshold: [0, 0.5, 1] });
+    io.observe(target);
+    return () => io.disconnect();
+  }, [scroller, virtual, at, chrome]);
+  const virtualSide = (): Side | null => {
+    const top = (v.scrollOffset ?? 0) + chrome.top;
+    const bottom = (v.scrollOffset ?? 0) + (v.scrollRect?.height ?? 0) - chrome.bottom;
+    const middle = margin + (at + 0.5) * rowH;
+    return middle < top ? "up" : middle > bottom ? "down" : null;
+  };
+  const side = at < 0 ? null : virtual ? virtualSide() : ioSide;
+  const sideRef = useRef(side);
+  useEffect(() => {
+    sideRef.current = side;
+  });
+
+  const [located, setLocated] = useState<number | null>(null);
+  useEffect(() => {
+    if (located === null) return;
+    listRef.current?.querySelector<HTMLElement>(".tr.located")?.focus({ preventScroll: true });
+    const timer = window.setTimeout(() => setLocated(null), PULSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [located]);
+  const locate = useCallback(() => {
+    const sc = scroller?.current;
+    if (at < 0 || !sc) return;
+    if (virtual) v.scrollToIndex(at, { align: "center", behavior: scrollBehavior() });
+    else listRef.current?.children[at]?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
+    let done = false;
+    const pulse = () => {
+      if (done) return;
+      done = true;
+      sc.removeEventListener("scrollend", pulse);
+      setLocated(at);
+    };
+    if (!sideRef.current) {
+      pulse();
+      return;
+    }
+    sc.addEventListener("scrollend", pulse);
+    window.setTimeout(pulse, SCROLL_SETTLE_MS);
+  }, [scroller, virtual, v, at]);
+  useEffect(() => {
+    if (at < 0) return;
+    useLocate.setState((s) => ({ lists: s.lists + 1 }));
+    const off = useLocate.subscribe((s, prev) => {
+      if (s.request === prev.request || s.request <= locateHandled) return;
+      locateHandled = s.request;
+      locate();
+    });
+    return () => {
+      off();
+      useLocate.setState((s) => ({ lists: s.lists - 1 }));
+    };
+  }, [at, locate]);
 
   const row = (song: Song, i: number, style?: CSSProperties) => (
     <TrackRow
@@ -245,6 +329,7 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       column={column}
       playing={song.id === currentId}
       paused={paused}
+      located={located === i}
       liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
       fromSpotify={mixed && song.source === "spotify"}
@@ -264,29 +349,43 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   );
 
   const cols = ["tracks", art ? "with-art" : "", album ? "with-album" : "", column ? "with-col" : "", className ?? ""].filter(Boolean).join(" ");
+  const playingSong = at >= 0 ? shown[at] : undefined;
   return (
-    <div className={cols} role="table" aria-label={context.name} style={column?.width ? ({ "--col": column.width } as CSSProperties) : undefined}>
-      {header ? (
-        <div className="th" role="row">
-          <span className="r" role="columnheader">
-            <button type="button" className="th-reset" aria-label="Original order" disabled={current.key === fallback.key && current.desc === fallback.desc} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
-          </span>
-          <SortHeader label="Title" sort="title" order={current} onSort={sortBy} />
-          {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} /> : null}
-          {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" /> : <span className="col" role="columnheader">{column.label}</span>) : null}
-          <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r">
-            <Icon name="clock" size={16} />
-          </SortHeader>
+    <div className={cols} style={column?.width ? ({ "--col": column.width } as CSSProperties) : undefined}>
+      <div role="table" aria-label={context.name}>
+        {header ? (
+          <div className="th" role="row">
+            <span className="r" role="columnheader">
+              <button type="button" className="th-reset" aria-label="Original order" disabled={current.key === fallback.key && current.desc === fallback.desc} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
+            </span>
+            <SortHeader label="Title" sort="title" order={current} onSort={sortBy} />
+            {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} /> : null}
+            {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" /> : <span className="col" role="columnheader">{column.label}</span>) : null}
+            <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r">
+              <Icon name="clock" size={16} />
+            </SortHeader>
+          </div>
+        ) : null}
+        <div ref={listRef} className="tbody" role="rowgroup" style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}>
+          {virtual
+            ? v.getVirtualItems().map((item) => {
+                const song = shown[item.index];
+                return song ? row(song, item.index, { position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${item.start - v.options.scrollMargin}px)` }) : null;
+              })
+            : shown.map((s, i) => row(s, i))}
+        </div>
+      </div>
+      {side && playingSong ? (
+        <div className="np-pill-dock">
+          <button type="button" className="np-pill" onClick={locate}>
+            <Art id={playingSong.coverArt} px={28} />
+            <span className="ellipsis">
+              <b>Now playing</b> · {playingSong.title}
+            </span>
+            <Icon name="arrow" size={16} className={side} />
+          </button>
         </div>
       ) : null}
-      <div ref={listRef} className="tbody" role="rowgroup" style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}>
-        {virtual
-          ? v.getVirtualItems().map((item) => {
-              const song = shown[item.index];
-              return song ? row(song, item.index, { position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${item.start - v.options.scrollMargin}px)` }) : null;
-            })
-          : shown.map((s, i) => row(s, i))}
-      </div>
     </div>
   );
 }
