@@ -54,7 +54,8 @@ to `ghcr.io/bugrauluyurt/needle` with build provenance.
   `people.ts` decides who may request music or use Spotify: a new route that fetches
   music or calls Spotify must go through `needLidarr` / `needSongs` / `needSpotify` in `app.ts`.
 - `.github/workflows`: CI, the release pull request, the release itself and
-  Scorecard. Pin every action to a full commit SHA with a `# vX.Y.Z` comment.
+  Scorecard. Pin every action to a full commit SHA with a `# vX.Y.Z` comment, and the
+  Dockerfile's base image to a digest; Dependabot moves both.
 - `examples/`: compose files, `.env.example` and a Caddyfile that the README walks
   through. Validate with `docker compose -f … config` after changing them.
 - `docs/media/`: README images; `make-hero.sh` renders `hero.html` (with `home.png` and `phone-player.png`) to `hero.png` and `social-preview.png` in headless Chromium.
