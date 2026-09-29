@@ -6,7 +6,7 @@ import { DEFAULT_TONE } from "../lib/tone.ts";
 import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyOn } from "../queries/spotify.ts";
-import { current, usePlayer } from "../player/store.ts";
+import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
@@ -15,6 +15,7 @@ import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
+import { useActiveRemote } from "../remote/client.ts";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
@@ -94,6 +95,12 @@ function useShortcuts() {
           break;
         case "l":
         case "L": {
+          if (e.shiftKey) {
+            if (!useLocate.getState().lists) return;
+            handled();
+            locatePlaying();
+            break;
+          }
           const song = current(s);
           if (!song) return;
           handled();
@@ -203,7 +210,8 @@ export function Shell() {
   const panel = useUi((s) => s.rightPanel);
   const fullScreen = useUi((s) => s.fullScreen);
   const shortcuts = useUi((s) => s.shortcutsOpen);
-  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station));
+  const remote = useActiveRemote();
+  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station)) || Boolean(remote);
   const wide = useIsWide();
   const panelOver = usePanelOver(!wide && !mobile);
   const spotifyOn = useSpotifyOn();

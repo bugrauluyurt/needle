@@ -15,7 +15,6 @@ type UiState = {
   nowPlayingOpen: boolean;
   mobileView: "player" | "lyrics" | "queue";
   shortcutsOpen: boolean;
-  devicesOpen: boolean;
   libraryFilter: LibraryFilter;
   libraryOrigin: LibraryOrigin;
   collections: Record<string, CollectionState>;
@@ -32,7 +31,6 @@ export const useUi = create<UiState>()(
       nowPlayingOpen: false,
       mobileView: "player" as const,
       shortcutsOpen: false,
-      devicesOpen: false,
       libraryFilter: null as LibraryFilter,
       libraryOrigin: "all",
       collections: {},

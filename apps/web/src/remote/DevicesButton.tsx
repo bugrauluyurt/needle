@@ -7,11 +7,11 @@ import type { IconName } from "../components/Icon.tsx";
 import { deviceKind } from "../lib/device.ts";
 import { useCurrentSong, usePlayer } from "../player/store.ts";
 import { useSession } from "../state/session.ts";
-import { command, transferTo, useRemote } from "./client.ts";
+import { command, pullFrom, transferTo, useRemote } from "./client.ts";
 
-const kindIcon = (kind: Device["kind"]): IconName => (kind === "desktop" ? "devices" : "signal");
+export const kindIcon = (kind: Device["kind"]): IconName => (kind === "desktop" ? "devices" : "signal");
 
-function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
+function RemoteDevice({ d, canSend, active }: { d: Device; canSend: boolean; active: boolean }) {
   const s = d.state;
   return (
     <li className="dev">
@@ -21,6 +21,7 @@ function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
           <b>{d.name}</b>
           <span className="ellipsis">{s ? `${s.playing ? "Playing" : "Paused"}: ${s.title}, ${s.artist}` : "Not playing"}</span>
         </div>
+        {active && s ? <Eq paused={!s.playing} /> : null}
       </div>
       <div className="dev-actions">
         {s ? (
@@ -34,13 +35,13 @@ function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
             <button type="button" className="icon-btn" aria-label={`Next on ${d.name}`} onClick={() => command(d.id, { action: "next" })}>
               <Icon name="next" size={16} />
             </button>
-            <button type="button" className="btn ghost sm" onClick={() => command(d.id, { action: "pull" })}>
+            <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>
               Play here
             </button>
           </>
         ) : null}
         {canSend ? (
-          <button type="button" className="btn light sm" aria-label={`Play on ${d.name}`} onClick={() => transferTo(d.id)}>
+          <button type="button" className="btn light sm" aria-label={`Play there, on ${d.name}`} onClick={() => transferTo(d.id)}>
             Play there
           </button>
         ) : null}
@@ -52,6 +53,7 @@ function RemoteDevice({ d, canSend }: { d: Device; canSend: boolean }) {
 export function DevicesPanel() {
   const devices = useRemote((s) => s.devices);
   const connected = useRemote((s) => s.connected);
+  const activeId = useRemote((s) => s.activeId);
   const me = useSession((s) => s.deviceId);
   const name = useSession((s) => s.deviceName);
   const song = useCurrentSong();
@@ -81,7 +83,7 @@ export function DevicesPanel() {
           <h4>Other devices</h4>
           <ul>
             {others.map((d) => (
-              <RemoteDevice key={d.id} d={d} canSend={Boolean(song)} />
+              <RemoteDevice key={d.id} d={d} canSend={Boolean(song)} active={d.id === activeId} />
             ))}
           </ul>
         </>

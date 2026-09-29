@@ -2,27 +2,28 @@ import * as DM from "@radix-ui/react-dropdown-menu";
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import type { Device, Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { artistName, clock, formatLabel } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
-import { useProgress } from "../player/progress.ts";
-import { useCurrentSong, usePlayer } from "../player/store.ts";
+import { locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
-import { DevicesButton } from "../remote/DevicesButton.tsx";
+import { usePlayback, useShownProgress } from "../remote/client.ts";
+import { DevicesButton, kindIcon } from "../remote/DevicesButton.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
 import { useIsWide } from "./Shell.tsx";
 
 export const LiveLabel = () => <span className="live">Live radio</span>;
 
 export function SeekBar({ className = "seek", times = "side" }: { className?: string; times?: "side" | "below" | "remaining" }) {
-  const position = useProgress((p) => Math.floor(p.position * 4) / 4);
-  const duration = useProgress((p) => p.duration);
-  const buffered = useProgress((p) => Math.floor(p.buffered));
-  const station = usePlayer((s) => s.station);
+  const { remote, station, controls } = usePlayback();
+  const position = useShownProgress(remote, (p) => Math.floor(p.position * 4) / 4);
+  const duration = useShownProgress(remote, (p) => p.duration);
+  const buffered = useShownProgress(remote, (p) => Math.floor(p.buffered));
   const [preview, setPreview] = useState<number | null>(null);
   const shown = preview ?? position;
   if (station) return <div className={className} aria-hidden="true" />;
@@ -38,7 +39,7 @@ export function SeekBar({ className = "seek", times = "side" }: { className?: st
       onChange={setPreview}
       onCommit={(v) => {
         setPreview(null);
-        player.seek(v);
+        controls.seek(v);
       }}
     />
   );
@@ -63,17 +64,16 @@ export function SeekBar({ className = "seek", times = "side" }: { className?: st
 }
 
 export function Transport({ big = false }: { big?: boolean }) {
-  const playing = usePlayer((s) => s.playing);
-  const buffering = usePlayer((s) => s.buffering);
+  const { remote, station, playing, buffering, controls } = usePlayback();
   const shuffle = usePlayer((s) => s.shuffle);
   const repeat = usePlayer((s) => s.repeat);
-  const station = usePlayer((s) => s.station);
-  const empty = usePlayer((s) => !s.items.length && !s.station);
+  const nothing = usePlayer((s) => !s.items.length && !s.station);
+  const empty = nothing && !remote;
   const size = big ? 26 : 18;
   if (station) {
     return (
       <div className="ctl-btns">
-        <button type="button" className="pp" aria-label={playing ? "Stop" : "Play"} onClick={player.toggle}>
+        <button type="button" className="pp" aria-label={playing ? "Stop" : "Play"} onClick={controls.toggle}>
           <Icon name={playing ? "pause" : "play"} size={big ? 26 : 16} />
         </button>
       </div>
@@ -81,16 +81,16 @@ export function Transport({ big = false }: { big?: boolean }) {
   }
   return (
     <div className="ctl-btns">
-      <button type="button" className="icon-btn" data-key="S" aria-pressed={shuffle} aria-label={shuffle ? "Turn off shuffle" : "Shuffle"} disabled={empty} onClick={() => player.setShuffle(!shuffle)}>
+      <button type="button" className="icon-btn" data-key="S" aria-pressed={shuffle} aria-label={shuffle ? "Turn off shuffle" : "Shuffle"} disabled={empty || Boolean(remote)} onClick={() => player.setShuffle(!shuffle)}>
         <Icon name="shuffle" size={big ? 22 : size} />
       </button>
-      <button type="button" className="icon-btn" data-key="Shift ←" aria-label="Previous" disabled={empty} onClick={() => void player.previous()}>
+      <button type="button" className="icon-btn" data-key="Shift ←" aria-label="Previous" disabled={empty} onClick={controls.previous}>
         <Icon name="prev" size={big ? 30 : size} />
       </button>
-      <button type="button" className={`pp ${buffering && playing ? "buffering" : ""}`} data-key="Space" aria-label={playing ? "Pause" : "Play"} disabled={empty} onClick={player.toggle}>
+      <button type="button" className={`pp ${buffering && playing ? "buffering" : ""}`} data-key="Space" aria-label={playing ? "Pause" : "Play"} disabled={empty} onClick={controls.toggle}>
         <Icon name={playing ? "pause" : "play"} size={big ? 26 : 16} />
       </button>
-      <button type="button" className="icon-btn" data-key="Shift →" aria-label="Next" disabled={empty} onClick={() => void player.next()}>
+      <button type="button" className="icon-btn" data-key="Shift →" aria-label="Next" disabled={empty} onClick={controls.next}>
         <Icon name="next" size={big ? 30 : size} />
       </button>
       <button
@@ -99,7 +99,7 @@ export function Transport({ big = false }: { big?: boolean }) {
         data-key="R"
         aria-pressed={repeat !== "off"}
         aria-label={repeat === "off" ? "Repeat" : repeat === "all" ? "Repeat one" : "Turn off repeat"}
-        disabled={empty}
+        disabled={empty || Boolean(remote)}
         onClick={player.cycleRepeat}
       >
         <Icon name={repeat === "one" ? "repeatOne" : "repeat"} size={big ? 22 : size} />
@@ -108,24 +108,22 @@ export function Transport({ big = false }: { big?: boolean }) {
   );
 }
 
-const useVolume = () => usePlayer((s) => (s.muted ? 0 : s.volume));
-
 const volumeIcon = (volume: number): IconName => (volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume");
 
 export function Volume() {
-  const volume = useVolume();
+  const { volume, controls } = usePlayback();
   return (
     <>
-      <button type="button" className="icon-btn" aria-label={volume === 0 ? "Unmute" : "Mute"} onClick={player.toggleMute}>
+      <button type="button" className="icon-btn" aria-label={volume === 0 ? "Unmute" : "Mute"} onClick={controls.toggleMute}>
         <Icon name={volumeIcon(volume)} size={18} />
       </button>
-      <Slider className="vol" value={volume} max={1} step={0.05} label="Volume" valueText={(v) => `${Math.round(v * 100)}%`} onChange={player.setVolume} />
+      <Slider className="vol" value={volume} max={1} step={0.05} label="Volume" valueText={(v) => `${Math.round(v * 100)}%`} onChange={controls.setVolume} />
     </>
   );
 }
 
 export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: number; className?: string }) {
-  const song = useCurrentSong();
+  const { song } = usePlayback();
   const likes = useSongLikes();
   if (!song) return null;
   const on = likes.isLiked(song);
@@ -181,7 +179,7 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
 }
 
 function VolumeButton() {
-  const volume = useVolume();
+  const { volume } = usePlayback();
   const box = useRef<HTMLDivElement>(null);
   return (
     <Popover.Root>
@@ -209,9 +207,43 @@ function VolumeButton() {
   );
 }
 
+function SongTitle({ song, locatable }: { song: Song; locatable: boolean }) {
+  if (locatable) {
+    return (
+      <button type="button" className="np-locate" aria-label={`Show ${song.title} in the list`} onClick={locatePlaying}>
+        {song.title}
+      </button>
+    );
+  }
+  return song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : <>{song.title}</>;
+}
+
+function RemoteStrip({ remote }: { remote: Device }) {
+  return (
+    <DevicesButton
+      trigger={
+        <button type="button" className="remote-strip">
+          <Icon name={kindIcon(remote.kind)} size={14} />
+          Playing on {remote.name}
+        </button>
+      }
+    />
+  );
+}
+
 export function PlayerBar() {
-  const song = useCurrentSong();
-  const station = usePlayer((s) => s.station);
+  const { remote } = usePlayback();
+  return (
+    <>
+      <Bar />
+      {remote ? <RemoteStrip remote={remote} /> : null}
+    </>
+  );
+}
+
+function Bar() {
+  const { remote, song, station } = usePlayback();
+  const locatable = useLocate((s) => s.lists > 0) && !remote;
   const panel = useUi((s) => s.rightPanel);
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -238,7 +270,7 @@ export function PlayerBar() {
               <Art id={song.coverArt} px={56} />
             </Link>
             <div className="np-text">
-              <div className="np-t">{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</div>
+              <div className="np-t"><SongTitle song={song} locatable={locatable} /></div>
               <div className="np-a">{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</div>
             </div>
             <LikeCurrent />

@@ -644,6 +644,7 @@
   outline-offset: -2px;
   cursor: default;
   user-select: none;
+  transition: background-color 0.16s var(--ease-out);
 }
 
 .tr:hover,
@@ -673,23 +674,108 @@
   height: 100%;
 }
 
+.tr .n > :is(.num, .eq),
+.tr .row-play {
+  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+}
+
 .tr .row-play {
   position: absolute;
   inset: 0;
-  display: none;
+  display: grid;
   place-items: center end;
   color: var(--label);
   padding-right: 1px;
+  opacity: 0;
+  transform: scale(0.8);
+  transform-origin: right center;
+  pointer-events: none;
 }
 
 .tr:hover .n > :is(.num, .eq),
 .tr:is(:focus-visible, :has(:focus-visible)) .n > :is(.num, .eq) {
-  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.8);
 }
 
 .tr:hover .row-play,
 .tr:is(:focus-visible, :has(:focus-visible)) .row-play {
-  display: grid;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.tr.located {
+  animation: located 1s var(--ease-out);
+}
+
+@keyframes located {
+  18% {
+    background-color: color-mix(in oklab, var(--amber) 24%, transparent);
+  }
+}
+
+.np-pill-dock {
+  position: sticky;
+  bottom: 16px;
+  z-index: 4;
+  height: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.np-pill {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100% - 32px));
+  height: 40px;
+  padding: 0 14px 0 6px;
+  border-radius: 20px;
+  background: var(--menu);
+  color: var(--label);
+  font-size: 13px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: pill-rise 0.2s var(--ease-out);
+  transition: background-color 0.16s var(--ease-out);
+}
+
+.np-pill:hover {
+  background: var(--ridge);
+}
+
+.np-pill .art {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 14px;
+}
+
+.np-pill b {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.np-pill .i {
+  flex: none;
+  color: var(--sleeve);
+}
+
+.np-pill .i.up {
+  transform: rotate(180deg);
+}
+
+.phone-app .np-pill-dock {
+  bottom: -44px;
+}
+
+@keyframes pill-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 
 .tr .tt {

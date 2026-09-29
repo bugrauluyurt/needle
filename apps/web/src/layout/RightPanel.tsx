@@ -10,9 +10,10 @@ import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import type { QueueItem } from "../player/queue.ts";
 import { userItemsAfter } from "../player/queue.ts";
-import { useCurrentSong, usePlayer } from "../player/store.ts";
+import { usePlayer } from "../player/store.ts";
 import { useArtistInfo } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
+import { usePlayback } from "../remote/client.ts";
 import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
@@ -131,11 +132,11 @@ function AboutArtist({ song }: { song: Song }) {
 }
 
 function NowView() {
-  const song = useCurrentSong();
+  const { remote, song } = usePlayback();
   const items = usePlayer((s) => s.items);
   const index = usePlayer((s) => s.index);
   if (!song) return <p className="panel-empty">Nothing is playing. Pick an album or a playlist to start.</p>;
-  const next = items[index + 1];
+  const next = remote ? undefined : items[index + 1];
   const rows: [string, string][] = [
     ["Format", formatLong(song)],
     ["Bitrate", song.bitRate ? `${count(song.bitRate)} kbps` : ""],
@@ -161,17 +162,19 @@ function NowView() {
           <QueueRow item={next} />
         </div>
       ) : null}
-      <div className="rp-card">
-        <h6>About the file</h6>
-        <dl className="kv">
-          {rows.filter(([, v]) => v).map(([k, v]) => (
-            <div key={k}>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      {remote ? null : (
+        <div className="rp-card">
+          <h6>About the file</h6>
+          <dl className="kv">
+            {rows.filter(([, v]) => v).map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       <AboutArtist song={song} />
     </>
   );
@@ -179,14 +182,15 @@ function NowView() {
 
 function usePanelTitle(): string {
   const panel = useUi((s) => s.rightPanel);
-  const song = useCurrentSong();
+  const { remote, song } = usePlayback();
   const contextName = usePlayer((s) => s.context?.name);
-  return panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : (contextName ?? song?.album ?? "Now playing");
+  const nowTitle = remote ? `Playing on ${remote.name}` : (contextName ?? song?.album ?? "Now playing");
+  return panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : nowTitle;
 }
 
 export function RightPanel() {
   const panel = useUi((s) => s.rightPanel);
-  const song = useCurrentSong();
+  const { song } = usePlayback();
   const title = usePanelTitle();
   if (!panel) return null;
   return (

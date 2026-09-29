@@ -22,6 +22,12 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
   **Get N missing**, and saves as a Navidrome playlist. Give your Navidrome password
   once to turn on scrobbling in Navidrome; it is never stored. Set `LISTENBRAINZ_URL`
   only to use another ListenBrainz server.
+- When another of your devices is playing, the player shows "Playing on" that device with
+  its song, and play, pause, skip, seek and volume control it from here. Playing anything
+  here takes over.
+- Song lists show a Now playing button when the playing song is scrolled out of view;
+  it jumps back to the song. Shift+L and clicking the song title in the player do the same.
+- The play button on song rows fades in smoothly on hover.
 
 ### Fixed
 - The song table in Your library lines up with the page edges, without extra side padding.
@@ -31,6 +37,8 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
   and keeps the library search and new playlist buttons. Below 1180 pixels the player
   bar fits, with lyrics and full screen under More and volume in a pop-up, queue and
   Now playing open as a panel over the page, and long titles shrink to fit.
+- A device no longer shows a song as playing after another device takes over: starting
+  playback on one device pauses the others, including Spotify playback moved elsewhere.
 
 ## 1.5.0 - 2026-09-29
 
