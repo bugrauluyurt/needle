@@ -48,7 +48,7 @@ export class PlayLog {
 
     const totals = one<{ ms: number | null; songs: number; artists: number }>(
       `SELECT SUM(ms_played) AS ms, COUNT(DISTINCT song_id) AS songs, COUNT(DISTINCT artist) AS artists
-       FROM plays WHERE user = ? AND played_at >= ? AND played_at < ?`, user, from, to);
+       FROM plays WHERE user = ? AND played_at >= ? AND played_at <= ?`, user, from, to);
     const prev = period === "all" ? { ms: 0 } : one<{ ms: number | null }>(
       "SELECT SUM(ms_played) AS ms FROM plays WHERE user = ? AND played_at >= ? AND played_at < ?", user, prevFrom, from);
 
