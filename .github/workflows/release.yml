@@ -31,7 +31,9 @@ jobs:
           version=$(jq -r .version package.json)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+          # Release only a version the release PR wrote into CHANGELOG.md and nobody has tagged yet.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null \
+            || ! python3 scripts/changelog.py notes "$version" > /dev/null 2>&1; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
