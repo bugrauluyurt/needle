@@ -171,6 +171,7 @@ export type DiscoveryPlaylist = {
   description: string;
   date: string;
   covers: string[];
+  coverArts: string[];
   total: number;
   inLibrary: number;
 };

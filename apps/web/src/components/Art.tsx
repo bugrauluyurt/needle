@@ -72,8 +72,8 @@ type Tile = { key: string; id?: string; images?: SpImage[] };
 
 export function Collage({ ids = [], urls = [], px, className, eager = false }: { ids?: (string | undefined)[]; urls?: string[]; px: number; className?: string; eager?: boolean }) {
   const tiles: Tile[] = [
-    ...ids.filter((id): id is string => Boolean(id)).map((id) => ({ key: id, id })),
     ...urls.map((url) => ({ key: url, images: [{ url }] })),
+    ...ids.filter((id): id is string => Boolean(id)).map((id) => ({ key: id, id })),
   ].slice(0, 4);
   if (tiles.length < 4) {
     const first = tiles[0];

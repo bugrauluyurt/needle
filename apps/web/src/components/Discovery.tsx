@@ -27,8 +27,8 @@ export async function playDiscovery(p: Pick<DiscoveryPlaylist, "id" | "name">, s
   player.playSongs(librarySongs(detail), 0, discoveryContext(p), { shuffle });
 }
 
-export function DiscoveryArt({ playlist, px, eager = false }: { playlist: Pick<DiscoveryPlaylist, "covers">; px: number; eager?: boolean }) {
-  return <Collage urls={playlist.covers} px={px} eager={eager} />;
+export function DiscoveryArt({ playlist, px, eager = false }: { playlist: Pick<DiscoveryPlaylist, "covers" | "coverArts">; px: number; eager?: boolean }) {
+  return <Collage urls={playlist.covers} ids={playlist.coverArts} px={px} eager={eager} />;
 }
 
 export function DiscoveryCard({ playlist }: { playlist: DiscoveryPlaylist }) {

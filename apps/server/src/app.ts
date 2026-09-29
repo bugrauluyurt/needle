@@ -358,7 +358,8 @@ export function createApp(config: Config, db: DatabaseSync) {
     const detail = await listenbrainz.playlist(auth, mbid);
     const ids = detail.tracks.flatMap((t) => (t.song ? [t.song.id] : []));
     if (!ids.length) return c.json({ error: "None of these songs are in your library yet" }, 409);
-    return c.json({ playlistId: await navidrome.upsertPlaylist(auth, detail.name, ids), matched: ids.length, total: detail.total });
+    const name = detail.date ? `${detail.name}, ${detail.date.slice(0, 10)}` : detail.name;
+    return c.json({ playlistId: await navidrome.upsertPlaylist(auth, name, ids), matched: ids.length, total: detail.total });
   });
 
   app.get("/api/spotify/login", async (c) => {

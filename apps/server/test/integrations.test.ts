@@ -436,7 +436,7 @@ describe("ListenBrainz", () => {
     track(REC.undertow, "Undertow", "Glass Harbor"),
   ];
   const LIBRARY = [
-    { id: "s-id", title: "Kelly Watch the Stars", artist: "Air", musicBrainzId: REC.byId },
+    { id: "s-id", title: "Kelly Watch the Stars", artist: "Air", musicBrainzId: REC.byId, coverArt: "al-1" },
     { id: "s-lucky", title: "Get Lucky", artist: "Daft Punk", musicBrainzId: "" },
     { id: "s-tear", title: "Teardrop", artist: "Massive Attack" },
   ];
@@ -528,7 +528,7 @@ describe("ListenBrainz", () => {
     const { db, lb } = setup();
     connected(db);
     const metas = [
-      playlistMeta(MBIDS.daily, "daily-jams", "2026-09-28T06:00:00Z", "Daily Jams, Mon"),
+      playlistMeta(MBIDS.daily, "daily-jams", "2026-09-28T06:00:00Z", "Daily Jams for alexlb, 2026-09-28 Mon"),
       playlistMeta(MBIDS.other, "top-discoveries-for-year", "2026-01-01T00:00:00Z", "Top Discoveries of 2025"),
       playlistMeta(MBIDS.oldDaily, "daily-jams", "2026-09-27T06:00:00Z", "Daily Jams, Sun"),
       playlistMeta(MBIDS.jams, "weekly-jams", "2026-09-28T00:00:00Z", "Weekly Jams"),
@@ -541,10 +541,11 @@ describe("ListenBrainz", () => {
     ]);
     const lists = await settle(lb.playlists(auth));
     expect(lists.map((p) => [p.name, p.kind])).toEqual([
-      ["Weekly Exploration", "weekly-exploration"], ["Weekly Jams", "weekly-jams"], ["Daily Jams, Mon", "daily-jams"], ["Top Discoveries of 2025", "other"],
+      ["Weekly Exploration", "weekly-exploration"], ["Weekly Jams", "weekly-jams"], ["Daily Jams", "daily-jams"], ["Top Discoveries of 2025", "other"],
     ]);
     expect(lists[0]).toMatchObject({ id: MBIDS.exploration, total: 4, inLibrary: 3, description: "<p>Songs for <b>you</b></p>", date: "2026-09-28T00:00:00Z" });
     expect(lists[0]?.covers[0]).toBe("https://coverartarchive.org/release/rel-19/42-250.jpg");
+    expect(lists[0]?.coverArts).toEqual(["al-1"]);
     expect(calls.some((c) => c.url.includes(MBIDS.oldDaily))).toBe(false);
     expect(calls.find((c) => c.url.includes("/1/playlist/"))?.headers.get("authorization")).toBe("Token lb-token");
   });

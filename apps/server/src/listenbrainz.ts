@@ -41,7 +41,7 @@ type Listen = { listened_at: number; track_metadata?: { additional_info?: { subm
 type Row = { token: string; lb_user: string; navidrome_linked: number };
 type Cached<T> = { at: number; value: Promise<T> };
 export type Track = Omit<DiscoveryTrack, "song" | "request">;
-export type Parsed = Omit<DiscoveryPlaylist, "covers" | "total" | "inLibrary"> & { patch: string; tracks: Track[] };
+export type Parsed = Omit<DiscoveryPlaylist, "covers" | "coverArts" | "total" | "inLibrary"> & { patch: string; tracks: Track[] };
 type Deps = { url: string; db: DatabaseSync; navidrome: Navidrome; library: LibrarySearch; requests: Requests };
 
 export class ListenBrainzError extends Error {
@@ -55,7 +55,7 @@ export class ListenBrainzError extends Error {
 const mbidOf = (identifier: string | string[] | undefined) => [identifier ?? []].flat().map((i) => MBID.exec(i)?.[0]).find(Boolean)?.toLowerCase() ?? null;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function parsePlaylist(p: Jspf): Parsed | null {
+export function parsePlaylist(p: Jspf, user: string): Parsed | null {
   const id = mbidOf(p.identifier);
   if (!id) return null;
   const patch = p.extension?.["https://musicbrainz.org/doc/jspf#playlist"]?.additional_metadata?.algorithm_metadata?.source_patch ?? p.title ?? id;
@@ -70,7 +70,8 @@ export function parsePlaylist(p: Jspf): Parsed | null {
     }];
   });
   const kind = KINDS.find((k) => k === patch) ?? "other";
-  return { id, name: p.title ?? "ListenBrainz playlist", kind, patch, description: p.annotation ?? "", date: p.date ?? "", tracks };
+  const name = p.title?.split(` for ${user}`)[0]?.trim() ?? "";
+  return { id, name: name || "ListenBrainz playlist", kind, patch, description: p.annotation ?? "", date: p.date ?? "", tracks };
 }
 
 export function newestPerKind(playlists: Parsed[]): Parsed[] {
@@ -83,9 +84,14 @@ export function newestPerKind(playlists: Parsed[]): Parsed[] {
   return [...newest.values()].sort((a, b) => rank(a) - rank(b) || b.date.localeCompare(a.date)).slice(0, MAX_PLAYLISTS);
 }
 
+const distinct = (values: (string | null | undefined)[]) => [...new Set(values.filter((v): v is string => Boolean(v)))].slice(0, COVERS);
+
 function summary(p: Parsed, songs: (Song | undefined)[]): DiscoveryPlaylist {
-  const covers = [...new Set(p.tracks.map((t) => t.coverUrl).filter((u): u is string => Boolean(u)))].slice(0, COVERS);
-  return { id: p.id, name: p.name, kind: p.kind, description: p.description, date: p.date, covers, total: p.tracks.length, inLibrary: songs.filter(Boolean).length };
+  return {
+    id: p.id, name: p.name, kind: p.kind, description: p.description, date: p.date,
+    covers: distinct(p.tracks.map((t) => t.coverUrl)), coverArts: distinct(songs.map((s) => s?.coverArt)),
+    total: p.tracks.length, inLibrary: songs.filter(Boolean).length,
+  };
 }
 
 const matchAll = (p: Parsed, m: Matcher) => p.tracks.map((t) => findSong(m, t));
@@ -129,15 +135,15 @@ export class ListenBrainz {
     const row = this.connected(auth.user);
     const listed = await this.cached(this.lists, row.lb_user, LISTS_TTL, async () => {
       const r = await this.get<{ playlists?: { playlist: Jspf }[] }>(`/1/user/${encodeURIComponent(row.lb_user)}/playlists/createdfor`, row.token);
-      return newestPerKind((r.playlists ?? []).map((p) => parsePlaylist(p.playlist)).filter((p): p is Parsed => Boolean(p)));
+      return newestPerKind((r.playlists ?? []).map((p) => parsePlaylist(p.playlist, row.lb_user)).filter((p): p is Parsed => Boolean(p)));
     });
-    const [m, full] = await Promise.all([this.d.library.matcher(auth), Promise.all(listed.map((p) => this.load(p.id, row.token).catch(() => null)))]);
+    const [m, full] = await Promise.all([this.d.library.matcher(auth), Promise.all(listed.map((p) => this.load(p.id, row).catch(() => null)))]);
     return full.filter((p): p is Parsed => Boolean(p)).map((p) => summary(p, matchAll(p, m)));
   }
 
   async playlist(auth: Auth, mbid: string): Promise<DiscoveryDetail> {
     const row = this.connected(auth.user);
-    const [p, m] = await Promise.all([this.load(mbid, row.token), this.d.library.matcher(auth)]);
+    const [p, m] = await Promise.all([this.load(mbid, row), this.d.library.matcher(auth)]);
     const songs = matchAll(p, m);
     const missing = p.tracks.filter((_, i) => !songs[i]).map((t) => t.mbid);
     const requests = new Map(this.d.requests.byRefs(auth.user, "song", missing).map((r) => [r.ref, toItem(r)]));
@@ -175,10 +181,10 @@ export class ListenBrainz {
     }
   }
 
-  private load(mbid: string, token: string): Promise<Parsed> {
+  private load(mbid: string, row: Row): Promise<Parsed> {
     return this.cached(this.jspf, mbid, PLAYLIST_TTL, async () => {
-      const r = await this.get<{ playlist?: Jspf }>(`/1/playlist/${mbid}`, token);
-      const p = r.playlist ? parsePlaylist(r.playlist) : null;
+      const r = await this.get<{ playlist?: Jspf }>(`/1/playlist/${mbid}`, row.token);
+      const p = r.playlist ? parsePlaylist(r.playlist, row.lb_user) : null;
       if (!p) throw new ListenBrainzError(502, "ListenBrainz sent a playlist Needle can't read");
       return p;
     });

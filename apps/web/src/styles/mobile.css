@@ -331,6 +331,16 @@
   display: none;
 }
 
+.phone-app .actbar .act-label {
+  display: none;
+}
+
+.phone-app .actbar .btn.sm:has(.act-label) {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
 .phone-app .actbar .icon-btn.big {
   width: 34px;
   height: 34px;

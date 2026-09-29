@@ -63,8 +63,8 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
         </button>
       ) : null}
       {songs.length ? (
-        <button type="button" className="btn ghost sm" disabled={busy !== null} onClick={() => void save()}>
-          <Icon name="plus" size={15} />{busy === "save" ? "Saving…" : "Save as playlist"}
+        <button type="button" className="btn ghost sm" aria-label="Save as playlist" disabled={busy !== null} onClick={() => void save()}>
+          <Icon name="plus" size={15} /><span className="act-label">{busy === "save" ? "Saving…" : "Save as playlist"}</span>
         </button>
       ) : null}
       <a className="icon-btn big" href={`https://listenbrainz.org/playlist/${playlist.id}`} target="_blank" rel="noopener noreferrer" aria-label="Open on ListenBrainz">

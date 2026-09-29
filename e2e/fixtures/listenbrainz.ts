@@ -21,6 +21,7 @@ export const LB_PLAYLISTS = [
       recording(UNDERTOW_MBID, "Undertow", "Glass Harbor", "Tidal", 212),
       recording("0c6f0f3e-5d5e-4b6f-9a55-6f2f1b0e7a12", "Galata", "Kasa Kaan", "İstanbul'da Gece", 38),
       recording("0c6f0f3e-5d5e-4b6f-9a55-6f2f1b0e7a13", "Slow Tide", "Lumen Field", "Weightless Hours", 58),
+      recording("0c6f0f3e-5d5e-4b6f-9a55-6f2f1b0e7a16", "Pulse Theory", "Static Garden", "Pulse Theory", 40),
     ]),
   playlist("7d1c1b52-8f0c-4c11-9a0e-2c7a3e0f1a02", `Weekly Jams for ${LB_USER}, week of 2026-09-28 Mon`, "weekly-jams",
     "<p>The songs you played most, and more like them.</p>", [
