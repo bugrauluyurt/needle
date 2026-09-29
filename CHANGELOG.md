@@ -9,6 +9,10 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 
+### Added
+- Each release carries its source archive, `needle-X.Y.Z.tar.gz`, with signed build
+  provenance (`.intoto.jsonl`) that `gh attestation verify` checks; the README shows how.
+
 ## 1.4.0 - 2026-09-29
 
 ### Added

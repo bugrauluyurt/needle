@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_call:
+  # release-pr.yml starts it for the release PR, which its token can't trigger by opening.
+  workflow_dispatch:
 
 permissions:
   contents: read

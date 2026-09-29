@@ -363,6 +363,9 @@ nothing to set up. Choose qualities in Needle's Settings.
   means your setup needs a change; the changelog says what. Each release publishes
   images tagged `X.Y.Z`, `X.Y`, `X` and `latest`, with build provenance you can check:
   `gh attestation verify oci://ghcr.io/bugrauluyurt/needle:1 --owner bugrauluyurt`.
+  Since v1.5.0 the release also carries its source archive, `needle-X.Y.Z.tar.gz`, and the
+  archive's signed provenance: download both with `gh release download vX.Y.Z -R bugrauluyurt/needle`,
+  then run `gh attestation verify needle-X.Y.Z.tar.gz --bundle needle-X.Y.Z.tar.gz.intoto.jsonl -R bugrauluyurt/needle`.
 - **To update**: `docker compose pull needle && docker compose up -d needle` (change
   the tag first if you pinned a version). Building from source, point `build:` at the
   new tag, or in a clone run `git fetch --tags && git checkout vX.Y.Z`, then
