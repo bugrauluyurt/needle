@@ -9,6 +9,8 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 
+## 1.6.0 - 2026-09-29
+
 ### Added
 - Click a column title in any song table to sort by it; click again to reverse, and a
   third time to go back to the original order.
