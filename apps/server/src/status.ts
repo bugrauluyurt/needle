@@ -2,9 +2,11 @@ import { constants } from "node:fs";
 import { access, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { CheckState, ConnectionCheck } from "@needle/shared";
+import { DAY_MS } from "@needle/shared";
 import type { Config } from "./config.ts";
 import type { Deezer } from "./deezer.ts";
 import type { Lidarr } from "./lidarr.ts";
+import type { ListenBrainz } from "./listenbrainz.ts";
 import type { MusicBrainz } from "./musicbrainz.ts";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { LibrarySearch } from "./search.ts";
@@ -12,9 +14,10 @@ import type { Slskd } from "./soulseek.ts";
 
 const TTL_MS = 30_000;
 const SAMPLE_FILES = 3;
+const LISTEN_WINDOW_MS = 7 * DAY_MS;
 const AUDIO = /\.(flac|mp3|m4a|aac|ogg|opus|wav|alac|aiff?|wma)$/i;
 
-type Deps = { config: Config; navidrome: Navidrome; library: LibrarySearch; lidarr: Lidarr | null; slskd: Slskd | null; musicbrainz: MusicBrainz; deezer: Deezer };
+type Deps = { config: Config; navidrome: Navidrome; library: LibrarySearch; lidarr: Lidarr | null; slskd: Slskd | null; musicbrainz: MusicBrainz; deezer: Deezer; listenbrainz: ListenBrainz };
 type Outcome = { state: CheckState; detail: string; fix?: string };
 type Check = { id: string; label: string; fix: string; run: () => Promise<Outcome> };
 
@@ -52,7 +55,7 @@ export class Status {
   }
 
   private list(auth: Auth): Check[] {
-    const { config, navidrome, library, lidarr, slskd, musicbrainz, deezer } = this.d;
+    const { config, navidrome, library, lidarr, slskd, musicbrainz, deezer, listenbrainz } = this.d;
     const soulseek = config.soulseek;
     const songsOff = off("Used only for single songs", "Set SLSKD_URL and SLSKD_API_KEY to turn on single songs.");
     return [
@@ -129,6 +132,25 @@ export class Status {
           return (await deezer.ping())
             ? { state: "ok", detail: "MusicBrainz and Deezer answer" }
             : { state: "warn", detail: "MusicBrainz answers, Deezer doesn't", fix: "Popular songs for an artist's name need api.deezer.com." };
+        },
+      },
+      {
+        id: "listenbrainz",
+        label: "ListenBrainz (discovery)",
+        fix: "Needle's server needs to reach api.listenbrainz.org (LISTENBRAINZ_URL).",
+        run: async () => {
+          const account = listenbrainz.account(auth.user);
+          if (!account) return off("Not connected", "Connect ListenBrainz in Settings to get its weekly playlists.");
+          const last = await listenbrainz.lastListen(auth.user);
+          if (last && Date.now() - last.at < LISTEN_WINDOW_MS) {
+            const days = Math.floor((Date.now() - last.at) / DAY_MS);
+            return { state: "ok", detail: `Connected as ${account.user}. Navidrome sent a listen ${days < 1 ? "today" : days === 1 ? "yesterday" : `${days} days ago`}` };
+          }
+          return {
+            state: "warn",
+            detail: `Connected as ${account.user}, but Navidrome hasn't sent a listen in 7 days`,
+            fix: "In Navidrome, open Settings → Personal → ListenBrainz and paste your ListenBrainz token, or connect again in Needle's Settings with your Navidrome password.",
+          };
         },
       },
       {

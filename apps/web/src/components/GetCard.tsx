@@ -34,7 +34,7 @@ export function ArtistSearchCard({ artist }: { artist: LidarrArtist }) {
   );
 }
 
-export function GetSongCard({ song, request }: { song: SongCandidate; request?: RequestItem | undefined }) {
+export function GetSongCard({ song, request, canGet = true }: { song: SongCandidate; request?: RequestItem | undefined; canGet?: boolean }) {
   const getSong = useGetSong();
   const [busy, setBusy] = useState(false);
   const idle = !request || request.state === "failed";
@@ -47,9 +47,9 @@ export function GetSongCard({ song, request }: { song: SongCandidate; request?: 
         {idle ? (
           <>
             {request ? <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} /> : null}
-            <button type="button" className="btn light sm" disabled={busy} onClick={() => { setBusy(true); void getSong(song).finally(() => setBusy(false)); }}>
+            {canGet ? <button type="button" className="btn light sm" disabled={busy} onClick={() => { setBusy(true); void getSong(song).finally(() => setBusy(false)); }}>
               <Icon name="download" size={15} />{busy ? "Starting…" : request ? "Try again" : "Get song"}
-            </button>
+            </button> : null}
           </>
         ) : (
           <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} />

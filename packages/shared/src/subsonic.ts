@@ -34,6 +34,7 @@ export type Song = {
   played?: string;
   replayGain?: ReplayGain;
   isrc?: string[];
+  musicBrainzId?: string;
   source?: "spotify";
   uri?: string;
 };

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Playlist, Song, SubsonicEnvelope } from "@needle/shared";
 import { openDatabase } from "../../apps/server/src/db.ts";
+import { UNDERTOW_MBID } from "./listenbrainz.ts";
 
 const NAVIDROME = process.env.NAVIDROME_URL ?? "http://127.0.0.1:14533";
 const USER = process.env.NEEDLE_TEST_USER ?? "admin";
@@ -43,7 +44,8 @@ await call("createInternetRadioStation", { name: "Test Signal", streamUrl: strea
 
 if (DATA_DIR) {
   const db = openDatabase(DATA_DIR);
-  db.exec("DELETE FROM plays WHERE device = 'seed'");
+  db.exec("DELETE FROM plays WHERE device = 'seed'; DELETE FROM listenbrainz");
+  db.prepare("DELETE FROM requests WHERE ref = ?").run(UNDERTOW_MBID);
   const insert = db.prepare(`INSERT INTO plays (user, song_id, title, artist, artist_id, album, album_id, genre, cover_art, duration, ms_played, played_at, device)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')`);
   const now = Date.now();

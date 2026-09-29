@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS profiles (
   type TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS listenbrainz (
+  user TEXT PRIMARY KEY,
+  token TEXT NOT NULL,
+  lb_user TEXT NOT NULL,
+  navidrome_linked INTEGER NOT NULL DEFAULT 0,
+  connected_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS oauth_states (
   state TEXT PRIMARY KEY,
   user TEXT NOT NULL,

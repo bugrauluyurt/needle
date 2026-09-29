@@ -19,6 +19,7 @@ const POLL_MS = 3_000;
 const QUEUE_GIVE_UP_MS = 3 * 60_000;
 const DOWNLOAD_GIVE_UP_MS = 20 * 60_000;
 const ATTEMPTS = 3;
+const PARALLEL = 2;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const parts = (remote: string) => remote.split(/[\\/]/).filter(Boolean);
@@ -114,6 +115,8 @@ type Deps = { slskd: Slskd; requests: Requests; navidrome: Navidrome; downloadsD
 
 export class SongDownloads {
   private readonly d: Deps;
+  private running = 0;
+  private readonly waiting: (() => void)[] = [];
 
   constructor(deps: Deps) {
     this.d = deps;
@@ -122,8 +125,20 @@ export class SongDownloads {
 
   start(auth: Auth, song: SongCandidate) {
     const row = this.d.requests.add({ user: auth.user, kind: "song", ref: song.id, title: song.title, artist: song.artist, cover_url: song.coverUrl, state: "searching" });
-    void this.run(row.id, auth, song).catch((e: unknown) => this.d.requests.update(row.id, { state: "failed", detail: e instanceof Error ? e.message : "The download failed" }));
+    void this.slot(() => this.run(row.id, auth, song)).catch((e: unknown) => this.d.requests.update(row.id, { state: "failed", detail: e instanceof Error ? e.message : "The download failed" }));
     return row;
+  }
+
+  private async slot(job: () => Promise<void>) {
+    if (this.running < PARALLEL) this.running++;
+    else await new Promise<void>((resolve) => this.waiting.push(resolve));
+    try {
+      await job();
+    } finally {
+      const next = this.waiting.shift();
+      if (next) next();
+      else this.running--;
+    }
   }
 
   private async run(id: number, auth: Auth, song: SongCandidate) {

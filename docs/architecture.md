@@ -1,7 +1,7 @@
 # Needle architecture
 
 How the app is put together, how a request travels, where data lives, and the
-flows that are easy to get wrong (Spotify's limits, fetching songs). For installing
+flows that are easy to get wrong (Spotify's limits, fetching songs, ListenBrainz). For installing
 Needle and connecting it to Navidrome, Lidarr, slskd and Spotify, see the
 [README](../README.md).
 
@@ -21,6 +21,7 @@ Needle and connecting it to Navidrome, Lidarr, slskd and Spotify, see the
 │  Spotify (optional, direct):          │               │  musicbrainz.ts song lookup                │──► musicbrainz.org
 │   api.spotify.com, sdk.scdn.co ◄──────┼── token ──────│  spotify.ts  sign-in, tokens, switch       │──► accounts.spotify.com
 └───────────────────────────────────────┘               │  requests.ts / profiles.ts                 │
+                                                        │  listenbrainz.ts discovery playlists       │──► api.listenbrainz.org
                                                         │  needle.db (SQLite, node:sqlite)           │
                                                         └────────────────────────────────────────────┘
 ```
@@ -50,7 +51,7 @@ apps/server/src
   app.ts        every route; config.ts reads the environment; db.ts creates/migrates needle.db
   people.ts     who has opened Needle and what each may do; status.ts Settings → Connections
   one file per integration: navidrome.ts (+ proxy.ts), lidarr.ts, soulseek.ts, musicbrainz.ts,
-                deezer.ts, spotify.ts; search.ts, stats.ts, mixes.ts, requests.ts, profiles.ts, devices.ts
+                deezer.ts, listenbrainz.ts, spotify.ts; search.ts, stats.ts, mixes.ts, requests.ts, profiles.ts, devices.ts
 packages/shared types used by both sides, plus fold/matchesTerms (accent-insensitive matching)
 e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + MusicBrainz
 ```
@@ -82,21 +83,21 @@ e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + M
 
 | Needs | Routes |
 |---|---|
-| Request music | `GET /api/lidarr/search`, `/albums`, `/artists`, `POST /api/lidarr/albums/:id`, `/api/songs*`, `POST /api/requests/:id/retry`, `POST /api/spotify/missing` |
+| Request music | `GET /api/lidarr/search`, `/albums`, `/artists`, `POST /api/lidarr/albums/:id`, `/api/songs*`, `POST /api/requests/:id/retry`, `POST /api/spotify/missing`, `POST /api/listenbrainz/playlists/:mbid/missing` |
 | Spotify | `/api/spotify/*` (except the sign-in callback) |
 | Admin | `GET`/`DELETE /api/lidarr/downloads[/:id]`, `GET /api/status`, `GET`/`PUT /api/people[/:user]`, `GET /api/requests?everyone=1`, removing anyone's request |
-| Signed in | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests |
+| Signed in | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests, the rest of `/api/listenbrainz*` (each person's own connection) |
 
 `/api/capabilities` tells the app what this person may do: `admin`, `lidarr` and `songs`
 (may request), and Spotify (configured and allowed, connected, allowed to play, needs
-reconnecting, switched on). The app hides what isn't allowed; the server refuses it
+reconnecting, switched on), plus `listenbrainzUser` and `listenbrainzNavidrome`. The app hides what isn't allowed; the server refuses it
 anyway (403).
 
 ## Where data lives
 
 | Where | What |
 |---|---|
-| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress) |
+| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress), `listenbrainz` (each person's ListenBrainz token and user name, whether Needle linked it in Navidrome; never a password) |
 | Navidrome | The library, users, playlists, likes, the play queue each device syncs |
 | Browser localStorage | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil` |
 | Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art |
@@ -186,6 +187,41 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
  A server restart marks unfinished songs as failed so they can be retried.
 ```
 
+## ListenBrainz discovery
+
+```
+ Settings ─► PUT /api/listenbrainz {token, password?}
+               ├► ListenBrainz GET /1/validate-token          → ListenBrainz user name
+               ├► (password given) Navidrome POST /auth/login → JWT
+               │     PUT /api/listenbrainz/link {token}, header x-nd-authorization: Bearer <jwt>
+               │     401 wrong password, 429 too many sign-ins, 404 ListenBrainz off in Navidrome:
+               │     the token is saved anyway and the reason comes back as navidromeError
+               └► listenbrainz row (token, user, linked); the password goes nowhere else
+ Home ─► GET /api/listenbrainz/playlists
+           createdfor (cached 1 h per user) → newest playlist of each kind, ordered
+           weekly-exploration, weekly-jams, daily-jams, then the rest
+           → each playlist's JSPF (cached 24 h per MBID, a 404 drops it)
+           → matched to the library index: recording MBID first, then title + artist
+             with remaster/live/feat. notes removed (the same matching Spotify's import uses)
+ Playlist ─► GET /api/listenbrainz/playlists/:mbid   tracks + library song or request state
+             POST …/missing   Get N missing: up to 50 songs through SongDownloads (ref = MBID)
+             POST …/save      Navidrome playlist "<name>, <date>" of the songs you have
+```
+
+- **Navidrome sends the listens, Needle never does.** Navidrome already scrobbles every
+  play of a linked user, from any client. If Needle also submitted, each play would
+  count twice. Needle only reads: playlists, and the latest listens for
+  Settings → Connections (ok when Navidrome sent one in the last 7 days).
+- **The password is used once.** Navidrome's link endpoint only accepts its own JWT,
+  which only its sign-in hands out, and Subsonic credentials can't get one. Needle never
+  stores, logs or echoes it; error messages are fixed strings.
+- **Rate limits:** every ListenBrainz call goes through one queue at least 1.1 s apart,
+  with a `User-Agent` and `Authorization: Token`. `X-RateLimit-Remaining: 0` holds the
+  queue for `X-RateLimit-Reset-In` seconds; a `429` waits that long and retries once.
+  Each call times out after 15 s.
+- **Downloads:** `SongDownloads` runs at most two at once; the rest wait in
+  `searching`, so a 50-song "Get missing" doesn't flood slskd.
+
 ## Updates
 
 The service worker (`vite-plugin-pwa`, prompt mode) checks for a new version when
@@ -205,7 +241,9 @@ that song; unfinished albums resume when the app opens, or with **Try again**.
 ## Tests
 
 - `pnpm test`: Vitest unit tests for matching, sorting, search index, browse tiles,
-  song picking, MusicBrainz ranking, requests, Spotify tokens/switch, photos.
+  song picking, MusicBrainz ranking, requests, Spotify tokens/switch, photos,
+  ListenBrainz (token, Navidrome link, playlists, matching, rate limits, caching).
 - `pnpm e2e`: Playwright against a real Navidrome in Docker with a generated
-  library, a mock Lidarr (`e2e/mock-lidarr.ts`) and a mock slskd + MusicBrainz
-  (`e2e/mock-soulseek.ts`); Spotify is mocked in the browser (`e2e/tests/spotify-mock.ts`).
+  library, a mock Lidarr (`e2e/mock-lidarr.ts`) and a mock slskd + MusicBrainz +
+  ListenBrainz (`e2e/mock-soulseek.ts`; the test Navidrome's `ND_LISTENBRAINZ_BASEURL`
+  points there too, so linking the token in Navidrome is tested for real); Spotify is mocked in the browser (`e2e/tests/spotify-mock.ts`).

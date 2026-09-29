@@ -92,6 +92,11 @@ export function sizeLabel(bytes: number): string {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
 }
 
+export function plain(html: string | null | undefined): string | undefined {
+  const text = html?.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "’").replace(/&quot;/g, "\"").trim();
+  return text === "" ? undefined : text;
+}
+
 export const plainBio = (html: string | undefined) => html?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() ?? "";
 
 export function paragraphs(text: string, sentences = 3): string[] {

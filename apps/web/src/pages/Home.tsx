@@ -11,7 +11,8 @@ import { useTone } from "../lib/tone.ts";
 import { MixArt, playMix } from "../components/MixArt.tsx";
 import { player } from "../player/controller.ts";
 import { useContextPlaying, usePlayer } from "../player/store.ts";
-import { useAlbumList, useArtists, useMixes, useStarred, useStats } from "../queries/hooks.ts";
+import { useAlbumList, useArtists, useDiscoveries, useMixes, useStarred, useStats } from "../queries/hooks.ts";
+import { DiscoveryCard } from "../components/Discovery.tsx";
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
@@ -125,6 +126,17 @@ function MixCard({ mix }: { mix: Mix }) {
   return <Card to={`/mix/${mix.id}`} art={<MixArt mix={mix} />} title={mix.name} subtitle={mix.description} onPlay={() => playMix(mix)} />;
 }
 
+function DiscoveryRow() {
+  const { data } = useDiscoveries();
+  if (!data?.length) return null;
+  return (
+    <>
+      <RowHeader title="Made for you by ListenBrainz" subtitle="Playlists ListenBrainz makes from what you play" />
+      <CardRow>{data.map((p) => <DiscoveryCard key={p.id} playlist={p} />)}</CardRow>
+    </>
+  );
+}
+
 function HomeSkeleton() {
   const show = useDelayed(true);
   if (!show) return null;
@@ -202,6 +214,7 @@ export default function Home() {
             <CardRow>{mixes.data.map((m) => <MixCard key={m.id} mix={m} />)}</CardRow>
           </>
         ) : null}
+        <DiscoveryRow />
         <RowHeader title="Recently added" to="/albums/newest" />
         <CardRow>{newest.data.map((a) => <AlbumCard key={a.id} album={a} />)}</CardRow>
         {spotifyOn ? <SpotifyRows /> : null}
