@@ -644,6 +644,7 @@
   outline-offset: -2px;
   cursor: default;
   user-select: none;
+  transition: background-color 0.16s var(--ease-out);
 }
 
 .tr:hover,
@@ -673,23 +674,35 @@
   height: 100%;
 }
 
+.tr .n > :is(.num, .eq),
+.tr .row-play {
+  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+}
+
 .tr .row-play {
   position: absolute;
   inset: 0;
-  display: none;
+  display: grid;
   place-items: center end;
   color: var(--label);
   padding-right: 1px;
+  opacity: 0;
+  transform: scale(0.8);
+  transform-origin: right center;
+  pointer-events: none;
 }
 
 .tr:hover .n > :is(.num, .eq),
 .tr:is(:focus-visible, :has(:focus-visible)) .n > :is(.num, .eq) {
-  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.8);
 }
 
 .tr:hover .row-play,
 .tr:is(:focus-visible, :has(:focus-visible)) .row-play {
-  display: grid;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .tr.located {
