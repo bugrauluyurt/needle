@@ -56,6 +56,11 @@ export class Requests {
     return this.db.prepare("SELECT * FROM requests WHERE user != ? ORDER BY created DESC LIMIT ?").all(user, LIST_LIMIT) as RequestRow[];
   }
 
+  byRefs(user: string, kind: RequestItem["kind"], refs: string[]): RequestRow[] {
+    if (!refs.length) return [];
+    return this.db.prepare(`SELECT * FROM requests WHERE user = ? AND kind = ? AND ref IN (${refs.map(() => "?").join(", ")})`).all(user, kind, ...refs) as RequestRow[];
+  }
+
   active(): RequestRow[] {
     return this.db.prepare(`SELECT * FROM requests WHERE kind = 'song' AND state IN (${ACTIVE_SONG.map(() => "?").join(", ")})`).all(...ACTIVE_SONG) as RequestRow[];
   }
