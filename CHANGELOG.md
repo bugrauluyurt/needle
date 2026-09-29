@@ -3,7 +3,9 @@
 What changed in each release. Needle uses [semantic versioning](https://semver.org):
 a major version means you need to change your setup (a renamed setting, a new mount),
 a minor version adds features, and a patch fixes bugs. Write new entries under
-**Unreleased**; `pnpm release <version>` moves them into the release.
+**Unreleased**, under the heading that sets the next version: Breaking or Removed
+for a major, Added, Changed or Deprecated for a minor, Fixed or Security for a patch.
+A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 

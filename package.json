@@ -17,8 +17,7 @@
     "e2e": "playwright test",
     "fixtures": "node e2e/fixtures/make-library.ts",
     "navidrome:test": "docker compose -f e2e/compose.yml up -d --wait",
-    "seed": "node --disable-warning=ExperimentalWarning e2e/fixtures/seed.ts",
-    "release": "scripts/release.sh"
+    "seed": "node --disable-warning=ExperimentalWarning e2e/fixtures/seed.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

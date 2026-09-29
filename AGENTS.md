@@ -18,11 +18,15 @@ anything that touches the UI or the player.
 ## Releases
 
 One version for the whole repo, in every `package.json`. Add what changed under
-**Unreleased** in `CHANGELOG.md` as you go (Added / Changed / Fixed, written for
-people running Needle). Run the e2e suite, then `pnpm release x.y.z --dry-run`, then
-`pnpm release x.y.z`: it checks for a clean `main` matching GitHub, runs lint,
-typecheck and tests, bumps the versions, moves the notes into the release, commits
-"Release x.y.z", tags `vx.y.z`, pushes and creates the GitHub release.
+**Unreleased** in `CHANGELOG.md` as you go, written for people running Needle, under
+the heading that sets the next version: Breaking or Removed (major), Added, Changed
+or Deprecated (minor), Fixed or Security (patch). `scripts/changelog.py` reads them;
+it is shared with homelab-media-stack, so keep the two copies identical.
+
+On every push to `main` a bot keeps a "Release vX.Y.Z" pull request open that bumps
+the versions and moves the notes into the release. Run the e2e suite, then merge it:
+that tags `vX.Y.Z`, publishes the GitHub release and pushes amd64 and arm64 images
+to `ghcr.io/bugrauluyurt/needle` with build provenance.
 
 ## Conventions
 
@@ -49,6 +53,8 @@ typecheck and tests, bumps the versions, moves the notes into the release, commi
   `status.ts` is Settings → Connections: add a check there when adding an integration.
   `people.ts` decides who may request music or use Spotify: a new route that fetches
   music or calls Spotify must go through `needLidarr` / `needSongs` / `needSpotify` in `app.ts`.
+- `.github/workflows`: CI, the release pull request, the release itself and
+  Scorecard. Pin every action to a full commit SHA with a `# vX.Y.Z` comment.
 - `examples/`: compose files, `.env.example` and a Caddyfile that the README walks
   through. Validate with `docker compose -f … config` after changing them.
 - `docs/media/`: README images; `make-hero.sh` renders `hero.html` (with `home.png` and `phone-player.png`) to `hero.png` and `social-preview.png` in headless Chromium.
