@@ -50,6 +50,11 @@
   text-overflow: ellipsis;
 }
 
+.ph-h:has(+ .psearch-wrap) {
+  position: relative;
+  z-index: 6;
+}
+
 .ph-h .avatar {
   box-shadow: none;
 }
@@ -111,7 +116,9 @@
 }
 
 .psearch-wrap {
-  padding: 0 16px 18px;
+  --gap-above: max(10px, var(--safe-top));
+  padding: var(--gap-above) 16px 18px;
+  margin-top: calc(-1 * var(--gap-above));
   position: sticky;
   top: 0;
   z-index: 5;
