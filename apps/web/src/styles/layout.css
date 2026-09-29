@@ -401,6 +401,29 @@
   overflow: hidden;
 }
 
+.right-over {
+  position: fixed;
+  z-index: 96;
+  top: 8px;
+  right: 8px;
+  bottom: 92px;
+  width: min(336px, calc(100vw - 16px));
+  display: flex;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: panel-in 0.22s var(--ease-out);
+}
+
+.right-over .right {
+  flex: 1;
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(calc(100% + 8px));
+  }
+}
+
 .rp-head {
   display: flex;
   align-items: center;
@@ -885,6 +908,19 @@
   .bar-r .vol {
     width: 72px;
   }
+}
+
+.popover.vol-pop {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 8px;
+}
+
+.vol-pop .vol {
+  width: 132px;
+  flex: none;
 }
 
 /* slider */

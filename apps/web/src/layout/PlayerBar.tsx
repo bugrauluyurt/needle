@@ -1,7 +1,10 @@
-import { useState } from "react";
+import * as DM from "@radix-ui/react-dropdown-menu";
+import * as Popover from "@radix-ui/react-popover";
+import { useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
+import type { IconName } from "../components/Icon.tsx";
 import { Slider } from "../components/Slider.tsx";
 import { artistName, clock, formatLabel } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
@@ -11,6 +14,7 @@ import { useSongLikes } from "../queries/likes.ts";
 import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
+import { useIsWide } from "./Shell.tsx";
 
 export const LiveLabel = () => <span className="live">Live radio</span>;
 
@@ -104,12 +108,16 @@ export function Transport({ big = false }: { big?: boolean }) {
   );
 }
 
+const useVolume = () => usePlayer((s) => (s.muted ? 0 : s.volume));
+
+const volumeIcon = (volume: number): IconName => (volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume");
+
 export function Volume() {
-  const volume = usePlayer((s) => (s.muted ? 0 : s.volume));
+  const volume = useVolume();
   return (
     <>
       <button type="button" className="icon-btn" aria-label={volume === 0 ? "Unmute" : "Mute"} onClick={player.toggleMute}>
-        <Icon name={volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume"} size={18} />
+        <Icon name={volumeIcon(volume)} size={18} />
       </button>
       <Slider className="vol" value={volume} max={1} step={0.05} label="Volume" valueText={(v) => `${Math.round(v * 100)}%`} onChange={player.setVolume} />
     </>
@@ -128,13 +136,91 @@ export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: numb
   );
 }
 
+type BarAction = { label: string; icon: IconName; size: number; keyHint?: string; pressed?: boolean; disabled?: boolean; run: () => void };
+
+function BarButton({ action: a }: { action: BarAction }) {
+  return (
+    <button type="button" className="icon-btn" aria-pressed={a.pressed} data-key={a.keyHint} aria-label={a.label} disabled={a.disabled} onClick={a.run}>
+      <Icon name={a.icon} size={a.size} />
+    </button>
+  );
+}
+
+function MoreMenu({ actions }: { actions: BarAction[] }) {
+  const picked = useRef<BarAction | null>(null);
+  return (
+    <DM.Root modal={false}>
+      <DM.Trigger asChild>
+        <button type="button" className="icon-btn" aria-label="More">
+          <Icon name="more" size={18} />
+        </button>
+      </DM.Trigger>
+      <DM.Portal>
+        <DM.Content
+          className="menu bar-menu"
+          side="top"
+          align="end"
+          sideOffset={12}
+          collisionPadding={12}
+          onCloseAutoFocus={() => {
+            picked.current?.run();
+            picked.current = null;
+          }}
+        >
+          {actions.map((a) => (
+            <DM.Item key={a.label} className="menu-item" disabled={a.disabled} onSelect={() => (picked.current = a)}>
+              <Icon name={a.icon} size={18} />
+              <span className="menu-label">{a.label}</span>
+              {a.pressed ? <Icon name="check" size={16} className="menu-end" /> : null}
+            </DM.Item>
+          ))}
+        </DM.Content>
+      </DM.Portal>
+    </DM.Root>
+  );
+}
+
+function VolumeButton() {
+  const volume = useVolume();
+  const box = useRef<HTMLDivElement>(null);
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button type="button" className="icon-btn" aria-label="Volume">
+          <Icon name={volumeIcon(volume)} size={18} />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          ref={box}
+          className="popover vol-pop"
+          side="top"
+          sideOffset={12}
+          collisionPadding={12}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            box.current?.querySelector<HTMLElement>("[role=slider]")?.focus();
+          }}
+        >
+          <Volume />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 export function PlayerBar() {
   const song = useCurrentSong();
   const station = usePlayer((s) => s.station);
   const panel = useUi((s) => s.rightPanel);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const wide = useIsWide();
   const fmt = station ? null : formatLabel(song);
+  const nowPanel: BarAction = { label: "Now playing panel", icon: "album", size: 18, pressed: panel === "now", run: () => toggleRightPanel("now") };
+  const queue: BarAction = { label: "Queue", icon: "queue", size: 18, keyHint: "Q", pressed: panel === "queue", run: () => toggleRightPanel("queue") };
+  const lyrics: BarAction = { label: "Lyrics", icon: "mic", size: 18, keyHint: "Y", pressed: pathname === "/lyrics", run: () => void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")) };
+  const full: BarAction = { label: "Full screen", icon: "expand", size: 17, keyHint: "F", disabled: !song && !station, run: () => setFullScreen(true) };
   return (
     <footer className="bar" aria-label="Player">
       <div className="np">
@@ -169,21 +255,26 @@ export function PlayerBar() {
         <SeekBar />
       </div>
       <div className="bar-r">
-        {fmt ? <span className="fmt">{fmt}</span> : null}
-        <button type="button" className="icon-btn" aria-pressed={panel === "now"} aria-label="Now playing panel" onClick={() => toggleRightPanel("now")}>
-          <Icon name="album" size={18} />
-        </button>
-        <button type="button" className="icon-btn" aria-pressed={pathname === "/lyrics"} data-key="Y" aria-label="Lyrics" onClick={() => (pathname === "/lyrics" ? void navigate(-1) : void navigate("/lyrics"))}>
-          <Icon name="mic" size={18} />
-        </button>
-        <button type="button" className="icon-btn" aria-pressed={panel === "queue"} data-key="Q" aria-label="Queue" onClick={() => toggleRightPanel("queue")}>
-          <Icon name="queue" size={18} />
-        </button>
+        {wide ? (
+          <>
+            {fmt ? <span className="fmt">{fmt}</span> : null}
+            <BarButton action={nowPanel} />
+            <BarButton action={lyrics} />
+          </>
+        ) : null}
+        <BarButton action={queue} />
         <DevicesButton />
-        <Volume />
-        <button type="button" className="icon-btn" data-key="F" aria-label="Full screen" disabled={!song && !station} onClick={() => setFullScreen(true)}>
-          <Icon name="expand" size={17} />
-        </button>
+        {wide ? (
+          <>
+            <Volume />
+            <BarButton action={full} />
+          </>
+        ) : (
+          <>
+            <VolumeButton />
+            <MoreMenu actions={[nowPanel, lyrics, full]} />
+          </>
+        )}
       </div>
     </footer>
   );
