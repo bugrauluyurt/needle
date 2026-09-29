@@ -157,7 +157,7 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
       </DM.Trigger>
       <DM.Portal>
         <DM.Content
-          className="menu bar-menu"
+          className="menu"
           side="top"
           align="end"
           sideOffset={12}
