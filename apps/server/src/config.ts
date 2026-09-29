@@ -15,6 +15,7 @@ export type Config = {
   publicUrl: string | null;
   musicbrainzUrl: string;
   deezerUrl: string;
+  listenbrainzUrl: string;
   dataDir: string;
   webDist: string;
 };
@@ -40,6 +41,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     publicUrl: publicUrl ? trimSlash(publicUrl) : null,
     musicbrainzUrl: trimSlash(env("MUSICBRAINZ_URL") ?? "https://musicbrainz.org/ws/2"),
     deezerUrl: trimSlash(env("DEEZER_URL") ?? "https://api.deezer.com"),
+    listenbrainzUrl: trimSlash(env("LISTENBRAINZ_URL") ?? "https://api.listenbrainz.org"),
     dataDir: resolve(env("DATA_DIR") ?? "./data"),
     webDist: resolve(env("WEB_DIST") ?? new URL("../../web/dist", import.meta.url).pathname),
     ...overrides,

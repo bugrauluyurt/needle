@@ -5,11 +5,12 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { compress } from "hono/compress";
-import type { Capabilities, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
-import { songKey } from "@needle/shared";
+import type { Capabilities, DiscoveryTrack, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
+import { songKey, trackCandidate } from "@needle/shared";
 import type { Config } from "./config.ts";
 import { DeviceHub } from "./devices.ts";
 import { Lidarr, LidarrError } from "./lidarr.ts";
+import { ListenBrainz, ListenBrainzError } from "./listenbrainz.ts";
 import { Mixes } from "./mixes.ts";
 import type { Auth } from "./navidrome.ts";
 import { authFromHeaders, authFromQuery, Navidrome, SubsonicFailure } from "./navidrome.ts";
@@ -33,6 +34,10 @@ const PERIODS = new Set<Period>(["month", "quarter", "year", "all"]);
 const ADMIN_TTL = 10 * 60_000;
 const MISSING_ALBUMS_LIMIT = 25;
 const SONG_RESULTS = 12;
+const MISSING_SONGS_LIMIT = 50;
+const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TOKEN_MAX = 200;
+const PASSWORD_MAX = 1024;
 const FILE = /\/[^/]+\.[a-z0-9]+$/i;
 
 export function createApp(config: Config, db: DatabaseSync) {
@@ -50,9 +55,10 @@ export function createApp(config: Config, db: DatabaseSync) {
     : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
   const people = new People(db);
-  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer });
+  const listenbrainz = new ListenBrainz({ url: config.listenbrainzUrl, db, navidrome, library, requests });
+  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer, listenbrainz });
   const spotify = config.spotify && config.publicUrl
-    ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome })
+    ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome, library })
     : null;
   const hub = new DeviceHub();
   const admins = new Map<string, { admin: boolean; until: number }>();
@@ -71,6 +77,7 @@ export function createApp(config: Config, db: DatabaseSync) {
 
   app.onError((err, c) => {
     if (err instanceof SpotifyError) return c.json({ error: err.message }, err.status === 401 || err.status === 409 ? err.status : 502);
+    if (err instanceof ListenBrainzError) return c.json({ error: err.message }, err.status);
     if (err instanceof LidarrError || err instanceof SubsonicFailure || err instanceof SlskdError || err instanceof MusicBrainzError) return c.json({ error: err.message }, 502);
     console.error(err);
     return c.json({ error: "Something went wrong on the Needle server" }, 500);
@@ -118,6 +125,14 @@ export function createApp(config: Config, db: DatabaseSync) {
   };
   const recordAlbum = (user: string, a: LidarrAlbum) =>
     requests.add({ user, kind: "album", ref: a.foreignAlbumId, title: a.title, artist: a.artist, cover_url: a.coverUrl, state: a.state });
+  const mbidOf = (c: Context<Env>) => {
+    const mbid = c.req.param("mbid") ?? "";
+    return MBID.test(mbid) ? mbid.toLowerCase() : null;
+  };
+  const noPlaylist = (c: Context<Env>) => c.json({ error: "No such ListenBrainz playlist" }, 404);
+  const passwordOf = (body: { password?: unknown }) => (typeof body.password === "string" && body.password && body.password.length <= PASSWORD_MAX ? body.password : undefined);
+  const bodyOf = (c: Context<Env>) => c.req.json<{ token?: unknown; password?: unknown }>().catch(() => ({ token: undefined, password: undefined }));
+  const wanted = (t: DiscoveryTrack) => !t.song && (!t.request || t.request.state === "failed");
   const needSpotify = async (c: Context<Env>) => {
     if (!spotify) return { error: c.json({ error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" }, 404) };
     if (!(await can(c.get("auth"), "spotify"))) return { error: refuse(c, "Ask an admin to let you use Spotify in Needle") };
@@ -129,6 +144,7 @@ export function createApp(config: Config, db: DatabaseSync) {
     const admin = await isAdmin(auth);
     const requests = people.allowed(auth.user, admin, "request");
     const sp = people.allowed(auth.user, admin, "spotify") ? spotify : null;
+    const lb = listenbrainz.account(auth.user);
     const caps: Capabilities = {
       admin,
       lidarr: Boolean(lidarr) && requests,
@@ -139,6 +155,8 @@ export function createApp(config: Config, db: DatabaseSync) {
       spotifyEnabled: sp?.enabled(auth.user) ?? false,
       songs: Boolean(songs) && requests,
       publicUrl: config.publicUrl,
+      listenbrainzUser: lb?.user ?? null,
+      listenbrainzNavidrome: lb?.navidrome ?? false,
     };
     return c.json(caps);
   });
@@ -303,6 +321,44 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (r.error) return r.error;
     await r.lidarr.removeDownload(Number(c.req.param("id")), c.req.query("find") === "1");
     return c.body(null, 204);
+  });
+
+  app.put("/api/listenbrainz", async (c) => {
+    const body = await bodyOf(c);
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    if (!token || token.length > TOKEN_MAX) return c.json({ error: "Paste your ListenBrainz user token" }, 400);
+    return c.json(await listenbrainz.connect(c.get("auth"), token, passwordOf(body)));
+  });
+
+  app.delete("/api/listenbrainz", async (c) => c.json(await listenbrainz.disconnect(c.get("auth"), passwordOf(await bodyOf(c)))));
+
+  app.get("/api/listenbrainz/playlists", async (c) => c.json(await listenbrainz.playlists(c.get("auth"))));
+
+  app.get("/api/listenbrainz/playlists/:mbid", async (c) => {
+    const mbid = mbidOf(c);
+    return mbid ? c.json(await listenbrainz.playlist(c.get("auth"), mbid)) : noPlaylist(c);
+  });
+
+  app.post("/api/listenbrainz/playlists/:mbid/missing", async (c) => {
+    const r = await needSongs(c);
+    if (r.error) return r.error;
+    const mbid = mbidOf(c);
+    if (!mbid) return noPlaylist(c);
+    const auth = c.get("auth");
+    const detail = await listenbrainz.playlist(auth, mbid);
+    const todo = detail.tracks.filter(wanted).slice(0, MISSING_SONGS_LIMIT);
+    for (const t of todo) r.songs.start(auth, trackCandidate(t));
+    return c.json({ started: todo.length, skipped: detail.tracks.filter((t) => !t.song).length - todo.length });
+  });
+
+  app.post("/api/listenbrainz/playlists/:mbid/save", async (c) => {
+    const mbid = mbidOf(c);
+    if (!mbid) return noPlaylist(c);
+    const auth = c.get("auth");
+    const detail = await listenbrainz.playlist(auth, mbid);
+    const ids = detail.tracks.flatMap((t) => (t.song ? [t.song.id] : []));
+    if (!ids.length) return c.json({ error: "None of these songs are in your library yet" }, 409);
+    return c.json({ playlistId: await navidrome.upsertPlaylist(auth, detail.name, ids), matched: ids.length, total: detail.total });
   });
 
   app.get("/api/spotify/login", async (c) => {
