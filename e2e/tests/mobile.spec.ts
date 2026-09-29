@@ -54,6 +54,14 @@ test("searches with the mobile search box", async ({ page }) => {
   await expect(page.locator(".top-card h2")).toHaveText("Okto Quartet");
 });
 
+test("the search button opens Search with the field focused", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Search", exact: true }).tap();
+  await expect(page).toHaveURL(/\/search/);
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0);
+});
+
 test("shows the You tab with install steps for iPhone", async ({ page }) => {
   await signIn(page, "/you");
   await expect(page.getByText("Put Needle on your home screen")).toBeVisible();

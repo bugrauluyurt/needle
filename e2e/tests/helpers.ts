@@ -34,7 +34,7 @@ export async function openAlbum(page: Page, name: string) {
 }
 
 export async function clickBody(page: Page) {
-  await page.mouse.click(700, 60);
+  await page.mouse.click(700, 4);
 }
 
 export async function playContext(page: Page) {
