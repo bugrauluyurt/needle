@@ -9,6 +9,8 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 
 ## Unreleased
 
+## 1.4.0 - 2026-09-29
+
 ### Added
 - Ready-made images for x86-64 (amd64) and ARM64 on `ghcr.io/bugrauluyurt/needle`,
   tagged `X.Y.Z`, `X.Y`, `X` and `latest`, with build provenance, so you no longer
