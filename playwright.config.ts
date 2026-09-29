@@ -20,7 +20,8 @@ export default defineConfig({
     launchOptions: chromium,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, launchOptions: chromium }, testIgnore: /mobile\.spec/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, launchOptions: chromium }, testIgnore: /(mobile|tablet)\.spec/ },
+    { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 900, height: 1180 }, launchOptions: chromium }, testMatch: /tablet\.spec/ },
     { name: "mobile", use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: iphone, launchOptions: chromium }, testMatch: /mobile\.spec/ },
   ],
   webServer: [
