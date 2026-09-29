@@ -5,7 +5,7 @@ import { SEEK_STEP_S } from "../player/controller.ts";
 
 const KEYS: [string, string[]][] = [
   ["Play or pause", ["Space"]], ["Next song", ["Shift", "→"]], ["Previous song", ["Shift", "←"]], [`Skip forward ${SEEK_STEP_S} s`, ["→"]],
-  [`Skip back ${SEEK_STEP_S} s`, ["←"]], ["Volume up or down", ["↑", "↓"]], ["Like the song", ["L"]], ["Shuffle", ["S"]], ["Repeat", ["R"]],
+  [`Skip back ${SEEK_STEP_S} s`, ["←"]], ["Volume up or down", ["↑", "↓"]], ["Like the song", ["L"]], ["Show the playing song in the list", ["Shift", "L"]], ["Shuffle", ["S"]], ["Repeat", ["R"]],
   ["Search", ["/"]], ["Queue", ["Q"]], ["Lyrics", ["Y"]], ["Full screen", ["F"]], ["These shortcuts", ["?"]],
 ];
 

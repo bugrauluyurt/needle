@@ -1,3 +1,4 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
@@ -9,9 +10,10 @@ import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import type { QueueItem } from "../player/queue.ts";
 import { userItemsAfter } from "../player/queue.ts";
-import { useCurrentSong, usePlayer } from "../player/store.ts";
+import { usePlayer } from "../player/store.ts";
 import { useArtistInfo } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
+import { usePlayback } from "../remote/client.ts";
 import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
@@ -130,11 +132,11 @@ function AboutArtist({ song }: { song: Song }) {
 }
 
 function NowView() {
-  const song = useCurrentSong();
+  const { remote, song } = usePlayback();
   const items = usePlayer((s) => s.items);
   const index = usePlayer((s) => s.index);
   if (!song) return <p className="panel-empty">Nothing is playing. Pick an album or a playlist to start.</p>;
-  const next = items[index + 1];
+  const next = remote ? undefined : items[index + 1];
   const rows: [string, string][] = [
     ["Format", formatLong(song)],
     ["Bitrate", song.bitRate ? `${count(song.bitRate)} kbps` : ""],
@@ -160,28 +162,37 @@ function NowView() {
           <QueueRow item={next} />
         </div>
       ) : null}
-      <div className="rp-card">
-        <h6>About the file</h6>
-        <dl className="kv">
-          {rows.filter(([, v]) => v).map(([k, v]) => (
-            <div key={k}>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      {remote ? null : (
+        <div className="rp-card">
+          <h6>About the file</h6>
+          <dl className="kv">
+            {rows.filter(([, v]) => v).map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       <AboutArtist song={song} />
     </>
   );
 }
 
+function usePanelTitle(): string {
+  const panel = useUi((s) => s.rightPanel);
+  const { remote, song } = usePlayback();
+  const contextName = usePlayer((s) => s.context?.name);
+  const nowTitle = remote ? `Playing on ${remote.name}` : (contextName ?? song?.album ?? "Now playing");
+  return panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : nowTitle;
+}
+
 export function RightPanel() {
   const panel = useUi((s) => s.rightPanel);
-  const song = useCurrentSong();
-  const contextName = usePlayer((s) => s.context?.name);
+  const { song } = usePlayback();
+  const title = usePanelTitle();
   if (!panel) return null;
-  const title = panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : (contextName ?? song?.album ?? "Now playing");
   return (
     <aside className="right" aria-label={title}>
       <div className="rp-head">
@@ -201,5 +212,32 @@ export function RightPanel() {
         {panel === "now" ? <NowView /> : panel === "queue" ? <QueueView /> : song ? <LyricsView song={song} variant="panel" /> : <p className="panel-empty">Play a song to see its lyrics.</p>}
       </div>
     </aside>
+  );
+}
+
+export function RightPanelOver() {
+  const title = usePanelTitle();
+  const opener = useRef<HTMLElement | null>(null);
+  return (
+    <Dialog.Root open onOpenChange={(open) => !open && useUi.setState({ rightPanel: null })}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="scrim as-scrim" />
+        <Dialog.Content
+          className="right-over"
+          aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            const el = document.activeElement;
+            opener.current = el instanceof HTMLElement ? el : null;
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            opener.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">{title}</Dialog.Title>
+          <RightPanel />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

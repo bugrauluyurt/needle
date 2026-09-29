@@ -96,6 +96,7 @@ export type RemoteState = {
   title: string;
   artist: string;
   coverArt?: string;
+  uri?: string;
   position: number;
   duration: number;
   playing: boolean;
@@ -124,7 +125,7 @@ export type ClientMessage =
   | { type: "command"; to: string; command: RemoteCommand };
 
 export type ServerMessage =
-  | { type: "devices"; devices: Device[] }
+  | { type: "devices"; devices: Device[]; activeId: string | null }
   | { type: "command"; from: string; command: RemoteCommand };
 
 export type SpotifyPlaylist = {

@@ -5,15 +5,15 @@ import { LyricsView } from "../components/Lyrics.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { player } from "../player/controller.ts";
-import { useCurrentSong, usePlayer } from "../player/store.ts";
+import { usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi } from "../state/ui.ts";
+import { usePlayback } from "../remote/client.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
 import { LikeCurrent, LiveLabel, SeekBar, Transport, Volume } from "./PlayerBar.tsx";
 
 export default function FullScreenPlayer() {
   const open = useUi((s) => s.fullScreen);
-  const song = useCurrentSong();
-  const station = usePlayer((s) => s.station);
+  const { remote, song, station } = usePlayback();
   const items = usePlayer((s) => s.items);
   const index = usePlayer((s) => s.index);
   const context = usePlayer((s) => s.context);
@@ -26,15 +26,15 @@ export default function FullScreenPlayer() {
     return () => document.removeEventListener("fullscreenchange", exit);
   }, [open]);
   if (!open || (!song && !station)) return null;
-  const upNext = items.slice(index + 1, index + 4);
+  const upNext = remote ? [] : items.slice(index + 1, index + 4);
   const close = () => setFullScreen(false);
   return (
     <div className="full" style={{ "--tone": tone } as React.CSSProperties} role="dialog" aria-modal="true" aria-label="Full screen player">
       <div className="full-top">
         <Logo size={26} />
         <div className="from">
-          {station ? "Internet radio" : `Playing from ${context?.kind === "playlist" ? "playlist" : context?.kind === "album" ? "album" : ""}`}
-          <b>{station?.name ?? context?.name ?? song?.album}</b>
+          {remote ? "Playing on" : station ? "Internet radio" : `Playing from ${context?.kind === "playlist" ? "playlist" : context?.kind === "album" ? "album" : ""}`}
+          <b>{remote?.name ?? station?.name ?? context?.name ?? song?.album}</b>
         </div>
         <div className="full-top-r">
           <button type="button" className="icon-btn" aria-pressed={lyrics} aria-label="Lyrics" onClick={() => setLyrics(!lyrics)}>

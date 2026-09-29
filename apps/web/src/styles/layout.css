@@ -34,30 +34,36 @@
   .app.solo {
     grid-template-columns: 84px minmax(0, 1fr);
   }
-  .app .brand span,
-  .app .nav-btn span,
-  .app .lib-title span,
-  .app .side-lib .chips,
-  .app .lib-tools,
-  .app .lib-head .icon-btn,
-  .app .lib-text,
-  .app .lib-item .eq {
+  .side .brand span,
+  .side .nav-btn span,
+  .side .lib-title span,
+  .side-lib .chips,
+  .side .lib-tools,
+  .side .lib-text,
+  .side .lib-item .eq {
     display: none;
   }
-  .app .side-top {
+  .side .side-top {
     padding: 14px 8px 10px;
   }
-  .app .nav-btn,
-  .app .brand {
+  .side .nav-btn,
+  .side .brand {
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
   }
-  .app .lib-head {
-    justify-content: center;
-    padding: 14px 0 6px;
+  .side .lib-head {
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0 8px;
   }
-  .app .lib-item {
+  .side .lib-title {
+    padding: 5px;
+  }
+  .side .lib-head-acts {
+    flex-direction: column;
+  }
+  .side .lib-item {
     justify-content: center;
   }
 }
@@ -393,6 +399,29 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+.right-over {
+  position: fixed;
+  z-index: 96;
+  top: 8px;
+  right: 8px;
+  bottom: 92px;
+  width: min(336px, calc(100vw - 16px));
+  display: flex;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: panel-in 0.22s var(--ease-out);
+}
+
+.right-over .right {
+  flex: 1;
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(calc(100% + 8px));
+  }
 }
 
 .rp-head {
@@ -764,6 +793,44 @@
   color: var(--label);
 }
 
+.np-locate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-locate:hover {
+  text-decoration: underline;
+}
+
+.remote-strip {
+  grid-column: 1 / -1;
+  margin-top: -8px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 18px;
+  border-radius: 8px 8px 0 0;
+  background: var(--deck);
+  color: var(--amber);
+  font-size: 12.5px;
+  font-weight: 600;
+  animation: strip-rise 0.2s var(--ease-out);
+  transition: background-color 0.16s var(--ease-out);
+}
+
+.remote-strip:hover {
+  background: var(--groove);
+}
+
+@keyframes strip-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
 .ctl {
   display: flex;
   flex-direction: column;
@@ -879,6 +946,19 @@
   .bar-r .vol {
     width: 72px;
   }
+}
+
+.popover.vol-pop {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 8px;
+}
+
+.vol-pop .vol {
+  width: 132px;
+  flex: none;
 }
 
 /* slider */

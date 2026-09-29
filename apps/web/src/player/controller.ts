@@ -181,6 +181,11 @@ function spotifyEvents() {
     error: (message: string) => {
       if (backend === "spotify") set({ error: message, playing: false, buffering: false });
     },
+    lost: () => {
+      if (backend !== "spotify") return;
+      stopSpotifyTicker();
+      set({ playing: false, buffering: false, lastPosition: spotifyPlayer.position() });
+    },
   };
 }
 
@@ -224,10 +229,14 @@ async function startSpotify(item: Q.QueueItem, startAt: number) {
   }
 }
 
-function leaveSpotify() {
-  spotifyPlayer.stop();
+function stopSpotifyTicker() {
   if (spotifyTicker !== null) window.clearInterval(spotifyTicker);
   spotifyTicker = null;
+}
+
+function leaveSpotify() {
+  spotifyPlayer.stop();
+  stopSpotifyTicker();
   backend = "local";
 }
 
@@ -361,12 +370,13 @@ export async function previous() {
   await loadCurrent(true);
 }
 
-export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean } = {}) {
+export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean; at?: number; autoplay?: boolean } = {}) {
   if (!songs.length) return;
   spotifyPlayer.activate();
   const shuffle = opts.shuffle ?? get().shuffle;
-  set({ ...Q.start(songs, startIndex, shuffle), shuffle, context, station: null, resume: null });
-  void loadCurrent(true);
+  const at = opts.at ?? 0;
+  set({ ...Q.start(songs, startIndex, shuffle), shuffle, context, station: null, resume: null, lastPosition: at });
+  void loadCurrent(opts.autoplay ?? true, at);
 }
 
 export function playQueueItem(uid: string) {

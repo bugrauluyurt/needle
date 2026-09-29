@@ -10,9 +10,8 @@ import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
-import { player } from "../player/controller.ts";
-import { useProgress } from "../player/progress.ts";
-import { useCurrentSong, usePlayer } from "../player/store.ts";
+import { usePlayer } from "../player/store.ts";
+import { usePlayback, useShownProgress } from "../remote/client.ts";
 import { DevicesButton } from "../remote/DevicesButton.tsx";
 import { useSession } from "../state/session.ts";
 import { useUi } from "../state/ui.ts";
@@ -36,10 +35,8 @@ export function TabBar() {
 }
 
 export function MiniPlayer() {
-  const song = useCurrentSong();
-  const station = usePlayer((s) => s.station);
-  const playing = usePlayer((s) => s.playing);
-  const pct = useProgress((p) => (p.duration ? Math.round((p.position / p.duration) * 1000) / 10 : 0));
+  const { remote, song, station, playing, controls } = usePlayback();
+  const pct = useShownProgress(remote, (p) => (p.duration ? Math.round((p.position / p.duration) * 1000) / 10 : 0));
   const tone = useTone(song?.coverArt);
   const deviceName = useSession((s) => s.deviceName);
   if (!song && !station) return null;
@@ -50,12 +47,12 @@ export function MiniPlayer() {
         <div className="mini-text">
           <div className="t">{station?.name ?? song?.title}</div>
           <div className="s">
-            {station ? <LiveLabel /> : <><Icon name="devices" size={13} />{deviceName}</>}
+            {station ? <LiveLabel /> : <><Icon name="devices" size={13} /><span className="ellipsis">{remote ? `Playing on ${remote.name}` : deviceName}</span></>}
           </div>
         </div>
       </button>
       <DevicesButton />
-      <button type="button" className="icon-btn light" aria-label={playing ? "Pause" : "Play"} onClick={player.toggle}>
+      <button type="button" className="icon-btn light" aria-label={playing ? "Pause" : "Play"} onClick={controls.toggle}>
         <Icon name={playing ? "pause" : "play"} size={22} />
       </button>
       <div className="pl"><i style={{ width: `${pct}%` }} /></div>
@@ -115,9 +112,7 @@ export function MobileBack() {
 export function NowPlayingSheet() {
   const open = useUi((s) => s.nowPlayingOpen);
   const view = useUi((s) => s.mobileView);
-  const playing = usePlayer((s) => s.playing);
-  const song = useCurrentSong();
-  const station = usePlayer((s) => s.station);
+  const { remote, song, station, playing, controls } = usePlayback();
   const context = usePlayer((s) => s.context);
   const deviceName = useSession((s) => s.deviceName);
   const tone = useTone(song?.coverArt);
@@ -154,7 +149,7 @@ export function NowPlayingSheet() {
           <div className="plyr-foot">
             <SeekBar className="seek below" times="below" />
             <div className="plyr-pp">
-              <button type="button" className="pp" aria-label={playing ? "Pause" : "Play"} onClick={player.toggle}>
+              <button type="button" className="pp" aria-label={playing ? "Pause" : "Play"} onClick={controls.toggle}>
                 <Icon name={playing ? "pause" : "play"} size={26} />
               </button>
             </div>
@@ -167,7 +162,7 @@ export function NowPlayingSheet() {
         </div>
       ) : (
         <div className="nowp">
-          {head(station ? "Internet radio" : context ? `Playing from ${context.kind === "album" ? "album" : context.kind === "playlist" ? "playlist" : context.kind === "artist" ? "artist" : ""}`.trim() : "Playing", station?.name ?? context?.name ?? song?.album ?? "")}
+          {remote ? head("Playing on", remote.name) : head(station ? "Internet radio" : context ? `Playing from ${context.kind === "album" ? "album" : context.kind === "playlist" ? "playlist" : context.kind === "artist" ? "artist" : ""}`.trim() : "Playing", station?.name ?? context?.name ?? song?.album ?? "")}
           <div className="nowp-art" {...swipe}>
             {station ? <div className="art big station-art"><Icon name="radio" size={64} /></div> : <Art id={song?.coverArt} px={340} className="big" eager />}
           </div>
@@ -181,7 +176,7 @@ export function NowPlayingSheet() {
           <SeekBar className="seek below" times="below" />
           <Transport big />
           <div className="under">
-            <DevicesButton trigger={<button type="button" className="dev-pill"><Icon name="devices" size={16} />{deviceName}</button>} />
+            <DevicesButton trigger={<button type="button" className="dev-pill"><Icon name="devices" size={16} />{remote?.name ?? deviceName}</button>} />
             <div className="under-end">
               {fmt ? <span className="fmt">{fmt}</span> : null}
               <button type="button" className="icon-btn light" aria-label="Queue" onClick={() => useUi.setState({ mobileView: "queue" })}>

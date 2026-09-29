@@ -6,7 +6,7 @@ import { DEFAULT_TONE } from "../lib/tone.ts";
 import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyOn } from "../queries/spotify.ts";
-import { current, usePlayer } from "../player/store.ts";
+import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
@@ -15,14 +15,16 @@ import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
+import { useActiveRemote } from "../remote/client.ts";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
 import { PlayerBar } from "./PlayerBar.tsx";
-import { RightPanel } from "./RightPanel.tsx";
+import { RightPanel, RightPanelOver } from "./RightPanel.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 
 const MOBILE = "(max-width: 767px)";
+const WIDE = "(min-width: 1180px)";
 
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
@@ -37,6 +39,8 @@ export function useMediaQuery(query: string): boolean {
 }
 
 export const useIsMobile = () => useMediaQuery(MOBILE);
+
+export const useIsWide = () => useMediaQuery(WIDE);
 
 const ToneContext = createContext<(tone: string) => void>(() => undefined);
 
@@ -91,6 +95,12 @@ function useShortcuts() {
           break;
         case "l":
         case "L": {
+          if (e.shiftKey) {
+            if (!useLocate.getState().lists) return;
+            handled();
+            locatePlaying();
+            break;
+          }
           const song = current(s);
           if (!song) return;
           handled();
@@ -180,13 +190,30 @@ function useCloseOverlaysOnNavigate() {
   }, [pathname]);
 }
 
+function usePanelOver(narrow: boolean): boolean {
+  const { pathname } = useLocation();
+  const panel = useUi((s) => s.rightPanel);
+  const [opened, setOpened] = useState(false);
+  useEffect(() => {
+    if (!narrow) return;
+    const off = useUi.subscribe((s, prev) => {
+      if (s.rightPanel !== prev.rightPanel) setOpened(Boolean(s.rightPanel));
+    });
+    useUi.setState({ rightPanel: null });
+    return off;
+  }, [narrow, pathname]);
+  return narrow && opened && Boolean(panel);
+}
+
 export function Shell() {
   const mobile = useIsMobile();
   const panel = useUi((s) => s.rightPanel);
   const fullScreen = useUi((s) => s.fullScreen);
   const shortcuts = useUi((s) => s.shortcutsOpen);
-  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station));
-  const wide = useMediaQuery("(min-width: 1180px)");
+  const remote = useActiveRemote();
+  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station)) || Boolean(remote);
+  const wide = useIsWide();
+  const panelOver = usePanelOver(!wide && !mobile);
   const spotifyOn = useSpotifyOn();
   const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   useShortcuts();
@@ -219,6 +246,7 @@ export function Shell() {
         <Outlet />
       </Main>
       {showRight ? <RightPanel /> : null}
+      {panelOver && hasSong ? <RightPanelOver /> : null}
       <PlayerBar />
       <TrackMenuHost mobile={mobile} />
       <Tooltips />

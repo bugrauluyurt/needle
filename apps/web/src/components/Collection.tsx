@@ -154,7 +154,7 @@ export function ItemList({ items, empty, compact = false }: { items: CollectionI
         const isPlaying = Boolean(e.contextId) && ctx === e.contextId;
         return (
           <li key={e.key}>
-            <Link to={e.to} className={`lib-item ${pathname === e.to ? "on" : ""}`}>
+            <Link to={e.to} className={`lib-item ${pathname === e.to ? "on" : ""}`} aria-label={`${e.title}, ${e.subtitle}`}>
               {e.art(LIST_ART)}
               <div className="lib-text">
                 <div className={`t ${isPlaying ? "playing" : ""}`}>{e.title}</div>

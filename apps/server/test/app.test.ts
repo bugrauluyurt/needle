@@ -189,6 +189,75 @@ describe("device hub", () => {
     expect(first.readyState).toBe(3);
     expect(hub.devices("alex")).toHaveLength(1);
   });
+
+  const playing = (songId: string, on = true) => ({ type: "state", state: { songId, title: songId, artist: "A", position: 0, duration: 100, playing: on, volume: 1, updatedAt: 0 } });
+  const lastDevices = (socket: FakeSocket) => socket.sent.filter((m) => m.type === "devices").at(-1);
+  const pauses = (socket: FakeSocket) => socket.sent.filter((m) => m.type === "command" && m.command.action === "pause");
+
+  function household() {
+    const hub = new DeviceHub();
+    const mac = new FakeSocket();
+    const phone = new FakeSocket();
+    const guest = new FakeSocket();
+    hub.attach(mac as never, "alex");
+    hub.attach(phone as never, "alex");
+    hub.attach(guest as never, "guest");
+    mac.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
+    phone.say({ type: "hello", device: { id: "phone", name: "iPhone", kind: "phone" } });
+    guest.say({ type: "hello", device: { id: "tv", name: "TV", kind: "desktop" } });
+    return { hub, mac, phone, guest };
+  }
+
+  it("pauses the other playing device when one starts playing", () => {
+    const { mac, phone, guest } = household();
+    mac.say(playing("s1"));
+    guest.say(playing("s9"));
+    expect(pauses(mac)).toHaveLength(0);
+
+    phone.say(playing("s2"));
+    expect(pauses(mac)).toEqual([{ type: "command", from: "phone", command: { action: "pause" } }]);
+    expect(pauses(phone)).toHaveLength(0);
+    expect(pauses(guest)).toHaveLength(0);
+
+    phone.say(playing("s3"));
+    expect(pauses(mac)).toHaveLength(1);
+  });
+
+  it("leaves paused devices alone", () => {
+    const { mac, phone } = household();
+    mac.say(playing("s1", false));
+    phone.say(playing("s2"));
+    expect(pauses(mac)).toHaveLength(0);
+  });
+
+  it("tells every device which one is active", () => {
+    const { mac, phone, guest } = household();
+    expect(lastDevices(mac)).toMatchObject({ activeId: null });
+    mac.say(playing("s1"));
+    expect(lastDevices(phone)).toMatchObject({ activeId: "mac" });
+    mac.say(playing("s1", false));
+    expect(lastDevices(phone)).toMatchObject({ activeId: "mac" });
+    phone.say(playing("s2"));
+    expect(lastDevices(mac)).toMatchObject({ activeId: "phone" });
+    expect(lastDevices(guest)).toMatchObject({ activeId: null });
+  });
+
+  it("forgets the active device when it disconnects", () => {
+    const { mac, phone } = household();
+    mac.say(playing("s1"));
+    mac.close();
+    expect(lastDevices(phone)).toMatchObject({ activeId: null });
+  });
+
+  it("keeps the active device when it reconnects under the same id", () => {
+    const { hub, mac, phone } = household();
+    mac.say(playing("s1"));
+    const again = new FakeSocket();
+    hub.attach(again as never, "alex");
+    again.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
+    expect(mac.readyState).toBe(3);
+    expect(lastDevices(phone)).toMatchObject({ activeId: "mac" });
+  });
 });
 
 describe("people and permissions", () => {

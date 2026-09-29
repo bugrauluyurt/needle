@@ -7,9 +7,9 @@ const DELAY = 450;
 const EDGE = 8;
 const SKIP = ".hover-play, .q-play, .row-play, [data-no-tip]";
 
-function tipFor(el: Element): Tip | null {
+function tipFor(el: HTMLElement): Tip | null {
   const text = el.getAttribute("aria-label");
-  if (!text || el.textContent?.trim() || el.matches(SKIP)) return null;
+  if (!text || el.innerText.trim() || el.matches(SKIP)) return null;
   const r = el.getBoundingClientRect();
   const below = r.top < 56;
   return { text, key: el.getAttribute("data-key"), x: r.left + r.width / 2, y: below ? r.bottom + 8 : r.top - 8, below };
@@ -30,15 +30,15 @@ export function Tooltips() {
     };
     const over = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
-      const el = (e.target as Element | null)?.closest("button[aria-label], a[aria-label]") ?? null;
+      const el = (e.target as Element | null)?.closest<HTMLElement>("button[aria-label], a[aria-label]") ?? null;
       if (el === current) return;
       hide();
       current = el;
       if (el) timer = window.setTimeout(() => setTip(tipFor(el)), DELAY);
     };
     const focus = (e: FocusEvent) => {
-      const el = e.target as Element;
-      if (el.matches(":focus-visible") && el.matches("button[aria-label], a[aria-label]")) setTip(tipFor(el));
+      const el = e.target;
+      if (el instanceof HTMLElement && el.matches(":focus-visible") && el.matches("button[aria-label], a[aria-label]")) setTip(tipFor(el));
     };
     window.addEventListener("pointerover", over);
     window.addEventListener("pointerdown", hide, true);
