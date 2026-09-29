@@ -1,3 +1,4 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
@@ -176,12 +177,18 @@ function NowView() {
   );
 }
 
-export function RightPanel() {
+function usePanelTitle(): string {
   const panel = useUi((s) => s.rightPanel);
   const song = useCurrentSong();
   const contextName = usePlayer((s) => s.context?.name);
+  return panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : (contextName ?? song?.album ?? "Now playing");
+}
+
+export function RightPanel() {
+  const panel = useUi((s) => s.rightPanel);
+  const song = useCurrentSong();
+  const title = usePanelTitle();
   if (!panel) return null;
-  const title = panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : (contextName ?? song?.album ?? "Now playing");
   return (
     <aside className="right" aria-label={title}>
       <div className="rp-head">
@@ -201,5 +208,32 @@ export function RightPanel() {
         {panel === "now" ? <NowView /> : panel === "queue" ? <QueueView /> : song ? <LyricsView song={song} variant="panel" /> : <p className="panel-empty">Play a song to see its lyrics.</p>}
       </div>
     </aside>
+  );
+}
+
+export function RightPanelOver() {
+  const title = usePanelTitle();
+  const opener = useRef<HTMLElement | null>(null);
+  return (
+    <Dialog.Root open onOpenChange={(open) => !open && useUi.setState({ rightPanel: null })}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="scrim as-scrim" />
+        <Dialog.Content
+          className="right-over"
+          aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            const el = document.activeElement;
+            opener.current = el instanceof HTMLElement ? el : null;
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            opener.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">{title}</Dialog.Title>
+          <RightPanel />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
