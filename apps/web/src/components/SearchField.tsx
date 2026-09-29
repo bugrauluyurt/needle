@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon.tsx";
 
 type Props = {
@@ -9,15 +9,19 @@ type Props = {
   variant: "top" | "page" | "inline";
   collapsible?: boolean;
   autoFocus?: boolean;
+  focusKey?: string | undefined;
   busy?: boolean;
   onCommit?: () => void;
   onFocusChange?: (focused: boolean) => void;
   className?: string;
 };
 
-export function SearchField({ value, onChange, label, placeholder = label, variant, collapsible = false, autoFocus = false, busy = false, onCommit, onFocusChange, className }: Props) {
+export function SearchField({ value, onChange, label, placeholder = label, variant, collapsible = false, autoFocus = false, focusKey, busy = false, onCommit, onFocusChange, className }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (focusKey) input.current?.focus();
+  }, [focusKey]);
   const expanded = !collapsible || open || Boolean(value);
   const cls = ["sf", `sf-${variant}`, collapsible ? "collapsible" : "", expanded ? "open" : "", value ? "has-value" : "", busy ? "busy" : "", className ?? ""].filter(Boolean).join(" ");
   return (

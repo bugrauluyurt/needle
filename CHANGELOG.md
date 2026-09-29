@@ -28,6 +28,10 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
 - Song lists show a Now playing button when the playing song is scrolled out of view;
   it jumps back to the song. Shift+L and clicking the song title in the player do the same.
 - The play button on song rows fades in smoothly on hover.
+- Search from every page: the search field sits in the middle of the top bar, and on
+  phones a search button at the top right opens Search with the keyboard up.
+- Scroll past a page's title and its name and cover appear in the top bar, while the
+  search field slides aside to make room.
 
 ### Fixed
 - The song table in Your library lines up with the page edges, without extra side padding.
@@ -39,6 +43,9 @@ A bot keeps a "Release vX.Y.Z" pull request open with them; merging it releases.
   Now playing open as a panel over the page, and long titles shrink to fit.
 - A device no longer shows a song as playing after another device takes over: starting
   playback on one device pauses the others, including Spotify playback moved elsewhere.
+- The `/` shortcut opens Search with the cursor in the search field again.
+- On phones, the search bar in Search and Your library keeps space above it once it
+  sticks to the top of the screen.
 
 ## 1.5.0 - 2026-09-29
 

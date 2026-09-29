@@ -17,7 +17,8 @@ import { useSession } from "../state/session.ts";
 import { useUi } from "../state/ui.ts";
 import { LikeCurrent, LiveLabel, SeekBar, Transport } from "./PlayerBar.tsx";
 import { QueueView } from "./RightPanel.tsx";
-import { AccountMenu } from "./TopBar.tsx";
+import { AccountMenu, useOpenSearch } from "./TopBar.tsx";
+import { useScrolledTitle } from "./useScrolledTitle.ts";
 
 const TABS: [string, string, IconName][] = [["/", "Home", "home"], ["/search", "Search", "search"], ["/library", "Library", "library"], ["/you", "You", "user"]];
 
@@ -60,11 +61,23 @@ export function MiniPlayer() {
   );
 }
 
+function SearchButton({ className }: { className: string }) {
+  const { pathname } = useLocation();
+  const openSearch = useOpenSearch();
+  if (pathname === "/search") return null;
+  return (
+    <button type="button" className={className} aria-label="Search" onClick={openSearch}>
+      <Icon name="search" size={22} />
+    </button>
+  );
+}
+
 export function MobileHeader({ title, actions }: { title: string; actions?: ReactNode }) {
   return (
     <header className="ph-h">
       <AccountMenu size={34} />
       <h1>{title}</h1>
+      <SearchButton className="icon-btn light" />
       {actions}
     </header>
   );
@@ -74,10 +87,10 @@ const GLASS_AFTER_PX = 160;
 
 export function MobileBack() {
   const navigate = useNavigate();
-  const { key } = useLocation();
   const scroller = useScrollContainer();
   const bar = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLSpanElement>(null);
+  useScrolledTitle(bar, title);
   useEffect(() => {
     const main = scroller?.current;
     const el = bar.current;
@@ -85,26 +98,15 @@ export function MobileBack() {
     const glass = () => el.style.setProperty("--p", String(Math.min(1, main.scrollTop / GLASS_AFTER_PX)));
     glass();
     main.addEventListener("scroll", glass, { passive: true });
-    const heading = main.querySelector("h1");
-    if (title.current) title.current.textContent = heading?.textContent ?? "";
-    const seen = heading
-      ? new IntersectionObserver(([e]) => el.classList.toggle("titled", Boolean(e && !e.isIntersecting && e.boundingClientRect.top < el.offsetHeight)), {
-          root: main,
-          rootMargin: `-${el.offsetHeight}px 0px 0px 0px`,
-        })
-      : null;
-    if (heading) seen?.observe(heading);
-    return () => {
-      main.removeEventListener("scroll", glass);
-      seen?.disconnect();
-    };
-  }, [scroller, key]);
+    return () => main.removeEventListener("scroll", glass);
+  }, [scroller]);
   return (
     <div ref={bar} className="mobile-bar">
-      <button type="button" className="icon-btn light mobile-back" aria-label="Go back" onClick={() => void navigate(-1)}>
+      <button type="button" className="icon-btn light mobile-bar-btn" aria-label="Go back" onClick={() => void navigate(-1)}>
         <Icon name="back" size={24} />
       </button>
       <span ref={title} className="mobile-bar-title" aria-hidden="true" />
+      <SearchButton className="icon-btn light mobile-bar-btn" />
     </div>
   );
 }

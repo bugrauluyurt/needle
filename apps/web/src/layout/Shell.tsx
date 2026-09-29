@@ -13,6 +13,7 @@ import { isIOS, isStandalone } from "../lib/device.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
+import { SearchFocusProxy, useOpenSearch } from "./TopBar.tsx";
 import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
 import { useActiveRemote } from "../remote/client.ts";
@@ -57,6 +58,7 @@ function typing(target: EventTarget | null): boolean {
 function useShortcuts() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const openSearch = useOpenSearch();
   const songLikes = useSongLikes();
   const likes = useRef(songLikes);
   useEffect(() => {
@@ -119,8 +121,7 @@ function useShortcuts() {
           break;
         case "/":
           handled();
-          void navigate("/search");
-          window.setTimeout(() => document.querySelector<HTMLInputElement>(".searchbox input, .psearch input")?.focus(), 50);
+          openSearch();
           break;
         case "q":
         case "Q":
@@ -149,7 +150,7 @@ function useShortcuts() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate, pathname]);
+  }, [navigate, pathname, openSearch]);
 }
 
 function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
@@ -230,6 +231,7 @@ export function Shell() {
         </Main>
         <MiniPlayer />
         <TabBar />
+        <SearchFocusProxy />
         <NowPlayingSheet />
         <TrackMenuHost mobile={mobile} />
         {isIOS && !isStandalone ? <InstallHint /> : null}

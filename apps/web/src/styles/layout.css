@@ -275,12 +275,17 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(auto, 1fr) minmax(0, min(480px, 100%)) minmax(auto, 1fr);
   align-items: center;
   gap: 14px;
-  padding: 14px 24px;
+  padding: 0 24px;
   height: 64px;
-  transition: background 0.25s;
+  transition: background 0.25s, grid-template-columns 0.22s var(--ease-out);
+}
+
+.topbar.titled {
+  grid-template-columns: minmax(auto, 1fr) minmax(0, min(480px, 50%)) minmax(auto, 0fr);
 }
 
 .main[data-scrolled] .topbar {
@@ -288,9 +293,102 @@
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 }
 
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .hist {
   display: flex;
   gap: 8px;
+}
+
+.top-title {
+  flex: 1 1 0;
+  width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(8px);
+  visibility: hidden;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out), visibility 0s 0.2s;
+}
+
+.topbar.titled .top-title {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.top-cover {
+  width: 32px;
+  flex: none;
+}
+
+.top-cover > .art {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.top-cover.round > .art {
+  border-radius: 50%;
+}
+
+.top-cover .art img {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+.top-cover .art :is(small, b),
+.top-cover .art::after {
+  display: none;
+}
+
+.top-cover .art svg {
+  width: 16px;
+  height: 16px;
+}
+
+.top-name {
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-search {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.top-search .sf {
+  width: 100%;
+  background: color-mix(in oklab, var(--label) 8%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5) brightness(0.85);
+  backdrop-filter: blur(20px) saturate(1.5) brightness(0.85);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 6%, transparent);
+  transition: background-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.top-search .sf:hover {
+  background: color-mix(in oklab, var(--label) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 8%, transparent);
+}
+
+.top-search .sf:focus-within {
+  background: color-mix(in oklab, var(--label) 14%, transparent);
+  box-shadow: inset 0 0 0 2px var(--amber);
 }
 
 .circle {
@@ -314,7 +412,7 @@
 }
 
 .top-right {
-  margin-left: auto;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 10px;

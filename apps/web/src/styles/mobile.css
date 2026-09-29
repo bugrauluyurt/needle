@@ -50,6 +50,11 @@
   text-overflow: ellipsis;
 }
 
+.ph-h:has(+ .psearch-wrap) {
+  position: relative;
+  z-index: 6;
+}
+
 .ph-h .avatar {
   box-shadow: none;
 }
@@ -84,7 +89,7 @@
   margin-bottom: calc(-1 * var(--bar-h));
 }
 
-.mobile-back {
+.mobile-bar-btn {
   flex: none;
   width: 38px;
   height: 38px;
@@ -92,6 +97,7 @@
 }
 
 .mobile-bar-title {
+  flex: 1;
   min-width: 0;
   font-family: var(--display);
   font-size: 16px;
@@ -111,11 +117,24 @@
 }
 
 .psearch-wrap {
-  padding: 0 16px 18px;
+  --gap-above: max(10px, var(--safe-top));
+  padding: var(--gap-above) 16px 18px;
+  margin-top: calc(-1 * var(--gap-above));
   position: sticky;
   top: 0;
   z-index: 5;
   background: var(--ink);
+}
+
+.search-proxy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
 }
 
 .phone-app .chips {
