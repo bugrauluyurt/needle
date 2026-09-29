@@ -34,30 +34,36 @@
   .app.solo {
     grid-template-columns: 84px minmax(0, 1fr);
   }
-  .app .brand span,
-  .app .nav-btn span,
-  .app .lib-title span,
-  .app .side-lib .chips,
-  .app .lib-tools,
-  .app .lib-head .icon-btn,
-  .app .lib-text,
-  .app .lib-item .eq {
+  .side .brand span,
+  .side .nav-btn span,
+  .side .lib-title span,
+  .side-lib .chips,
+  .side .lib-tools,
+  .side .lib-text,
+  .side .lib-item .eq {
     display: none;
   }
-  .app .side-top {
+  .side .side-top {
     padding: 14px 8px 10px;
   }
-  .app .nav-btn,
-  .app .brand {
+  .side .nav-btn,
+  .side .brand {
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
   }
-  .app .lib-head {
-    justify-content: center;
-    padding: 14px 0 6px;
+  .side .lib-head {
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 0 8px;
   }
-  .app .lib-item {
+  .side .lib-title {
+    padding: 5px;
+  }
+  .side .lib-head-acts {
+    flex-direction: column;
+  }
+  .side .lib-item {
     justify-content: center;
   }
 }
