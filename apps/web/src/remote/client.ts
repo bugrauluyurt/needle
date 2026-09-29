@@ -10,9 +10,9 @@ import { current, usePlayer } from "../player/store.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
 
-type RemoteStore = { connected: boolean; devices: Device[] };
+type RemoteStore = { connected: boolean; devices: Device[]; activeId: string | null };
 
-export const useRemote = create<RemoteStore>(() => ({ connected: false, devices: [] }));
+export const useRemote = create<RemoteStore>(() => ({ connected: false, devices: [], activeId: null }));
 
 const STATE_EVERY = 5_000;
 const RETRY_MAX = 30_000;
@@ -117,12 +117,12 @@ function connect() {
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(String(e.data)) as ServerMessage;
-    if (msg.type === "devices") useRemote.setState({ devices: msg.devices });
+    if (msg.type === "devices") useRemote.setState({ devices: msg.devices, activeId: msg.activeId });
     else receive(msg.from, msg.command);
   };
   ws.onclose = (e) => {
     if (socket === ws) socket = null;
-    useRemote.setState({ connected: false, devices: [] });
+    useRemote.setState({ connected: false, devices: [], activeId: null });
     if (stopped || e.code === REPLACED_CLOSE_CODE) return;
     window.setTimeout(connect, retry);
     retry = Math.min(RETRY_MAX, retry * 2);

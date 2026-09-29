@@ -122,7 +122,7 @@ export type ClientMessage =
   | { type: "command"; to: string; command: RemoteCommand };
 
 export type ServerMessage =
-  | { type: "devices"; devices: Device[] }
+  | { type: "devices"; devices: Device[]; activeId: string | null }
   | { type: "command"; from: string; command: RemoteCommand };
 
 export type SpotifyPlaylist = {
