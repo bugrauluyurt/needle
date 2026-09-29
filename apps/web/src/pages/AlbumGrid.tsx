@@ -51,7 +51,7 @@ export default function AlbumGrid() {
   }, [q]);
   const sorts: SortOption[] = [["default", ORDERS[listType] ?? title ?? ""], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year]];
   const c = useCollectionView(`albums-${type}`, sorts);
-  const items = useMemo(() => sortItems((q.data?.pages.flat() ?? []).map((a) => albumItem(a)), c.sort), [q.data, c.sort]);
+  const items = useMemo(() => sortItems((q.data?.pages.flat() ?? []).map((a) => albumItem(a)), c.order), [q.data, c.order]);
   if (!title) return <NotFoundState what="page" />;
   return (
     <>
@@ -59,7 +59,7 @@ export default function AlbumGrid() {
       <div className="pad">
         <div className="library-head">
           <h1 className="hello">{title}</h1>
-          <CollectionTools sorts={sorts} sort={c.sort} onSort={c.setSort} view={c.view} onView={c.setView} />
+          <CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
         </div>
         <CollectionBody items={items} view={c.view} empty="No albums here yet." {...(q.isLoading || q.isFetchingNextPage ? { loading: <CardSkeletons n={12} /> } : {})} />
         <div ref={sentinel} />

@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent } from "react";
+import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
 import { artistName, clock } from "../lib/format.ts";
@@ -16,8 +16,12 @@ import { useScrollContainer } from "./ScrollContext.ts";
 import type { TrackMenuExtra } from "./TrackMenu.tsx";
 import { openTrackMenu, TrackMoreButton } from "./TrackMenu.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
+import { nextOrder } from "../lib/order.ts";
+import { AS_GIVEN, shownSongs } from "../lib/songs.ts";
+import type { SongOrder, SongSort } from "../lib/songs.ts";
+import { SortArrow } from "./Collection.tsx";
 
-export type TrackColumn = { label: string; value: (song: Song, index: number) => string; width?: string };
+export type TrackColumn = { label: string; value: (song: Song, index: number) => string; width?: string; sort?: SongSort };
 
 type TrackListProps = {
   songs: Song[];
@@ -32,6 +36,9 @@ type TrackListProps = {
   className?: string;
   limit?: number;
   onPlay?: (index: number) => void;
+  order?: SongOrder;
+  onOrder?: (order: SongOrder) => void;
+  fallback?: SongOrder;
 };
 
 const ROW = 56;
@@ -171,17 +178,36 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
   );
 });
 
-export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay }: TrackListProps) {
+function SortHeader({ label, sort, order, onSort, className, children }: { label: string; sort: SongSort; order: SongOrder; onSort: (sort: SongSort) => void; className?: string; children?: ReactNode }) {
+  const active = order.key === sort;
+  const state = active ? (order.desc ? "descending" : "ascending") : "none";
+  return (
+    <span className={["sortable", active ? "on" : "", className ?? ""].filter(Boolean).join(" ")} role="columnheader" aria-sort={state}>
+      <button type="button" aria-label={`Sort by ${label.toLowerCase()}`} onClick={() => onSort(sort)} data-no-tip>
+        {children ?? label}
+        <SortArrow desc={active && order.desc} />
+      </button>
+    </span>
+  );
+}
+
+export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay, order, onOrder, fallback = AS_GIVEN }: TrackListProps) {
   const currentId = usePlayer((s) => s.items[s.index]?.song.id);
   const paused = usePlayer((s) => !s.playing);
   const likes = useSongLikes();
   const downloaded = useOffline((s) => s.songs);
   const mixed = useMemo(() => songs.some((s) => s.source === "spotify") && songs.some((s) => s.source !== "spotify"), [songs]);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [own, setOwn] = useState(fallback);
+  const current = order ?? own;
+  const sortBy = useCallback((sort: SongSort) => (onOrder ?? setOwn)(nextOrder(current, sort, fallback)), [onOrder, current, fallback]);
+  const list = useMemo(() => (order ? songs : shownSongs(songs, own, "")), [order, songs, own]);
   const dragFrom = useRef<number | null>(null);
-  const shown = limit ? songs.slice(0, limit) : songs;
+  const shown = limit ? list.slice(0, limit) : list;
 
-  const play = useCallback((i: number) => (onPlay ? onPlay(i) : player.playSongs(songs, i, context)), [songs, context, onPlay]);
+  const resorted = !order && own !== fallback;
+  const play = useCallback((i: number) => (onPlay && !resorted ? onPlay(i) : player.playSongs(list, i, context)), [list, context, onPlay, resorted]);
+  const select = useCallback((i: number) => setSelected(list[i]?.id ?? null), [list]);
   const like = likes.setLiked;
 
   const scroller = useScrollContainer();
@@ -222,10 +248,10 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
       fromSpotify={mixed && song.source === "spotify"}
-      selected={selected === i}
+      selected={selected === song.id}
       draggable={Boolean(onReorder)}
       extra={menuExtra?.(song, i)}
-      onSelect={setSelected}
+      onSelect={select}
       onPlay={play}
       onLike={like}
       onDragStart={(from) => (dragFrom.current = from)}
@@ -242,13 +268,15 @@ export function TrackList({ songs, context, art = false, album = false, column, 
     <div className={cols} role="table" aria-label={context.name} style={column?.width ? ({ "--col": column.width } as CSSProperties) : undefined}>
       {header ? (
         <div className="th" role="row">
-          <span className="r" role="columnheader">#</span>
-          <span role="columnheader">Title</span>
-          {album ? <span role="columnheader">Album</span> : null}
-          {column ? <span className="col" role="columnheader">{column.label}</span> : null}
-          <span className="r" role="columnheader" aria-label="Duration">
-            <Icon name="clock" size={16} />
+          <span className="r" role="columnheader">
+            <button type="button" className="th-reset" aria-label="Original order" disabled={current.key === fallback.key && current.desc === fallback.desc} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
           </span>
+          <SortHeader label="Title" sort="title" order={current} onSort={sortBy} />
+          {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} /> : null}
+          {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" /> : <span className="col" role="columnheader">{column.label}</span>) : null}
+          <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r">
+            <Icon name="clock" size={16} />
+          </SortHeader>
         </div>
       ) : null}
       <div ref={listRef} className="tbody" role="rowgroup" style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}>

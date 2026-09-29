@@ -13,7 +13,7 @@ export default function LikedArtistsPage() {
   const mobile = useIsMobile();
   const { data } = useStarred();
   const c = useCollectionView("liked-artists", SORTS);
-  const items = useMemo(() => sortItems((data?.artist ?? []).map((a) => ({ ...artistItem(a), added: a.starred ?? "" })), c.sort), [data, c.sort]);
+  const items = useMemo(() => sortItems((data?.artist ?? []).map((a) => ({ ...artistItem(a), added: a.starred ?? "" })), c.order), [data, c.order]);
   usePageTone(null);
   return (
     <>
@@ -21,7 +21,7 @@ export default function LikedArtistsPage() {
       <div className="pad">
         <div className="library-head">
           <h1 className="hello">Liked artists</h1>
-          <CollectionTools sorts={SORTS} sort={c.sort} onSort={c.setSort} view={c.view} onView={c.setView} />
+          <CollectionTools sorts={SORTS} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
         </div>
         <CollectionBody items={items} view={c.view} empty="Artists you like show up here. Tap the heart on an artist’s page." />
       </div>

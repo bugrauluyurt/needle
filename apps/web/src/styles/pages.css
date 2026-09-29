@@ -772,6 +772,34 @@
   margin-left: 6px;
 }
 
+.lb-form {
+  max-width: 460px;
+  padding: 4px 0 20px;
+  border-bottom: 1px solid var(--groove);
+}
+
+.lb-lede,
+.lb-form .field small {
+  color: var(--sleeve);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.lb-form .field small {
+  display: block;
+  margin-top: 6px;
+}
+
+.lb-form .field a {
+  color: var(--label);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lb-form .btn {
+  margin-top: 18px;
+}
+
 .sp-result {
   background: var(--groove);
   border-radius: 12px;
@@ -892,6 +920,10 @@
 
 .library-page .lib-tools {
   padding: 4px 0 8px;
+}
+
+.library-page .tracks {
+  margin-inline: -24px;
 }
 
 .pad .lib-list {

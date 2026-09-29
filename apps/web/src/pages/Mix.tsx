@@ -5,7 +5,6 @@ import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { longDuration, plural } from "../lib/format.ts";
 import { usePageTone } from "../layout/Shell.tsx";
-import { player } from "../player/controller.ts";
 import { useMixes } from "../queries/hooks.ts";
 
 export default function MixPage() {
@@ -31,7 +30,7 @@ export default function MixPage() {
         <ShuffleButton label={mix.name} onShuffle={() => playMix(mix, true)} />
         <TrackMoreButton songs={mix.songs} className="icon-btn big" size={26} label={`More options for ${mix.name}`} />
       </ActBar>
-      <TrackList songs={mix.songs} context={context} art album onPlay={(i) => player.playSongs(mix.songs, i, context)} />
+      <TrackList songs={mix.songs} context={context} art album />
     </div>
   );
 }

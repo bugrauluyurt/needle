@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
 import { CollectionTools, ItemList, SORT_LABELS, sortItems, useCollectionView } from "../components/Collection.tsx";
-import type { CollectionItem, SortOption } from "../components/Collection.tsx";
+import type { CollectionItem, CollectionOrder, ShowFilter, SortOption } from "../components/Collection.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
 import { useAllAlbums, useArtists, useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
@@ -11,26 +11,31 @@ import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, us
 import { matchesTerms, queryTerms } from "@needle/shared";
 import { spId } from "../lib/spotify.ts";
 import { plural } from "../lib/format.ts";
-import type { CollectionView, LibraryFilter, SortKey } from "../state/ui.ts";
+import type { CollectionView, LibraryFilter, LibraryOrigin } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 
 export type LibraryEntry = CollectionItem & {
-  kind: Exclude<LibraryFilter, null | "spotify" | "downloaded">;
+  kind: Exclude<LibraryFilter, null | "downloaded">;
   spotify?: boolean;
   contextId: string;
   downloaded: boolean;
   added: string;
 };
 
-export type Origin = "all" | "server" | "spotify";
-
-export const ORIGINS: [Origin, string][] = [["all", "Both"], ["server", "Your music"], ["spotify", "Spotify"]];
+const ORIGINS: [LibraryOrigin, string][] = [["all", "Both"], ["server", "Your music"], ["spotify", "Spotify"]];
 
 export const LIBRARY_SORTS: SortOption[] = [["default", "Recents"], ["title", SORT_LABELS.title], ["by", "Creator"]];
 
 export const useLibrarySort = (fallback: CollectionView = "list") => useCollectionView("library", LIBRARY_SORTS, fallback);
 
-export function useLibraryEntries(filter: LibraryFilter, query: string, sort: SortKey, origin: Origin = "all"): LibraryEntry[] {
+export function useLibraryOrigin(): { origin: LibraryOrigin; show: ShowFilter<LibraryOrigin> | undefined } {
+  const picked = useUi((s) => s.libraryOrigin);
+  const spotifyOn = useSpotifyOn();
+  if (!spotifyOn) return { origin: "server", show: undefined };
+  return { origin: picked, show: { value: picked, options: ORIGINS, onChange: (o) => useUi.setState({ libraryOrigin: o }) } };
+}
+
+export function useLibraryEntries(filter: LibraryFilter, query: string, order: CollectionOrder, origin: LibraryOrigin): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
   const { data: albums = [] } = useAllAlbums();
@@ -76,7 +81,6 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
     const matches = (e: LibraryEntry) => {
       if (origin !== "all" && (origin === "spotify") !== Boolean(e.spotify)) return false;
       if (filter === "downloaded") return e.downloaded;
-      if (filter === "spotify") return Boolean(e.spotify);
       return !filter || e.kind === filter;
     };
     const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.spotify ? 2 : 1);
@@ -84,18 +88,17 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, sort: So
       .filter(matches)
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
-    return sortItems(shown, sort);
-  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, sort, origin]);
+    return sortItems(shown, order);
+  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, order, origin]);
 }
 
-const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["spotify", "Spotify"], ["downloaded", "On this device"]];
+const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["downloaded", "On this device"]];
 
 export function LibraryChips() {
   const filter = useUi((s) => s.libraryFilter);
-  const spotifyOn = useSpotifyOn();
   return (
     <div className="chips" role="group" aria-label="Filter your library">
-      {FILTERS.filter(([id]) => id !== "spotify" || spotifyOn).map(([id, label]) => (
+      {FILTERS.map(([id, label]) => (
         <button key={id} type="button" className="pill" aria-pressed={filter === id} onClick={() => useUi.setState({ libraryFilter: filter === id ? null : id })}>
           {label}
         </button>
@@ -108,7 +111,6 @@ const EMPTY: Record<Exclude<LibraryFilter, null>, string> = {
   playlists: "Your playlists show up here. Create one with the + button.",
   albums: "Albums in your library, and ones you save on Spotify, show up here. Get more from Search.",
   artists: "Artists in your library, and ones you follow on Spotify, show up here.",
-  spotify: "Nothing from Spotify yet.",
   downloaded: "Nothing kept on this device yet. Use the download button on an album or playlist to listen offline.",
 };
 
@@ -135,8 +137,9 @@ function Nav({ to, icon, label }: { to: string; icon: IconName; label: string })
 
 export function Sidebar() {
   const filter = useUi((s) => s.libraryFilter);
-  const { sort, setSort } = useLibrarySort();
-  const entries = useLibraryEntries(filter, "", sort);
+  const { order, setOrder } = useLibrarySort();
+  const { origin, show } = useLibraryOrigin();
+  const entries = useLibraryEntries(filter, "", order, origin);
   const navigate = useNavigate();
   const newPlaylist = useNewPlaylist();
   return (
@@ -168,7 +171,7 @@ export function Sidebar() {
         </div>
         <LibraryChips />
         <div className="lib-tools">
-          <CollectionTools sorts={LIBRARY_SORTS} sort={sort} onSort={setSort} />
+          <CollectionTools sorts={LIBRARY_SORTS} order={order} onOrder={setOrder} show={show} />
         </div>
         <ItemList items={entries} empty={libraryEmptyText(filter, "")} />
       </div>

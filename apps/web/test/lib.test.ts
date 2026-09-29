@@ -8,6 +8,9 @@ import { dbToGain } from "../src/player/engine.ts";
 import { albumPath, artistPath } from "../src/lib/paths.ts";
 import { browserChecks } from "../src/lib/connections.ts";
 import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
+import { naturalOrder, nextOrder, pickOrder } from "../src/lib/order.ts";
+import { shownSongs } from "../src/lib/songs.ts";
+import type { Song } from "@needle/shared";
 
 describe("md5", () => {
   it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])("matches node for %j", (s) => {
@@ -188,5 +191,59 @@ describe("browser connection checks", () => {
   it("is happy on the public HTTPS address, and off without PUBLIC_URL", () => {
     expect(browserChecks("https://music.example.com", "https://music.example.com", true).map((c) => c.state)).toEqual(["ok", "ok"]);
     expect(browserChecks(null, "https://music.example.com", true)[1]?.state).toBe("off");
+  });
+});
+
+describe("sort order", () => {
+  const custom = { key: "custom", desc: false } as const;
+
+  it("starts text ascending and dates, plays and years descending", () => {
+    expect(naturalOrder("title")).toEqual({ key: "title", desc: false });
+    expect(naturalOrder("added")).toEqual({ key: "added", desc: true });
+    expect(naturalOrder("plays")).toEqual({ key: "plays", desc: true });
+    expect(naturalOrder("year")).toEqual({ key: "year", desc: true });
+  });
+
+  it("cycles a column: natural, reversed, then back to the page's order", () => {
+    const first = nextOrder(custom, "title", custom);
+    expect(first).toEqual({ key: "title", desc: false });
+    const second = nextOrder(first, "title", custom);
+    expect(second).toEqual({ key: "title", desc: true });
+    expect(nextOrder(second, "title", custom)).toEqual(custom);
+    expect(nextOrder(nextOrder(custom, "added", custom), "added", custom)).toEqual({ key: "added", desc: false });
+  });
+
+  it("switches to another column in its natural direction", () => {
+    expect(nextOrder({ key: "title", desc: true }, "album", custom)).toEqual({ key: "album", desc: false });
+  });
+
+  it("flips the direction when the menu picks the current sort again", () => {
+    expect(pickOrder({ key: "title", desc: false }, "title")).toEqual({ key: "title", desc: true });
+    expect(pickOrder({ key: "title", desc: true }, "added")).toEqual({ key: "added", desc: true });
+  });
+});
+
+describe("shownSongs", () => {
+  const song = (id: string, title: string, duration: number, playCount: number, starred: string): Song => ({ id, title, duration, playCount, starred });
+  const songs = [song("1", "Bravo", 200, 3, "2026-01-02"), song("2", "alpha", 100, 9, "2026-01-03"), song("3", "Charlie", 300, 1, "2026-01-01")];
+  const ids = (list: Song[]) => list.map((s) => s.id);
+
+  it("keeps the given order for custom, whatever the direction", () => {
+    expect(ids(shownSongs(songs, { key: "custom", desc: true }, ""))).toEqual(["1", "2", "3"]);
+  });
+
+  it("sorts titles both ways, ignoring case", () => {
+    expect(ids(shownSongs(songs, { key: "title", desc: false }, ""))).toEqual(["2", "1", "3"]);
+    expect(ids(shownSongs(songs, { key: "title", desc: true }, ""))).toEqual(["3", "1", "2"]);
+  });
+
+  it("sorts by date added, plays and duration", () => {
+    expect(ids(shownSongs(songs, { key: "added", desc: true }, ""))).toEqual(["2", "1", "3"]);
+    expect(ids(shownSongs(songs, { key: "plays", desc: true }, ""))).toEqual(["2", "1", "3"]);
+    expect(ids(shownSongs(songs, { key: "duration", desc: false }, ""))).toEqual(["2", "1", "3"]);
+  });
+
+  it("filters before sorting", () => {
+    expect(ids(shownSongs(songs, { key: "title", desc: false }, "char"))).toEqual(["3"]);
   });
 });

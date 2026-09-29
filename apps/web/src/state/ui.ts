@@ -2,9 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type RightPanel = "now" | "queue" | "lyrics";
-export type LibraryFilter = "playlists" | "albums" | "artists" | "spotify" | "downloaded" | null;
+export type LibraryFilter = "playlists" | "albums" | "artists" | "downloaded" | null;
+export type LibraryOrigin = "all" | "server" | "spotify";
 export type CollectionView = "compact" | "list" | "dense" | "grid";
 export type SortKey = "default" | "added" | "title" | "by" | "year";
+export type CollectionState = { view?: CollectionView; sort?: SortKey; desc?: boolean };
 export type Toast = { id: number; message: string; action?: { label: string; run: () => void } };
 
 type UiState = {
@@ -15,9 +17,12 @@ type UiState = {
   shortcutsOpen: boolean;
   devicesOpen: boolean;
   libraryFilter: LibraryFilter;
-  collections: Record<string, { view: CollectionView; sort: SortKey }>;
+  libraryOrigin: LibraryOrigin;
+  collections: Record<string, CollectionState>;
   toasts: Toast[];
 };
+
+type Persisted = Pick<UiState, "rightPanel" | "libraryFilter" | "libraryOrigin" | "collections">;
 
 export const useUi = create<UiState>()(
   persist(
@@ -29,10 +34,20 @@ export const useUi = create<UiState>()(
       shortcutsOpen: false,
       devicesOpen: false,
       libraryFilter: null as LibraryFilter,
+      libraryOrigin: "all",
       collections: {},
       toasts: [] as Toast[],
     }),
-    { name: "needle.ui", version: 1, partialize: (s) => ({ rightPanel: s.rightPanel, libraryFilter: s.libraryFilter, collections: s.collections }) },
+    {
+      name: "needle.ui",
+      version: 2,
+      partialize: (s): Persisted => ({ rightPanel: s.rightPanel, libraryFilter: s.libraryFilter, libraryOrigin: s.libraryOrigin, collections: s.collections }),
+      migrate: (saved, version) => {
+        const s = saved as Omit<Persisted, "libraryFilter"> & { libraryFilter: LibraryFilter | "spotify" };
+        const spotify = version < 2 && s.libraryFilter === "spotify";
+        return { ...s, libraryFilter: s.libraryFilter === "spotify" ? null : s.libraryFilter, libraryOrigin: spotify ? "spotify" : (s.libraryOrigin ?? "all") };
+      },
+    },
   ),
 );
 

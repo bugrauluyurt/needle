@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { CollectionTools } from "../components/Collection.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { LIKED_SORTS, shownSongs } from "../lib/songs.ts";
-import type { SongSort } from "../lib/songs.ts";
+import { LIKED_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
+import type { SongOrder } from "../lib/songs.ts";
 import { LikedArt } from "../components/Art.tsx";
 import { DownloadButton } from "../components/Buttons.tsx";
 import { ActBar, Hero, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
@@ -23,7 +23,7 @@ export default function LikedPage() {
   const downloaded = useIsDownloaded("liked");
   const [genre, setGenre] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [sort, setSort] = useState<SongSort>("added");
+  const [order, setOrder] = useState<SongOrder>(RECENT_FIRST);
   usePageTone("#6B2A5A");
   const songs = useMemo(() => [...(data?.song ?? [])].sort((a, b) => (b.starred ?? "").localeCompare(a.starred ?? "")), [data]);
   const genres = useMemo(() => {
@@ -31,7 +31,7 @@ export default function LikedPage() {
     for (const s of songs) if (s.genre) counts.set(s.genre, (counts.get(s.genre) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   }, [songs]);
-  const shown = useMemo(() => shownSongs(songs.filter((s) => !genre || s.genre === genre), sort, filter), [songs, genre, sort, filter]);
+  const shown = useMemo(() => shownSongs(songs.filter((s) => !genre || s.genre === genre), order, filter), [songs, genre, order, filter]);
 
   if (isLoading) return <PageSkeleton />;
 
@@ -53,7 +53,7 @@ export default function LikedPage() {
         end={
           <>
             <SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" />
-            <CollectionTools sorts={LIKED_SORTS} sort={sort} onSort={setSort} />
+            <CollectionTools sorts={LIKED_SORTS} order={order} onOrder={setOrder} />
           </>
         }
       >
@@ -70,7 +70,7 @@ export default function LikedPage() {
         </div>
       ) : null}
       {songs.length ? (
-        <TrackList songs={shown} context={CONTEXT} art album column={{ label: "Date added", value: (s) => ago(s.starred) }} onPlay={(i) => player.playSongs(shown, i, CONTEXT)} />
+        <TrackList songs={shown} context={CONTEXT} art album column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }} order={order} onOrder={setOrder} fallback={RECENT_FIRST} />
       ) : (
         <div className="pad empty-inline">
           <h2>Songs you like appear here</h2>

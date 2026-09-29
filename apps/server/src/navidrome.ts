@@ -1,4 +1,4 @@
-import type { SubsonicEnvelope } from "@needle/shared";
+import type { Playlist, SubsonicEnvelope } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 
 export type Auth = { user: string; token: string; salt: string };
@@ -10,6 +10,8 @@ export class SubsonicFailure extends Error {
     this.code = code;
   }
 }
+
+export class NavidromeError extends Error {}
 
 const CLIENT = "needle-server";
 const DOWN = -1;
@@ -45,6 +47,28 @@ export class Navidrome {
     const r = body["subsonic-response"];
     if (r.status !== "ok") throw new SubsonicFailure(r.error?.code ?? 0, r.error?.message ?? "Navidrome request failed");
     return r;
+  }
+
+  async upsertPlaylist(auth: Auth, name: string, songIds: string[]): Promise<string> {
+    const { playlists } = await this.call<{ playlists: { playlist?: Playlist[] } }>(auth, "getPlaylists");
+    const existing = (playlists.playlist ?? []).find((p) => p.name === name && (p.owner ?? auth.user) === auth.user);
+    const r = await this.call<{ playlist: Playlist }>(auth, "createPlaylist", existing ? { playlistId: existing.id, songId: songIds } : { name, songId: songIds });
+    return r.playlist.id;
+  }
+
+  async linkListenBrainz(user: string, password: string, token: string | null): Promise<void> {
+    const send = (path: string, init: RequestInit) =>
+      fetch(`${this.url}${path}`, { ...init, headers: { "content-type": "application/json", ...init.headers }, signal: AbortSignal.timeout(20_000) }).catch(() => {
+        throw new NavidromeError("Navidrome isn't responding");
+      });
+    const login = await send("/auth/login", { method: "POST", body: JSON.stringify({ username: user, password }) });
+    if (login.status === 401) throw new NavidromeError("Navidrome didn't accept that password");
+    if (login.status === 429) throw new NavidromeError("Navidrome is limiting sign-ins. Try again in a minute.");
+    if (!login.ok) throw new NavidromeError(`Navidrome answered ${login.status} to the sign-in`);
+    const { token: jwt } = (await login.json()) as { token: string };
+    const link = await send("/api/listenbrainz/link", { method: token ? "PUT" : "DELETE", headers: { "x-nd-authorization": `Bearer ${jwt}` }, ...(token ? { body: JSON.stringify({ token }) } : {}) });
+    if (link.status === 404) throw new NavidromeError("ListenBrainz is switched off in Navidrome (ND_LISTENBRAINZ_ENABLED)");
+    if (!link.ok) throw new NavidromeError(`Navidrome answered ${link.status} when linking ListenBrainz`);
   }
 
   async verify(auth: Auth): Promise<"ok" | "denied" | "down"> {

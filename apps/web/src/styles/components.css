@@ -586,6 +586,55 @@
   padding-right: 34px;
 }
 
+.th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.th button:hover:not(:disabled),
+.th .sortable.on button {
+  color: var(--label);
+}
+
+.th button:disabled {
+  cursor: default;
+}
+
+.th .sort-arrow {
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.th button:hover .sort-arrow,
+.th button:focus-visible .sort-arrow {
+  opacity: 0.6;
+}
+
+.th .sortable.on .sort-arrow {
+  opacity: 1;
+  color: var(--amber);
+}
+
+.th .r button {
+  flex-direction: row-reverse;
+}
+
+.sort-arrow.up {
+  transform: rotate(180deg);
+}
+
+.coll-sort .sort-arrow {
+  margin-right: -4px;
+  color: var(--amber);
+}
+
 .tr {
   height: 56px;
   border-radius: 6px;

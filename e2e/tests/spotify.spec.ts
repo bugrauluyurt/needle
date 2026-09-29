@@ -10,7 +10,8 @@ test("shows the Spotify library next to your own", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Albums you saved on Spotify" })).toBeVisible();
 
   const side = page.locator("nav.side");
-  await side.getByRole("button", { name: "Spotify", exact: true }).click();
+  await side.getByRole("button", { name: /^Show and sort/ }).click();
+  await page.getByRole("menuitemradio", { name: "Spotify" }).click();
   await expect(side.locator(".lib-item")).toHaveCount(5);
   await expect(side.locator(".lib-item", { hasText: "Liked on Spotify" })).toContainText("3 songs");
   await side.locator(".lib-item", { hasText: "Liked on Spotify" }).click();

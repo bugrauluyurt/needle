@@ -31,6 +31,7 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
 - [Fetching albums with Lidarr](#fetching-albums-with-lidarr)
 - [Fetching single songs with slskd](#fetching-single-songs-with-slskd)
 - [Spotify](#spotify)
+- [ListenBrainz discovery](#listenbrainz-discovery)
 - [Users and permissions](#users-and-permissions)
 - [Configuration reference](#configuration-reference)
 - [Data, backups and updates](#data-backups-and-updates)
@@ -64,6 +65,9 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
   in the browser on that device.
 - **Spotify** (optional): your Spotify library, search and playback next to your own
   music, with an on/off switch per account.
+- **ListenBrainz discovery** (optional, per person): the weekly playlists ListenBrainz
+  makes from what you play, on Home. Play what you have, get the rest from Soulseek,
+  save them as playlists.
 - **On phones:** installs to the home screen, a mini player and full-screen player,
   song options as a sheet from the bottom, and a header that turns to glass and shows
   the page's title as you scroll.
@@ -103,6 +107,8 @@ flowchart LR
   navidrome -- "library 1" --> music
   navidrome -- "library 2" --> singles
   needle -. "song lookups" .-> web["musicbrainz.org<br/>api.deezer.com"]
+  needle -. "discovery playlists" .-> lb["ListenBrainz<br/>(optional)"]
+  navidrome -. "your listens" .-> lb
   app -. "optional, direct" .-> spotify["Spotify API and player"]
   needle -. "token refresh" .-> spotify
 ```
@@ -113,7 +119,7 @@ flowchart LR
   `/api/devices` is a WebSocket for the device list.
 - Lidarr's and slskd's API keys and Spotify's client secret stay on the server.
 - `needle.db` (SQLite) keeps play history, requests, account photos and Spotify
-  sign-ins. Your music, playlists and likes stay in Navidrome.
+  sign-ins and ListenBrainz tokens. Your music, playlists and likes stay in Navidrome.
 
 Fetching a single song, end to end:
 
@@ -300,6 +306,35 @@ calling it for as long as Spotify asks and hides Spotify meanwhile. Each device
 caches your Spotify library for six hours. **Settings → Use Spotify in Needle**
 turns it off for your account on every device.
 
+## ListenBrainz discovery
+
+[ListenBrainz](https://listenbrainz.org) makes playlists from what you listen to:
+**Weekly Exploration** (songs you haven't heard), **Weekly Jams** and **Daily Jams**
+(songs you like, and more like them). Needle shows them on Home under **Made for you
+by ListenBrainz**. Each person connects their own account; nothing needs setting up
+on the server.
+
+1. Create a ListenBrainz account and copy your user token from
+   [listenbrainz.org/settings](https://listenbrainz.org/settings/).
+2. In Needle, open **Settings → ListenBrainz**, paste the token and choose **Connect
+   ListenBrainz**.
+3. ListenBrainz needs your listens to pick songs. Navidrome sends them once it has
+   the token. Either type your Navidrome password in the optional field when you
+   connect, and Needle sets it up in Navidrome for you, or paste the same token in
+   Navidrome under **Settings → Personal → ListenBrainz**.
+
+ListenBrainz builds the first playlists after about a week of listens. A playlist
+page plays the songs already in your library, and anyone who may request music can
+choose **Get N missing** (up to 50 songs at a time, through slskd, into the singles
+folder like any other song) or **Get song** on one of them. **Save as playlist** writes
+the songs you have to a Navidrome playlist.
+
+**Privacy:** Needle keeps your ListenBrainz token in `needle.db` to read your
+playlists. Your Navidrome password is sent once to Navidrome's own sign-in to link
+the token, then dropped: it is never stored, logged or sent anywhere else. Needle
+never sends listens itself, so nothing is counted twice; disconnecting in Needle
+doesn't stop Navidrome sending them (remove the token in Navidrome for that).
+
 ## Users and permissions
 
 Every Navidrome user can sign in.
@@ -310,7 +345,7 @@ Every Navidrome user can sign in.
 | Playlists (private unless made public) | Internet radio stations |
 | Play counts, Your listening, daily mixes | |
 | The queue, and picking up on another device | |
-| Spotify connection and its on/off switch; account photo | |
+| Spotify connection and its on/off switch; ListenBrainz connection; account photo | |
 
 Add users in Navidrome (**Settings → Users**); keep them non-admin. What each person
 may do beyond listening is set in Needle, under **Settings → People** (admins only):
@@ -347,6 +382,7 @@ as unset.
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | | Turns on Spotify (with `PUBLIC_URL`) |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org/ws/2` | Song lookups; the tests point it at a mock |
 | `DEEZER_URL` | `https://api.deezer.com` | Popular songs for an artist |
+| `LISTENBRAINZ_URL` | `https://api.listenbrainz.org` | ListenBrainz playlists; the tests point it at a mock |
 
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's
@@ -354,8 +390,8 @@ nothing to set up. Choose qualities in Needle's Settings.
 
 ## Data, backups and updates
 
-- Back up `DATA_DIR` (`needle.db` holds plays, requests, photos, Spotify sign-ins and
-  who may do what) along with Navidrome's data folder. Your music, playlists and likes live
+- Back up `DATA_DIR` (`needle.db` holds plays, requests, photos, Spotify sign-ins,
+  ListenBrainz tokens and who may do what) along with Navidrome's data folder. Your music, playlists and likes live
   in Navidrome.
 - Offline downloads live in each browser and are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
@@ -382,7 +418,9 @@ nothing to set up. Choose qualities in Needle's Settings.
   Tailscale is the simplest safe setup.
 - API keys and the Spotify client secret never reach the browser.
 - Needle's server fetches only from Navidrome, Lidarr, slskd, MusicBrainz, Deezer,
-  Spotify's accounts service, and the internet radio stations you add.
+  ListenBrainz, Spotify's accounts service, and the internet radio stations you add.
+- A Navidrome password typed in Settings → ListenBrainz is used once to link the token
+  in Navidrome and never stored or logged.
 
 ## Troubleshooting
 
@@ -399,6 +437,7 @@ to fix what's wrong:
 | Song folders | slskd's downloads readable, the singles folder writable |
 | Singles in Navidrome | Navidrome lists the songs Needle fetched |
 | Song lookups | MusicBrainz and Deezer answer |
+| ListenBrainz | Your connection, and whether Navidrome sent a listen in the last 7 days |
 | Spotify | Keys set, and the redirect URI to register |
 
 Common problems:
@@ -429,6 +468,11 @@ Common problems:
 - **Get album never finds rare music through Soulseek:** if Lidarr uses slskd through
   the Tubifarry plugin, that indexer's **automatic search** must be on (Lidarr leaves it
   off for indexers without RSS), and a longer search timeout helps.
+- **Made for you by ListenBrainz stays empty:** ListenBrainz builds the playlists from
+  your listens, weekly. Check Settings → Connections: if Navidrome hasn't sent a listen
+  in 7 days, paste your token in Navidrome (Settings → Personal → ListenBrainz).
+- **Connecting ListenBrainz says Navidrome is limiting sign-ins:** Navidrome allows a
+  few sign-ins a minute; wait a minute and connect again.
 - `docker logs needle` shows the server's errors.
 
 ## Development

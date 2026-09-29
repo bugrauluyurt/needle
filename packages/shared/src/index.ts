@@ -79,6 +79,8 @@ export type Capabilities = {
   spotifyEnabled: boolean;
   songs: boolean;
   publicUrl: string | null;
+  listenbrainzUser: string | null;
+  listenbrainzNavidrome: boolean;
 };
 
 export type CheckState = "ok" | "warn" | "off" | "fail";
@@ -159,6 +161,41 @@ export type RequestItem = {
   created: number;
   user?: string;
 };
+
+export type DiscoveryKind = "weekly-exploration" | "weekly-jams" | "daily-jams" | "other";
+
+export type DiscoveryPlaylist = {
+  id: string;
+  name: string;
+  kind: DiscoveryKind;
+  description: string;
+  date: string;
+  covers: string[];
+  coverArts: string[];
+  total: number;
+  inLibrary: number;
+};
+
+export type DiscoveryTrack = {
+  mbid: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  duration: number | null;
+  coverUrl: string | null;
+  song: Song | null;
+  request: RequestItem | null;
+};
+
+export type DiscoveryDetail = DiscoveryPlaylist & { tracks: DiscoveryTrack[] };
+
+export type ListenBrainzLink = { user: string; navidrome: boolean; navidromeError?: string };
+
+export type ListenBrainzUnlink = { navidrome: boolean; navidromeError?: string };
+
+export const trackCandidate = (t: DiscoveryTrack): SongCandidate => ({
+  id: t.mbid, title: t.title, artist: t.artist, album: t.album, duration: t.duration, year: null, coverUrl: t.coverUrl,
+});
 
 export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean; lastSeen: number | null };
 

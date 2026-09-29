@@ -209,6 +209,72 @@ function SpotifySettings() {
   );
 }
 
+const LB_KEYS = [keys.capabilities, keys.discoveries, keys.discoveryAll, keys.status];
+
+function ListenBrainzSettings() {
+  const caps = useCapabilities();
+  const qc = useQueryClient();
+  const [token, setToken] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () => Promise.all(LB_KEYS.map((queryKey) => qc.invalidateQueries({ queryKey })));
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.listenbrainzConnect(token.trim(), password);
+      setToken("");
+      await refresh();
+      toast(r.navidrome ? "ListenBrainz connected. Navidrome now sends your listens." : `ListenBrainz connected as ${r.user}.${r.navidromeError ? ` ${r.navidromeError}.` : ""}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ListenBrainz didn’t answer. Try again in a moment.");
+    } finally {
+      setPassword("");
+      setBusy(false);
+    }
+  };
+  const disconnect = () => void api.listenbrainzDisconnect("").then(refresh, (err: unknown) => toast(err instanceof Error ? err.message : "Couldn’t disconnect"));
+  const user = caps.data?.listenbrainzUser;
+  if (user) {
+    return (
+      <>
+        <Row title={`Connected as ${user}`} hint="Home shows the playlists ListenBrainz makes for you. Needle never sends listens itself.">
+          <button type="button" className="btn ghost sm" onClick={disconnect}>Disconnect</button>
+        </Row>
+        <Row
+          title="Your listens"
+          hint={caps.data?.listenbrainzNavidrome
+            ? "Navidrome sends what you play to ListenBrainz, so the playlists follow your listening. Disconnecting here doesn’t stop that; remove the token in Navidrome to stop it."
+            : "To send what you play, open Navidrome, go to Settings → Personal → ListenBrainz and paste the same token. Skip this if you already have."}
+        >
+          {caps.data?.listenbrainzNavidrome ? <span className="ok">Navidrome sends them</span> : <span className="muted">Not from Navidrome yet</span>}
+        </Row>
+      </>
+    );
+  }
+  return (
+    <form className="lb-form" onSubmit={(e) => void connect(e)}>
+      <p className="lb-lede">
+        ListenBrainz makes playlists from what you play: new songs to discover every week and the ones you keep coming back to. Needle shows them on Home and fetches the songs you don’t have.
+      </p>
+      <label className="field">
+        <span>ListenBrainz user token</span>
+        <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} required />
+        <small>Copy it from <a href="https://listenbrainz.org/settings/" target="_blank" rel="noopener noreferrer">listenbrainz.org/settings</a>.</small>
+      </label>
+      <label className="field">
+        <span>Navidrome password (optional)</span>
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+        <small>Used once to turn on scrobbling in Navidrome, never stored. Leave it empty to paste the token in Navidrome yourself.</small>
+      </label>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      <button type="submit" className="btn light sm" disabled={busy || !token.trim()}>{busy ? "Connecting…" : "Connect ListenBrainz"}</button>
+    </form>
+  );
+}
+
 const CHECK_WORDS: Record<CheckState, string> = { ok: "Working", warn: "Needs a look", off: "Off", fail: "Not working" };
 
 function Connections({ publicUrl }: { publicUrl: string | null }) {
@@ -370,6 +436,8 @@ export default function SettingsPage() {
             {canRequest ? <span className="ok">On</span> : <span className="muted">Off</span>}
           </Row>
         )}
+        <h2>ListenBrainz</h2>
+        <ListenBrainzSettings />
         {caps.data?.spotify || admin ? (
           <>
             <h2>Spotify</h2>

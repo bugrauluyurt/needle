@@ -13,7 +13,40 @@ const newest = (albums: Album[]) => albums.toSorted((a, b) => (b.created ?? "").
 const covers = (albums: Album[]) => albums.filter((a) => a.coverArt).slice(0, COVERS).map((a) => ({ id: a.id, ...(a.coverArt ? { coverArt: a.coverArt } : {}) }));
 const genresOf = (a: Album) => (a.genres?.length ? a.genres.map((g) => g.name) : a.genre ? [a.genre] : []);
 
-type Index = { songs: Song[]; albums: Album[]; artists: Artist[]; scan: string; checked: number };
+export type Matcher = { byMbid: Map<string, Song>; byKey: Map<string, Song> };
+type Index = { songs: Song[]; albums: Album[]; artists: Artist[]; scan: string; checked: number; matcher?: Matcher };
+
+export function normalize(s: string): string {
+  return s
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s*[([].*?(feat|ft\.|with|remaster|version|edit|live|mono|stereo|deluxe|bonus).*?[)\]]/g, "")
+    .replace(/\s+-\s+.*(remaster|version|edit|live|mono|stereo|mix).*$/, "")
+    .replace(/&/g, "and")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+export function matchKey(title: string, artist: string): string {
+  return `${normalize(artist)}|${normalize(title)}`;
+}
+
+const LEAD_ARTIST = /\s+(?:feat\.?|ft\.?|featuring|with|x|&|and|vs\.?)\s+|\s*[,;/]\s*/i;
+
+export function findSong(m: Matcher, t: { mbid?: string; title: string; artist: string }): Song | undefined {
+  const lead = t.artist.split(LEAD_ARTIST)[0] ?? t.artist;
+  return (t.mbid ? m.byMbid.get(t.mbid) : undefined) ?? m.byKey.get(matchKey(t.title, t.artist)) ?? m.byKey.get(matchKey(t.title, lead));
+}
+
+function buildMatcher(songs: Song[]): Matcher {
+  const matcher: Matcher = { byMbid: new Map(), byKey: new Map() };
+  for (const s of songs) {
+    if (s.musicBrainzId) matcher.byMbid.set(s.musicBrainzId, s);
+    for (const name of [s.artist, ...(s.artists ?? []).map((a) => a.name)]) if (name) matcher.byKey.set(matchKey(s.title, name), s);
+  }
+  return matcher;
+}
 
 function ranked<T>(items: T[], terms: string[], name: (item: T) => string, fields: (item: T) => (string | undefined)[], limit: number): T[] {
   const first = terms[0] ?? "";
@@ -56,6 +89,12 @@ export class LibrarySearch {
   async songKeys(auth: Auth): Promise<Set<string>> {
     const { songs } = await this.index(auth);
     return new Set(songs.map((s) => songKey(s.artist ?? "", s.title)));
+  }
+
+  async matcher(auth: Auth): Promise<Matcher> {
+    const index = await this.index(auth);
+    index.matcher ??= buildMatcher(index.songs);
+    return index.matcher;
   }
 
   async hasFile(auth: Auth, size: number, suffix: string): Promise<boolean> {

@@ -1,48 +1,46 @@
 import { useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 import type { Song } from "@needle/shared";
-import { matchesTerms, queryTerms } from "@needle/shared";
 import { RowHeader } from "../components/Cards.tsx";
 import { CollectionBody, CollectionTools } from "../components/Collection.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { FilterChips, LIBRARY_FILTERS, LibrarySource } from "../components/SearchResults.tsx";
 import type { Filter } from "../components/SearchResults.tsx";
 import { TrackList } from "../components/TrackList.tsx";
-import { artistName } from "../lib/format.ts";
+import { AS_GIVEN, LIKED_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
+import type { SongOrder } from "../lib/songs.ts";
 import { useDebounced } from "../lib/useDelayed.ts";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
-import { LIBRARY_SORTS, libraryEmptyText, ORIGINS, useLibraryEntries, useLibrarySort, useNewPlaylist } from "../layout/Sidebar.tsx";
-import type { Origin } from "../layout/Sidebar.tsx";
+import { LIBRARY_SORTS, libraryEmptyText, useLibraryEntries, useLibraryOrigin, useLibrarySort, useNewPlaylist } from "../layout/Sidebar.tsx";
 import { SearchHeader } from "../layout/SearchHeader.tsx";
 import { useLibrarySongs } from "../queries/hooks.ts";
-import { useSpotifyLiked, useSpotifyOn } from "../queries/spotify.ts";
-import type { CollectionView, LibraryFilter, SortKey } from "../state/ui.ts";
+import { useSpotifyLiked } from "../queries/spotify.ts";
+import type { CollectionOrder } from "../components/Collection.tsx";
+import type { CollectionView, LibraryFilter, LibraryOrigin } from "../state/ui.ts";
 
 const KINDS: Partial<Record<Filter, LibraryFilter>> = { Albums: "albums", Artists: "artists", Playlists: "playlists" };
 const CONTEXT = { kind: "search" as const, name: "Your library" };
 
-function useSongs(origin: Origin, query: string): { songs: Song[]; pending: boolean } {
+function useSongs(origin: LibraryOrigin, query: string, order: SongOrder): { songs: Song[]; pending: boolean } {
   const server = useLibrarySongs(origin !== "spotify");
   const spotify = useSpotifyLiked();
   return useMemo(() => {
-    const terms = queryTerms(query);
     const mine = origin === "spotify" ? [] : (server.data ?? []);
     const liked = origin === "server" ? [] : (spotify.data ?? []);
-    const songs = [...mine, ...liked].filter((s) => matchesTerms(terms, s.title, artistName(s), s.album));
-    return { songs, pending: origin !== "spotify" && server.isPending };
-  }, [origin, query, server.data, server.isPending, spotify.data]);
+    return { songs: shownSongs([...mine, ...liked], order, query), pending: origin !== "spotify" && server.isPending };
+  }, [origin, query, order, server.data, server.isPending, spotify.data]);
 }
 
-function AllSongs({ origin }: { origin: Origin }) {
-  const { songs, pending } = useSongs(origin, "");
+function AllSongs({ origin, order, onOrder }: { origin: LibraryOrigin; order: SongOrder; onOrder: (o: SongOrder) => void }) {
+  const { songs, pending } = useSongs(origin, "", order);
   if (pending) return <p className="muted source-note"><span className="spin" />Loading your songs…</p>;
   if (!songs.length) return <p className="muted">{origin === "spotify" ? "No liked songs on Spotify yet." : "No songs yet. Get music from Search."}</p>;
-  return <TrackList songs={songs} context={CONTEXT} art album />;
+  return <TrackList songs={songs} context={CONTEXT} art album order={order} onOrder={onOrder} fallback={RECENT_FIRST} />;
 }
 
-function SpotifyMatches({ q, filter, kind, sort, view }: { q: string; filter: Filter; kind: LibraryFilter; sort: SortKey; view: CollectionView }) {
-  const entries = useLibraryEntries(kind, q, sort, "spotify");
-  const { songs } = useSongs("spotify", q);
+function SpotifyMatches({ q, filter, kind, order, view }: { q: string; filter: Filter; kind: LibraryFilter; order: CollectionOrder; view: CollectionView }) {
+  const entries = useLibraryEntries(kind, q, order, "spotify");
+  const { songs } = useSongs("spotify", q, AS_GIVEN);
   const shownSongs = filter === "All" || filter === "Songs" ? songs : [];
   const shownEntries = filter === "Songs" ? [] : entries;
   if (!shownSongs.length && !shownEntries.length) return <p className="muted source-note">Nothing in your Spotify library matches “{q}”.</p>;
@@ -67,33 +65,33 @@ function SpotifyMatches({ q, filter, kind, sort, view }: { q: string; filter: Fi
 export default function LibraryPage() {
   const mobile = useIsMobile();
   const [filter, setFilter] = useState<Filter>("All");
-  const [picked, setOrigin] = useState<Origin>("all");
+  const [songOrder, setSongOrder] = useState<SongOrder>(RECENT_FIRST);
   const [query, setQuery] = useState("");
   const q = useDebounced(query.trim(), 250);
   const [params] = useSearchParams();
   const location = useLocation();
   const find = params.has("find");
-  const spotifyOn = useSpotifyOn();
-  const origin: Origin = spotifyOn ? picked : "server";
+  const { origin, show } = useLibraryOrigin();
   const kind = KINDS[filter] ?? null;
-  const { sort, setSort, view, setView } = useLibrarySort(mobile ? "list" : "grid");
-  const entries = useLibraryEntries(kind, "", sort, origin);
+  const { order, setOrder, view, setView } = useLibrarySort(mobile ? "list" : "grid");
+  const entries = useLibraryEntries(kind, "", order, origin);
   const newPlaylist = useNewPlaylist();
   usePageTone(null);
   const create = <button type="button" className="icon-btn light" aria-label="Create playlist" onClick={newPlaylist}><Icon name="plus" size={24} /></button>;
-  const show = spotifyOn ? { value: origin, options: ORIGINS, onChange: setOrigin } : undefined;
-  const tools = (sorted: boolean) => (
-    <div className="lib-tools">
-      {sorted ? <CollectionTools sorts={LIBRARY_SORTS} sort={sort} onSort={setSort} view={view} onView={setView} show={show} /> : <CollectionTools sorts={[]} show={show} />}
-    </div>
+  const tools = q ? (
+    <CollectionTools sorts={[]} show={show} />
+  ) : filter === "Songs" ? (
+    <CollectionTools sorts={LIKED_SORTS} order={songOrder} onOrder={setSongOrder} show={show} />
+  ) : (
+    <CollectionTools sorts={LIBRARY_SORTS} order={order} onOrder={setOrder} view={view} onView={setView} show={show} />
   );
   const body = q ? (
     <>
       {origin !== "spotify" ? <LibrarySource q={q} filter={filter} setFilter={setFilter} heading={false} /> : null}
-      {origin !== "server" ? <SpotifyMatches q={q} filter={filter} kind={kind} sort={sort} view={view} /> : null}
+      {origin !== "server" ? <SpotifyMatches q={q} filter={filter} kind={kind} order={order} view={view} /> : null}
     </>
   ) : filter === "Songs" ? (
-    <AllSongs origin={origin} />
+    <AllSongs origin={origin} order={songOrder} onOrder={setSongOrder} />
   ) : (
     <CollectionBody items={entries} view={view} empty={libraryEmptyText(kind, "")} />
   );
@@ -108,7 +106,7 @@ export default function LibraryPage() {
           </div>
         ) : null}
         <FilterChips filters={LIBRARY_FILTERS} value={filter} onChange={setFilter} label="Filter your library" />
-        {tools(!q && filter !== "Songs")}
+        <div className="lib-tools">{tools}</div>
         {body}
       </div>
     </>

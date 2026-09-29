@@ -35,7 +35,7 @@ export default defineConfig({
       url: "http://127.0.0.1:14538/mb/recording",
       reuseExistingServer: false,
       stdout: "ignore",
-      env: { SOULSEEK_DIR: "e2e/.soulseek" },
+      env: { SOULSEEK_DIR: "e2e/.soulseek", MOCK_HOST: "0.0.0.0" },
     },
     {
       command: "node --disable-warning=ExperimentalWarning apps/server/src/index.ts",
@@ -54,6 +54,7 @@ export default defineConfig({
         SINGLES_DIR: "e2e/.singles",
         MUSICBRAINZ_URL: "http://127.0.0.1:14538/mb",
         DEEZER_URL: "http://127.0.0.1:14538/deezer",
+        LISTENBRAINZ_URL: "http://127.0.0.1:14538/lb",
         TZ: "Europe/Istanbul",
       },
     },

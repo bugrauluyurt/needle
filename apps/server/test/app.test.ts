@@ -8,6 +8,8 @@ import { openDatabase } from "../src/db.ts";
 import { DeviceHub } from "../src/devices.ts";
 
 const ND = "http://navidrome.test";
+const LB = "http://lb.test";
+const MBID = "11111111-1111-4111-8111-111111111111";
 const good = { "x-needle-user": "alex", "x-needle-token": "tok", "x-needle-salt": "salt" };
 
 function fakeNavidrome() {
@@ -15,6 +17,10 @@ function fakeNavidrome() {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
     const params = init?.body instanceof URLSearchParams ? init.body : url.searchParams;
     const authed = params.get("u") === "alex" && params.get("t") === "tok";
+    if (url.origin === LB) {
+      const valid = new Headers(init?.headers).get("authorization") === "Token good-token";
+      return Promise.resolve(new Response(JSON.stringify(valid ? { valid: true, user_name: "alexlb" } : { valid: false }), { headers: { "content-type": "application/json" } }));
+    }
     const json = (body: object) => Promise.resolve(new Response(JSON.stringify({ "subsonic-response": { status: authed ? "ok" : "failed", ...(authed ? body : { error: { code: 40, message: "Wrong username or password" } }) } }), { headers: { "content-type": "application/json" } }));
     if (url.pathname.startsWith("/rest/ping")) return json({});
     if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: true } });
@@ -40,7 +46,7 @@ describe("server", () => {
   let app: ReturnType<typeof createApp>["app"];
   beforeEach(() => {
     fakeNavidrome();
-    app = createApp(loadConfig({ navidromeUrl: ND, dataDir: ":memory:", webDist: "/nonexistent", lidarr: null, spotify: null }), openDatabase(":memory:")).app;
+    app = createApp(loadConfig({ navidromeUrl: ND, listenbrainzUrl: LB, dataDir: ":memory:", webDist: "/nonexistent", lidarr: null, spotify: null, soulseek: null }), openDatabase(":memory:")).app;
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -86,8 +92,25 @@ describe("server", () => {
   });
 
   it("reports what's switched on", async () => {
-    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ admin: true, lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, spotifyEnabled: false, songs: false, publicUrl: null });
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toEqual({ admin: true, lidarr: false, spotify: false, spotifyConnected: false, spotifyPlayback: false, spotifyReconnect: false, spotifyEnabled: false, songs: false, publicUrl: null, listenbrainzUser: null, listenbrainzNavidrome: false });
     expect((await app.request("/api/lidarr/search?q=air", { headers: good })).status).toBe(404);
+  });
+
+  it("connects ListenBrainz with a valid token and keeps its playlists behind the connection", async () => {
+    const put = (body: object) => app.request("/api/listenbrainz", { method: "PUT", headers: { ...good, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const notYet = await app.request("/api/listenbrainz/playlists", { headers: good });
+    expect(notYet.status).toBe(409);
+    expect(await notYet.json()).toEqual({ error: "Connect ListenBrainz in Settings first" });
+    expect((await put({ token: "  " })).status).toBe(400);
+    const bad = await put({ token: "not-a-token", password: "hunter2" });
+    expect(bad.status).toBe(400);
+    expect(JSON.stringify(await bad.json())).not.toContain("hunter2");
+    expect(await (await put({ token: "good-token" })).json()).toEqual({ user: "alexlb", navidrome: false });
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toMatchObject({ listenbrainzUser: "alexlb", listenbrainzNavidrome: false });
+    expect((await app.request("/api/listenbrainz/playlists/not-an-mbid", { headers: good })).status).toBe(404);
+    expect((await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, { method: "POST", headers: good })).status).toBe(404);
+    expect((await app.request("/api/listenbrainz", { method: "DELETE", headers: good })).status).toBe(200);
+    expect(await (await app.request("/api/capabilities", { headers: good })).json()).toMatchObject({ listenbrainzUser: null });
   });
 
   it("proxies Navidrome, caching covers for a year and passing ranges through", async () => {
@@ -187,6 +210,7 @@ describe("people and permissions", () => {
     const config = loadConfig({
       navidromeUrl: ND, dataDir: ":memory:", webDist: "/nonexistent", publicUrl: "https://music.example.com",
       lidarr: { url: "http://lidarr.test", apiKey: "k", qualityProfile: null, rootFolder: null }, spotify: { clientId: "id", clientSecret: "secret" },
+      soulseek: { url: "http://slskd.test", apiKey: "k", downloadsDir: "/tmp/needle-none", singlesDir: "/tmp/needle-none" },
     });
     app = createApp(config, openDatabase(":memory:")).app;
   });
@@ -199,6 +223,7 @@ describe("people and permissions", () => {
     expect(await caps("sam")).toMatchObject({ admin: false, lidarr: false, spotify: false });
     expect((await app.request("/api/lidarr/search?q=ab", { headers: as("sam") })).status).toBe(403);
     expect((await app.request("/api/spotify/token", { headers: as("sam") })).status).toBe(403);
+    expect((await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, { method: "POST", headers: as("sam") })).status).toBe(403);
 
     const put = await app.request("/api/people/sam", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true, canSpotify: true }) });
     expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true, lastSeen: expect.any(Number) as number });

@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import type { ImportedTrack, ImportResult, Playlist, Song, SpotifyPlaylist } from "@needle/shared";
+import type { ImportedTrack, ImportResult, SpotifyPlaylist } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
+import type { LibrarySearch } from "./search.ts";
+import { findSong } from "./search.ts";
 
 const AUTHORIZE = "https://accounts.spotify.com/authorize";
 const TOKEN = "https://accounts.spotify.com/api/token";
@@ -12,7 +14,6 @@ const SCOPES = [
   "playlist-modify-private", "playlist-modify-public", "user-follow-read", "user-follow-modify", "user-read-recently-played",
 ];
 const STATE_TTL = 10 * 60_000;
-const PAGE = 500;
 
 type Tokens = { access_token: string; refresh_token?: string; expires_in: number; scope?: string };
 type SpTrack = { name: string; artists: { name: string }[]; album: { name: string } };
@@ -38,35 +39,21 @@ export class SpotifyError extends Error {
 
 const b64url = (buf: Buffer) => buf.toString("base64url");
 
-export function normalize(s: string): string {
-  return s
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s*[([].*?(feat|ft\.|with|remaster|version|edit|live|mono|stereo|deluxe|bonus).*?[)\]]/g, "")
-    .replace(/\s+-\s+.*(remaster|version|edit|live|mono|stereo|mix).*$/, "")
-    .replace(/&/g, "and")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-export function matchKey(title: string, artist: string): string {
-  return `${normalize(artist)}|${normalize(title)}`;
-}
-
 export class Spotify {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly redirectUri: string;
   private readonly db: DatabaseSync;
   private readonly navidrome: Navidrome;
+  private readonly library: LibrarySearch;
 
-  constructor(opts: { clientId: string; clientSecret: string; publicUrl: string; db: DatabaseSync; navidrome: Navidrome }) {
+  constructor(opts: { clientId: string; clientSecret: string; publicUrl: string; db: DatabaseSync; navidrome: Navidrome; library: LibrarySearch }) {
     this.clientId = opts.clientId;
     this.clientSecret = opts.clientSecret;
     this.redirectUri = `${opts.publicUrl}/api/spotify/callback`;
     this.db = opts.db;
     this.navidrome = opts.navidrome;
+    this.library = opts.library;
   }
 
   connected(user: string): boolean {
@@ -206,40 +193,16 @@ export class Spotify {
     return { name: meta.name, tracks: items.map((i) => i.item ?? i.track).filter((t): t is SpTrack => Boolean(t?.name)).map(toTrack) };
   }
 
-  async libraryIndex(auth: Auth): Promise<Map<string, string>> {
-    const index = new Map<string, string>();
-    for (let offset = 0; ; offset += PAGE) {
-      const r = await this.navidrome.call<{ searchResult3: { song?: Song[] } }>(auth, "search3", {
-        query: "", songCount: PAGE, songOffset: offset, albumCount: 0, artistCount: 0,
-      });
-      const songs = r.searchResult3.song ?? [];
-      for (const s of songs) {
-        const names = [s.artist, ...(s.artists ?? []).map((a) => a.name)].filter((n): n is string => Boolean(n));
-        for (const n of names) index.set(matchKey(s.title, n), s.id);
-      }
-      if (songs.length < PAGE) return index;
-    }
-  }
-
   async import(auth: Auth, source: string): Promise<ImportResult> {
-    const [{ name, tracks }, index] = await Promise.all([this.tracks(auth.user, source), this.libraryIndex(auth)]);
+    const [{ name, tracks }, matcher] = await Promise.all([this.tracks(auth.user, source), this.library.matcher(auth)]);
     const ids: string[] = [];
     const missing: ImportedTrack[] = [];
     for (const t of tracks) {
-      const id = index.get(matchKey(t.title, t.artist));
-      if (id) ids.push(id);
+      const song = findSong(matcher, t);
+      if (song) ids.push(song.id);
       else missing.push(t);
     }
-    let playlistId: string | null = null;
-    if (ids.length) {
-      const title = `${name} (from Spotify)`;
-      const { playlists } = await this.navidrome.call<{ playlists: { playlist?: Playlist[] } }>(auth, "getPlaylists");
-      const existing = (playlists.playlist ?? []).find((p) => p.name === title);
-      const r = await this.navidrome.call<{ playlist: Playlist }>(auth, "createPlaylist", existing
-        ? { playlistId: existing.id, songId: ids }
-        : { name: title, songId: ids });
-      playlistId = r.playlist.id;
-    }
+    const playlistId = ids.length ? await this.navidrome.upsertPlaylist(auth, `${name} (from Spotify)`, ids) : null;
     return { source: name, total: tracks.length, matched: ids.length, playlistId, missing };
   }
 }

@@ -331,6 +331,16 @@
   display: none;
 }
 
+.phone-app .actbar .act-label {
+  display: none;
+}
+
+.phone-app .actbar .btn.sm:has(.act-label) {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
 .phone-app .actbar .icon-btn.big {
   width: 34px;
   height: 34px;
@@ -347,6 +357,11 @@
 .phone-app .tracks.with-album.with-col {
   --cols: minmax(0, 1fr) 32px;
   padding: 0 4px 8px;
+}
+
+.phone-app .library-page .tracks {
+  margin-inline: -16px;
+  padding-inline: 0;
 }
 
 .phone-app .th {

@@ -88,6 +88,29 @@ test("finds songs in a playlist and sorts them", async ({ page }) => {
   await expect(rows).toHaveCount(1);
 });
 
+test("sorts a song table from its column titles, both ways", async ({ page }) => {
+  await signIn(page);
+  await page.locator(".side .lib-item", { hasText: "Late night drive" }).click();
+  const rows = page.locator(".tr .name");
+  await expect(rows.first()).toBeVisible();
+  const title = page.getByRole("columnheader", { name: "Sort by title" });
+  const sorted = (desc: boolean) => async () => {
+    const titles = await rows.allTextContents();
+    const expected = [...titles].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+    return titles.join("|") === (desc ? expected.reverse() : expected).join("|");
+  };
+  await title.getByRole("button").click();
+  await expect(title).toHaveAttribute("aria-sort", "ascending");
+  await expect.poll(sorted(false)).toBe(true);
+  await expect(page.getByRole("button", { name: /^Sort: Title, ascending/ })).toBeVisible();
+  await title.getByRole("button").click();
+  await expect(title).toHaveAttribute("aria-sort", "descending");
+  await expect.poll(sorted(true)).toBe(true);
+  await title.getByRole("button").click();
+  await expect(title).toHaveAttribute("aria-sort", "none");
+  await expect(page.getByRole("button", { name: /^Sort: Custom order/ })).toBeVisible();
+});
+
 test("plays a mix from Home and a genre", async ({ page }) => {
   await signIn(page);
   const mix = page.locator(".card", { hasText: "Synthwave" }).first();

@@ -40,7 +40,7 @@ export default function GenrePage() {
         {songs.length ? (
           <>
             <RowHeader title="Songs" />
-            <TrackList songs={songs} context={context} art album onPlay={(i) => player.playSongs(songs, i, context)} />
+            <TrackList songs={songs} context={context} art album />
           </>
         ) : null}
       </div>
