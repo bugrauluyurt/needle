@@ -14,7 +14,6 @@ jobs:
   release-pr:
     runs-on: ubuntu-24.04
     permissions:
-      actions: write
       contents: write
       pull-requests: write
     env:
@@ -39,8 +38,6 @@ jobs:
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             commit --quiet --all --message "Release v$version"
           git push --force origin release/next
-          # The dispatch can fail for a few seconds after the push creates the branch.
-          gh workflow run ci.yml --ref release/next || { sleep 15; gh workflow run ci.yml --ref release/next; }
 
           notes=$(python3 scripts/changelog.py notes "$version")
           if [[ -n $open_pr ]]; then
