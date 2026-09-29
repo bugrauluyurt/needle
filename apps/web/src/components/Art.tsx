@@ -68,13 +68,21 @@ function ArtImpl({ id, images, version, px, round = false, className, alt = "", 
 
 export const Art = memo(ArtImpl);
 
-export function Collage({ ids, px, className }: { ids: (string | undefined)[]; px: number; className?: string }) {
-  const four = ids.filter(Boolean).slice(0, 4);
-  if (four.length < 4) return <Art id={four[0]} px={px} {...(className ? { className } : {})} />;
+type Tile = { key: string; id?: string; images?: SpImage[] };
+
+export function Collage({ ids = [], urls = [], px, className, eager = false }: { ids?: (string | undefined)[]; urls?: string[]; px: number; className?: string; eager?: boolean }) {
+  const tiles: Tile[] = [
+    ...ids.filter((id): id is string => Boolean(id)).map((id) => ({ key: id, id })),
+    ...urls.map((url) => ({ key: url, images: [{ url }] })),
+  ].slice(0, 4);
+  if (tiles.length < 4) {
+    const first = tiles[0];
+    return <Art id={first?.id} images={first?.images} px={px} eager={eager} {...(className ? { className } : {})} />;
+  }
   return (
     <div className={`art collage ${className ?? ""}`}>
-      {four.map((id) => (
-        <Art key={id} id={id} px={px / 2} />
+      {tiles.map(({ key, ...tile }) => (
+        <Art key={key} {...tile} px={px / 2} eager={eager} />
       ))}
     </div>
   );

@@ -58,15 +58,10 @@ export const useEveryonesRequests = (enabled: boolean) =>
 
 export const usePeople = (enabled: boolean) => useQuery({ queryKey: keys.people, queryFn: api.people, enabled });
 
+const pollFor = (states: string[]) => (states.some((s) => ACTIVE.has(s)) ? REQUEST_POLL_MS : states.includes("wanted") ? WAITING_POLL_MS : false);
+
 export const useRequests = () =>
-  useQuery({
-    queryKey: keys.requests,
-    queryFn: api.requests,
-    refetchInterval: (q) => {
-      const states = q.state.data?.map((r) => r.state) ?? [];
-      return states.some((s) => ACTIVE.has(s)) ? REQUEST_POLL_MS : states.includes("wanted") ? WAITING_POLL_MS : false;
-    },
-  });
+  useQuery({ queryKey: keys.requests, queryFn: api.requests, refetchInterval: (q) => pollFor(q.state.data?.map((r) => r.state) ?? []) });
 
 const DOWNLOADS_IDLE_POLL_MS = 30_000;
 
@@ -87,7 +82,7 @@ export function useGetSong() {
   return (song: SongCandidate) =>
     api.getSong(song).then(
       async () => {
-        await qc.refetchQueries({ queryKey: keys.requests });
+        await Promise.all([qc.refetchQueries({ queryKey: keys.requests }), qc.invalidateQueries({ queryKey: keys.discoveryAll })]);
         toast(`Looking for “${song.title}” on Soulseek`, { label: "Requests", run: () => void navigate("/requests") });
       },
       (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t start the download"),
@@ -160,6 +155,19 @@ export const useSearch = (q: string) =>
   });
 
 export const useMixes = () => useQuery(mixesOptions);
+
+export const useDiscoveries = () => {
+  const connected = Boolean(useCapabilities().data?.listenbrainzUser);
+  return useQuery({ queryKey: keys.discoveries, queryFn: api.discoveries, enabled: connected, staleTime: HOUR_MS });
+};
+
+export const discoveryOptions = (id: string) => queryOptions({ queryKey: keys.discovery(id), queryFn: () => api.discovery(id), staleTime: 60_000 });
+
+export const useDiscovery = (id: string) =>
+  useQuery({
+    ...discoveryOptions(id),
+    refetchInterval: (q) => pollFor(q.state.data?.tracks.flatMap((t) => (t.request ? [t.request.state] : [])) ?? []),
+  });
 
 export const useStats = (period: Period) => useQuery({ queryKey: keys.stats(period), queryFn: () => api.stats(period), placeholderData: keepPreviousData });
 

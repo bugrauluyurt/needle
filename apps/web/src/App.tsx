@@ -20,6 +20,7 @@ const ArtistPage = lazy(() => import("./pages/Artist.tsx"));
 const PlaylistPage = lazy(() => import("./pages/Playlist.tsx"));
 const LikedPage = lazy(() => import("./pages/Liked.tsx"));
 const MixPage = lazy(() => import("./pages/Mix.tsx"));
+const DiscoveryPage = lazy(() => import("./pages/Discovery.tsx"));
 const GenrePage = lazy(() => import("./pages/Genre.tsx"));
 const LyricsPage = lazy(() => import("./pages/LyricsPage.tsx"));
 const Stats = lazy(() => import("./pages/Stats.tsx"));
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
       { path: "/playlist/:id", element: page(<PlaylistPage />) },
       { path: "/liked", element: page(<LikedPage />) },
       { path: "/mix/:id", element: page(<MixPage />) },
+      { path: "/listenbrainz/:id", element: page(<DiscoveryPage />) },
       { path: "/genre/:name", element: page(<GenrePage />) },
       { path: "/lyrics", element: page(<LyricsPage />) },
       { path: "/stats", element: page(<Stats />) },

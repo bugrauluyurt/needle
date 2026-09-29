@@ -1,4 +1,4 @@
-import type { BrowseTile, Capabilities, ConnectionCheck, Person, Song, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
+import type { BrowseTile, Capabilities, DiscoveryDetail, DiscoveryPlaylist, ListenBrainzLink, ListenBrainzUnlink, ConnectionCheck, Person, Song, DownloadItem, LidarrSearch, Me, RequestItem, SongCandidate, ImportedTrack, ImportResult, LidarrAlbum, LidarrArtist, Mix, Period, PlayReport, SearchResult3, SpotifyPlaylist, SpotifyToken, Stats } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
 
@@ -30,6 +30,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 const send = (method: string) => <T>(path: string, body?: unknown) => request<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 const post = send("POST");
 const put = send("PUT");
+const del = send("DELETE");
+const lbPlaylist = (id: string) => `/listenbrainz/playlists/${encodeURIComponent(id)}`;
 
 export const api = {
   capabilities: () => request<Capabilities>("/capabilities"),
@@ -64,6 +66,12 @@ export const api = {
   spotifyEnabled: (on: boolean) => put<void>("/spotify/enabled", { on }),
   spotifyPlaylists: () => request<SpotifyPlaylist[]>("/spotify/playlists"),
   spotifyImport: (source: string) => post<ImportResult>("/spotify/import", { source }),
+  listenbrainzConnect: (token: string, password: string) => put<ListenBrainzLink>("/listenbrainz", { token, ...(password ? { password } : {}) }),
+  listenbrainzDisconnect: (password: string) => del<ListenBrainzUnlink>("/listenbrainz", password ? { password } : {}),
+  discoveries: () => request<DiscoveryPlaylist[]>("/listenbrainz/playlists"),
+  discovery: (id: string) => request<DiscoveryDetail>(lbPlaylist(id)),
+  discoveryMissing: (id: string) => post<{ started: number; skipped: number }>(`${lbPlaylist(id)}/missing`),
+  discoverySave: (id: string) => post<{ playlistId: string; matched: number; total: number }>(`${lbPlaylist(id)}/save`),
   spotifyMissing: (tracks: ImportedTrack[]) => post<{ requested: number; notFound: number; skipped: number }>("/spotify/missing", { tracks }),
 };
 

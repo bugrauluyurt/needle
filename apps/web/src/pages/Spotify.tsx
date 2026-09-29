@@ -11,7 +11,7 @@ import { ActBar, Hero, PageSkeleton, PlayContextButton, ShuffleButton } from "..
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { api } from "../lib/api.ts";
-import { ago, count, longDuration, plural, releaseKind } from "../lib/format.ts";
+import { ago, count, longDuration, plain, plural, releaseKind } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
 import { image, sp, spId, spotifyLink } from "../lib/spotify.ts";
 import { playSpotifyArtist, releaseYear, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
@@ -27,10 +27,6 @@ import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotify
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "../state/ui.ts";
 
-function plain(html: string | null | undefined): string | undefined {
-  const text = html?.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "’").replace(/&quot;/g, "\"").trim();
-  return text === "" ? undefined : text;
-}
 const duration = (songs: Song[]) => songs.reduce((n, s) => n + (s.duration ?? 0), 0);
 
 function OpenInSpotify({ kind, id }: { kind: "album" | "artist" | "playlist"; id: string }) {
