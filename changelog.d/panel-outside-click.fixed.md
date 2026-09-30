@@ -1,1 +1,0 @@
-- On tablet widths, clicking beside the queue, lyrics or now playing panel closes it every time.

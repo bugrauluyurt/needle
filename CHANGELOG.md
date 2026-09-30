@@ -8,6 +8,11 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.6.1 - 2026-09-30
+
+### Fixed
+- On tablet widths, clicking beside the queue, lyrics or now playing panel closes it every time.
+
 ## 1.6.0 - 2026-09-29
 
 ### Added
