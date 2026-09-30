@@ -3,8 +3,11 @@ services:
   navidrome:
     image: deluan/navidrome:latest
     user: "${UID:-1000}:${GID:-1000}"
-    ports: ["127.0.0.1:14533:4533"]
+    # Host networking lets Navidrome reach the ListenBrainz mock, which host firewalls block from containers.
+    network_mode: host
     environment:
+      ND_ADDRESS: 127.0.0.1
+      ND_PORT: "14533"
       ND_MUSICFOLDER: /music
       ND_DATAFOLDER: /data
       ND_DEVAUTOCREATEADMINPASSWORD: needle-test
@@ -14,13 +17,11 @@ services:
       ND_LASTFM_ENABLED: "false"
       ND_ENABLEINSIGHTSCOLLECTOR: "false"
       ND_LOGLEVEL: warn
-      ND_LISTENBRAINZ_BASEURL: http://host.docker.internal:14538/lb/1/
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      ND_LISTENBRAINZ_BASEURL: http://127.0.0.1:14538/lb/1/
     volumes:
       - ./.library:/music:ro
       - ./.navidrome:/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4533/ping"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:14533/ping"]
       interval: 2s
       retries: 30

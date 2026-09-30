@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dirname, "..");
@@ -9,6 +9,12 @@ const run = (cmd: string, args: string[], env: Record<string, string> = {}) =>
 export default async function globalSetup() {
   if (!existsSync(join(root, "e2e/.library"))) run("node", ["e2e/fixtures/make-library.ts"]);
   mkdirSync(join(root, "e2e/.navidrome"), { recursive: true });
+
+  for (const dir of ["e2e/.soulseek", "e2e/.singles"]) {
+    rmSync(join(root, dir), { recursive: true, force: true });
+    mkdirSync(join(root, dir), { recursive: true });
+  }
+
   run("docker", ["compose", "-f", "e2e/compose.yml", "up", "-d", "--wait"]);
   const q = "u=admin&p=needle-test&c=e2e&v=1.16.1&f=json";
   await fetch(`http://127.0.0.1:14533/rest/startScan.view?${q}&fullScan=true`);

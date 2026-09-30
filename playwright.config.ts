@@ -36,7 +36,7 @@ export default defineConfig({
       url: "http://127.0.0.1:14538/mb/recording",
       reuseExistingServer: false,
       stdout: "ignore",
-      env: { SOULSEEK_DIR: "e2e/.soulseek", MOCK_HOST: "0.0.0.0" },
+      env: { SOULSEEK_DIR: "e2e/.soulseek" },
     },
     {
       command: "node --disable-warning=ExperimentalWarning apps/server/src/index.ts",
