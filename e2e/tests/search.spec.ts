@@ -45,12 +45,13 @@ test("finds text anywhere in names, in search and in the library list", async ({
 
 test("your library opens unfiltered, filters like search and lists every song", async ({ page }) => {
   await signIn(page, "/library");
-  const chips = page.getByRole("group", { name: "Filter your library" });
+  const chips = page.locator(".library-page").getByRole("group", { name: "Filter your library" });
   await expect(chips.getByRole("button")).toHaveText(["All", "Songs", "Albums", "Artists", "Playlists"]);
   await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
   await chips.getByRole("button", { name: "Songs" }).click();
   await expect(page.locator(".library-page .tr").first()).toBeVisible();
   await page.getByRole("searchbox", { name: "Search in your library" }).fill("harbor");
+  await chips.getByRole("button", { name: "All" }).click();
   await expect(page.locator(".library-page .top-card h2")).toHaveText("Neon Harbor");
 });
 
@@ -82,7 +83,7 @@ test("fetches a single song from Soulseek and follows it on the Requests page", 
   await card.getByRole("button", { name: "Get song" }).click();
   await page.getByRole("button", { name: "Requests" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
-  const row = page.locator(".req-row", { hasText: "Undertow" });
+  const row = page.locator(".requests-page > .req-list .req-row", { hasText: "Undertow" });
   await expect(row).toContainText("Song, Glass Harbor");
   await expect(row).toContainText("In your library", { timeout: 20_000 });
   await row.getByRole("button", { name: "Remove Undertow from this list" }).click();

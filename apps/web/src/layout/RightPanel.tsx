@@ -218,10 +218,11 @@ export function RightPanel() {
 export function RightPanelOver() {
   const title = usePanelTitle();
   const opener = useRef<HTMLElement | null>(null);
+  const close = () => useUi.setState({ rightPanel: null });
   return (
-    <Dialog.Root open onOpenChange={(open) => !open && useUi.setState({ rightPanel: null })}>
+    <Dialog.Root open onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="scrim as-scrim" />
+        <Dialog.Overlay className="scrim as-scrim" onClick={close} />
         <Dialog.Content
           className="right-over"
           aria-describedby={undefined}

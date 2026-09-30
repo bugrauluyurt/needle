@@ -81,8 +81,9 @@ test("changes settings and keeps them", async ({ page }) => {
 test("admins see what the server can reach", async ({ page }) => {
   await signIn(page, "/settings");
   await expect(page.getByRole("heading", { name: "Connections" })).toBeVisible();
+  const connectionState = (name: string) => page.locator(".set-row").filter({ has: page.getByText(name, { exact: true }) }).locator(".conn-state");
   for (const name of ["Navidrome", "Lidarr (albums)", "slskd (single songs)", "Song folders"]) {
-    await expect(page.locator(".set-row", { hasText: name }).locator(".conn-state")).toHaveText("Working");
+    await expect(connectionState(name)).toHaveText("Working");
   }
-  await expect(page.locator(".set-row", { hasText: "Spotify" }).locator(".conn-state")).toHaveText("Off");
+  await expect(connectionState("Spotify")).toHaveText("Off");
 });

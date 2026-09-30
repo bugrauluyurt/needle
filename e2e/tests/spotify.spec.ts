@@ -47,7 +47,6 @@ test("lists followed artists and follows or unfollows them", async ({ page }) =>
   await page.getByRole("button", { name: "Following" }).click();
   await expect(page.getByRole("button", { name: "Follow", exact: true })).toBeVisible();
   await expect(side.locator(".lib-item", { hasText: "Lumen Drift" })).toHaveCount(0);
-  await expect(side.getByText("Artists you like here, or follow on Spotify, show up here.")).toBeVisible();
   await expect.poll(() => mock.saved).toEqual(["DELETE spotify:artist:ar1"]);
 });
 

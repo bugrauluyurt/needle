@@ -2,13 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
-import { LB_PLAYLISTS, LB_TOKEN, LB_USER } from "./fixtures/listenbrainz.ts";
+import { LB_PLAYLISTS, LB_TOKEN, LB_USER, UNDERTOW_MBID } from "./fixtures/listenbrainz.ts";
 
 const PORT = Number(process.env.MOCK_SOULSEEK_PORT ?? 14538);
 const DOWNLOADS = process.env.SOULSEEK_DIR ?? "e2e/.soulseek";
 const FILE = { filename: "Music\\Glass Harbor\\Tidal\\03 - Undertow.flac", size: 4, length: 212, extension: "flac" };
 const recording = {
-  id: "mb-undertow", title: "Undertow", length: 212_000, "artist-credit": [{ name: "Glass Harbor" }],
+  id: UNDERTOW_MBID, title: "Undertow", length: 212_000, "artist-credit": [{ name: "Glass Harbor" }],
   releases: [{ title: "Tidal", date: "2023-04-01", status: "Official", "release-group": { id: "rg-tidal", "primary-type": "Album" } }],
 };
 let done = false;
@@ -63,4 +63,4 @@ createServer((req, res) => {
   }
   if (req.method === "DELETE") return json(res, {});
   json(res, { message: "not found" }, 404);
-}).listen(PORT, process.env.MOCK_HOST ?? "127.0.0.1");
+}).listen(PORT, "127.0.0.1");

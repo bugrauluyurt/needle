@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Playlist, Song, SubsonicEnvelope } from "@needle/shared";
 import { openDatabase } from "../../apps/server/src/db.ts";
-import { UNDERTOW_MBID } from "./listenbrainz.ts";
 
 const NAVIDROME = process.env.NAVIDROME_URL ?? "http://127.0.0.1:14533";
 const USER = process.env.NEEDLE_TEST_USER ?? "admin";
@@ -22,16 +21,16 @@ async function call<T>(method: string, params: Record<string, string | string[]>
 const every = <T>(arr: T[], step: number, offset = 0) => arr.filter((_, i) => (i + offset) % step === 0);
 
 const { searchResult3 } = await call<{ searchResult3: { song?: Song[] } }>("search3", { query: "", songCount: "500", albumCount: "0", artistCount: "0" });
-const songs = searchResult3.song ?? [];
+const songs = (searchResult3.song ?? []).sort((a, b) => (a.path ?? "").localeCompare(b.path ?? ""));
 if (!songs.length) throw new Error("The test library is empty; run the fixtures and scan first");
 
 const { starred2 } = await call<{ starred2: { song?: Song[]; album?: { id: string }[]; artist?: { id: string }[] } }>("getStarred2");
 const unstar = { id: (starred2.song ?? []).map((s) => s.id), albumId: (starred2.album ?? []).map((a) => a.id), artistId: (starred2.artist ?? []).map((a) => a.id) };
 if (unstar.id.length || unstar.albumId.length || unstar.artistId.length) await call("unstar", unstar);
-await call("star", { id: every(songs, 3).map((s) => s.id) });
+await call("star", { id: every(songs, 3, 2).map((s) => s.id) });
 const { playlists } = await call<{ playlists: { playlist?: Playlist[] } }>("getPlaylists");
 for (const p of playlists.playlist ?? []) await call("deletePlaylist", { id: p.id });
-await call("createPlaylist", { name: "Late night drive", songId: every(songs, 3, 1).map((s) => s.id) });
+await call("createPlaylist", { name: "Late night drive", songId: every(songs, 3).map((s) => s.id) });
 await call("createPlaylist", { name: "Deep focus", songId: songs.filter((s) => /Ambient|Jazz/.test(s.genre ?? "")).map((s) => s.id) });
 const albums = [...new Set(songs.map((s) => s.albumId).filter((a): a is string => Boolean(a)))];
 await call("star", { albumId: albums.slice(0, 2) });
@@ -44,8 +43,7 @@ await call("createInternetRadioStation", { name: "Test Signal", streamUrl: strea
 
 if (DATA_DIR) {
   const db = openDatabase(DATA_DIR);
-  db.exec("DELETE FROM plays WHERE device = 'seed'; DELETE FROM listenbrainz");
-  db.prepare("DELETE FROM requests WHERE ref = ?").run(UNDERTOW_MBID);
+  db.exec("DELETE FROM plays WHERE device = 'seed'; DELETE FROM listenbrainz; DELETE FROM requests");
   const insert = db.prepare(`INSERT INTO plays (user, song_id, title, artist, artist_id, album, album_id, genre, cover_art, duration, ms_played, played_at, device)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed')`);
   const now = Date.now();

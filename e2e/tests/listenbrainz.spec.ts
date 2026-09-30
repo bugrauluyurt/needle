@@ -1,6 +1,14 @@
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { LB_TOKEN, LB_USER } from "../fixtures/listenbrainz.ts";
+import { openDatabase } from "../../apps/server/src/db.ts";
+import { LB_TOKEN, LB_USER, UNDERTOW_MBID } from "../fixtures/listenbrainz.ts";
 import { bar, PASSWORD, signIn } from "./helpers.ts";
+
+test.afterEach(() => {
+  const db = openDatabase(join(import.meta.dirname, "../.data"));
+  db.prepare("DELETE FROM requests WHERE ref = ?").run(UNDERTOW_MBID);
+  db.close();
+});
 
 test("connects ListenBrainz, opens its weekly playlist, fetches the missing song and saves it", async ({ page }) => {
   await signIn(page, "/settings");
