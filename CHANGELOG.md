@@ -8,6 +8,14 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.7.0 - 2026-10-01
+
+### Added
+- Search every matching song and album in your library, sort by release date or plays, and load more Spotify results without changing their order. Artist pages put songs first and let you open full album and singles lists. Find music within albums, collections, and the queue, with clearer source labels, liked icons, and device controls.
+
+### Fixed
+- Keep the glass search field readable over bright artwork, reveal truncated text on hover, and smoothly dismiss the mobile player with the caret or a downward swipe. Existing typography and scroll animations stay consistent.
+
 ## 1.6.1 - 2026-09-30
 
 ### Fixed
