@@ -1,0 +1,1 @@
+- Show Spotify artwork for monthly top artists alongside library artists, and keep source badges off library mix covers so their labels stay unobstructed.

@@ -374,25 +374,33 @@
 
 .top-search .sf {
   width: 100%;
-  background: color-mix(in oklab, var(--deck) 90%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5) brightness(0.85);
-  backdrop-filter: blur(20px) saturate(1.5) brightness(0.85);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 6%, transparent);
+  background: color-mix(in oklab, var(--deck) 64%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5) brightness(0.4);
+  backdrop-filter: blur(24px) saturate(1.5) brightness(0.4);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 10%, transparent);
   transition: background-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), color 0.2s var(--ease-out);
 }
 
 .top-search .sf:hover {
-  background: color-mix(in oklab, var(--deck) 92%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 8%, transparent);
+  background: color-mix(in oklab, var(--deck) 70%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 14%, transparent);
 }
 
 .top-search .sf:focus-within {
-  background: color-mix(in oklab, var(--deck) 94%, transparent);
+  background: color-mix(in oklab, var(--deck) 72%, transparent);
   box-shadow: inset 0 0 0 2px var(--amber);
 }
 
 .top-search .sf input:focus::placeholder {
   color: var(--sleeve);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .top-search .sf,
+  .top-search .sf:hover,
+  .top-search .sf:focus-within {
+    background: var(--groove);
+  }
 }
 
 .circle {

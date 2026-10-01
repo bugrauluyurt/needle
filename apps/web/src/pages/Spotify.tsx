@@ -322,7 +322,7 @@ export function SpotifyArtistPage() {
         <OpenInSpotify kind="artist" id={artist.id} />
       </ActBar>
       <div className="pad">
-        {section ? <Link className="show-all" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
+        {section ? <Link className="show-all artist-back" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
         {!section || section === "songs" ? (
           <section>
             <RowHeader

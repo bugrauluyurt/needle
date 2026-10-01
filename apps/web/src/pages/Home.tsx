@@ -11,7 +11,7 @@ import { useTone } from "../lib/tone.ts";
 import { MixArt, playMix } from "../components/MixArt.tsx";
 import { player } from "../player/controller.ts";
 import { useContextPlaying, usePlayer } from "../player/store.ts";
-import { useAlbumList, useArtists, useDiscoveries, useMixes, useStarred, useStats } from "../queries/hooks.ts";
+import { useAlbumList, useDiscoveries, useMixes, useStarred, useStats } from "../queries/hooks.ts";
 import { DiscoveryCard } from "../components/Discovery.tsx";
 import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
@@ -123,7 +123,7 @@ function SpotifyHome({ header }: { header: React.ReactNode }) {
 }
 
 function MixCard({ mix }: { mix: Mix }) {
-  return <Card to={`/mix/${mix.id}`} art={<MixArt mix={mix} />} title={mix.name} subtitle={mix.description} onPlay={() => playMix(mix)} />;
+  return <Card to={`/mix/${mix.id}`} art={<MixArt mix={mix} />} title={mix.name} subtitle={mix.description} source={null} onPlay={() => playMix(mix)} />;
 }
 
 function DiscoveryRow() {
@@ -164,8 +164,6 @@ export default function Home() {
   const mixes = useMixes();
   const stats = useStats("month");
   const starred = useStarred();
-  const { data: allArtists } = useArtists();
-  const artistCover = (id: string) => allArtists?.find((x) => x.id === id)?.coverArt;
   const current = usePlayer((s) => s.items[s.index]?.song);
   const headerCover = current?.coverArt ?? recent.data?.[0]?.coverArt ?? newest.data?.[0]?.coverArt;
   const tone = useTone(headerCover);
@@ -228,8 +226,8 @@ export default function Home() {
           <>
             <RowHeader title="Your top artists this month" action={<button type="button" className="show-all" onClick={() => void navigate("/stats")}>See your listening</button>} />
             <CardRow>
-              {stats.data.topArtists.map((a) => (
-                <ArtistCard key={a.id} artist={{ id: a.id, name: a.name, ...(artistCover(a.id) ? { coverArt: artistCover(a.id) } : {}) }} subtitle={`${a.plays} ${a.plays === 1 ? "play" : "plays"}`} />
+              {stats.data.topArtists.map((artist) => (
+                <ArtistCard key={artist.id} artist={{ id: artist.id, name: artist.name }} subtitle={`${artist.plays} ${artist.plays === 1 ? "play" : "plays"}`} />
               ))}
             </CardRow>
           </>
@@ -246,4 +244,3 @@ export default function Home() {
     </div>
   );
 }
-

@@ -14,6 +14,7 @@ import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
+import { useArtistImage } from "../queries/spotify.ts";
 import type { CollectionItem } from "./Collection.tsx";
 
 type CardProps = {
@@ -24,7 +25,7 @@ type CardProps = {
   onPlay?: () => void;
   playLabel?: string;
   playingId?: string;
-  source?: "spotify";
+  source?: "spotify" | null;
 };
 
 export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel, playingId, source }: CardProps) {
@@ -32,7 +33,7 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
   return (
     <article className="card">
       <Link to={to} className="card-link">
-        <div className="card-art">{art}<SourceMark source={source} className="card-src" /></div>
+        <div className="card-art">{art}{source !== null ? <SourceMark source={source} className="card-src" /> : null}</div>
         <div className="t">{title}</div>
         {subtitle ? <div className="s">{subtitle}</div> : null}
       </Link>
@@ -98,7 +99,11 @@ export function ItemCard({ item }: { item: CollectionItem }) {
 
 export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => <ItemCard item={albumItem(album, subtitle)} />;
 
-export const ArtistCard = ({ artist, subtitle }: { artist: Artist; subtitle?: string }) => <ItemCard item={artistItem(artist, subtitle)} />;
+export function ArtistCard({ artist, subtitle }: { artist: Artist; subtitle?: string }) {
+  const artistCover = useArtistImage(artist.coverArt ? undefined : artist.id, artist.coverArt ? undefined : artist.name);
+
+  return <ItemCard item={artistItem({ ...artist, ...(artistCover ? { coverArt: artistCover } : {}) }, subtitle)} />;
+}
 
 export function RowHeader({ title, subtitle, to, action }: { title: string; subtitle?: string; to?: string; action?: ReactNode }) {
   return (
