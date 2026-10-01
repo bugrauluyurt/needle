@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CollectionTools } from "../components/Collection.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { LIKED_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
+import { LIBRARY_SONG_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
 import { LikedArt } from "../components/Art.tsx";
 import { DownloadButton } from "../components/Buttons.tsx";
@@ -53,7 +53,7 @@ export default function LikedPage() {
         end={
           <>
             <SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" />
-            <CollectionTools sorts={LIKED_SORTS} order={order} onOrder={setOrder} />
+            <CollectionTools sorts={LIBRARY_SONG_SORTS} order={order} onOrder={setOrder} />
           </>
         }
       >

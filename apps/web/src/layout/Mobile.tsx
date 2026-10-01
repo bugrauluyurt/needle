@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import type { ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { useDragToClose } from "../components/ActionSheet.tsx";
@@ -8,6 +9,7 @@ import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
+import { SourceMark } from "../components/SpotifyMark.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { usePlayer } from "../player/store.ts";
@@ -119,14 +121,9 @@ export function NowPlayingSheet() {
   const deviceName = useSession((s) => s.deviceName);
   const tone = useTone(song?.coverArt);
   const close = () => useUi.setState({ nowPlayingOpen: false });
-  const { handlers: swipe } = useDragToClose(close);
-  useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [open]);
-  if (!open || (!song && !station)) return null;
+  const { ref: sheet, handlers: swipe } = useDragToClose(close, { follow: true });
+
+  if (!song && !station) return null;
 
   const head = (label: string, name: string) => (
     <div className="nowp-top" {...swipe}>
@@ -143,7 +140,10 @@ export function NowPlayingSheet() {
 
   const fmt = station ? null : formatLabel(song);
   return (
-    <div className={`sheet-root view-${view}`} role="dialog" aria-modal="true" aria-label="Now playing" style={{ "--tone": tone } as React.CSSProperties}>
+    <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && close()}>
+      <Dialog.Portal>
+        <Dialog.Content ref={sheet} className={`sheet-root view-${view}`} aria-describedby={undefined} style={{ "--tone": tone } as React.CSSProperties} onOpenAutoFocus={(event) => { event.preventDefault(); sheet.current?.focus({ preventScroll: true }); }} onCloseAutoFocus={(event) => { event.preventDefault(); document.querySelector<HTMLButtonElement>(".mini-open")?.focus({ preventScroll: true }); }}>
+          <Dialog.Title asChild><span className="sr-only">Now playing</span></Dialog.Title>
       {view === "lyrics" && song ? (
         <div className="plyr">
           {head(song.title, artistName(song))}
@@ -171,7 +171,7 @@ export function NowPlayingSheet() {
           <div className="ti">
             <div>
               <h2>{station?.name ?? song?.title}</h2>
-              <p>{station ? <LiveLabel /> : song ? artistName(song) : ""}</p>
+              <p>{station ? <LiveLabel /> : song ? <><SourceMark source={song.source} compact />{artistName(song)}</> : ""}</p>
             </div>
             {song ? <LikeCurrent size={26} className="icon-btn big-heart" /> : null}
           </div>
@@ -194,6 +194,8 @@ export function NowPlayingSheet() {
           ) : null}
         </div>
       )}
-    </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

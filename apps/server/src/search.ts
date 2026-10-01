@@ -1,10 +1,10 @@
 import type { Album, Artist, BrowseTile, SearchResult3, Song } from "@needle/shared";
-import { fold, matchesTerms, queryTerms, songKey } from "@needle/shared";
+import { fold, matchesTerms, queryTerms, releaseDateString, songKey } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
 
 const PAGE = 500;
 const CHECK_EVERY_MS = 10_000;
-const LIMITS = { songs: 50, albums: 24, artists: 16 };
+const METADATA_MAX_AGE_MS = 60_000;
 const TOP_GENRES = 12;
 const DECADES = 6;
 const COVERS = 3;
@@ -14,7 +14,7 @@ const covers = (albums: Album[]) => albums.filter((a) => a.coverArt).slice(0, CO
 const genresOf = (a: Album) => (a.genres?.length ? a.genres.map((g) => g.name) : a.genre ? [a.genre] : []);
 
 export type Matcher = { byMbid: Map<string, Song>; byKey: Map<string, Song> };
-type Index = { songs: Song[]; albums: Album[]; artists: Artist[]; scan: string; checked: number; matcher?: Matcher };
+type Index = { songs: Song[]; albums: Album[]; artists: Artist[]; scan: string; checked: number; builtAt: number; matcher?: Matcher };
 
 export function normalize(s: string): string {
   return s
@@ -48,7 +48,7 @@ function buildMatcher(songs: Song[]): Matcher {
   return matcher;
 }
 
-function ranked<T>(items: T[], terms: string[], name: (item: T) => string, fields: (item: T) => (string | undefined)[], limit: number): T[] {
+function ranked<T>(items: T[], terms: string[], name: (item: T) => string, fields: (item: T) => (string | undefined)[]): T[] {
   const first = terms[0] ?? "";
   const score = (item: T) => {
     const n = fold(name(item));
@@ -58,7 +58,6 @@ function ranked<T>(items: T[], terms: string[], name: (item: T) => string, field
     .filter((item) => matchesTerms(terms, ...fields(item)))
     .map((item, i) => ({ item, i, s: score(item) }))
     .sort((a, b) => a.s - b.s || a.i - b.i)
-    .slice(0, limit)
     .map((x) => x.item);
 }
 
@@ -75,9 +74,9 @@ export class LibrarySearch {
     if (!terms.length) return {};
     const index = await this.index(auth);
     return {
-      song: ranked(index.songs, terms, (s) => s.title, (s) => [s.title, s.artist, s.displayArtist, s.album], LIMITS.songs),
-      album: ranked(index.albums, terms, (a) => a.name, (a) => [a.name, a.artist, a.displayArtist], LIMITS.albums),
-      artist: ranked(index.artists, terms, (a) => a.name, (a) => [a.name], LIMITS.artists),
+      song: ranked(index.songs, terms, (s) => s.title, (s) => [s.title, s.artist, s.displayArtist, s.album]),
+      album: ranked(index.albums, terms, (a) => a.name, (a) => [a.name, a.artist, a.displayArtist]),
+      artist: ranked(index.artists, terms, (a) => a.name, (a) => [a.name]),
     };
   }
 
@@ -130,9 +129,11 @@ export class LibrarySearch {
 
   private async index(auth: Auth): Promise<Index> {
     const cached = await this.indexes.get(auth.user)?.catch(() => null);
-    if (cached && Date.now() - cached.checked < CHECK_EVERY_MS) return cached;
+    const metadataFresh = cached && Date.now() - cached.builtAt < METADATA_MAX_AGE_MS;
+
+    if (metadataFresh && Date.now() - cached.checked < CHECK_EVERY_MS) return cached;
     const scan = await this.scanKey(auth);
-    if (cached?.scan === scan) {
+    if (metadataFresh && cached.scan === scan) {
       cached.checked = Date.now();
       return cached;
     }
@@ -143,7 +144,7 @@ export class LibrarySearch {
   }
 
   private async build(auth: Auth, scan: string): Promise<Index> {
-    const index: Index = { songs: [], albums: [], artists: [], scan, checked: Date.now() };
+    const index: Index = { songs: [], albums: [], artists: [], scan, checked: Date.now(), builtAt: Date.now() };
     for (let offset = 0; ; offset += PAGE) {
       const r = await this.navidrome.call<{ searchResult3: SearchResult3 }>(auth, "search3", {
         query: "", songCount: PAGE, songOffset: offset, albumCount: PAGE, albumOffset: offset, artistCount: PAGE, artistOffset: offset,
@@ -152,7 +153,17 @@ export class LibrarySearch {
       index.songs.push(...song);
       index.albums.push(...album);
       index.artists.push(...artist);
-      if (song.length < PAGE && album.length < PAGE && artist.length < PAGE) return index;
+      if (song.length < PAGE && album.length < PAGE && artist.length < PAGE) {
+        const albumReleaseDates = new Map(index.albums.map((libraryAlbum) => [libraryAlbum.id, releaseDateString(libraryAlbum.releaseDate)]));
+
+        for (const librarySong of index.songs) {
+          const releaseDate = albumReleaseDates.get(librarySong.albumId ?? "");
+
+          if (releaseDate) librarySong.releaseDate = releaseDate;
+        }
+
+        return index;
+      }
     }
   }
 }

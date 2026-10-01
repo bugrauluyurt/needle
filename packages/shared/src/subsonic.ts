@@ -1,5 +1,7 @@
 export type NamedRef = { id: string; name: string };
 
+export type ItemDate = { year?: number; month?: number; day?: number };
+
 export type ReplayGain = { trackGain?: number; albumGain?: number; trackPeak?: number; albumPeak?: number };
 
 export type Song = {
@@ -15,6 +17,7 @@ export type Song = {
   track?: number;
   discNumber?: number;
   year?: number;
+  releaseDate?: string;
   genre?: string;
   genres?: { name: string }[];
   coverArt?: string;
@@ -54,6 +57,7 @@ export type Album = {
   created?: string;
   starred?: string;
   year?: number;
+  releaseDate?: ItemDate;
   genre?: string;
   genres?: { name: string }[];
   isCompilation?: boolean;

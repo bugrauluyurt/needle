@@ -58,7 +58,10 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
 - **Your listening:** hours, top artists and albums, genres and time of day, for any
   period, from Needle's own play log.
 - **Search** matches text anywhere in titles, artists and albums, with list and grid
-  views and sorting everywhere.
+  views. **Show all** opens a full result list. Sort library songs and albums by release
+  date or plays; Spotify results keep their relevance order and load more on demand.
+- **Find within a collection:** search albums, playlists, artist songs, releases,
+  downloads and the queue without changing their saved order.
 - **Your library** lists every album, artist, playlist and song you have, filtered by
   All / Songs / Albums / Artists / Playlists and searchable like Search. With Spotify on,
   its sort menu also shows only your music, only Spotify, or both.

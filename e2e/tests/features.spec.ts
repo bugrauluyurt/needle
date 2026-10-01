@@ -19,7 +19,7 @@ test("follows the lyrics line by line and seeks when a line is clicked", async (
 
 test("shows listening stats for each period", async ({ page }) => {
   await signIn(page, "/stats");
-  await expect(page.locator(".stat-lede")).toContainText("hours of music");
+  await expect(page.locator(".stat-lede")).toContainText(/\d+(?:\.\d+)? (?:minutes?|hours?) of music/);
   await expect(page.locator(".stat-box", { hasText: "Top artists" }).locator(".rank")).toHaveCount(5);
   await expect(page.locator(".hours i")).toHaveCount(24);
   await page.getByRole("button", { name: "All time" }).click();
@@ -42,6 +42,9 @@ test("starts an artist radio", async ({ page }) => {
   await openAlbum(page, "Night Transit");
   await page.locator(".meta-artist").click();
   await expect(page.getByRole("heading", { level: 1, name: "Neon Harbor" })).toBeVisible();
+  await expect(page.locator(".artist-page h2").first()).toHaveText("Songs");
+  await expect(page.getByRole("button", { name: /^Sort: Most played, descending/ })).toBeVisible();
+  await expect(page.locator(".artist-page .tr")).toHaveCount(10);
   await page.getByRole("button", { name: "Artist radio" }).click();
   await expect(bar(page).locator(".np-t")).not.toHaveText("Nothing playing");
 });

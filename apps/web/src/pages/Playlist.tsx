@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
 import { CollectionTools } from "../components/Collection.tsx";
 import { SearchField } from "../components/SearchField.tsx";
-import { AS_GIVEN, shownSongs, SONG_SORTS } from "../lib/songs.ts";
+import { AS_GIVEN, LIBRARY_SONG_SORTS, shownSongs } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import type { PlaylistWithSongs, Song } from "@needle/shared";
@@ -156,7 +156,7 @@ export default function PlaylistPage() {
         end={
           <>
             <SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" />
-            <CollectionTools sorts={SONG_SORTS} order={order} onOrder={setOrder} />
+            <CollectionTools sorts={[["custom", "Custom order"], ...LIBRARY_SONG_SORTS]} order={order} onOrder={setOrder} />
           </>
         }
       >

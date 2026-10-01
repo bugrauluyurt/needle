@@ -89,9 +89,12 @@ export function Collage({ ids = [], urls = [], px, className, eager = false }: {
 }
 
 export function LikedArt({ className }: { className?: string }) {
+  const collectionIcon = className?.includes("artists") ? "user" : className?.includes("albums") ? "album" : className?.includes("sp-liked") ? "waves" : "music";
+
   return (
     <div className={`art liked-art ${className ?? ""}`}>
-      <Icon name="heartFill" size={44} />
+      <Icon name={collectionIcon} size={44} />
+      <span className="liked-heart"><Icon name="heartFill" size={14} /></span>
     </div>
   );
 }

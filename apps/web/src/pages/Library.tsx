@@ -7,7 +7,7 @@ import { Icon } from "../components/Icon.tsx";
 import { FilterChips, LIBRARY_FILTERS, LibrarySource } from "../components/SearchResults.tsx";
 import type { Filter } from "../components/SearchResults.tsx";
 import { TrackList } from "../components/TrackList.tsx";
-import { AS_GIVEN, LIKED_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
+import { AS_GIVEN, LIBRARY_SONG_SORTS, LIKED_SORTS, RECENT_FIRST, shownSongs } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
 import { useDebounced } from "../lib/useDelayed.ts";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
@@ -72,6 +72,7 @@ export default function LibraryPage() {
   const location = useLocation();
   const find = params.has("find");
   const { origin, show } = useLibraryOrigin();
+  const visibleSongOrder = origin !== "server" && !LIKED_SORTS.some(([songSort]) => songSort === songOrder.key) ? RECENT_FIRST : songOrder;
   const kind = KINDS[filter] ?? null;
   const { order, setOrder, view, setView } = useLibrarySort(mobile ? "list" : "grid");
   const entries = useLibraryEntries(kind, "", order, origin);
@@ -81,7 +82,7 @@ export default function LibraryPage() {
   const tools = q ? (
     <CollectionTools sorts={[]} show={show} />
   ) : filter === "Songs" ? (
-    <CollectionTools sorts={LIKED_SORTS} order={songOrder} onOrder={setSongOrder} show={show} />
+    <CollectionTools sorts={origin === "server" ? LIBRARY_SONG_SORTS : LIKED_SORTS} order={visibleSongOrder} onOrder={setSongOrder} show={show} />
   ) : (
     <CollectionTools sorts={LIBRARY_SORTS} order={order} onOrder={setOrder} view={view} onView={setView} show={show} />
   );
@@ -91,7 +92,7 @@ export default function LibraryPage() {
       {origin !== "server" ? <SpotifyMatches q={q} filter={filter} kind={kind} order={order} view={view} /> : null}
     </>
   ) : filter === "Songs" ? (
-    <AllSongs origin={origin} order={songOrder} onOrder={setSongOrder} />
+    <AllSongs origin={origin} order={visibleSongOrder} onOrder={setSongOrder} />
   ) : (
     <CollectionBody items={entries} view={view} empty={libraryEmptyText(kind, "")} />
   );

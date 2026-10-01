@@ -1,6 +1,9 @@
+import { useMemo, useState } from "react";
+import { matchesTerms, queryTerms } from "@needle/shared";
 import { Link } from "react-router";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
+import { SearchField } from "../components/SearchField.tsx";
 import { plural, sizeLabel } from "../lib/format.ts";
 import { useStorageEstimate } from "../queries/hooks.ts";
 import { useSession } from "../state/session.ts";
@@ -56,6 +59,8 @@ function Row({ c }: { c: OfflineCollection }) {
 export default function DownloadsPage() {
   const mobile = useIsMobile();
   const collections = useOffline((s) => s.collections);
+  const [collectionFilter, setCollectionFilter] = useState("");
+  const visibleCollections = useMemo(() => collections.filter((collection) => matchesTerms(queryTerms(collectionFilter), collection.name, collection.subtitle)), [collections, collectionFilter]);
   const bytes = useOffline((s) => bytesOf(s.songs));
   const { data: quota } = useStorageEstimate();
   const deviceName = useSession((s) => s.deviceName);
@@ -84,7 +89,9 @@ export default function DownloadsPage() {
               <div><dt>Where</dt><dd>In this browser on {deviceName}</dd></div>
               {quota?.quota ? <div><dt>Free</dt><dd>{sizeLabel(Math.max(0, quota.quota - (quota.usage ?? 0)))}</dd></div> : null}
             </dl>
-            {collections.map((c) => <Row key={c.id} c={c} />)}
+            {collections.length ? <div className="lib-tools"><SearchField variant="inline" collapsible value={collectionFilter} onChange={setCollectionFilter} label="Find in downloads" /></div> : null}
+            {visibleCollections.map((collection) => <Row key={collection.id} c={collection} />)}
+            {collections.length && !visibleCollections.length ? <p className="muted">No downloads match your search.</p> : null}
             {!collections.length ? <p className="muted">Nothing downloaded yet. Use the download button on an album, a playlist or your liked songs.</p> : null}
             <div className="set-row">
               <div>

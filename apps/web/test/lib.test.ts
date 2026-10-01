@@ -11,6 +11,7 @@ import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src
 import { naturalOrder, nextOrder, pickOrder } from "../src/lib/order.ts";
 import { shownSongs } from "../src/lib/songs.ts";
 import type { Song } from "@needle/shared";
+import { releaseDateString } from "@needle/shared";
 
 describe("md5", () => {
   it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])("matches node for %j", (s) => {
@@ -19,6 +20,15 @@ describe("md5", () => {
 });
 
 describe("format", () => {
+  it("preserves the supplied precision of native album release dates", () => {
+    expect(releaseDateString({ year: 2024, month: 10, day: 1 })).toBe("2024-10-01");
+    expect(releaseDateString({ year: 2024, month: 10 })).toBe("2024-10");
+    expect(releaseDateString({ year: 2024 })).toBe("2024");
+    expect(releaseDateString({})).toBeUndefined();
+    expect(releaseDateString({ year: 2024, month: 15 })).toBeUndefined();
+    expect(releaseDateString({ year: 2024, month: 2, day: 30 })).toBeUndefined();
+  });
+
   it("formats clock times", () => {
     expect(clock(0)).toBe("0:00");
     expect(clock(65.9)).toBe("1:05");
@@ -156,6 +166,7 @@ describe("spotify", () => {
       track: 1,
       discNumber: 1,
       year: 2001,
+      releaseDate: "2001-03-12",
       source: "spotify",
       uri: "spotify:track:t1",
     });
@@ -245,5 +256,18 @@ describe("shownSongs", () => {
 
   it("filters before sorting", () => {
     expect(ids(shownSongs(songs, { key: "title", desc: false }, "char"))).toEqual(["3"]);
+  });
+
+  it("sorts release dates at their supplied precision with unknown dates last", () => {
+    const releasedSongs: Song[] = [
+      { id: "unknown", title: "Unknown release" },
+      { id: "year", title: "Year only", year: 2024 },
+      { id: "spring", title: "Spring release", releaseDate: "2024-03-15" },
+      { id: "autumn", title: "Autumn release", releaseDate: "2024-10-01" },
+    ];
+
+    expect(shownSongs(releasedSongs, { key: "year", desc: true }, "").map((releasedSong) => releasedSong.id)).toEqual(["autumn", "spring", "year", "unknown"]);
+    expect(shownSongs(releasedSongs, { key: "year", desc: false }, "").map((releasedSong) => releasedSong.id)).toEqual(["year", "spring", "autumn", "unknown"]);
+    expect(releasedSongs[0]?.id).toBe("unknown");
   });
 });

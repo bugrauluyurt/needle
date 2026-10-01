@@ -3,18 +3,18 @@ import { Collection, CollectionTools, RELEASE_SORTS } from "../components/Collec
 import { SearchField } from "../components/SearchField.tsx";
 import { AS_GIVEN, LIKED_SORTS, RECENT_FIRST, shownSongs, SONG_SORTS } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import type { Song } from "@needle/shared";
 import { Art, LikedArt } from "../components/Art.tsx";
-import { CardRow, CardSkeletons } from "../components/Cards.tsx";
+import { CardSkeletons, RowHeader } from "../components/Cards.tsx";
 import { ActBar, Hero, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { api } from "../lib/api.ts";
-import { ago, count, longDuration, plain, plural, releaseKind } from "../lib/format.ts";
+import { ago, count, longDuration, plain, plural, releaseDateLabel, releaseKind } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
-import { image, sp, spId, spotifyLink } from "../lib/spotify.ts";
-import { playSpotifyArtist, releaseYear, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
+import { image, sp, spId, spotifyLink, uniqueSpotifyItems } from "../lib/spotify.ts";
+import { releaseYear, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
 import { SpotifyMark } from "../components/SpotifyMark.tsx";
 import { useTone } from "../lib/tone.ts";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
@@ -23,7 +23,7 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { useCapabilities } from "../queries/hooks.ts";
-import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists, useToggleSpotifyFollow } from "../queries/spotify.ts";
+import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotifyArtistAlbums, useSpotifyArtistSongs, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists, useToggleSpotifyFollow } from "../queries/spotify.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "../state/ui.ts";
 
@@ -179,6 +179,9 @@ export function SpotifyAlbumPage() {
   const tone = useTone(image(data?.album.images, 64));
   usePageTone(tone);
   const [busy, setBusy] = useState(false);
+  const [songFilter, setSongFilter] = useState("");
+  const [songOrder, setSongOrder] = useState<SongOrder>(AS_GIVEN);
+  const visibleSongs = useMemo(() => shownSongs(data?.songs ?? [], songOrder, songFilter), [data?.songs, songOrder, songFilter]);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (isError || !data) return <SpotifyError what="album" retry={() => void refetch()} />;
@@ -225,7 +228,7 @@ export function SpotifyAlbumPage() {
           </>
         }
       />
-      <ActBar>
+      <ActBar end={<SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in album" />}>
         <PlayContextButton contextId={context.id ?? ""} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
         <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <button type="button" className="icon-btn big" aria-pressed={isSaved} aria-label={isSaved ? "Remove from your Spotify library" : "Save to your Spotify library"} onClick={() => void toggleSave()}>
@@ -238,7 +241,18 @@ export function SpotifyAlbumPage() {
         ) : null}
         <OpenInSpotify kind="album" id={album.id} />
       </ActBar>
-      <TrackList songs={songs} context={context} numbers="track" />
+      <TrackList
+        songs={visibleSongs}
+        context={context}
+        numbers="track"
+        order={songOrder}
+        onOrder={setSongOrder}
+        onPlay={(songIndex) => {
+          const selectedSong = visibleSongs[songIndex];
+
+          if (selectedSong) player.playSongs(songs, songs.indexOf(selectedSong), context);
+        }}
+      />
       <div className="pad">
         {album.label || album.copyrights?.[0] ? <p className="album-foot muted">{[year, album.label, album.copyrights?.[0]?.text].filter(Boolean).join(". ")}</p> : null}
       </div>
@@ -248,9 +262,20 @@ export function SpotifyAlbumPage() {
 
 export function SpotifyArtistPage() {
   const { id = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const artistSection = searchParams.get("section");
+  const section = artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
+  const [songFilter, setSongFilter] = useState("");
   const on = useSpotifyOn();
   const mobile = useIsMobile();
   const { data, isLoading, isError, refetch } = useSpotifyArtist(id);
+  const artistSongs = useSpotifyArtistSongs(data?.artist.id ?? "", data?.artist.name ?? "");
+  const artistAlbums = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "album");
+  const artistSingles = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "single");
+  const songs = useMemo(() => uniqueSpotifyItems(artistSongs.data?.pages.flatMap((songPage) => songPage.items) ?? []), [artistSongs.data]);
+  const visibleSongs = useMemo(() => shownSongs(songs, AS_GIVEN, songFilter), [songs, songFilter]);
+  const fullAlbums = useMemo(() => uniqueSpotifyItems(artistAlbums.data?.pages.flatMap((albumPage) => albumPage.items) ?? []), [artistAlbums.data]);
+  const singles = useMemo(() => uniqueSpotifyItems(artistSingles.data?.pages.flatMap((albumPage) => albumPage.items) ?? []), [artistSingles.data]);
   const { data: followed } = useSpotifyFollowed();
   const follow = useToggleSpotifyFollow();
   const tone = useTone(image(data?.artist.images, 64));
@@ -258,10 +283,21 @@ export function SpotifyArtistPage() {
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (isError || !data) return <SpotifyError what="artist" retry={() => void refetch()} />;
-  const { artist, albums } = data;
+  const { artist } = data;
   const following = Boolean(followed?.some((a) => a.id === artist.id));
-  const full = albums.filter((a) => a.album_type === "album");
-  const singles = albums.filter((a) => a.album_type !== "album");
+  const releaseQuery = section === "albums" ? artistAlbums : artistSingles;
+  const releaseTotal = (artistAlbums.data?.pages[0]?.total ?? 0) + (artistSingles.data?.pages[0]?.total ?? 0);
+  const context: PlayContext = { kind: "artist", id: spId(artist.id), name: artist.name };
+
+  const sectionHref = (nextSection: string | null) => {
+    const sectionParams = new URLSearchParams(searchParams);
+
+    if (nextSection) sectionParams.set("section", nextSection);
+    else sectionParams.delete("section");
+
+    return `?${sectionParams.toString()}`;
+  };
+
   return (
     <div className="artist-page">
       {mobile ? <MobileBack /> : <TopBar />}
@@ -270,14 +306,14 @@ export function SpotifyArtistPage() {
         <div className="a-hero-text">
           <div className="kind"><SpotifyMark /> Artist</div>
           <h1 style={{ "--title": `${artist.name.length > 14 ? 76 : 112}px` } as React.CSSProperties}>{artist.name}</h1>
-          <p>{artist.followers ? `${count(artist.followers.total)} followers on Spotify. ` : ""}{plural(albums.length, "release")}.</p>
+          <p>{artist.followers ? `${count(artist.followers.total)} followers on Spotify. ` : ""}{releaseTotal ? `${plural(releaseTotal, "release")}.` : ""}</p>
         </div>
       </div>
       <ActBar>
-        {full.length ? (
+        {songs.length || fullAlbums.length || singles.length ? (
           <>
-            <PlayContextButton contextId={spId(artist.id)} label={artist.name} onPlay={() => void playSpotifyArtist(artist.id)} />
-            <ShuffleButton label={artist.name} onShuffle={() => void playSpotifyArtist(artist.id, true)} />
+            <PlayContextButton contextId={spId(artist.id)} label={artist.name} disabled={!songs.length} onPlay={() => player.playSongs(songs, 0, context)} />
+            <ShuffleButton label={artist.name} disabled={!songs.length} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
           </>
         ) : null}
         <button type="button" className="btn ghost sm" aria-pressed={following} onClick={() => follow.mutate({ artist, on: !following })}>
@@ -286,9 +322,35 @@ export function SpotifyArtistPage() {
         <OpenInSpotify kind="artist" id={artist.id} />
       </ActBar>
       <div className="pad">
-        {full.length ? <Collection id="artist-albums" title="Albums" items={full.map((a) => spotifyAlbumItem(a, releaseYear(a)))} sorts={RELEASE_SORTS} /> : null}
-        {singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((a) => spotifyAlbumItem(a, releaseYear(a)))} sorts={RELEASE_SORTS} /> : null}
-        {!albums.length ? <CardRow><CardSkeletons n={3} /></CardRow> : null}
+        {section ? <Link className="show-all" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
+        {!section || section === "songs" ? (
+          <section>
+            <RowHeader
+              title="Songs"
+              subtitle={section ? "Spotify relevance. Search the songs loaded here." : "Spotify relevance"}
+              action={
+                <div className="collection-actions">
+                  <SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in artist songs" />
+                  {!section && (songs.length > 10 || artistSongs.hasNextPage) ? <Link className="show-all" to={sectionHref("songs")}>Show all</Link> : null}
+                </div>
+              }
+            />
+            {artistSongs.isLoading ? <p className="muted" role="status">Loading songs…</p> : artistSongs.isError && !songs.length ? (
+              <div className="empty-inline">
+                <p className="muted">Couldn’t load this artist’s songs from Spotify.</p>
+                <button type="button" className="btn ghost sm" onClick={() => void artistSongs.refetch()}>Try again</button>
+              </div>
+            ) : (
+              <TrackList songs={visibleSongs} context={context} art album header={section === "songs"} {...(!section ? { limit: 10 } : {})} column={{ label: "Release date", value: releaseDateLabel }} canSort={false} />
+            )}
+            {section === "songs" && artistSongs.hasNextPage ? <button type="button" className="btn ghost sm" disabled={artistSongs.isFetchingNextPage} onClick={() => void artistSongs.fetchNextPage()}>{artistSongs.isFetchingNextPage ? "Loading…" : artistSongs.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
+          </section>
+        ) : null}
+        {!section || section === "albums" ? <Collection id="spotify-artist-albums" title="Albums" items={fullAlbums.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty="No albums here." {...(artistAlbums.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("albums") } : { subtitle: "Search the albums loaded here." })} /> : null}
+        {!section || section === "singles" ? <Collection id="spotify-artist-singles" title="Singles and EPs" items={singles.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty="No singles or EPs here." {...(artistSingles.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("singles") } : { subtitle: "Search the releases loaded here." })} /> : null}
+        {(section === "albums" || section === "singles") && releaseQuery.hasNextPage ? <button type="button" className="btn ghost sm" disabled={releaseQuery.isFetchingNextPage} onClick={() => void releaseQuery.fetchNextPage()}>{releaseQuery.isFetchingNextPage ? "Loading…" : releaseQuery.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
+        {(!section || section === "albums") && artistAlbums.isError && !fullAlbums.length ? <button type="button" className="btn ghost sm" onClick={() => void artistAlbums.refetch()}>Try loading albums again</button> : null}
+        {(!section || section === "singles") && artistSingles.isError && !singles.length ? <button type="button" className="btn ghost sm" onClick={() => void artistSingles.refetch()}>Try loading singles and EPs again</button> : null}
       </div>
     </div>
   );

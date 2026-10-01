@@ -1,18 +1,23 @@
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
-import { artistName, clock, plural } from "../lib/format.ts";
+import { artistName, clock, plural, releaseDateLabel } from "../lib/format.ts";
+import { AS_GIVEN, SEARCH_SONG_SORTS, shownSongs } from "../lib/songs.ts";
+import type { SongOrder } from "../lib/songs.ts";
 import { albumPath } from "../lib/paths.ts";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { usePlaylists, useSearch } from "../queries/hooks.ts";
 import { Art } from "./Art.tsx";
 import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "./Cards.tsx";
-import { Collection, SORT_LABELS } from "./Collection.tsx";
+import { Collection, CollectionTools, SORT_LABELS } from "./Collection.tsx";
 import type { CollectionItem, SortOption } from "./Collection.tsx";
 import { Icon } from "./Icon.tsx";
 import { TrackList } from "./TrackList.tsx";
+import type { TrackColumn } from "./TrackList.tsx";
+import { SearchField } from "./SearchField.tsx";
+import { SourceMark } from "./SpotifyMark.tsx";
 
 export const FILTERS = ["All", "Songs", "Albums", "Artists", "Playlists", "Get music"] as const;
 export type Filter = (typeof FILTERS)[number];
@@ -56,7 +61,7 @@ function SongsMini({ songs, context }: { songs: Song[]; context: PlayContext }) 
           <Art id={s.coverArt} px={40} />
           <div className="mini-text">
             <div className="t">{s.title}</div>
-            <div className="s">{artistName(s)}, {s.album}</div>
+            <div className="s"><SourceMark source={s.source} compact />{artistName(s)}, {s.album}</div>
           </div>
           <span className="tabular muted">{clock(s.duration)}</span>
         </button>
@@ -65,14 +70,15 @@ function SongsMini({ songs, context }: { songs: Song[]; context: PlayContext }) 
   );
 }
 
-type Kind = "Songs" | "Albums" | "Artists" | "Playlists";
-export type Block = { kind: Kind; count: number; row: ReactNode; all: ReactNode };
+export type SearchKind = "Songs" | "Albums" | "Artists" | "Playlists";
+export type Block = { kind: SearchKind; count: number; row: ReactNode; all: ReactNode };
 type SourceProps = {
   title: string;
   heading?: boolean;
   subtitle?: string;
   filter: Filter;
   setFilter: (f: Filter) => void;
+  onShowAll?: ((kind: SearchKind) => void) | undefined;
   blocks: Block[];
   top?: Top | undefined;
   songs?: Song[];
@@ -81,23 +87,24 @@ type SourceProps = {
   empty: (kind: string) => string;
 };
 
-const SEARCH_SORTS: Record<Exclude<Kind, "Songs">, SortOption[]> = {
-  Albums: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year]],
+const SEARCH_SORTS: Record<Exclude<SearchKind, "Songs">, SortOption[]> = {
+  Albums: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Artist"], ["year", SORT_LABELS.year], ["plays", "Most played"]],
   Artists: [["default", "Most relevant"], ["title", SORT_LABELS.title]],
   Playlists: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Creator"]],
 };
 
-export function cardBlock(kind: Exclude<Kind, "Songs">, items: CollectionItem[]): Block {
+export function cardBlock(kind: Exclude<SearchKind, "Songs">, items: CollectionItem[], { source = "library" }: { source?: "library" | "spotify" } = {}): Block {
   return {
     kind,
     count: items.length,
-    row: <CardRow>{items.map((i) => <ItemCard key={i.key} item={i} />)}</CardRow>,
-    all: <Collection id={`search-${kind.toLowerCase()}`} title={kind} items={items} sorts={SEARCH_SORTS[kind]} />,
+    row: <CardRow>{items.slice(0, 6).map((item) => <ItemCard key={item.key} item={item} />)}</CardRow>,
+    all: <Collection id={`search-${source}-${kind.toLowerCase()}`} title={kind} items={items} sorts={source === "spotify" ? [["default", "Most relevant"]] : SEARCH_SORTS[kind]} />,
   };
 }
 
-export function Source({ title, heading = true, subtitle, filter, setFilter, blocks, top, songs = [], context, status, empty }: SourceProps) {
+export function Source({ title, heading = true, subtitle, filter, setFilter, onShowAll, blocks, top, songs = [], context, status, empty }: SourceProps) {
   const kind = filter === "All" ? null : filter;
+  const sourceLabel = title.charAt(0).toLowerCase() + title.slice(1);
   const visible = blocks.filter((b) => b.count && (!kind || b.kind === kind));
   const body = () => {
     if (status === "loading") return <p className="muted source-note"><span className="spin" />Searching…</p>;
@@ -116,7 +123,7 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, blo
             ) : null}
             {songs.length ? (
               <section>
-                <RowHeader title="Songs" action={<button type="button" className="show-all" onClick={() => setFilter("Songs")}>Show all</button>} />
+                <RowHeader title="Songs" action={<button type="button" className="show-all" aria-label={`Show all Songs ${sourceLabel}`} onClick={() => onShowAll ? onShowAll("Songs") : setFilter("Songs")}>Show all</button>} />
                 <SongsMini songs={songs} context={context} />
               </section>
             ) : null}
@@ -124,7 +131,7 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, blo
         ) : null}
         {visible.filter((b) => b.kind !== "Songs").map((b) => (
           <Fragment key={b.kind}>
-            <RowHeader title={b.kind} action={<button type="button" className="show-all" onClick={() => setFilter(b.kind)}>Show all</button>} />
+            <RowHeader title={b.kind} action={<button type="button" className="show-all" aria-label={`Show all ${b.kind} ${sourceLabel}`} onClick={() => onShowAll ? onShowAll(b.kind) : setFilter(b.kind)}>Show all</button>} />
             {b.row}
           </Fragment>
         ))}
@@ -144,7 +151,28 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, blo
   );
 }
 
-export function LibrarySource({ q, filter, setFilter, heading = true }: { q: string; filter: Filter; setFilter: (f: Filter) => void; heading?: boolean }) {
+const RELEASED: TrackColumn = { label: "Released", value: releaseDateLabel, sort: "year" };
+
+function LibrarySearchSongs({ songs, context }: { songs: Song[]; context: PlayContext }) {
+  const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
+  const matchingSongs = useMemo(() => shownSongs(songs, order, query), [songs, order, query]);
+
+  return (
+    <>
+      <RowHeader title="Songs" action={
+        <div className="coll-tools">
+          <SearchField variant="inline" collapsible value={query} onChange={setQuery} label="Find in results" />
+          <CollectionTools sorts={SEARCH_SONG_SORTS} order={order} onOrder={setOrder} />
+        </div>
+      } />
+      <TrackList songs={matchingSongs} context={context} art album column={RELEASED} order={order} onOrder={setOrder} />
+      {!matchingSongs.length ? <p className="muted source-note">No songs match “{query}”.</p> : null}
+    </>
+  );
+}
+
+export function LibrarySource({ q, filter, setFilter, onShowAll, heading = true }: { q: string; filter: Filter; setFilter: (f: Filter) => void; onShowAll?: ((kind: SearchKind) => void) | undefined; heading?: boolean }) {
   const { data, isError } = useSearch(q);
   const { data: playlists = [] } = usePlaylists();
   const matchingPlaylists = playlists.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
@@ -160,7 +188,7 @@ export function LibrarySource({ q, filter, setFilter, heading = true }: { q: str
       ? { to: song.albumId ? albumPath(song.albumId) : "#", art: <Art id={song.coverArt} px={104} />, title: song.title, subtitle: `Song, ${artistName(song)}`, onPlay: () => player.playSongs([song], 0, context) }
       : undefined;
   const blocks: Block[] = [
-    { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album /> },
+    { kind: "Songs", count: songs.length, row: null, all: <LibrarySearchSongs songs={songs} context={context} /> },
     cardBlock("Albums", albums.map((a) => albumItem(a))),
     cardBlock("Artists", artists.map((a) => artistItem(a))),
     cardBlock("Playlists", matchingPlaylists.map((p): CollectionItem => ({
@@ -173,6 +201,7 @@ export function LibrarySource({ q, filter, setFilter, heading = true }: { q: str
       heading={heading}
       filter={filter}
       setFilter={setFilter}
+      onShowAll={onShowAll}
       blocks={blocks}
       top={top}
       songs={songs}

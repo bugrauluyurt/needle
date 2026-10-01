@@ -1,8 +1,8 @@
-import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Query } from "@tanstack/react-query";
 import type { Song } from "@needle/shared";
-import { albumSongs, image, isSpotify, rawId, sp, SpotifyApiError, toSong, useSpotifyStatus } from "../lib/spotify.ts";
-import type { SpArtist, SpPlaylist } from "../lib/spotify.ts";
+import { albumSongs, image, isSpotify, nextSpotifySearchOffset, rawId, sp, SpotifyApiError, spotifySearchResults, uniqueSpotifyItems, useSpotifyStatus } from "../lib/spotify.ts";
+import type { SpAlbumRef, SpArtist, SpPage, SpPlaylist, SpotifySearchData, SpotifySearchKind, SpotifySearchType } from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
 import { useArtistCover, useCapabilities } from "./hooks.ts";
@@ -23,7 +23,10 @@ export const spKeys = {
   artistImage: (name: string) => ["sp", "artistImage", name] as const,
   album: (id: string) => ["sp", "album", id] as const,
   artist: (id: string) => ["sp", "artist", id] as const,
+  artistAlbums: (id: string, category?: "album" | "single") => ["sp", "artistAlbums", id, category ?? "all"] as const,
+  artistSongs: (id: string, artistName: string) => ["sp", "artistSongs", id, artistName] as const,
   search: (q: string) => ["sp", "search", q] as const,
+  searchCategory: (q: string, category: SpotifySearchKind | undefined) => ["sp", "search", q, category] as const,
 };
 
 queryClient.setQueryDefaults(["sp"], { refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, staleTime: HOUR_MS });
@@ -162,18 +165,26 @@ export function useSpotifyAlbum(id: string | undefined) {
 
 export const spotifyArtistQuery = (id: string) => queryOptions({
   queryKey: spKeys.artist(id),
-  queryFn: async () => {
-    const [artist, albums] = await Promise.all([sp.artist(id), sp.artistAlbums(id)]);
-    return { artist, albums };
+  queryFn: async ({ signal }) => {
+    const [artist, albumsPage] = await Promise.all([sp.artist(id, signal), sp.artistAlbumsPage(id, { signal })]);
+
+    return { artist, albums: albumsPage.items, albumsPage };
   },
 });
 
-export async function spotifyArtistSongs(id: string, albumLimit = 3): Promise<{ artist: SpArtist; songs: Song[] }> {
-  const { artist, albums } = await queryClient.fetchQuery(spotifyArtistQuery(id));
-  const full = albums.filter((a) => a.album_type === "album");
-  const picks = (full.length ? full : albums).slice(0, albumLimit);
-  const loaded = await Promise.all(picks.map((a) => queryClient.fetchQuery(spotifyAlbumQuery(a.id))));
-  return { artist, songs: loaded.flatMap((a) => a.songs) };
+export async function spotifyArtistSongs(id: string, songPageLimit = 1): Promise<{ artist: SpArtist; songs: Song[] }> {
+  const { artist } = await queryClient.fetchQuery(spotifyArtistQuery(id));
+  const songs: Song[] = [];
+  let offset: number | undefined = 0;
+
+  for (let pageIndex = 0; pageIndex < songPageLimit && offset !== undefined; pageIndex++) {
+    const songPage = await sp.artistSongs(id, artist.name, { offset });
+
+    songs.push(...songPage.items);
+    offset = nextSpotifySearchOffset(songPage);
+  }
+
+  return { artist, songs: uniqueSpotifyItems(songs) };
 }
 
 export function useSpotifyArtist(id: string | undefined) {
@@ -181,22 +192,58 @@ export function useSpotifyArtist(id: string | undefined) {
   return useQuery({ ...spotifyArtistQuery(id ?? ""), enabled: on && Boolean(id) });
 }
 
+export function useSpotifyArtistAlbums(id: string, initialPage?: SpPage<SpAlbumRef>, category?: "album" | "single") {
+  const on = useSpotifyOn();
+
+  return useInfiniteQuery({
+    queryKey: spKeys.artistAlbums(id, category),
+    queryFn: ({ pageParam, signal }) => pageParam === 0 && initialPage && !category ? Promise.resolve(initialPage) : sp.artistAlbumsPage(id, { offset: pageParam, signal, ...(category ? { category } : {}) }),
+    initialPageParam: 0,
+    getNextPageParam: (albumPage) => albumPage.next ? albumPage.offset + albumPage.limit : undefined,
+    enabled: on && Boolean(id),
+  });
+}
+
+export function useSpotifyArtistSongs(id: string, artistName: string) {
+  const on = useSpotifyOn();
+
+  return useInfiniteQuery({
+    queryKey: spKeys.artistSongs(id, artistName),
+    queryFn: ({ pageParam, signal }) => sp.artistSongs(id, artistName, { offset: pageParam, signal }),
+    initialPageParam: 0,
+    getNextPageParam: nextSpotifySearchOffset,
+    enabled: on && Boolean(id && artistName),
+  });
+}
+
 export function useSpotifySearch(q: string) {
   const on = useSpotifyOn();
   return useQuery({
     queryKey: spKeys.search(q),
     queryFn: async ({ signal }) => {
-      const r = await sp.search(q, signal);
-      return {
-        songs: (r.tracks?.items ?? []).filter((t) => t.id).map((t) => toSong(t)),
-        albums: r.albums?.items ?? [],
-        artists: r.artists?.items ?? [],
-        playlists: (r.playlists?.items ?? []).filter((p): p is SpPlaylist => Boolean(p)),
-      };
+      return spotifySearchResults(await sp.search(q, signal));
     },
     enabled: on && q.trim().length > 0,
     placeholderData: keepPreviousData,
-    });
+  });
+}
+
+const SEARCH_TYPES: Record<SpotifySearchKind, SpotifySearchType> = { songs: "track", albums: "album", artists: "artist", playlists: "playlist" };
+
+export function useSpotifySearchCategory(q: string, category: SpotifySearchKind | undefined, firstPage: SpotifySearchData | undefined) {
+  const on = useSpotifyOn();
+
+  return useInfiniteQuery({
+    queryKey: spKeys.searchCategory(q, category),
+    queryFn: async ({ pageParam, signal }) => pageParam === 0 && firstPage ? firstPage : spotifySearchResults(await sp.search(q, signal, { offset: pageParam, ...(category ? { type: SEARCH_TYPES[category] } : {}) }), pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (searchPage) => {
+      const page = category ? searchPage.pagination[category] : undefined;
+
+      return page ? nextSpotifySearchOffset(page) : undefined;
+    },
+    enabled: on && Boolean(q.trim() && category && firstPage),
+  });
 }
 
 export function useToggleSpotifySave() {

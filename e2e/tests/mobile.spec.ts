@@ -18,7 +18,7 @@ test("moves between tabs and plays from the mini player", async ({ page }) => {
   await expect(sheet.getByText("Playing from playlist")).toBeVisible();
   await sheet.getByRole("button", { name: "Next" }).tap();
   await sheet.getByRole("button", { name: "Queue" }).tap();
-  await expect(sheet.getByText("Now playing")).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Now playing", exact: true })).toBeVisible();
   await sheet.getByRole("button", { name: "Close" }).tap();
   await sheet.getByRole("button", { name: "Open lyrics" }).tap();
   await expect(sheet.locator(".lyrics")).toBeVisible();
@@ -54,6 +54,73 @@ test("searches with the mobile search box", async ({ page }) => {
   await expect(page.locator(".top-card h2")).toHaveText("Okto Quartet");
 });
 
+test("keeps release-date sorting available when phone rows hide metadata", async ({ page }) => {
+  await signIn(page, "/search?q=neon");
+  await page.getByRole("button", { name: "Show all Songs in your library", exact: true }).tap();
+  await page.getByRole("button", { name: /^Sort: Most relevant/ }).tap();
+  await page.getByRole("menuitemradio", { name: "Release date", exact: true }).tap();
+  await expect(page.getByRole("button", { name: /^Sort: Release date, descending/ })).toBeVisible();
+  await expect(page.locator(".tr").first()).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveCSS("font-size", "16px");
+  expect(await page.locator("#main").evaluate((mainElement) => mainElement.scrollWidth <= mainElement.clientWidth)).toBe(true);
+});
+
+test("animates caret dismissal and honors reduced motion without stopping playback", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await signIn(page, "/library");
+  await page.locator(".lib-item", { hasText: "Late night drive" }).click();
+  await page.locator(".tr").first().tap();
+  const miniPlayer = page.locator(".miniplayer");
+  await miniPlayer.getByRole("button", { name: "Open now playing" }).tap();
+  const playerSheet = page.getByRole("dialog", { name: "Now playing" });
+  await expect(playerSheet.locator("h2")).toHaveCSS("font-size", "27px");
+  await expect(playerSheet).toHaveCSS("transform", "none");
+  await playerSheet.getByRole("button", { name: "Close", exact: true }).tap();
+  await expect(playerSheet).toHaveAttribute("data-state", "closed");
+  await expect(playerSheet).toBeAttached();
+  await expect(playerSheet).toHaveCount(0);
+  await expect(miniPlayer.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await miniPlayer.getByRole("button", { name: "Open now playing" }).tap();
+  await expect(playerSheet).toBeVisible();
+  await playerSheet.getByRole("button", { name: "Close", exact: true }).tap();
+  await expect(playerSheet).toHaveCount(0);
+  await expect(miniPlayer.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+});
+
+test("follows a downward gesture, settles a partial drag and animates swipe dismissal", async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await signIn(page, "/library");
+  await page.locator(".lib-item", { hasText: "Late night drive" }).click();
+  await page.locator(".tr").first().tap();
+  await page.locator(".miniplayer").getByRole("button", { name: "Open now playing" }).tap();
+  const playerSheet = page.getByRole("dialog", { name: "Now playing" });
+  await expect(playerSheet).toHaveCSS("transform", "none");
+  const albumArtBounds = await playerSheet.locator(".nowp-art").boundingBox();
+
+  if (!albumArtBounds) throw new Error("Now playing artwork is unavailable");
+
+  const touchPoint = { x: albumArtBounds.x + albumArtBounds.width / 2, y: albumArtBounds.y + 50 };
+  const touchSession = await context.newCDPSession(page);
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touchPoint] });
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...touchPoint, y: touchPoint.y + 30 }] });
+  await expect.poll(() => playerSheet.evaluate((sheetElement) => new DOMMatrixReadOnly(getComputedStyle(sheetElement).transform).m42)).toBeGreaterThan(0);
+  await page.waitForTimeout(150);
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(playerSheet).toHaveCSS("transform", "none");
+  await expect(playerSheet).toBeVisible();
+
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touchPoint] });
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...touchPoint, y: touchPoint.y + 300 }] });
+  await touchSession.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(playerSheet).toHaveAttribute("data-state", "closed");
+  await expect(playerSheet).toBeAttached();
+  await expect(playerSheet).toHaveCount(0);
+  await expect(page.locator(".miniplayer").getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+  await touchSession.detach();
+});
+
 test("the search button opens Search with the field focused", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Search", exact: true }).tap();
@@ -66,5 +133,5 @@ test("shows the You tab with install steps for iPhone", async ({ page }) => {
   await signIn(page, "/you");
   await expect(page.getByText("Put Needle on your home screen")).toBeVisible();
   await page.getByRole("link", { name: /Your listening/ }).tap();
-  await expect(page.locator(".stat-lede")).toContainText("hours of music");
+  await expect(page.locator(".stat-lede")).toContainText(/\d+(?:\.\d+)? (?:minutes?|hours?) of music/);
 });

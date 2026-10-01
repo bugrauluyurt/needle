@@ -65,6 +65,31 @@ test("remembers recent searches", async ({ page }) => {
   await expect(page.locator(".top-card h2")).toHaveText("Kasa Kaan");
 });
 
+test("sorts focused library song results by release date in both directions", async ({ page }) => {
+  await signIn(page, "/search?q=neon");
+  await page.getByRole("button", { name: "Show all Songs in your library", exact: true }).click();
+  await expect(page).toHaveURL(/source=library/);
+  await page.getByRole("button", { name: /^Sort: Most relevant/ }).click();
+  await page.getByRole("menuitemradio", { name: "Release date", exact: true }).click();
+
+  const releaseDates = page.locator(".tr .col");
+  await expect(releaseDates.first()).toBeVisible();
+  const newestYears = (await releaseDates.allTextContents()).map((releaseDate) => Number(releaseDate));
+  expect(newestYears.length).toBeGreaterThan(10);
+  expect(newestYears).toEqual([...newestYears].sort((leftYear, rightYear) => rightYear - leftYear));
+  expect(new Set(newestYears).size).toBeGreaterThan(1);
+
+  await page.getByRole("button", { name: /^Sort: Release date, descending/ }).click();
+  await page.getByRole("menuitemradio", { name: "Release date", exact: true }).click();
+  await page.keyboard.press("Escape");
+  const oldestYears = (await releaseDates.allTextContents()).map((releaseDate) => Number(releaseDate));
+  expect(oldestYears).toEqual([...newestYears].sort((leftYear, rightYear) => leftYear - rightYear));
+
+  await page.getByRole("button", { name: /^Sort: Release date, ascending/ }).click();
+  await page.getByRole("menuitemradio", { name: "Most played", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Sort: Most played, descending/ })).toBeVisible();
+});
+
 test("offers albums you don't have and fetches them through Lidarr", async ({ page }) => {
   await signIn(page, "/search?q=harbor");
   await expect(page.getByRole("heading", { name: "Not in your library yet" })).toBeVisible();

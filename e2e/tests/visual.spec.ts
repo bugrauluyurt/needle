@@ -20,6 +20,8 @@ test("album page", async ({ page }) => {
   await openAlbum(page, "Afterglow Avenue");
   await page.waitForLoadState("networkidle");
   await expect(page.locator(".hero-art .art.loaded")).toBeVisible();
+  await page.locator("#main").evaluate((mainElement) => { mainElement.scrollTop = 0; });
+  await expect.poll(() => page.locator("#main").evaluate((mainElement) => mainElement.scrollTop)).toBe(0);
   await page.mouse.move(700, 60);
   await expect(page).toHaveScreenshot("album.png", { mask: [...stable(page), page.locator(".act-end"), page.locator(".tr .col"), page.locator(".tr .heart")] });
 });

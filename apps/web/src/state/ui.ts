@@ -5,7 +5,7 @@ export type RightPanel = "now" | "queue" | "lyrics";
 export type LibraryFilter = "playlists" | "albums" | "artists" | "downloaded" | null;
 export type LibraryOrigin = "all" | "server" | "spotify";
 export type CollectionView = "compact" | "list" | "dense" | "grid";
-export type SortKey = "default" | "added" | "title" | "by" | "year";
+export type SortKey = "default" | "added" | "title" | "by" | "year" | "plays";
 export type CollectionState = { view?: CollectionView; sort?: SortKey; desc?: boolean };
 export type Toast = { id: number; message: string; action?: { label: string; run: () => void } };
 

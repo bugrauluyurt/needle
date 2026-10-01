@@ -1,5 +1,6 @@
 import * as DM from "@radix-ui/react-dropdown-menu";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { matchesTerms, queryTerms } from "@needle/shared";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { usePlayer } from "../player/store.ts";
@@ -10,6 +11,8 @@ import { Eq, Icon } from "./Icon.tsx";
 import { applyOrder, compareText, directional, naturalOrder, pickOrder } from "../lib/order.ts";
 import type { Order } from "../lib/order.ts";
 import type { IconName } from "./Icon.tsx";
+import { SearchField } from "./SearchField.tsx";
+import { SourceMark } from "./SpotifyMark.tsx";
 
 export type CollectionItem = {
   key: string;
@@ -20,6 +23,8 @@ export type CollectionItem = {
   by?: string;
   added?: string;
   year?: number;
+  releaseDate?: string;
+  playCount?: number;
   contextId?: string;
   downloaded?: boolean;
   pinned?: boolean;
@@ -40,11 +45,21 @@ const COMPARE: Record<Exclude<SortKey, "default">, (a: CollectionItem, b: Collec
   added: (a, b) => (a.added ?? "").localeCompare(b.added ?? ""),
   title: (a, b) => compareText(a.title, b.title),
   by: (a, b) => compareText(a.by ?? "", b.by ?? "") || compareText(a.title, b.title),
-  year: (a, b) => (a.year ?? 0) - (b.year ?? 0) || compareText(b.title, a.title),
+  year: (firstItem, secondItem) => (firstItem.releaseDate ?? String(firstItem.year ?? "")).localeCompare(secondItem.releaseDate ?? String(secondItem.year ?? "")),
+  plays: (firstItem, secondItem) => (firstItem.playCount ?? 0) - (secondItem.playCount ?? 0),
 };
 
 export function sortItems<T extends CollectionItem>(items: T[], order: CollectionOrder): T[] {
   if (order.key === "default") return items;
+
+  if (order.key === "year") {
+    const pinnedItems = items.filter((collectionItem) => collectionItem.pinned);
+    const datedItems = items.filter((collectionItem) => !collectionItem.pinned && Boolean(collectionItem.releaseDate ?? collectionItem.year));
+    const undatedItems = items.filter((collectionItem) => !collectionItem.pinned && !(collectionItem.releaseDate ?? collectionItem.year));
+
+    return [...pinnedItems, ...applyOrder(datedItems, COMPARE.year, order.desc), ...undatedItems];
+  }
+
   return [...items.filter((i) => i.pinned), ...applyOrder(items.filter((i) => !i.pinned), COMPARE[order.key], order.desc)];
 }
 
@@ -160,6 +175,7 @@ export function ItemList({ items, empty, compact = false }: { items: CollectionI
                 <div className={`t ${isPlaying ? "playing" : ""}`}>{e.title}</div>
                 <div className="s">
                   {e.downloaded ? <span className="dl"><Icon name="downloaded" size={14} /></span> : null}
+                  <SourceMark source={e.source} compact />
                   <span className="ellipsis">{e.subtitle}</span>
                 </div>
               </div>
@@ -193,7 +209,7 @@ export function CollectionBody({ items, view, empty, loading }: { items: Collect
   );
 }
 
-export function Collection({ id, title, subtitle, items, sorts, empty, loading, fallback = "grid" }: {
+export function Collection({ id, title, subtitle, items, sorts, empty, loading, fallback = "grid", preview, to, searchable = preview === undefined }: {
   id: string;
   title: string;
   subtitle?: string;
@@ -202,13 +218,31 @@ export function Collection({ id, title, subtitle, items, sorts, empty, loading, 
   empty?: string;
   loading?: ReactNode;
   fallback?: CollectionView;
+  preview?: number;
+  to?: string;
+  searchable?: boolean;
 }) {
   const c = useCollectionView(id, sorts, fallback);
-  const sorted = useMemo(() => sortItems(items, c.order), [items, c.order]);
+  const [query, setQuery] = useState("");
+  const sorted = useMemo(() => {
+    const terms = queryTerms(searchable ? query : "");
+    const matchingItems = items.filter((collectionItem) => matchesTerms(terms, collectionItem.title, collectionItem.subtitle, collectionItem.by));
+
+    return sortItems(matchingItems, c.order);
+  }, [items, c.order, query, searchable]);
+
+  const shownItems = preview ? sorted.slice(0, preview) : sorted;
+
   return (
     <section className="collection">
-      <RowHeader title={title} {...(subtitle ? { subtitle } : {})} action={<CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />} />
-      <CollectionBody items={sorted} view={c.view} {...(empty ? { empty } : {})} {...(loading ? { loading } : {})} />
+      <RowHeader title={title} {...(subtitle ? { subtitle } : {})} action={
+        <div className="collection-actions">
+          {searchable ? <SearchField variant="inline" collapsible label={`Search ${title.toLowerCase()}`} value={query} onChange={setQuery} /> : null}
+          <CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
+          {preview && sorted.length > preview && to ? <Link to={to} className="show-all">Show all</Link> : null}
+        </div>
+      } />
+      <CollectionBody items={shownItems} view={c.view} empty={searchable && query.trim() ? `No ${title.toLowerCase()} match “${query.trim()}”.` : empty ?? ""} {...(loading ? { loading } : {})} />
     </section>
   );
 }

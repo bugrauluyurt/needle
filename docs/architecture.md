@@ -113,9 +113,16 @@ anyway (403).
  Your library ──► GET /api/library/songs: every song from the same index, newest first
                   (the Songs filter); a search uses /api/search like the Search page
  index freshness ──► getScanStatus checked at most every 10 s; rebuilt when it changes
+                     or after 60 s to refresh play counts and other metadata
                      (the app keeps search results for 5 s, so a new song shows up
                       within seconds of Navidrome's scan)
 ```
+
+Library search returns every ranked match from that index. Song and release lists
+sort before displaying their previews, with unknown release dates last. Spotify
+search and artist releases retain paging metadata and request additional pages only
+when the person chooses Load more. Search query keys keep each source and category
+separate; changing the query cancels outstanding requests.
 
 ## Playback
 

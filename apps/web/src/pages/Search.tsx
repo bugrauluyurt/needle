@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useIsFetching } from "@tanstack/react-query";
 import type { BrowseTile } from "@needle/shared";
@@ -7,9 +7,10 @@ import { Art } from "../components/Art.tsx";
 import { RowHeader } from "../components/Cards.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/TrackList.tsx";
+import { useScrollContainer } from "../components/ScrollContext.ts";
 import { cardBlock, FILTERS, FilterChips, LIBRARY_FILTERS, LibrarySource, Source } from "../components/SearchResults.tsx";
-import type { Block, Filter, Top } from "../components/SearchResults.tsx";
-import { artistName } from "../lib/format.ts";
+import type { Block, Filter, SearchKind, Top } from "../components/SearchResults.tsx";
+import { artistName, releaseDateLabel } from "../lib/format.ts";
 import { useDebounced, useDelayed } from "../lib/useDelayed.ts";
 import { TILE_COLORS } from "../lib/palette.ts";
 import { player } from "../player/controller.ts";
@@ -18,7 +19,9 @@ import { useBrowse, useCapabilities, useLidarrSearch, useRequests, useSearch, us
 import { usePageTone } from "../layout/Shell.tsx";
 import { SearchHeader } from "../layout/SearchHeader.tsx";
 import { albumPath } from "../lib/paths.ts";
-import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch } from "../queries/spotify.ts";
+import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch, useSpotifySearchCategory } from "../queries/spotify.ts";
+import { uniqueSpotifyItems } from "../lib/spotify.ts";
+import type { SpotifySearchKind } from "../lib/spotify.ts";
 import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylistItem } from "../components/SpotifyCards.tsx";
 
 const tile = (i: number) => TILE_COLORS[i % TILE_COLORS.length] ?? "#1E3C78";
@@ -93,17 +96,25 @@ function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPic
   );
 }
 
-function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; setFilter: (f: Filter) => void }) {
-  const { data, isError } = useSpotifySearch(useDebounced(q));
+const SPOTIFY_KINDS: Record<SearchKind, SpotifySearchKind> = { Songs: "songs", Albums: "albums", Artists: "artists", Playlists: "playlists" };
+
+function SpotifySource({ q, filter, setFilter, onShowAll }: { q: string; filter: Filter; setFilter: (f: Filter) => void; onShowAll: (kind: SearchKind) => void }) {
+  const debouncedQuery = useDebounced(q);
+  const search = useSpotifySearch(debouncedQuery);
+  const { data, isError } = search;
+  const category = filter !== "All" && filter !== "Get music" ? SPOTIFY_KINDS[filter] : undefined;
+  const pagination = useSpotifySearchCategory(debouncedQuery, category, search.isPlaceholderData ? undefined : data);
   const { data: own = [] } = useSpotifyPlaylists();
-  const songs = data?.songs ?? [];
-  const albums = data?.albums ?? [];
-  const artists = data?.artists ?? [];
+  const resultPages = pagination.data?.pages;
+  const songs = uniqueSpotifyItems(resultPages?.flatMap((searchPage) => searchPage.songs) ?? data?.songs ?? []);
+  const albums = uniqueSpotifyItems(resultPages?.flatMap((searchPage) => searchPage.albums) ?? data?.albums ?? []);
+  const artists = uniqueSpotifyItems(resultPages?.flatMap((searchPage) => searchPage.artists) ?? data?.artists ?? []);
   const playlists = useMemo(() => {
-    const mine = own.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
-    const ids = new Set(mine.map((p) => p.id));
-    return [...mine, ...(data?.playlists ?? []).filter((p) => !ids.has(p.id))];
-  }, [own, data?.playlists, q]);
+    const matchingPlaylists = own.filter((playlist) => playlist.name.toLowerCase().includes(q.toLowerCase()));
+    const searchPlaylists = resultPages?.flatMap((searchPage) => searchPage.playlists) ?? data?.playlists ?? [];
+
+    return uniqueSpotifyItems([...matchingPlaylists, ...searchPlaylists]);
+  }, [own, data?.playlists, resultPages, q]);
   const context: PlayContext = { kind: "search", name: `Spotify search for “${q}”` };
   const artist = artists.find((a) => a.name.toLowerCase() === q.toLowerCase());
   const song = songs[0];
@@ -113,24 +124,42 @@ function SpotifySource({ q, filter, setFilter }: { q: string; filter: Filter; se
       ? { to: song.albumId ? albumPath(song.albumId) : "#", art: <Art id={song.coverArt} px={104} />, title: song.title, subtitle: `Song, ${artistName(song)}`, onPlay: () => player.playSongs(songs, 0, context) }
       : undefined;
   const blocks: Block[] = [
-    { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album /> },
-    cardBlock("Albums", albums.map((a) => spotifyAlbumItem(a))),
-    cardBlock("Artists", artists.map(spotifyArtistItem)),
-    cardBlock("Playlists", playlists.map(spotifyPlaylistItem)),
+    { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album canSort={false} column={{ label: "Released", value: releaseDateLabel }} /> },
+    cardBlock("Albums", albums.map((album) => spotifyAlbumItem(album)), { source: "spotify" }),
+    cardBlock("Artists", artists.map(spotifyArtistItem), { source: "spotify" }),
+    cardBlock("Playlists", playlists.map(spotifyPlaylistItem), { source: "spotify" }),
   ];
+  const page = category ? (resultPages?.at(-1)?.pagination[category] ?? data?.pagination[category]) : undefined;
+
   if (isError) return null;
+
   return (
-    <Source
-      title="On Spotify"
-      filter={filter}
-      setFilter={setFilter}
-      blocks={blocks}
-      top={top}
-      songs={songs}
-      context={context}
-      status={data ? "ok" : isError ? "error" : "loading"}
-      empty={(kind) => `Spotify found no ${kind || "results"} for “${q}”.`}
-    />
+    <>
+      <Source
+        title="On Spotify"
+        filter={filter}
+        setFilter={setFilter}
+        onShowAll={onShowAll}
+        blocks={blocks}
+        top={top}
+        songs={songs}
+        context={context}
+        status={data ? "ok" : "loading"}
+        empty={(kind) => `Spotify found no ${kind || "results"} for “${q}”.`}
+      />
+      {category && page && !search.isPlaceholderData ? (
+        <div className="search-pagination">
+          {pagination.isFetchNextPageError ? <p className="muted source-note">Spotify didn’t load the next page. Try again.</p> : null}
+          {pagination.hasNextPage ? (
+            <button type="button" className="btn ghost sm" disabled={pagination.isFetchingNextPage} onClick={() => void pagination.fetchNextPage()}>
+              {pagination.isFetchingNextPage ? "Loading…" : "Load more"}
+            </button>
+          ) : !pagination.isPending && page.total > 0 ? (
+            <p className="muted source-note">{page.next ? "Spotify’s search limit has been reached." : "All available Spotify results are loaded."}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -183,18 +212,46 @@ function GetSource({ q, filter, albumsOn, songsOn }: { q: string; filter: Filter
 
 function Results({ q }: { q: string }) {
   const [filter, setFilter] = useState<Filter>("All");
+  const [params, setParams] = useSearchParams();
   const { isFetching } = useSearch(q);
   const caps = useCapabilities().data;
   const albumsOn = Boolean(caps?.lidarr);
   const songsOn = Boolean(caps?.songs);
   const spotifyOn = useSpotifyOn();
   const local = filter !== "Get music";
+  const requestedSource = params.get("source");
+  const requestedCategory = params.get("category");
+  const focusedCategory = LIBRARY_FILTERS.find((category): category is SearchKind => category !== "All" && category === requestedCategory);
+  const focusedSource = focusedCategory && (requestedSource === "library" || requestedSource === "spotify") ? requestedSource : null;
+  const scrollContainer = useScrollContainer();
+  const overviewScrollTop = useRef(0);
+
+  useLayoutEffect(() => {
+    scrollContainer?.current?.scrollTo(0, focusedSource ? 0 : overviewScrollTop.current);
+  }, [focusedSource, focusedCategory, scrollContainer]);
+
+  const showAll = (source: "library" | "spotify", category: SearchKind) => {
+    overviewScrollTop.current = scrollContainer?.current?.scrollTop ?? 0;
+
+    setParams({ q, source, category });
+  };
+  const back = () => setParams({ q }, { replace: true });
+
   return (
     <div className={isFetching ? "results fetching" : "results"}>
-      <FilterChips filters={albumsOn || songsOn ? FILTERS : LIBRARY_FILTERS} value={filter} onChange={setFilter} label="Filter results" />
-      {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} /> : null}
-      {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} /> : null}
-      {(albumsOn || songsOn) && filter !== "Playlists" && filter !== "Artists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
+      {focusedSource && focusedCategory ? (
+        <>
+          <button type="button" className="btn ghost sm search-focus-back" aria-label="Back to all search results" onClick={back}><Icon name="back" size={16} />All search results</button>
+          {focusedSource === "library" ? <LibrarySource q={q} filter={focusedCategory} setFilter={setFilter} /> : spotifyOn ? <SpotifySource q={q} filter={focusedCategory} setFilter={setFilter} onShowAll={(category) => showAll("spotify", category)} /> : <p className="muted source-note">Spotify is unavailable. Connect Spotify in Settings to search its catalogue.</p>}
+        </>
+      ) : (
+        <>
+          <FilterChips filters={albumsOn || songsOn ? FILTERS : LIBRARY_FILTERS} value={filter} onChange={setFilter} label="Filter results" />
+          {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} onShowAll={(category) => showAll("library", category)} /> : null}
+          {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} onShowAll={(category) => showAll("spotify", category)} /> : null}
+          {(albumsOn || songsOn) && filter !== "Playlists" && filter !== "Artists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
+        </>
+      )}
     </div>
   );
 }

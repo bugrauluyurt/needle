@@ -22,7 +22,7 @@ test("sees another device, controls it and moves playback across", async ({ brow
   await expect(bar(laptop).getByRole("button", { name: "Play", exact: true })).toBeVisible();
   await expect(other).toContainText("Paused: Blue Minutes");
 
-  await other.getByRole("button", { name: "Play here" }).click();
+  await other.getByRole("button", { name: "Continue on this device" }).click();
   await expect(bar(second).locator(".np-t")).toHaveText("Blue Minutes", { timeout: 15_000 });
   await expect.poll(() => position(second), { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
   await expect(second.getByText(/Now playing here/)).toBeVisible();
@@ -100,7 +100,7 @@ test("shows the device that took over and controls it from here", async ({ brows
   await desk.waitForTimeout(16_000);
   await expect(desk.locator(".remote-strip")).toBeVisible();
   await desk.locator(".remote-strip").click();
-  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Play here" }).click();
+  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Continue on this device" }).click();
   await expect(desk.locator(".remote-strip")).toHaveCount(0);
   await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
   await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible();
@@ -116,7 +116,7 @@ test("shows the device that took over and controls it from here", async ({ brows
     while (Date.now() < until);
   });
   await desk.locator(".remote-strip").click();
-  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Play here" }).click();
+  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Continue on this device" }).click();
   await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 4_000 });
   await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
   await busy;
