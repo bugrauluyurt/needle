@@ -46,8 +46,8 @@ test("shows the album's name and cover in the top bar after scrolling, moving se
   await expect.poll(left).toBeCloseTo(centred, 0);
 });
 
-test("keeps the glass search placeholder readable over white album art", async ({ page }) => {
-  await page.route("**/rest/getCoverArt.view?**", (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><path fill="white" d="M0 0h100v100H0z"/></svg>' }));
+test("keeps the glass search placeholder readable over white album art", async ({ page, context }) => {
+  await context.route("**/rest/getCoverArt.view?**", (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><path fill="white" d="M0 0h100v100H0z"/></svg>' }));
   await signIn(page);
   await openAlbum(page, "Salt & Signal");
 
