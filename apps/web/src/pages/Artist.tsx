@@ -179,7 +179,7 @@ export default function ArtistPage() {
         </div>
       ) : null}
       <div className="pad">
-        {section ? <Link className="show-all" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
+        {section ? <Link className="show-all artist-back" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
         {section === "songs" ? songsSection : null}
         {(!section || section === "albums") && fullAlbums.length ? <Collection id="artist-albums" title="Albums" items={fullAlbums.map((album) => albumItem(album, [album.year, "Album"].filter(Boolean).join(", ")))} sorts={ARTIST_RELEASE_SORTS} {...(!section ? { preview: 6, to: sectionHref("albums") } : {})} /> : null}
         {(!section || section === "singles") && singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((album) => albumItem(album, [album.year, releaseKind(album.songCount, album.duration)].filter(Boolean).join(", ")))} sorts={ARTIST_RELEASE_SORTS} {...(!section ? { preview: 6, to: sectionHref("singles") } : {})} /> : null}

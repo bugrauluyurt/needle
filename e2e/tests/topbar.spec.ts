@@ -56,7 +56,7 @@ test("keeps the glass search placeholder readable over white album art", async (
   await expect(searchInput).toHaveAttribute("placeholder", "What do you want to listen to?");
   await expect(searchInput).toHaveCSS("font-size", "15px");
 
-  const placeholderContrast = () => searchSurface.evaluate((searchElement) => {
+  const searchAppearance = () => searchSurface.evaluate((searchElement) => {
     const searchInputElement = searchElement.querySelector("input");
     const canvas = document.createElement("canvas");
     const canvasContext = canvas.getContext("2d");
@@ -70,10 +70,12 @@ test("keeps the glass search placeholder readable over white album art", async (
 
       return Array.from(canvasContext.getImageData(0, 0, 1, 1).data);
     };
-    const backgroundColor = colorComponents(getComputedStyle(searchElement).backgroundColor);
+    const searchStyle = getComputedStyle(searchElement);
+    const backgroundColor = colorComponents(searchStyle.backgroundColor);
     const placeholderColor = colorComponents(getComputedStyle(searchInputElement, "::placeholder").color);
     const backgroundAlpha = (backgroundColor[3] ?? 0) / 255;
-    const backgroundChannels = backgroundColor.slice(0, 3).map((colorChannel) => colorChannel * backgroundAlpha + 255 * (1 - backgroundAlpha));
+    const backdropBrightness = Number(/brightness\(([\d.]+)\)/.exec(searchStyle.backdropFilter)?.[1] ?? 1);
+    const backgroundChannels = backgroundColor.slice(0, 3).map((colorChannel) => colorChannel * backgroundAlpha + 255 * backdropBrightness * (1 - backgroundAlpha));
     const luminance = (colorChannels: number[]) => colorChannels.reduce((total, colorChannel, channelIndex) => {
       const relativeChannel = colorChannel / 255;
       const linearChannel = relativeChannel <= 0.04045 ? relativeChannel / 12.92 : ((relativeChannel + 0.055) / 1.055) ** 2.4;
@@ -83,11 +85,15 @@ test("keeps the glass search placeholder readable over white album art", async (
     const backgroundLuminance = luminance(backgroundChannels);
     const placeholderLuminance = luminance(placeholderColor.slice(0, 3));
 
-    return (Math.max(backgroundLuminance, placeholderLuminance) + 0.05) / (Math.min(backgroundLuminance, placeholderLuminance) + 0.05);
+    return {
+      contrast: (Math.max(backgroundLuminance, placeholderLuminance) + 0.05) / (Math.min(backgroundLuminance, placeholderLuminance) + 0.05),
+      opacity: backgroundAlpha,
+    };
   });
 
-  await expect.poll(placeholderContrast).toBeGreaterThanOrEqual(4.5);
+  await expect.poll(async () => (await searchAppearance()).opacity).toBeLessThan(0.8);
+  await expect.poll(async () => (await searchAppearance()).contrast).toBeGreaterThanOrEqual(4.5);
   await searchSurface.hover();
-  await expect.poll(placeholderContrast).toBeGreaterThanOrEqual(4.5);
+  await expect.poll(async () => (await searchAppearance()).contrast).toBeGreaterThanOrEqual(4.5);
   await expect.poll(() => searchSurface.evaluate((searchElement) => getComputedStyle(searchElement).backdropFilter)).not.toBe("none");
 });

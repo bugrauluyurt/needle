@@ -2195,6 +2195,11 @@ kbd {
   flex-wrap: wrap;
   gap: 14px;
   min-width: 0;
+  max-width: 100%;
+}
+
+.row-h:has(.collection-actions) {
+  flex-wrap: wrap;
 }
 
 .queue-search {
@@ -2211,8 +2216,33 @@ kbd {
 }
 
 .collection-actions .sf {
-  --sf-w: 180px;
+  --sf-w: 240px;
+  flex: none;
   max-width: 100%;
+}
+
+.artist-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 8px;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--label) 4%, transparent);
+  transition: color 0.2s var(--ease-out), background-color 0.2s var(--ease-out);
+  animation: artist-back-in 0.22s var(--ease-out);
+}
+
+.artist-back:hover {
+  background: color-mix(in oklab, var(--label) 8%, transparent);
+  text-decoration: none;
+}
+
+@keyframes artist-back-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
 }
 
 .search-focus-back {
