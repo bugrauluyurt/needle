@@ -1,1 +1,0 @@
-- Keep the glass search field readable over bright artwork, reveal truncated text on hover, and smoothly dismiss the mobile player with the caret or a downward swipe. Existing typography and scroll animations stay consistent.

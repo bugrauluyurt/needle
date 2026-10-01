@@ -1,1 +1,0 @@
-- Search every matching song and album in your library, sort by release date or plays, and load more Spotify results without changing their order. Artist pages put songs first and let you open full album and singles lists. Find music within albums, collections, and the queue, with clearer source labels, liked icons, and device controls.
