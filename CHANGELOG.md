@@ -8,6 +8,12 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.7.1 - 2026-10-01
+
+### Fixed
+- Keep the Back to artist caret beside its label with a subtle entrance, give collection search placeholders room to fit on small screens, and make the top search more transparent without losing readability over bright artwork.
+- Show Spotify artwork for monthly top artists alongside library artists, and keep source badges off library mix covers so their labels stay unobstructed.
+
 ## 1.7.0 - 2026-10-01
 
 ### Added

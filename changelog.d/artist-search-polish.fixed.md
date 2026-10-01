@@ -1,1 +1,0 @@
-- Keep the Back to artist caret beside its label with a subtle entrance, give collection search placeholders room to fit on small screens, and make the top search more transparent without losing readability over bright artwork.
