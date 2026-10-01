@@ -35,14 +35,14 @@ function RemoteDevice({ d, canSend, active }: { d: Device; canSend: boolean; act
             <button type="button" className="icon-btn" aria-label={`Next on ${d.name}`} onClick={() => command(d.id, { action: "next" })}>
               <Icon name="next" size={16} />
             </button>
-            <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>
-              Play here
-            </button>
           </>
         ) : null}
+      </div>
+      <div className="dev-transfer">
+        {s ? <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>Continue on this device</button> : null}
         {canSend ? (
-          <button type="button" className="btn light sm" aria-label={`Play there, on ${d.name}`} onClick={() => transferTo(d.id)}>
-            Play there
+          <button type="button" className="btn light sm" aria-label={`Move playback to ${d.name}`} onClick={() => transferTo(d.id)}>
+            <Icon name="devices" size={15} />Move playback
           </button>
         ) : null}
       </div>

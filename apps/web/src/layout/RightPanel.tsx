@@ -5,6 +5,9 @@ import type { Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import { SourceMark } from "../components/SpotifyMark.tsx";
+import { matchesTerms, queryTerms } from "@needle/shared";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
@@ -49,7 +52,7 @@ export function QueueRow({ item, playing, onDragStart, onDrop }: { item: QueueIt
         <Art id={item.song.coverArt} px={44} />
         <div className="mini-text">
           <div className={`t ${playing ? "playing" : ""}`}>{item.song.title}</div>
-          <div className="s">{artistName(item.song)}</div>
+          <div className="s"><SourceMark source={item.song.source} compact />{artistName(item.song)}</div>
         </div>
       </button>
       {!playing ? (
@@ -71,10 +74,13 @@ export function QueueView() {
   const autoplay = useSettings((s) => s.autoplay);
   const setSetting = useSettings((s) => s.set);
   const dragging = useRef<string | null>(null);
+  const [queueQuery, setQueueQuery] = useState("");
   const now = items[index];
   const userCount = userItemsAfter({ items, index, original: null });
   const user = items.slice(index + 1, index + 1 + userCount);
-  const rest = items.slice(index + 1 + userCount, index + 1 + userCount + 60);
+  const rest = items.slice(index + 1 + userCount, queueQuery.trim() ? undefined : index + 1 + userCount + 60);
+  const queueTerms = queryTerms(queueQuery);
+  const matchesQueueItem = (queueItem: QueueItem) => matchesTerms(queueTerms, queueItem.song.title, artistName(queueItem.song), queueItem.song.album);
   const drop = (target: number) => {
     if (dragging.current) player.moveInQueue(dragging.current, target);
     dragging.current = null;
@@ -82,6 +88,7 @@ export function QueueView() {
   if (!now) return <p className="panel-empty">The queue is empty. Play something and what’s next shows up here.</p>;
   return (
     <>
+      <div className="queue-search"><SearchField variant="inline" collapsible label="Find in queue" value={queueQuery} onChange={setQueueQuery} /></div>
       <h6 className="q-h">Now playing</h6>
       <QueueRow item={now} playing />
       {user.length ? (
@@ -91,7 +98,7 @@ export function QueueView() {
             <button type="button" className="q-clear" onClick={player.clearUserQueue}>Clear</button>
           </h6>
           {user.map((it, i) => (
-            <QueueRow key={it.uid} item={it} onDragStart={() => (dragging.current = it.uid)} onDrop={() => drop(index + 1 + i)} />
+            matchesQueueItem(it) ? <QueueRow key={it.uid} item={it} {...(queueQuery.trim() ? {} : { onDragStart: () => (dragging.current = it.uid), onDrop: () => drop(index + 1 + i) })} /> : null
           ))}
         </>
       ) : null}
@@ -99,7 +106,7 @@ export function QueueView() {
         <>
           <h6 className="q-h">Next from {context?.name ?? "your queue"}</h6>
           {rest.map((it, i) => (
-            <QueueRow key={it.uid} item={it} onDragStart={() => (dragging.current = it.uid)} onDrop={() => drop(index + 1 + userCount + i)} />
+            matchesQueueItem(it) ? <QueueRow key={it.uid} item={it} {...(queueQuery.trim() ? {} : { onDragStart: () => (dragging.current = it.uid), onDrop: () => drop(index + 1 + userCount + i) })} /> : null
           ))}
         </>
       ) : null}
@@ -148,7 +155,7 @@ function NowView() {
       <div className="rp-title">
         <div>
           <h5>{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</h5>
-          <p>{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</p>
+          <p><SourceMark source={song.source} compact />{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</p>
         </div>
         <TrackMoreButton songs={[song]} />
         <LikeCurrent size={20} />

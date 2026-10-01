@@ -4,12 +4,15 @@ import type { Song } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { DownloadButton, LikeButton } from "../components/Buttons.tsx";
 import { AlbumCard, CardRow, RowHeader } from "../components/Cards.tsx";
+import { CollectionTools } from "../components/Collection.tsx";
 import { GetCard } from "../components/GetCard.tsx";
 import { ActBar, Hero, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
+import { SearchField } from "../components/SearchField.tsx";
+import { SourceMark } from "../components/SpotifyMark.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import type { TrackColumn } from "../components/TrackList.tsx";
-import { AS_GIVEN, shownSongs } from "../lib/songs.ts";
+import { AS_GIVEN, LIBRARY_SONG_SORTS, shownSongs } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
 import { count, formatLabel, longDuration, plural, releaseKind } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
@@ -39,12 +42,19 @@ export default function AlbumPage() {
   const missing = useLidarrSearch(album?.artist ?? "", Boolean(caps.data?.lidarr && album?.artist));
   const songs = useMemo(() => album?.song ?? [], [album]);
   const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
-  const sorted = useMemo(() => shownSongs(songs, order, ""), [songs, order]);
+  const [songFilter, setSongFilter] = useState("");
+  const orderedSongs = useMemo(() => shownSongs(songs, order, ""), [songs, order]);
+  const sorted = useMemo(() => shownSongs(songs, order, songFilter), [songs, order, songFilter]);
   const discs = useMemo(() => {
     const map = new Map<number, Song[]>();
     for (const s of songs) map.set(s.discNumber ?? 1, [...(map.get(s.discNumber ?? 1) ?? []), s]);
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
   }, [songs]);
+  const visibleDiscs = useMemo(() => {
+    const visibleSongIds = new Set(sorted.map((song) => song.id));
+
+    return discs.map(([discNumber, discSongs]) => [discNumber, discSongs.filter((song) => visibleSongIds.has(song.id))] as const).filter(([, discSongs]) => discSongs.length > 0);
+  }, [discs, sorted]);
 
   if (isLoading) return <PageSkeleton />;
   if (isError || !album) return <NotFoundState what="album" error={error} retry={() => void refetch()} />;
@@ -71,13 +81,14 @@ export default function AlbumPage() {
                 {artistName}
               </Link>
             ) : <b>{artistName}</b>}
+            <SourceMark />
             {album.year ? <span>{album.year}</span> : null}
             <span>{plural(album.songCount, "song")}, {longDuration(album.duration)}</span>
             {fmt ? <span className="fmt on-hero">{fmt}</span> : null}
           </>
         }
       />
-      <ActBar end={plays ? <span className="muted">{plural(plays, "play")}</span> : null}>
+      <ActBar end={<><SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in album" /><CollectionTools sorts={[["custom", "Track order"], ...LIBRARY_SONG_SORTS]} order={order} onOrder={setOrder} />{plays ? <span className="muted">{plural(plays, "play")}</span> : null}</>}>
         <PlayContextButton contextId={album.id} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
         <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <LikeButton kind="album" item={album} />
@@ -85,27 +96,34 @@ export default function AlbumPage() {
         <TrackMoreButton songs={songs} className="icon-btn big" size={26} label={`More options for ${album.name}`} />
       </ActBar>
       {order.key === "custom" ? (
-        discs.map(([disc, list], i) => {
-          const offset = discs.slice(0, i).reduce((n, [, l]) => n + l.length, 0);
+        visibleDiscs.length ? visibleDiscs.map(([discNumber, discSongs], discIndex) => {
           return (
-            <section key={disc} className="disc">
-              {discs.length > 1 ? <h3 className="disc-h">Disc {disc}</h3> : null}
+            <section key={discNumber} className="disc">
+              {discs.length > 1 ? <h3 className="disc-h">Disc {discNumber}</h3> : null}
               <TrackList
-                songs={list}
+                songs={discSongs}
                 context={context}
                 numbers="track"
-                header={i === 0}
+                header={discIndex === 0}
                 column={PLAYS}
                 order={order}
                 onOrder={setOrder}
-                onPlay={(idx) => player.playSongs(songs, offset + idx, context)}
+                onPlay={(songIndex) => {
+                  const selectedSong = discSongs[songIndex];
+
+                  if (selectedSong) player.playSongs(songs, songs.indexOf(selectedSong), context);
+                }}
               />
             </section>
           );
-        })
+        }) : <section className="disc"><TrackList songs={sorted} context={context} numbers="track" column={PLAYS} order={order} onOrder={setOrder} /></section>
       ) : (
         <section className="disc">
-          <TrackList songs={sorted} context={context} numbers="track" column={PLAYS} order={order} onOrder={setOrder} onPlay={(idx) => player.playSongs(sorted, idx, context)} />
+          <TrackList songs={sorted} context={context} numbers="track" column={PLAYS} order={order} onOrder={setOrder} onPlay={(songIndex) => {
+            const selectedSong = sorted[songIndex];
+
+            if (selectedSong) player.playSongs(orderedSongs, orderedSongs.indexOf(selectedSong), context);
+          }} />
         </section>
       )}
       <div className="pad">

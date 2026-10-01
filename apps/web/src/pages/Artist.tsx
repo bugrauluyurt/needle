@@ -1,25 +1,25 @@
-import { useQueries } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router";
-import type { Song } from "@needle/shared";
+import { Link, useParams, useSearchParams } from "react-router";
 import { Art } from "../components/Art.tsx";
 import { LikeButton } from "../components/Buttons.tsx";
-import { albumItem, ArtistCard, CardRow, playArtist, RowHeader } from "../components/Cards.tsx";
-import { Collection, RELEASE_SORTS } from "../components/Collection.tsx";
+import { albumItem, ArtistCard, CardRow, RowHeader } from "../components/Cards.tsx";
+import { Collection, CollectionTools, RELEASE_SORTS } from "../components/Collection.tsx";
+import type { SortOption } from "../components/Collection.tsx";
 import { ArtistSearchCard } from "../components/GetCard.tsx";
 import { ActBar, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
+import { SearchField } from "../components/SearchField.tsx";
 import { TrackList } from "../components/TrackList.tsx";
-import { count, paragraphs, plainBio, plural, releaseKind } from "../lib/format.ts";
-import { sub } from "../lib/subsonic.ts";
+import { count, paragraphs, plainBio, plural, releaseDateLabel, releaseKind } from "../lib/format.ts";
+import { shownSongs } from "../lib/songs.ts";
+import type { SongOrder, SongSort } from "../lib/songs.ts";
 import { useTone } from "../lib/tone.ts";
 import { MobileBack } from "../layout/Mobile.tsx";
 import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
 import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
-import { keys } from "../queries/keys.ts";
-import { useArtist, useArtistInfo, useArtists, useCapabilities, useLidarrArtists, useStarredIds, useTopSongs } from "../queries/hooks.ts";
+import { useArtist, useArtistInfo, useArtists, useCapabilities, useLidarrArtists, useLibrarySongs, useStarredIds } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
 
 const BIO_SOURCE = "From Last.fm, through Navidrome";
@@ -64,27 +64,29 @@ function About({ name, bio }: { name: string; bio: string }) {
   );
 }
 
-const POPULAR_FEW = 5;
-const POPULAR_MORE = 10;
+const SONG_PREVIEW = 10;
+const MOST_PLAYED: SongOrder = { key: "plays", desc: true };
+const ARTIST_SONG_SORTS: [SongSort, string][] = [["plays", "Most played"], ["year", "Release date"], ["title", "Title"], ["album", "Album"]];
+const ARTIST_RELEASE_SORTS: SortOption[] = [...RELEASE_SORTS, ["plays", "Most played"]];
 
 export default function ArtistPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const artistSection = searchParams.get("section");
+  const section = artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
+  const [songFilter, setSongFilter] = useState("");
+  const [songOrder, setSongOrder] = useState<SongOrder>(MOST_PLAYED);
   const mobile = useIsMobile();
   const { data: artist, isLoading, isError, error, refetch } = useArtist(id);
   const { data: info } = useArtistInfo(id);
-  const { data: top = [] } = useTopSongs(artist?.name);
+  const librarySongs = useLibrarySongs(Boolean(id));
   const starred = useStarredIds();
   const caps = useCapabilities();
   const albums = useMemo(() => [...(artist?.album ?? [])].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)), [artist]);
   const fullAlbums = albums.filter((a) => releaseKind(a.songCount, a.duration) === "Album");
   const singles = albums.filter((a) => releaseKind(a.songCount, a.duration) !== "Album");
-  const albumQueries = useQueries({
-    queries: top.length >= 3 ? [] : albums.slice(0, 6).map((a) => ({ queryKey: keys.album(a.id), queryFn: () => sub.album(a.id), staleTime: 300_000 })),
-  });
-  const popular: Song[] = useMemo(() => {
-    if (top.length >= 3) return top.slice(0, POPULAR_MORE);
-    return albumQueries.flatMap((q) => q.data?.song ?? []).sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0)).slice(0, POPULAR_MORE);
-  }, [top, albumQueries]);
+  const artistSongs = useMemo(() => (librarySongs.data ?? []).filter((song) => song.artistId === id || song.artists?.some((songArtist) => songArtist.id === id)), [librarySongs.data, id]);
+  const visibleSongs = useMemo(() => shownSongs(artistSongs, songOrder, songFilter), [artistSongs, songOrder, songFilter]);
   const { data: library } = useArtists();
   const known = useMemo(() => new Set((library ?? []).map((a) => a.id)), [library]);
   const similar = info?.similarArtist ?? [];
@@ -95,7 +97,15 @@ export default function ArtistPage() {
   const banner = useArtistImage(artist?.id, artist?.name);
   const tone = useTone(banner ?? albums[0]?.coverArt);
   usePageTone(tone);
-  const [showAllPopular, setShowAllPopular] = useState(false);
+
+  const sectionHref = (artistSection: string | null) => {
+    const sectionParams = new URLSearchParams(searchParams);
+
+    if (artistSection) sectionParams.set("section", artistSection);
+    else sectionParams.delete("section");
+
+    return `?${sectionParams.toString()}`;
+  };
 
   if (isLoading) return <PageSkeleton />;
   if (isError || !artist || !albums.length) return <NotFoundState what="artist" error={error} retry={() => void refetch()} name={artist?.name} />;
@@ -104,6 +114,39 @@ export default function ArtistPage() {
   const plays = albums.reduce((n, a) => n + (a.playCount ?? 0), 0);
   const bio = plainBio(info?.biography);
   const context = { kind: "artist" as const, id: artist.id, name: artist.name };
+  const songsSection = (
+    <section>
+      <RowHeader
+        title="Songs"
+        action={
+          <div className="collection-actions">
+            <SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in artist songs" />
+            <CollectionTools sorts={ARTIST_SONG_SORTS} order={songOrder} onOrder={setSongOrder} />
+            {!section && artistSongs.length > SONG_PREVIEW ? <Link className="show-all" to={sectionHref("songs")}>Show all</Link> : null}
+          </div>
+        }
+      />
+      {librarySongs.isLoading ? <p className="muted" role="status">Loading songs…</p> : librarySongs.isError ? (
+        <div className="empty-inline">
+          <p className="muted">Couldn’t load this artist’s songs.</p>
+          <button type="button" className="btn ghost sm" onClick={() => void librarySongs.refetch()}>Try again</button>
+        </div>
+      ) : (
+        <TrackList
+          songs={visibleSongs}
+          context={context}
+          art
+          album={section === "songs"}
+          header={section === "songs"}
+          {...(!section ? { limit: SONG_PREVIEW } : {})}
+          column={songOrder.key === "year" ? { label: "Release date", value: releaseDateLabel, sort: "year" } : { label: "Plays", value: (song) => song.playCount ? count(song.playCount) : "", sort: "plays" }}
+          order={songOrder}
+          onOrder={setSongOrder}
+          fallback={MOST_PLAYED}
+        />
+      )}
+    </section>
+  );
 
   return (
     <div className="artist-page">
@@ -122,34 +165,31 @@ export default function ArtistPage() {
         </div>
       </div>
       <ActBar>
-        <PlayContextButton contextId={artist.id} label={artist.name} onPlay={() => void playArtist(artist)} />
-        <ShuffleButton label={artist.name} onShuffle={() => void playArtist(artist, true)} />
+        <PlayContextButton contextId={artist.id} label={artist.name} disabled={!artistSongs.length} onPlay={() => player.playSongs(shownSongs(artistSongs, songOrder, ""), 0, context)} />
+        <ShuffleButton label={artist.name} disabled={!artistSongs.length} onShuffle={() => player.playSongs(shownSongs(artistSongs, songOrder, ""), 0, context, { shuffle: true })} />
         <button type="button" className="btn ghost sm" onClick={() => void player.startRadio({ artistId: artist.id, name: artist.name })}>
           <Icon name="radio" size={15} />Artist radio
         </button>
         <LikeButton kind="artist" item={artist} />
       </ActBar>
-      <div className={bio ? "a-grid with-about" : "a-grid"}>
-        <section>
-          <RowHeader title="Popular" action={popular.length > POPULAR_FEW ? <button type="button" className="show-all" onClick={() => setShowAllPopular(!showAllPopular)}>{showAllPopular ? "Show less" : "See more"}</button> : undefined} />
-          {popular.length ? (
-            <TrackList songs={popular} context={context} art header={false} limit={showAllPopular ? POPULAR_MORE : POPULAR_FEW} column={{ label: "Plays", value: (s) => (s.playCount ? count(s.playCount) : "") }} />
-          ) : (
-            <p className="muted">No plays yet. Popular songs appear as you listen.</p>
-          )}
-        </section>
-        {bio ? <About name={artist.name} bio={bio} /> : null}
-      </div>
+      {!section ? (
+        <div className={bio ? "a-grid with-about" : "a-grid"}>
+          {songsSection}
+          {bio ? <About name={artist.name} bio={bio} /> : null}
+        </div>
+      ) : null}
       <div className="pad">
-        {fullAlbums.length ? <Collection id="artist-albums" title="Albums" items={fullAlbums.map((a) => albumItem(a, [a.year, "Album"].filter(Boolean).join(", ")))} sorts={RELEASE_SORTS} /> : null}
-        {singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((a) => albumItem(a, [a.year, releaseKind(a.songCount, a.duration)].filter(Boolean).join(", ")))} sorts={RELEASE_SORTS} /> : null}
-        {inLibrary.length ? (
+        {section ? <Link className="show-all" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
+        {section === "songs" ? songsSection : null}
+        {(!section || section === "albums") && fullAlbums.length ? <Collection id="artist-albums" title="Albums" items={fullAlbums.map((album) => albumItem(album, [album.year, "Album"].filter(Boolean).join(", ")))} sorts={ARTIST_RELEASE_SORTS} {...(!section ? { preview: 6, to: sectionHref("albums") } : {})} /> : null}
+        {(!section || section === "singles") && singles.length ? <Collection id="artist-singles" title="Singles and EPs" items={singles.map((album) => albumItem(album, [album.year, releaseKind(album.songCount, album.duration)].filter(Boolean).join(", ")))} sorts={ARTIST_RELEASE_SORTS} {...(!section ? { preview: 6, to: sectionHref("singles") } : {})} /> : null}
+        {!section && inLibrary.length ? (
           <>
             <RowHeader title="Similar artists in your library" />
             <CardRow>{inLibrary.map((a) => <ArtistCard key={a.id} artist={a} />)}</CardRow>
           </>
         ) : null}
-        {lidarrOn && missing.data?.length ? (
+        {!section && lidarrOn && missing.data?.length ? (
           <>
             <RowHeader title="Similar artists you don’t have" subtitle="Picked from Last.fm. Open one to find their albums and songs." />
             <div className="get">{missing.data.map((a) => <ArtistSearchCard key={a.foreignArtistId} artist={a} />)}</div>

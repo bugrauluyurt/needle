@@ -11,10 +11,29 @@ const owned = { id: "p1", name: "Road trip", owner: { id: "me", display_name: "M
 const followed = { id: "p2", name: "Chill Hits", owner: { id: "spotify", display_name: "Spotify" }, images: img("p2"), collaborative: false, items: { total: 80 } };
 const page1 = <T,>(items: T[]) => ({ items, next: null, total: items.length });
 
-export type Mock = { plays: { device: string | null; uris: string[] }[]; saved: string[] };
+export type Mock = {
+  plays: { device: string | null; uris: string[] }[];
+  saved: string[];
+  searches: { query: string; type: string; offset: number; limit: number }[];
+  artistReleaseRequests: { group: string; offset: number }[];
+};
 
-export async function mockSpotify(page: Page): Promise<Mock> {
-  const mock: Mock = { plays: [], saved: [] };
+type SpotifyMockOptions = {
+  searchSongCount?: number;
+  artistAlbumCount?: number;
+  delayedSearch?: { query: string; offset: number; milliseconds: number };
+};
+
+export async function mockSpotify(page: Page, options: SpotifyMockOptions = {}): Promise<Mock> {
+  const mock: Mock = { plays: [], saved: [], searches: [], artistReleaseRequests: [] };
+  const searchTracks = Array.from({ length: options.searchSongCount ?? 3 }, (_, trackIndex) => track(trackIndex + 1));
+  const artistAlbums = Array.from({ length: options.artistAlbumCount ?? 1 }, (_, albumIndex) => ({
+    ...albumRef,
+    id: `al${albumIndex + 1}`,
+    name: albumIndex ? `Glass Hours ${albumIndex + 1}` : albumRef.name,
+    release_date: `${2021 - albumIndex}-05-07`,
+    uri: `spotify:album:al${albumIndex + 1}`,
+  }));
   await page.route("**/api/capabilities", async (route) => {
     const res = await route.fetch();
     await route.fulfill({ response: res, json: { ...(await res.json()) as object, spotify: true, spotifyConnected: true, spotifyPlayback: true, spotifyReconnect: false, spotifyEnabled: true } });
@@ -51,10 +70,54 @@ export async function mockSpotify(page: Page): Promise<Mock> {
     if (path === "/artists/ar1/albums" && Number(url.searchParams.get("limit")) > 10) {
       return route.fulfill({ status: 400, json: { error: { status: 400, message: "Invalid limit" } } });
     }
+
+    if (path === "/artists/ar1/albums") {
+      const albumGroup = url.searchParams.get("include_groups") ?? "album,single";
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 10);
+      const matchingAlbums = albumGroup.includes("album") ? artistAlbums : [];
+      const nextOffset = offset + limit;
+      mock.artistReleaseRequests.push({ group: albumGroup, offset });
+
+      url.searchParams.set("offset", String(nextOffset));
+
+      return json({ items: matchingAlbums.slice(offset, nextOffset), next: nextOffset < matchingAlbums.length ? url.toString() : null, total: matchingAlbums.length, offset, limit });
+    }
+
     if (path === "/me/library") {
       mock.saved.push(`${req.method()} ${url.searchParams.get("uris") ?? ""}`);
       return route.fulfill({ status: 200, body: "" });
     }
+
+    if (path === "/search") {
+      const query = url.searchParams.get("q") ?? "";
+      const searchType = url.searchParams.get("type") ?? "";
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 10);
+      mock.searches.push({ query, type: searchType, offset, limit });
+
+      if (options.delayedSearch?.query === query && options.delayedSearch.offset === offset) {
+        await new Promise((resolve) => setTimeout(resolve, options.delayedSearch?.milliseconds));
+      }
+
+      const searchPage = <T,>(searchItems: T[], category: string) => {
+        const matchingItems = query.includes("zzzz") ? [] : searchItems;
+        const nextOffset = offset + limit;
+        const next = nextOffset < matchingItems.length
+          ? `https://api.spotify.com/v1/search?${new URLSearchParams({ q: query, type: category, offset: String(nextOffset), limit: String(limit) })}`
+          : null;
+
+        return { items: matchingItems.slice(offset, nextOffset), next, total: matchingItems.length, offset, limit };
+      };
+
+      return json({
+        tracks: searchPage(searchTracks, "track"),
+        albums: searchPage([albumRef], "album"),
+        artists: searchPage([artist], "artist"),
+        playlists: searchPage([followed], "playlist"),
+      });
+    }
+
     const routes: Record<string, unknown> = {
       "/me": { id: "me", display_name: "Me", product: "premium" },
       "/me/playlists": page1([owned, followed]),
@@ -65,15 +128,10 @@ export async function mockSpotify(page: Page): Promise<Mock> {
       "/me/albums": page1([{ added_at: "2026-09-10T10:00:00Z", album }]),
       "/albums/al1": album,
       "/artists/ar1": artist,
-      "/artists/ar1/albums": page1([albumRef]),
       "/me/following": { artists: page1([artist]) },
-      "/search": url.searchParams.get("q")?.includes("zzzz")
-        ? { tracks: page1([]), albums: page1([]), artists: page1([]), playlists: page1([]) }
-        : { tracks: page1(tracks), albums: page1([albumRef]), artists: page1([artist]), playlists: page1([followed]) },
     };
     if (path in routes) return json(routes[path]);
     return route.fulfill({ status: 403, json: { error: { status: 403, message: "Forbidden" } } });
   });
   return mock;
 }
-

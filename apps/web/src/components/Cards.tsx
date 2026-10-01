@@ -1,15 +1,19 @@
 import { memo } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import type { Album, Artist, Song } from "@needle/shared";
+import type { Album, Artist } from "@needle/shared";
+import { releaseDateString } from "@needle/shared";
 import { player } from "../player/controller.ts";
 import { useContextPlaying } from "../player/store.ts";
 import { sub } from "../lib/subsonic.ts";
+import { api } from "../lib/api.ts";
+import { shownSongs } from "../lib/songs.ts";
+import { releaseDateLabel } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
 import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
-import { SpotifyMark } from "./SpotifyMark.tsx";
+import { SourceMark } from "./SpotifyMark.tsx";
 import type { CollectionItem } from "./Collection.tsx";
 
 type CardProps = {
@@ -28,7 +32,7 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
   return (
     <article className="card">
       <Link to={to} className="card-link">
-        <div className="card-art">{art}{source === "spotify" ? <SpotifyMark className="card-src" /> : null}</div>
+        <div className="card-art">{art}<SourceMark source={source} className="card-src" /></div>
         <div className="t">{title}</div>
         {subtitle ? <div className="s">{subtitle}</div> : null}
       </Link>
@@ -46,29 +50,28 @@ export async function playAlbum(id: string, name: string, shuffle = false) {
   player.playSongs(album.song ?? [], 0, { kind: "album", id, name, ordered: true }, { shuffle });
 }
 
-export async function playArtist(artist: Pick<Artist, "id" | "name">, shuffle = false) {
-  const top = await sub.topSongs(artist.name, 20).catch(() => [] as Song[]);
-  let songs = top;
-  if (songs.length < 5) {
-    const a = await sub.artist(artist.id);
-    const albums = await Promise.all((a.album ?? []).slice(0, 8).map((al) => sub.album(al.id)));
-    songs = albums.flatMap((al) => al.song ?? []);
-  }
-  player.playSongs(songs, 0, { kind: "artist", id: artist.id, name: artist.name }, { shuffle });
+export async function playArtist(artist: Pick<Artist, "id" | "name">, { shuffle = false }: { shuffle?: boolean } = {}) {
+  const librarySongs = await api.librarySongs();
+  const artistSongs = librarySongs.filter((song) => song.artistId === artist.id || song.artists?.some((songArtist) => songArtist.id === artist.id));
+
+  player.playSongs(shownSongs(artistSongs, { key: "plays", desc: true }, ""), 0, { kind: "artist", id: artist.id, name: artist.name }, { shuffle });
 }
 
 export function albumItem(album: Album, subtitle?: string): CollectionItem {
   const by = album.displayArtist ?? album.artist ?? "";
+  const releaseDate = releaseDateString(album.releaseDate);
   return {
     key: album.id,
     to: `/album/${album.id}`,
     art: (px) => <Art id={album.coverArt} px={px} />,
     title: album.name,
-    subtitle: subtitle ?? [album.year, by].filter(Boolean).join(", "),
+    subtitle: subtitle ?? [releaseDate ? releaseDateLabel({ releaseDate }) : album.year, by].filter(Boolean).join(", "),
     by,
     contextId: album.id,
     ...(album.year ? { year: album.year } : {}),
     ...(album.created ? { added: album.created } : {}),
+    ...(album.playCount !== undefined ? { playCount: album.playCount } : {}),
+    ...(releaseDate ? { releaseDate } : {}),
     onPlay: () => void playAlbum(album.id, album.name),
   };
 }

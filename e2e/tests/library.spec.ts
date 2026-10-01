@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { AlbumWithSongs, SubsonicEnvelope } from "@needle/shared";
 import { bar, openAlbum, playContext, signIn } from "./helpers.ts";
 
 test("likes a song and finds it in Liked songs", async ({ page }) => {
@@ -109,6 +110,63 @@ test("sorts a song table from its column titles, both ways", async ({ page }) =>
   await title.getByRole("button").click();
   await expect(title).toHaveAttribute("aria-sort", "none");
   await expect(page.getByRole("button", { name: /^Sort: Custom order/ })).toBeVisible();
+});
+
+test("finds an album song without changing its disc number or playback position", async ({ page }) => {
+  await page.route("**/rest/getAlbum.view", async (route) => {
+    const albumResponse = await route.fetch();
+    const albumEnvelope = await albumResponse.json() as SubsonicEnvelope<{ album: AlbumWithSongs }>;
+    const album = albumEnvelope["subsonic-response"].album;
+
+    if (album.name === "Salt & Signal") {
+      album.song = album.song?.map((song, songIndex) => ({ ...song, discNumber: songIndex < 2 ? 1 : 2, track: songIndex < 2 ? songIndex + 1 : songIndex - 1 }));
+    }
+
+    await route.fulfill({ response: albumResponse, json: albumEnvelope });
+  });
+  await signIn(page);
+  await openAlbum(page, "Salt & Signal");
+  await expect(page.getByRole("heading", { name: "Disc 2", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Find in album", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Find in album", exact: true }).fill("Northern");
+
+  const filteredSong = page.locator(".tr", { hasText: "Northern Line" });
+  await expect(page.locator(".tr")).toHaveCount(1);
+  await expect(filteredSong.locator(".num")).toHaveText("2");
+  await expect(page.getByRole("heading", { name: "Disc 2", exact: true })).toBeVisible();
+  await filteredSong.hover();
+  await filteredSong.getByRole("button", { name: "Play Northern Line", exact: true }).click();
+  await expect(bar(page).locator(".np-t")).toHaveText("Northern Line");
+  await bar(page).getByRole("button", { name: "Next", exact: true }).click();
+  await expect(bar(page).locator(".np-t")).toHaveText("Kettle Song");
+  await bar(page).getByRole("button", { name: "Previous", exact: true }).click();
+  await bar(page).getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(bar(page).locator(".np-t")).toHaveText("Paper Boats");
+});
+
+test("reveals the full title when a song name is clipped", async ({ page }) => {
+  const longSongTitle = "Lighthouse Keeper, live in the little room above the harbor on a rainy evening";
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.route("**/rest/getAlbum.view", async (route) => {
+    const albumResponse = await route.fetch();
+    const albumEnvelope = await albumResponse.json() as SubsonicEnvelope<{ album: AlbumWithSongs }>;
+    const album = albumEnvelope["subsonic-response"].album;
+
+    if (album.name === "Salt & Signal") {
+      album.song = album.song?.map((song) => song.title === "Lighthouse Keeper" ? { ...song, title: longSongTitle } : song);
+    }
+
+    await route.fulfill({ response: albumResponse, json: albumEnvelope });
+  });
+  await signIn(page);
+  await openAlbum(page, "Salt & Signal");
+  const songTitle = page.locator(".tr .name", { hasText: longSongTitle });
+  await expect(songTitle).toBeVisible();
+  expect(await songTitle.evaluate((titleElement) => titleElement.scrollWidth > titleElement.clientWidth)).toBe(true);
+  await songTitle.hover();
+  await expect(page.getByRole("tooltip")).toHaveText(longSongTitle);
+  await page.locator(".hero h1").hover();
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
 });
 
 test("plays a mix from Home and a genre", async ({ page }) => {

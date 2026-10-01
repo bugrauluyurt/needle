@@ -8,11 +8,29 @@ const EDGE = 8;
 const SKIP = ".hover-play, .q-play, .row-play, [data-no-tip]";
 
 function tipFor(el: HTMLElement): Tip | null {
-  const text = el.getAttribute("aria-label");
-  if (!text || el.innerText.trim() || el.matches(SKIP)) return null;
+  if (el.matches(SKIP)) return null;
+
+  const styles = getComputedStyle(el);
+  const clipped = (styles.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) || (styles.webkitLineClamp !== "none" && styles.webkitLineClamp !== "" && el.scrollHeight > el.clientHeight + 1);
+  const text = clipped ? el.textContent?.trim() : el.innerText.trim() ? null : el.getAttribute("aria-label");
+
+  if (!text) return null;
+
   const r = el.getBoundingClientRect();
   const below = r.top < 56;
   return { text, key: el.getAttribute("data-key"), x: r.left + r.width / 2, y: below ? r.bottom + 8 : r.top - 8, below };
+}
+
+function getTooltipTarget(target: EventTarget | null): HTMLElement | null {
+  let tooltipElement = target instanceof Element ? target : null;
+
+  while (tooltipElement && tooltipElement !== document.body) {
+    if (tooltipElement instanceof HTMLElement && tipFor(tooltipElement)) return tooltipElement;
+
+    tooltipElement = tooltipElement.parentElement;
+  }
+
+  return null;
 }
 
 export function Tooltips() {
@@ -30,7 +48,7 @@ export function Tooltips() {
     };
     const over = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
-      const el = (e.target as Element | null)?.closest<HTMLElement>("button[aria-label], a[aria-label]") ?? null;
+      const el = getTooltipTarget(e.target);
       if (el === current) return;
       hide();
       current = el;
@@ -38,7 +56,11 @@ export function Tooltips() {
     };
     const focus = (e: FocusEvent) => {
       const el = e.target;
-      if (el instanceof HTMLElement && el.matches(":focus-visible") && el.matches("button[aria-label], a[aria-label]")) setTip(tipFor(el));
+      if (!(el instanceof HTMLElement) || !el.matches(":focus-visible")) return;
+
+      const tooltipElement = getTooltipTarget(el) ?? Array.from(el.querySelectorAll<HTMLElement>("*")).find((textElement) => tipFor(textElement));
+
+      if (tooltipElement) setTip(tipFor(tooltipElement));
     };
     window.addEventListener("pointerover", over);
     window.addEventListener("pointerdown", hide, true);

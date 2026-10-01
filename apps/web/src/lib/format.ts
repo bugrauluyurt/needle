@@ -65,6 +65,19 @@ export function formatLong(song: Song): string {
 
 export const artistName = (s: Pick<Song, "displayArtist" | "artist">) => s.displayArtist ?? s.artist ?? "Unknown artist";
 
+export function releaseDateLabel(song: Pick<Song, "year" | "releaseDate">): string {
+  const releaseDate = song.releaseDate ?? String(song.year ?? "");
+
+  if (!releaseDate) return "Unknown";
+  if (releaseDate.length === 4) return releaseDate;
+
+  const parsedReleaseDate = new Date(`${releaseDate.length === 7 ? `${releaseDate}-01` : releaseDate}T12:00:00Z`);
+
+  if (Number.isNaN(parsedReleaseDate.getTime())) return releaseDate;
+
+  return parsedReleaseDate.toLocaleDateString("en-GB", { ...(releaseDate.length > 7 ? { day: "numeric" } : {}), month: "short", year: "numeric", timeZone: "UTC" });
+}
+
 export function hoursSince(iso: string, now = Date.now()): number {
   return Math.round((now - Date.parse(iso)) / HOUR_MS);
 }

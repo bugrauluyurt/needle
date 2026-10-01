@@ -350,6 +350,31 @@
   display: none;
 }
 
+.phone-app .actbar:has(.sf) {
+  flex-wrap: wrap;
+}
+
+.phone-app .actbar .act-end:has(.sf) {
+  display: flex;
+  flex: 1 0 100%;
+  order: 20;
+  margin-left: 0;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.phone-app .actbar .act-end .sf {
+  --sf-w: min(180px, 40vw);
+}
+
+.phone-app .collection .row-h {
+  flex-wrap: wrap;
+}
+
+.phone-app .collection-actions {
+  gap: 8px;
+}
+
 .phone-app .actbar .act-label {
   display: none;
 }
@@ -629,6 +654,22 @@
   z-index: 40;
   animation: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   background: var(--ink);
+  transition: transform 0.22s var(--ease-out);
+}
+
+.sheet-root[data-state="closed"] {
+  animation: sheet-down 0.24s var(--ease-out) both;
+  pointer-events: none;
+}
+
+@keyframes sheet-down {
+  from {
+    transform: translateY(var(--drag-y, 0px));
+  }
+
+  to {
+    transform: translateY(100%);
+  }
 }
 
 @keyframes sheet-up {

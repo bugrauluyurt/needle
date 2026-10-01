@@ -32,6 +32,7 @@ test("opens Spotify playlists, albums and artists", async ({ page }) => {
   await page.goto("/spotify/album/al1");
   await expect(page.getByRole("heading", { level: 1, name: "Glass Hours" })).toBeVisible();
   await expect(page.locator(".tr")).toHaveCount(3);
+  await expect(page.locator(".tr").getByRole("img", { name: "From Spotify", exact: true })).toHaveCount(3);
   await page.locator(".meta-artist", { hasText: "Lumen Drift" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Lumen Drift" })).toBeVisible();
   await expect(page.locator(".card", { hasText: "Glass Hours" })).toBeVisible();
@@ -68,11 +69,15 @@ test("searches your library and Spotify in separate sections, and the filters ap
   await expect(library.locator(".top-card h2")).toHaveText("Neon Harbor");
   await expect(spotify.locator(".song-mini")).toHaveCount(3);
   await expect(spotify.locator(".card", { hasText: "Glass Hours" })).toBeVisible();
+  await expect(spotify.locator(".card", { hasText: "Glass Hours" }).getByRole("img", { name: "From Spotify", exact: true })).toBeVisible();
+  await expect(library.locator(".card", { hasText: "Night Transit" }).getByRole("img", { name: "From your library", exact: true })).toBeVisible();
 
   const filters = page.getByRole("group", { name: "Filter results" });
   await filters.getByRole("button", { name: "Songs", exact: true }).click();
   await expect(library.locator(".tr").first()).toBeVisible();
   await expect(spotify.locator(".tr")).toHaveCount(3);
+  await expect(spotify.locator(".tr").getByRole("img", { name: "From Spotify", exact: true })).toHaveCount(3);
+  await expect(library.locator(".tr").first().getByRole("img", { name: "From your library", exact: true })).toBeVisible();
   await filters.getByRole("button", { name: "Playlists", exact: true }).click();
   await expect(library.getByText("No playlists in your library match “neon”.")).toBeVisible();
   await expect(spotify.locator(".card", { hasText: "Chill Hits" })).toBeVisible();
@@ -85,6 +90,77 @@ test("searches your library and Spotify in separate sections, and the filters ap
   await filters.getByRole("button", { name: "All", exact: true }).click();
   await expect(library.getByText("Nothing in your library matches “zzzz”.")).toBeVisible();
   await expect(spotify.getByText("Spotify found no results for “zzzz”.")).toBeVisible();
+});
+
+test("shows Spotify artist songs before releases and expands them on demand", async ({ page }) => {
+  const mock = await mockSpotify(page, { searchSongCount: 23 });
+  await signIn(page, "/spotify/artist/ar1");
+  await expect(page.locator(".artist-page h2").first()).toHaveText("Songs");
+  await expect(page.locator(".tr .name")).toHaveText(Array.from({ length: 10 }, (_, songIndex) => `Glass Song ${songIndex + 1}`));
+  const songSection = page.locator("section").filter({ has: page.getByRole("heading", { level: 2, name: "Songs", exact: true }) });
+  await songSection.getByRole("link", { name: "Show all", exact: true }).click();
+  await expect(page).toHaveURL(/section=songs/);
+  await expect(page.getByRole("heading", { level: 2, name: "Albums", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(page.locator(".tr")).toHaveCount(20);
+  expect(mock.searches.filter((searchRequest) => searchRequest.type === "track").map((searchRequest) => searchRequest.offset)).toEqual([0, 10]);
+});
+
+test("expands a compact Spotify artist album section without fetching ahead", async ({ page }) => {
+  const mock = await mockSpotify(page, { artistAlbumCount: 13 });
+  await signIn(page, "/spotify/artist/ar1");
+  const albumCollection = page.locator(".collection").filter({ has: page.getByRole("heading", { level: 2, name: "Albums", exact: true }) });
+  await expect(albumCollection.locator(".card")).toHaveCount(6);
+  expect(mock.artistReleaseRequests.filter((releaseRequest) => releaseRequest.group === "album").map((releaseRequest) => releaseRequest.offset)).toEqual([0]);
+  await albumCollection.getByRole("link", { name: "Show all", exact: true }).click();
+  await expect(page).toHaveURL(/section=albums/);
+  await expect(page.locator(".card")).toHaveCount(10);
+  await expect(page.getByRole("heading", { level: 2, name: "Songs", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(page.locator(".card")).toHaveCount(13);
+  await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+  expect(mock.artistReleaseRequests.filter((releaseRequest) => releaseRequest.group === "album").map((releaseRequest) => releaseRequest.offset)).toEqual([0, 10]);
+});
+
+test("loads more Spotify search songs on demand without changing the first page", async ({ page }) => {
+  const mock = await mockSpotify(page, { searchSongCount: 23 });
+  await signIn(page, "/search?q=glass");
+  await page.getByRole("button", { name: "Show all Songs on Spotify", exact: true }).click();
+  await expect(page).toHaveURL(/source=spotify/);
+  await expect(page.getByRole("region", { name: "In your library", exact: true })).toHaveCount(0);
+
+  const songTitles = page.locator(".tr .name");
+  const firstPageTitles = Array.from({ length: 10 }, (_, songIndex) => `Glass Song ${songIndex + 1}`);
+  await expect(songTitles).toHaveText(firstPageTitles);
+  expect(mock.searches.filter((searchRequest) => searchRequest.query === "glass")).toHaveLength(1);
+
+  await page.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(songTitles).toHaveText(Array.from({ length: 20 }, (_, songIndex) => `Glass Song ${songIndex + 1}`));
+  expect(mock.searches.filter((searchRequest) => searchRequest.query === "glass").map((searchRequest) => searchRequest.offset)).toEqual([0, 10]);
+
+  await page.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect(songTitles).toHaveCount(23);
+  await expect(page.getByRole("button", { name: "Load more", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to all search results", exact: true }).click();
+  await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("glass");
+});
+
+test("discards a delayed Spotify page when the search query changes", async ({ page }) => {
+  const mock = await mockSpotify(page, { searchSongCount: 23, delayedSearch: { query: "glass", offset: 10, milliseconds: 1_200 } });
+  await signIn(page, "/search?q=glass");
+  await page.getByRole("button", { name: "Show all Songs on Spotify", exact: true }).click();
+  await expect(page.locator(".tr")).toHaveCount(10);
+  await page.getByRole("button", { name: "Load more", exact: true }).click();
+  await expect.poll(() => mock.searches.some((searchRequest) => searchRequest.query === "glass" && searchRequest.offset === 10)).toBe(true);
+
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("zzzz");
+  await expect(page).toHaveURL(/q=zzzz/);
+  await expect(page.getByText(/Spotify found no (songs|results) for “zzzz”\./)).toBeVisible();
+  await expect(page.locator(".tr")).toHaveCount(0);
+  await page.waitForTimeout(1_200);
+  await expect(page.locator(".tr")).toHaveCount(0);
+  await expect(page.getByText("Glass Song 11", { exact: true })).toHaveCount(0);
 });
 
 test("plays Spotify songs through the Web Playback SDK and moves on when one ends", async ({ page }) => {

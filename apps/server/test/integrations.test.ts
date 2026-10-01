@@ -248,6 +248,39 @@ describe("library search", () => {
     expect(songs.map((s) => s.id)).toEqual(["new", "old"]);
   });
 
+  it("keeps full album release dates on the indexed songs", async () => {
+    const navidromeRequests = mockFetch([
+      [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "1", count: 1 } })],
+      [/POST \/rest\/search3/, () => ok({ searchResult3: {
+        song: [{ id: "song", title: "Harbor", albumId: "album", year: 2024 }],
+        album: [{ id: "album", name: "Harbor", duration: 180, songCount: 1, releaseDate: { year: 2024, month: 10, day: 1 } }],
+      } })],
+    ]);
+
+    const librarySearch = new LibrarySearch(new Navidrome("http://nd"));
+    const searchResults = await librarySearch.search(auth, "harbor");
+
+    expect(searchResults.song?.[0]?.releaseDate).toBe("2024-10-01");
+    expect(navidromeRequests.filter((navidromeRequest) => navidromeRequest.url.endsWith("/search3"))).toHaveLength(1);
+  });
+
+  it("returns every matching song, album and artist without truncating the index", async () => {
+    const librarySongs = Array.from({ length: 60 }, (_, songIndex) => ({ id: `song-${songIndex}`, title: `Harbor song ${songIndex}` }));
+    const libraryAlbums = Array.from({ length: 30 }, (_, albumIndex) => ({ id: `album-${albumIndex}`, name: `Harbor album ${albumIndex}`, songCount: 1, duration: 180 }));
+    const libraryArtists = Array.from({ length: 20 }, (_, artistIndex) => ({ id: `artist-${artistIndex}`, name: `Harbor artist ${artistIndex}` }));
+
+    mockFetch([
+      [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "1", count: librarySongs.length } })],
+      [/POST \/rest\/search3/, () => ok({ searchResult3: { song: librarySongs, album: libraryAlbums, artist: libraryArtists } })],
+    ]);
+
+    const searchResults = await new LibrarySearch(new Navidrome("http://nd")).search(auth, "harbor");
+
+    expect(searchResults.song?.map((song) => song.id)).toEqual(librarySongs.map((song) => song.id));
+    expect(searchResults.album?.map((album) => album.id)).toEqual(libraryAlbums.map((album) => album.id));
+    expect(searchResults.artist?.map((artist) => artist.id)).toEqual(libraryArtists.map((artist) => artist.id));
+  });
+
   it("builds the index once and rebuilds it after a new scan", async () => {
     let calls = mockFetch(library("1"));
     const search = new LibrarySearch(new Navidrome("http://nd"));
@@ -259,6 +292,30 @@ describe("library search", () => {
     await search.search(auth, "guy");
     expect(calls.filter((c) => c.url.endsWith("/search3"))).toHaveLength(1);
     vi.useRealTimers();
+  });
+
+  it("refreshes play counts even when the library scan has not changed", async () => {
+    vi.useFakeTimers();
+
+    try {
+      let songPlayCount = 1;
+
+      mockFetch([
+        [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "unchanged", count: 1 } })],
+        [/POST \/rest\/search3/, () => ok({ searchResult3: { song: [{ id: "song", title: "Harbor", playCount: songPlayCount }] } })],
+      ]);
+
+      const librarySearch = new LibrarySearch(new Navidrome("http://nd"));
+
+      expect((await librarySearch.search(auth, "harbor")).song?.[0]?.playCount).toBe(1);
+
+      songPlayCount = 9;
+      vi.advanceTimersByTime(60_001);
+
+      expect((await librarySearch.search(auth, "harbor")).song?.[0]?.playCount).toBe(9);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

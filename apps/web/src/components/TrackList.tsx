@@ -13,7 +13,7 @@ import { useActiveRemote } from "../remote/client.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { Art } from "./Art.tsx";
 import { Eq, Icon } from "./Icon.tsx";
-import { SpotifyMark } from "./SpotifyMark.tsx";
+import { SourceMark } from "./SpotifyMark.tsx";
 import { useScrollContainer } from "./ScrollContext.ts";
 import type { TrackMenuExtra } from "./TrackMenu.tsx";
 import { openTrackMenu, TrackMoreButton } from "./TrackMenu.tsx";
@@ -41,6 +41,7 @@ type TrackListProps = {
   order?: SongOrder;
   onOrder?: (order: SongOrder) => void;
   fallback?: SongOrder;
+  canSort?: boolean;
 };
 
 const ROW = 56;
@@ -68,7 +69,6 @@ type RowProps = {
   located: boolean;
   liked: boolean;
   downloaded: boolean;
-  fromSpotify: boolean;
   selected: boolean;
   draggable: boolean;
   extra: TrackMenuExtra[] | undefined;
@@ -163,7 +163,7 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           <div className="name">{p.song.title}</div>
           <div className="by">
             {p.downloaded ? <span className="dlmark" title="Downloaded"><Icon name="downloaded" size={13} /></span> : null}
-            {p.fromSpotify ? <SpotifyMark compact /> : null}
+            <SourceMark source={p.song.source} compact />
             {p.song.artistId ? <Link to={artistPath(p.song.artistId)}>{artistName(p.song)}</Link> : artistName(p.song)}
           </div>
         </div>
@@ -191,26 +191,25 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
   );
 });
 
-function SortHeader({ label, sort, order, onSort, className, children }: { label: string; sort: SongSort; order: SongOrder; onSort: (sort: SongSort) => void; className?: string; children?: ReactNode }) {
+function SortHeader({ label, sort, order, onSort, className, children, canSort = true }: { label: string; sort: SongSort; order: SongOrder; onSort: (sort: SongSort) => void; className?: string; children?: ReactNode; canSort?: boolean }) {
   const active = order.key === sort;
   const state = active ? (order.desc ? "descending" : "ascending") : "none";
   return (
     <span className={["sortable", active ? "on" : "", className ?? ""].filter(Boolean).join(" ")} role="columnheader" aria-sort={state}>
-      <button type="button" aria-label={`Sort by ${label.toLowerCase()}`} onClick={() => onSort(sort)} data-no-tip>
+      {canSort ? <button type="button" aria-label={`Sort by ${label.toLowerCase()}`} onClick={() => onSort(sort)} data-no-tip>
         {children ?? label}
         <SortArrow desc={active && order.desc} />
-      </button>
+      </button> : children ?? label}
     </span>
   );
 }
 
-export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay, order, onOrder, fallback = AS_GIVEN }: TrackListProps) {
+export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay, order, onOrder, fallback = AS_GIVEN, canSort = true }: TrackListProps) {
   const currentId = usePlayer((s) => s.items[s.index]?.song.id);
   const paused = usePlayer((s) => !s.playing);
   const elsewhere = Boolean(useActiveRemote());
   const likes = useSongLikes();
   const downloaded = useOffline((s) => s.songs);
-  const mixed = useMemo(() => songs.some((s) => s.source === "spotify") && songs.some((s) => s.source !== "spotify"), [songs]);
   const [selected, setSelected] = useState<string | null>(null);
   const [own, setOwn] = useState(fallback);
   const current = order ?? own;
@@ -336,7 +335,6 @@ export function TrackList({ songs, context, art = false, album = false, column, 
       located={located === i}
       liked={likes.isLiked(song)}
       downloaded={downloaded.has(song.id)}
-      fromSpotify={mixed && song.source === "spotify"}
       selected={selected === song.id}
       draggable={Boolean(onReorder)}
       extra={menuExtra?.(song, i)}
@@ -360,12 +358,12 @@ export function TrackList({ songs, context, art = false, album = false, column, 
         {header ? (
           <div className="th" role="row">
             <span className="r" role="columnheader">
-              <button type="button" className="th-reset" aria-label="Original order" disabled={current.key === fallback.key && current.desc === fallback.desc} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
+              <button type="button" className="th-reset" aria-label="Original order" disabled={!canSort || (current.key === fallback.key && current.desc === fallback.desc)} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
             </span>
-            <SortHeader label="Title" sort="title" order={current} onSort={sortBy} />
-            {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} /> : null}
-            {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" /> : <span className="col" role="columnheader">{column.label}</span>) : null}
-            <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r">
+            <SortHeader label="Title" sort="title" order={current} onSort={sortBy} canSort={canSort} />
+            {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} canSort={canSort} /> : null}
+            {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" canSort={canSort} /> : <span className="col" role="columnheader">{column.label}</span>) : null}
+            <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r" canSort={canSort}>
               <Icon name="clock" size={16} />
             </SortHeader>
           </div>

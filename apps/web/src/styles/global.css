@@ -18,6 +18,7 @@
   --ui: "Instrument Sans", system-ui, sans-serif;
   --tone: #3a2a5a;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --source-gap: 6px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;

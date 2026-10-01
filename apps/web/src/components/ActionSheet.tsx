@@ -6,7 +6,7 @@ const FLICK_PX_PER_MS = 0.6;
 const CLOSE_SHARE = 0.25;
 const CLOSE_PX = 110;
 
-export function useDragToClose(onClose: () => void, follow = false) {
+export function useDragToClose(onClose: () => void, { follow = false }: { follow?: boolean } = {}) {
   const ref = useRef<HTMLDivElement>(null);
   const start = useRef<{ y: number; t: number } | null>(null);
   const place = (dy: number | null) => {
@@ -14,6 +14,7 @@ export function useDragToClose(onClose: () => void, follow = false) {
     if (!el) return;
     el.style.transition = dy === null ? "" : "none";
     el.style.transform = dy === null ? "" : `translateY(${Math.max(0, dy)}px)`;
+    el.style.setProperty("--drag-y", `${Math.max(0, dy ?? 0)}px`);
   };
   const handlers = {
     onTouchStart: (e: TouchEvent) => {
@@ -36,6 +37,11 @@ export function useDragToClose(onClose: () => void, follow = false) {
       if (dy > 0 && (far || flick)) onClose();
       else place(null);
     },
+    onTouchCancel: () => {
+      start.current = null;
+
+      place(null);
+    },
   };
   return { ref, handlers };
 }
@@ -43,7 +49,7 @@ export function useDragToClose(onClose: () => void, follow = false) {
 type Props = { open: boolean; onClose: () => void; label: string; tone?: string; children: ReactNode };
 
 export function ActionSheet({ open, onClose, label, tone, children }: Props) {
-  const { ref, handlers } = useDragToClose(onClose, true);
+  const { ref, handlers } = useDragToClose(onClose, { follow: true });
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>

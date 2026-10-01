@@ -70,6 +70,7 @@
 }
 
 .liked-art {
+  position: relative;
   background: linear-gradient(135deg, #f6b23c, #e0457b 60%, #5b2a86);
   display: grid;
   place-items: center;
@@ -812,7 +813,7 @@
   margin-top: 2px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--source-gap);
 }
 
 .tr .by a:hover,
@@ -1817,14 +1818,15 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 280px;
+  max-width: min(360px, calc(100vw - 16px));
   padding: 6px 10px;
   border-radius: 6px;
   background: #2f2b38;
   color: var(--label);
   font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   animation: tip-in 0.12s ease;
@@ -1863,7 +1865,7 @@ kbd {
 .sp-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--source-gap);
   height: 24px;
   padding: 0 9px 0 6px;
   border-radius: 12px;
@@ -2153,12 +2155,86 @@ kbd {
   padding: 0;
   justify-content: center;
   border-radius: 50%;
-  margin-left: 6px;
+  margin: 0;
   flex: none;
 }
 
-.tr .by .sp-badge.compact {
-  margin: 0;
+.sp-badge.library-badge {
+  background: color-mix(in oklab, var(--label) 8%, transparent);
+  color: var(--sleeve);
+}
+
+.sp-badge.library-badge.card-src {
+  background: rgba(15, 14, 19, 0.78);
+  color: var(--label);
+}
+
+.liked-heart {
+  position: absolute;
+  right: 9%;
+  bottom: 8%;
+  display: grid;
+  place-items: center;
+  width: 24%;
+  height: 24%;
+  min-width: 15px;
+  min-height: 15px;
+  border-radius: 50%;
+  background: var(--deck);
+}
+
+.liked-art .liked-heart svg {
+  width: 65%;
+  height: 65%;
+}
+
+.collection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-width: 0;
+}
+
+.queue-search {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.dev-transfer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.collection-actions .sf {
+  --sf-w: 180px;
+  max-width: 100%;
+}
+
+.search-focus-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 20px 0 28px;
+}
+
+.mini-text .s .sp-badge.compact,
+.rp-title p .sp-badge.compact,
+.nowp .ti p .sp-badge.compact {
+  margin-right: var(--source-gap);
 }
 
 .card-src {
@@ -2173,4 +2249,5 @@ kbd {
 .rank .t {
   display: flex;
   align-items: center;
+  gap: var(--source-gap);
 }

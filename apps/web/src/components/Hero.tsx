@@ -35,20 +35,20 @@ export function Hero({ art, kind, title, description, meta }: { art: ReactNode; 
   );
 }
 
-export function PlayContextButton({ contextId, onPlay, label }: { contextId: string; onPlay: () => void; label: string }) {
+export function PlayContextButton({ contextId, onPlay, label, disabled = false }: { contextId: string; onPlay: () => void; label: string; disabled?: boolean }) {
   const active = usePlayer((s) => s.context?.id === contextId);
   const playing = usePlayer((s) => s.playing);
   const on = active && playing;
   return (
-    <button type="button" className="bigplay" aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
+    <button type="button" className="bigplay" disabled={disabled} aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
       <Icon name={on ? "pause" : "play"} size={22} />
     </button>
   );
 }
 
-export function ShuffleButton({ onShuffle, label }: { onShuffle: () => void; label: string }) {
+export function ShuffleButton({ onShuffle, label, disabled = false }: { onShuffle: () => void; label: string; disabled?: boolean }) {
   return (
-    <button type="button" className="icon-btn big" aria-label={`Shuffle ${label}`} onClick={onShuffle}>
+    <button type="button" className="icon-btn big" disabled={disabled} aria-label={`Shuffle ${label}`} onClick={onShuffle}>
       <Icon name="shuffle" size={26} />
     </button>
   );

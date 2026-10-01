@@ -51,7 +51,7 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
       { key: "liked", to: "/liked", art: () => <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), added: "9999", pinned: true },
       ...(starred?.artist?.length ? [{ key: "liked-artists", to: "/artists/liked", art: () => <LikedArt className="artists" />, title: "Liked artists", subtitle: `Artists, ${plural(starred.artist.length, "artist")}`, kind: "artists", contextId: "liked-artists", downloaded: false, added: "9996", pinned: true } satisfies LibraryEntry] : []),
       ...(starred?.album?.length ? [{ key: "liked-albums", to: "/albums/starred", art: () => <LikedArt className="albums" />, title: "Liked albums", subtitle: `Albums, ${plural(starred.album.length, "album")}`, kind: "albums", contextId: "liked-albums", downloaded: false, added: "9997", pinned: true } satisfies LibraryEntry] : []),
-      ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
+      ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, source: "spotify", contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
       ...playlists.map((p): LibraryEntry => ({
         key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />, title: p.name,
         subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "", kind: "playlists", contextId: p.id, downloaded: down.has(p.id), added: p.changed ?? p.created ?? "",
@@ -66,15 +66,15 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
       })),
       ...spPlaylists.map((p): LibraryEntry => ({
         key: `sp-pl-${p.id}`, to: `/spotify/playlist/${p.id}`, art: (px) => <Art images={p.images} px={px} />, title: p.name,
-        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`, by: p.owner.display_name ?? p.owner.id, kind: "playlists", spotify: true, contextId: spId(p.id), downloaded: false, added: "",
+        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`, by: p.owner.display_name ?? p.owner.id, kind: "playlists", spotify: true, source: "spotify", contextId: spId(p.id), downloaded: false, added: "",
       })),
       ...spAlbums.map((a): LibraryEntry => ({
         key: `sp-al-${a.id}`, to: `/spotify/album/${a.id}`, art: (px) => <Art images={a.images} px={px} />, title: a.name,
-        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, by: a.artists?.[0]?.name ?? "", kind: "albums", spotify: true, contextId: spId(a.id), downloaded: false, added: a.added_at ?? "",
+        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, by: a.artists?.[0]?.name ?? "", kind: "albums", spotify: true, source: "spotify", contextId: spId(a.id), downloaded: false, added: a.added_at ?? "",
       })),
       ...spArtists.map((a): LibraryEntry => ({
         key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: (px) => <Art images={a.images} px={px} round fallback="artist" />, title: a.name,
-        subtitle: "Artist you follow on Spotify", by: a.name, kind: "artists", spotify: true, contextId: spId(a.id), downloaded: false, added: "",
+        subtitle: "Artist you follow on Spotify", by: a.name, kind: "artists", spotify: true, source: "spotify", contextId: spId(a.id), downloaded: false, added: "",
       })),
     ];
     const terms = queryTerms(query);
