@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bar, signIn } from "./helpers.ts";
+import { bar, openAlbum, signIn } from "./helpers.ts";
 import { mockSpotify } from "./spotify-mock.ts";
 
 test("shows the Spotify library next to your own", async ({ page }) => {
@@ -197,6 +197,17 @@ test("keeps Spotify visible and explains the cooldown while requests are paused"
   const before = calls;
   await page.reload();
   await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
+  await openAlbum(page, "Night Transit");
+  await page.locator(".meta-artist").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Neon Harbor" })).toBeVisible();
+
+  const noticeBounds = await page.getByRole("status", { name: "Spotify status" }).boundingBox();
+  const artistTopBarBounds = await page.locator(".artist-page > .topbar").boundingBox();
+
+  expect(noticeBounds).not.toBeNull();
+  expect(artistTopBarBounds).not.toBeNull();
+  expect((noticeBounds?.y ?? 0) + (noticeBounds?.height ?? 0)).toBeLessThanOrEqual(artistTopBarBounds?.y ?? 0);
+
   await page.goto("/search?q=glass");
   await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume after Spotify’s cooldown");

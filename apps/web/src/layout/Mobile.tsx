@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { ReactNode } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
 import { useDragToClose } from "../components/ActionSheet.tsx";
 import { Art } from "../components/Art.tsx";
 import { useScrollContainer } from "../components/ScrollContext.ts";
@@ -11,6 +11,7 @@ import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { SourceMark } from "../components/SpotifyMark.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
+import { albumPath, artistPath } from "../lib/paths.ts";
 import { useTone } from "../lib/tone.ts";
 import { usePlayer } from "../player/store.ts";
 import { usePlayback, useShownProgress } from "../remote/client.ts";
@@ -170,8 +171,8 @@ export function NowPlayingSheet() {
           </div>
           <div className="ti">
             <div>
-              <h2>{station?.name ?? song?.title}</h2>
-              <p>{station ? <LiveLabel /> : song ? <><SourceMark source={song.source} compact />{artistName(song)}</> : ""}</p>
+              <h2>{station?.name ?? (song?.albumId ? <Link to={albumPath(song.albumId)} onClick={close}>{song.title}</Link> : song?.title)}</h2>
+              <p>{station ? <LiveLabel /> : song ? <><SourceMark source={song.source} compact />{song.artistId ? <Link to={artistPath(song.artistId)} onClick={close}>{artistName(song)}</Link> : artistName(song)}</> : ""}</p>
             </div>
             {song ? <LikeCurrent size={26} className="icon-btn big-heart" /> : null}
           </div>

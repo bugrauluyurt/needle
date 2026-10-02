@@ -61,7 +61,7 @@
     padding: 5px;
   }
   .side .lib-head-acts {
-    flex-direction: column;
+    display: none;
   }
   .side .lib-item {
     justify-content: center;

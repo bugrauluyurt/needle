@@ -25,6 +25,10 @@
   padding: 0 16px 24px;
 }
 
+.phone-app .sp-note {
+  padding-top: 24px;
+}
+
 .phone-app .tinted {
   background: linear-gradient(180deg, color-mix(in oklab, var(--tone) 70%, var(--ink)) 0, color-mix(in oklab, var(--tone) 18%, var(--ink)) 260px, var(--ink) 460px);
   margin-top: calc(-1 * var(--safe-top));

@@ -449,9 +449,11 @@ export default function SettingsPage() {
         <Row title="Version" hint={health?.version && health.version !== VERSION ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.` : undefined}>
           <span className="muted tabular">Needle {VERSION}</span>
         </Row>
-        <Row title="Keyboard shortcuts">
-          <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}><Icon name="keyboard" size={16} />Show shortcuts</button>
-        </Row>
+        {!mobile ? (
+          <Row title="Keyboard shortcuts">
+            <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}><Icon name="keyboard" size={16} />Show shortcuts</button>
+          </Row>
+        ) : null}
         <Row title="Sign out" hint="Downloads stay on this device.">
           <button type="button" className="btn ghost sm" onClick={signOut}>Sign out</button>
         </Row>

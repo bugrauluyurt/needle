@@ -7,6 +7,7 @@ import { SearchField } from "../components/SearchField.tsx";
 import { useSession } from "../state/session.ts";
 import { useUpdate } from "../state/update.ts";
 import { image } from "../lib/spotify.ts";
+import { useIsMobile } from "../lib/media.ts";
 import { useSpotifyMe } from "../queries/spotify.ts";
 import { useCanRequest, useMe } from "../queries/hooks.ts";
 import { useUi } from "../state/ui.ts";
@@ -34,6 +35,7 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
   const navigate = useNavigate();
   const update = useUpdate((s) => s.apply);
   const canRequest = useCanRequest();
+  const mobile = useIsMobile();
 
   return (
     <DM.Root modal={false}>
@@ -73,10 +75,12 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
             <Icon name="settings" size={18} />
             <span className="menu-label">Settings</span>
           </DM.Item>
-          <DM.Item className="menu-item" onSelect={() => useUi.setState({ shortcutsOpen: true })}>
-            <Icon name="keyboard" size={18} />
-            <span className="menu-label">Keyboard shortcuts</span>
-          </DM.Item>
+          {!mobile ? (
+            <DM.Item className="menu-item" onSelect={() => useUi.setState({ shortcutsOpen: true })}>
+              <Icon name="keyboard" size={18} />
+              <span className="menu-label">Keyboard shortcuts</span>
+            </DM.Item>
+          ) : null}
           <DM.Item className="menu-item" onSelect={() => location.reload()}>
             <Icon name="refresh" size={18} />
             <span className="menu-label">Refresh page</span>

@@ -49,6 +49,31 @@ test("song options open as a sheet, and Go to album minimizes the player", async
   await expect(page).toHaveURL(/\/album\//);
 });
 
+test("now playing links to the album and artist and closes during navigation", async ({ page }) => {
+  await signIn(page, "/library");
+  await page.locator(".lib-item", { hasText: "Late night drive" }).click();
+  await page.locator(".tr").first().tap();
+
+  const miniPlayer = page.locator(".miniplayer");
+  const playerSheet = page.getByRole("dialog", { name: "Now playing" });
+  await miniPlayer.getByRole("button", { name: "Open now playing" }).tap();
+
+  const albumLink = playerSheet.locator(".ti h2").getByRole("link");
+  await expect(albumLink).toHaveAttribute("href", /^\/album\//);
+  await albumLink.tap();
+  await expect(page).toHaveURL(/\/album\//);
+  await expect(page.getByRole("heading", { level: 1, name: "İstanbul'da Gece" })).toBeVisible();
+  await expect(playerSheet).toHaveCount(0);
+
+  await miniPlayer.getByRole("button", { name: "Open now playing" }).tap();
+  const artistLink = playerSheet.locator(".ti p").getByRole("link");
+  await expect(artistLink).toHaveAttribute("href", /^\/artist\//);
+  await artistLink.tap();
+  await expect(page).toHaveURL(/\/artist\//);
+  await expect(page.getByRole("heading", { level: 1, name: "Kasa Kaan" })).toBeVisible();
+  await expect(playerSheet).toHaveCount(0);
+});
+
 test("searches with the mobile search box", async ({ page }) => {
   await signIn(page, "/search");
   await page.getByRole("searchbox", { name: "Search", exact: true }).fill("okto");
@@ -137,6 +162,15 @@ test("shows the You tab with install steps for iPhone", async ({ page }) => {
   await expect(page.locator(".stat-lede")).toContainText(/\d+(?:\.\d+)? (?:minutes?|hours?) of music/);
 });
 
+test("hides keyboard shortcuts from mobile settings and the account menu", async ({ page }) => {
+  await signIn(page, "/settings");
+  await expect(page.getByRole("heading", { name: "Playback" })).toBeVisible();
+  await expect(page.locator(".set-row", { hasText: "Keyboard shortcuts" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /^Account, signed in as/ }).tap();
+  await expect(page.getByRole("menuitem", { name: "Keyboard shortcuts" })).toHaveCount(0);
+});
+
 
 for (const [path, label] of [["/search?focus", "Search"], ["/library", "Search in your library"]]) {
   test(`submitting ${label} dismisses focus and preserves delayed results`, async ({ page }) => {
@@ -192,4 +226,11 @@ test("mobile Spotify remains connected with a visible cooldown notice", async ({
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
   expect(await page.locator("#main").evaluate((main) => main.scrollWidth <= main.clientWidth)).toBe(true);
   expect(calls).toBe(0);
+});
+
+test("separates a locked Spotify playlist note from its description", async ({ page }) => {
+  await mockSpotify(page);
+  await signIn(page, "/spotify/playlist/p2");
+
+  await expect(page.locator(".sp-note")).toHaveCSS("padding-top", "24px");
 });
