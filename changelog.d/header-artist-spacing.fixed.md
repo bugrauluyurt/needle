@@ -1,0 +1,1 @@
+- Match the back and forward buttons to the glass search field and remove the extra side inset from full artist song lists.

@@ -29,6 +29,16 @@ for (const viewportWidth of [320, 390, 768, 1024, 1440]) {
 
       await expect(returnLink).toBeVisible();
 
+      const tableBounds = await page.locator(".artist-page .tracks").boundingBox();
+      const artistBounds = await page.locator(".artist-page").boundingBox();
+
+      expect(tableBounds).not.toBeNull();
+      expect(artistBounds).not.toBeNull();
+      expect(tableBounds?.x).toBe(artistBounds?.x);
+      expect(tableBounds?.width).toBe(artistBounds?.width);
+      await expect(page.locator(".artist-page .tracks")).toHaveCSS("padding-left", "0px");
+      await expect(page.locator(".artist-page .tracks")).toHaveCSS("padding-right", "0px");
+
       const returnGeometry = await returnLink.evaluate((linkElement) => {
         const iconElement = linkElement.querySelector("svg");
         const textWalker = document.createTreeWalker(linkElement, NodeFilter.SHOW_TEXT);

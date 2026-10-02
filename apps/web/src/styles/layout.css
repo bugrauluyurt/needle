@@ -272,6 +272,7 @@
 }
 
 .topbar {
+  --top-control-size: 46px;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -373,7 +374,12 @@
 }
 
 .top-search .sf {
+  --sf-h: var(--top-control-size);
   width: 100%;
+}
+
+.top-search .sf,
+.circle {
   background: color-mix(in oklab, var(--deck) 50%, transparent);
   -webkit-backdrop-filter: blur(24px) saturate(1.5) brightness(0.75);
   backdrop-filter: blur(24px) saturate(1.5) brightness(0.75);
@@ -381,7 +387,8 @@
   transition: background-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), color 0.2s var(--ease-out);
 }
 
-.top-search .sf:hover {
+.top-search .sf:hover,
+.circle:hover:not(:disabled) {
   background: color-mix(in oklab, var(--deck) 56%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--label) 14%, transparent);
 }
@@ -399,24 +406,21 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .top-search .sf,
   .top-search .sf:hover,
-  .top-search .sf:focus-within {
+  .top-search .sf:focus-within,
+  .circle,
+  .circle:hover:not(:disabled) {
     background: var(--groove);
   }
 }
 
 .circle {
-  width: 32px;
-  height: 32px;
+  flex: none;
+  width: var(--top-control-size);
+  height: var(--top-control-size);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
   display: grid;
   place-items: center;
   color: var(--label);
-  transition: background 0.15s;
-}
-
-.circle:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.65);
 }
 
 .circle:disabled {
