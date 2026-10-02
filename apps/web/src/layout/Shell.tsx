@@ -5,11 +5,12 @@ import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
 import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
-import { useSpotifyOn } from "../queries/spotify.ts";
+import { useSpotifyRequestsAllowed } from "../queries/spotify.ts";
 import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
+import { SpotifyNotice } from "../components/SpotifyNotice.tsx";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
@@ -159,6 +160,7 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
     <ToneContext.Provider value={setTone}>
       <ScrollContext.Provider value={ref}>
         <main ref={ref} className={mobile ? "pmain scroll-thin" : "main scroll-thin"} style={{ "--tone": tone } as React.CSSProperties} id="main">
+          <SpotifyNotice />
           {children}
         </main>
       </ScrollContext.Provider>
@@ -199,7 +201,7 @@ export function Shell() {
   const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station)) || Boolean(remote);
   const wide = useIsWide();
   const panelOver = usePanelOver(!wide && !mobile);
-  const spotifyOn = useSpotifyOn();
+  const spotifyOn = useSpotifyRequestsAllowed();
   const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   useShortcuts();
   useCloseOverlaysOnNavigate();

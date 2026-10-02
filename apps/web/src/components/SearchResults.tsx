@@ -83,7 +83,7 @@ type SourceProps = {
   top?: Top | undefined;
   songs?: Song[];
   context: PlayContext;
-  status: "loading" | "error" | "ok";
+  status: "loading" | "error" | "ok" | "paused";
   empty: (kind: string) => string;
 };
 
@@ -107,6 +107,7 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, onS
   const sourceLabel = title.charAt(0).toLowerCase() + title.slice(1);
   const visible = blocks.filter((b) => b.count && (!kind || b.kind === kind));
   const body = () => {
+    if (status === "paused") return <p className="muted source-note">Search will resume after Spotify’s cooldown.</p>;
     if (status === "loading") return <p className="muted source-note"><span className="spin" />Searching…</p>;
     if (status === "error") return <p className="muted source-note">{title} didn’t answer. Try again in a moment.</p>;
     if (!visible.length) return <p className="muted source-note">{empty(kind?.toLowerCase() ?? "")}</p>;

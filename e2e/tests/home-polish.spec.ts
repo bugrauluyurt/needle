@@ -4,10 +4,10 @@ import type { Artist, Capabilities, Stats, SubsonicEnvelope } from "@needle/shar
 import { PASSWORD, signIn, USER } from "./helpers.ts";
 import { mockSpotify } from "./spotify-mock.ts";
 
-async function mockMonthlyArtists(page: Page) {
+async function mockTopArtists(page: Page, period: "month" | "quarter" = "month") {
   const artistFixture = { libraryArtistId: "" };
 
-  await page.route("**/api/stats?period=month", async (route) => {
+  await page.route(`**/api/stats?period=${period}`, async (route) => {
     const artistParams = new URLSearchParams({ u: USER, p: PASSWORD, c: "e2e", v: "1.16.1", f: "json" });
     const artistUrl = new URL(`/rest/getArtists.view?${artistParams.toString()}`, route.request().url());
     const [statsResponse, artistsResponse] = await Promise.all([route.fetch(), route.fetch({ url: artistUrl.toString() })]);
@@ -39,9 +39,9 @@ function getHomeCards(page: Page, title: string) {
 }
 
 test("monthly artists keep their ranking, artwork and source routes", async ({ page }) => {
-  await mockSpotify(page);
+  const spotify = await mockSpotify(page);
 
-  const artistFixture = await mockMonthlyArtists(page);
+  const artistFixture = await mockTopArtists(page);
 
   await signIn(page);
 
@@ -58,6 +58,8 @@ test("monthly artists keep their ranking, artwork and source routes", async ({ p
   await expect(libraryArtist.locator(".art.loaded img")).toHaveAttribute("src", /^\/rest\/getCoverArt\.view\?/);
   await expect(spotifyArtist.locator(".card-link")).toHaveAttribute("href", "/spotify/artist/ar1");
   await expect(libraryArtist.locator(".card-link")).toHaveAttribute("href", `/artist/${artistFixture.libraryArtistId}`);
+
+  expect(spotify.artistReleaseRequests).toHaveLength(0);
 
   await spotifyArtist.locator(".card-link").click();
   await expect(page).toHaveURL(/\/spotify\/artist\/ar1$/);
@@ -82,7 +84,7 @@ test("mix covers have no source badges while library albums retain them", async 
 
 test("Spotify monthly history falls back without contacting Spotify when disabled", async ({ page }) => {
   await mockSpotify(page);
-  await mockMonthlyArtists(page);
+  await mockTopArtists(page);
   await page.route("**/api/capabilities", async (route) => {
     const capabilitiesResponse = await route.fetch();
     const capabilities = await capabilitiesResponse.json() as Capabilities;
@@ -107,4 +109,48 @@ test("Spotify monthly history falls back without contacting Spotify when disable
   await expect(spotifyArtist.getByRole("img", { name: "From Spotify", exact: true })).toBeVisible();
   await expect(artistCards.locator(".card", { hasText: "Neon Harbor" }).locator(".art.loaded img")).toBeVisible();
   expect(spotifyRequests).toEqual([]);
+});
+
+
+for (const path of ["/", "/radio"]) {
+  test(`${path === "/" ? "Home" : "Radio"} portraits never fetch album catalogues, even when those are throttled`, async ({ page }) => {
+    await mockSpotify(page);
+    await mockTopArtists(page, path === "/" ? "month" : "quarter");
+    let albumRequests = 0;
+    await page.route("https://api.spotify.com/v1/artists/*/albums?*", (route) => {
+      albumRequests += 1;
+      return route.fulfill({ status: 429, headers: { "retry-after": "58577", "access-control-allow-origin": "*" }, json: { error: { status: 429, message: "Too many requests", reason: "QUOTA_EXCEEDED" } } });
+    });
+    await signIn(page, path);
+    const artist = path === "/"
+      ? getHomeCards(page, "Your top artists this month").locator(".card", { hasText: "Lumen Drift" })
+      : page.locator(".radio-card", { hasText: "Lumen Drift radio" });
+    await expect(artist.locator(".art.loaded img")).toBeVisible();
+    await expect(page.locator("nav.side .lib-item", { hasText: "Liked on Spotify" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Spotify status" })).toHaveCount(0);
+    expect(albumRequests).toBe(0);
+  });
+}
+
+
+test("Home waits for library artwork before looking it up on Spotify", async ({ page }) => {
+  const spotify = await mockSpotify(page);
+  await mockTopArtists(page);
+  let releaseArtists = () => {};
+  const artistsReady = new Promise<void>((resolve) => { releaseArtists = resolve; });
+  await page.route("**/rest/getArtists.view", async (route) => {
+    await artistsReady;
+    await route.fulfill({ response: await route.fetch() });
+  });
+  try {
+    await signIn(page);
+    const artists = getHomeCards(page, "Your top artists this month");
+    await expect(artists.locator(".t")).toHaveText(["Lumen Drift", "Neon Harbor"]);
+    expect(spotify.searches).toHaveLength(0);
+    releaseArtists();
+    await expect(artists.locator(".card", { hasText: "Neon Harbor" }).locator(".art.loaded img")).toHaveAttribute("src", /^\/rest\/getCoverArt\.view\?/);
+    expect(spotify.searches).toHaveLength(0);
+  } finally {
+    releaseArtists();
+  }
 });

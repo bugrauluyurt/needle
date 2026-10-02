@@ -183,7 +183,7 @@ test("plays Spotify songs through the Web Playback SDK and moves on when one end
   await expect.poll(() => mock.saved).toEqual(["DELETE spotify:track:t2"]);
 });
 
-test("hides Spotify and stops calling it while Spotify refuses requests", async ({ page }) => {
+test("keeps Spotify visible and explains the cooldown while requests are paused", async ({ page }) => {
   await mockSpotify(page);
   let calls = 0;
   await page.route("https://api.spotify.com/v1/**", (route) => {
@@ -193,14 +193,14 @@ test("hides Spotify and stops calling it while Spotify refuses requests", async 
   await signIn(page);
   await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
   await expect.poll(() => calls).toBeGreaterThan(0);
-  await expect(page.getByRole("heading", { name: "Your Spotify playlists" })).toHaveCount(0);
-  await expect(page.locator("nav.side .lib-item", { hasText: "Liked on Spotify" })).toHaveCount(0);
+  await expect(page.getByRole("status", { name: "Spotify status" })).toContainText("Spotify requests are paused");
   const before = calls;
   await page.reload();
   await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
   await page.goto("/search?q=glass");
   await expect(page.getByRole("region", { name: "In your library", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume after Spotify’s cooldown");
+  await expect(page.getByRole("status", { name: "Spotify status" }).locator("time")).toHaveAttribute("datetime", /T/);
   expect(calls).toBe(before);
 });
 
@@ -221,4 +221,55 @@ test("never calls Spotify when it's switched off in Needle", async ({ page }) =>
   await page.goto("/settings");
   await expect(page.getByRole("switch", { name: "Use Spotify in Needle" })).toHaveAttribute("aria-checked", "false");
   expect(calls).toBe(0);
+});
+
+
+test("retains cached Spotify library through a quota error and reload", async ({ page }) => {
+  await mockSpotify(page);
+  await signIn(page);
+  await expect(page.getByRole("heading", { name: "Your Spotify playlists" })).toBeVisible();
+  const liked = page.locator("nav.side .lib-item", { hasText: "Liked on Spotify" });
+  await expect(liked).toBeVisible();
+  await page.goto("/search?q=glass");
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true }).getByRole("heading", { name: "Songs", exact: true })).toBeVisible();
+  let calls = 0;
+  await page.route("https://api.spotify.com/v1/**", (route) => {
+    calls += 1;
+    return route.fulfill({ status: 429, headers: { "retry-after": "58577", "access-control-allow-origin": "*" }, json: { error: { status: 429, message: "Too many requests" } } });
+  });
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("quota");
+  await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
+  await expect(liked).toBeVisible();
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
+  const before = calls;
+  await liked.click();
+  await expect(page.getByRole("heading", { level: 1, name: "Liked on Spotify" })).toBeVisible();
+  await expect(page.locator(".tr")).toHaveCount(3);
+  await page.locator(".tr").first().getByRole("button", { name: /^Remove .+ from liked songs$/ }).click();
+  await expect(page.getByText("Spotify requests are paused. Try again after the cooldown.", { exact: true })).toBeVisible();
+  await expect(page.locator(".tr")).toHaveCount(3);
+  await page.reload();
+  await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
+  await expect(page.locator(".tr")).toHaveCount(3);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Your Spotify playlists" })).toBeVisible();
+  expect(calls).toBe(before);
+});
+
+test("resumes search automatically after a persisted cooldown expires", async ({ page }) => {
+  await mockSpotify(page);
+  await page.clock.install();
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("needle.spotifyBlockedUntil")) localStorage.setItem("needle.spotifyBlockedUntil", String(Date.now() + 60_000));
+  });
+  let searches = 0;
+  page.on("request", (request) => { if (request.url().startsWith("https://api.spotify.com/v1/search")) searches += 1; });
+  await signIn(page, "/search?q=glass");
+  await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
+  expect(searches).toBe(0);
+  await page.clock.fastForward(60_001);
+  await expect(page.getByRole("status", { name: "Spotify status" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true }).getByRole("heading", { name: "Songs", exact: true })).toBeVisible();
+  expect(searches).toBeGreaterThan(0);
 });

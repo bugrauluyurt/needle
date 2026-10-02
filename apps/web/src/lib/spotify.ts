@@ -77,13 +77,22 @@ let unblock: ReturnType<typeof setTimeout> | undefined;
 function blockUntil(until: number) {
   clearTimeout(unblock);
   const ms = until - Date.now();
-  if (ms <= 0) return;
+  if (!Number.isFinite(ms) || ms <= 0) return;
   useSpotifyStatus.setState({ blocked: true, until });
-  unblock = setTimeout(() => useSpotifyStatus.setState({ blocked: false, until: 0 }), ms);
+  unblock = setTimeout(() => {
+    if (useSpotifyStatus.getState().until !== until) return;
+    if (Date.now() < until) return blockUntil(until);
+    useSpotifyStatus.setState({ blocked: false, until: 0 });
+    try {
+      localStorage.removeItem(BLOCK_KEY);
+    } catch {
+      return;
+    }
+  }, Math.min(ms, 2_147_483_647));
 }
 
 function block(ms: number) {
-  const until = Date.now() + ms;
+  const until = Math.max(useSpotifyStatus.getState().until, Date.now() + ms);
   try {
     localStorage.setItem(BLOCK_KEY, String(until));
   } catch {
@@ -106,6 +115,7 @@ async function req<T>(path: string, init: RequestInit = {}, retry = true): Promi
     block(DOWN_WAIT_MS);
     throw e;
   });
+  if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, "Spotify requests are paused");
   headers.set("authorization", `Bearer ${bearer}`);
   if (init.body) headers.set("content-type", "application/json");
   const res = await fetch(url, { ...init, headers });
@@ -113,8 +123,11 @@ async function req<T>(path: string, init: RequestInit = {}, retry = true): Promi
     await spotifyToken(true);
     return req<T>(path, init, false);
   }
-  const wait = Number(res.headers.get("retry-after") ?? Number.NaN);
+  const retryAfter = res.headers.get("retry-after");
+  const seconds = retryAfter?.trim() ? Number(retryAfter) : Number.NaN;
+  const wait = Number.isFinite(seconds) && seconds >= 0 ? seconds : Number.NaN;
   if (res.status === 429 && retry && wait <= SHORT_WAIT_S) {
+    block(wait * 1000);
     await new Promise((r) => setTimeout(r, wait * 1000));
     return req<T>(path, init, false);
   }
