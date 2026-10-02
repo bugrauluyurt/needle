@@ -8,6 +8,14 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.8.0 - 2026-10-02
+
+### Changed
+- Lighten the top search field while keeping its glass blur and focus outline readable over artwork.
+
+### Fixed
+- Dismiss the mobile keyboard when submitting a search or collection filter, preserving the query and results without interrupting text composition.
+
 ## 1.7.1 - 2026-10-01
 
 ### Fixed
