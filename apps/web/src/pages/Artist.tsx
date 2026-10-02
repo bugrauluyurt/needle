@@ -149,7 +149,7 @@ export default function ArtistPage() {
   );
 
   return (
-    <div className="artist-page">
+    <div className={section === "songs" ? "artist-page artist-songs-page" : "artist-page"}>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
         <div className="bg">

@@ -1,6 +1,39 @@
 import { expect, test } from "@playwright/test";
 import { openAlbum, signIn } from "./helpers.ts";
 
+test("history controls match the glass search field and preserve navigation", async ({ page }) => {
+  await signIn(page);
+  await openAlbum(page, "Afterglow Avenue");
+
+  const albumUrl = page.url();
+  const searchSurface = page.locator(".top-search .sf");
+  const historyButtons = page.locator(".hist .circle");
+
+  for (const viewportWidth of [768, 1024, 1440]) {
+    await page.setViewportSize({ width: viewportWidth, height: 900 });
+
+    const searchBounds = await searchSurface.boundingBox();
+
+    expect(searchBounds).not.toBeNull();
+
+    for (const historyButton of await historyButtons.all()) {
+      const buttonBounds = await historyButton.boundingBox();
+
+      expect(buttonBounds).not.toBeNull();
+      expect(buttonBounds?.height).toBe(searchBounds?.height);
+      expect(buttonBounds?.width).toBe(searchBounds?.height);
+      expect((buttonBounds?.x ?? 0) + (buttonBounds?.width ?? 0)).toBeLessThanOrEqual(searchBounds?.x ?? 0);
+      await expect(historyButton).toHaveCSS("border-radius", "50%");
+      await expect(historyButton).toHaveCSS("backdrop-filter", await searchSurface.evaluate((searchElement) => getComputedStyle(searchElement).backdropFilter));
+    }
+  }
+
+  await page.getByRole("button", { name: "Go back", exact: true }).click();
+  await expect(page).not.toHaveURL(albumUrl);
+  await page.getByRole("button", { name: "Go forward", exact: true }).click();
+  await expect(page).toHaveURL(albumUrl);
+});
+
 test("opens search from the top bar on any page", async ({ page }) => {
   await signIn(page);
   await page.locator(".topbar").getByRole("searchbox", { name: "Search", exact: true }).click();

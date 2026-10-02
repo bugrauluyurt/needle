@@ -403,7 +403,8 @@
   padding: 0 4px 8px;
 }
 
-.phone-app .library-page .tracks {
+.phone-app .library-page .tracks,
+.phone-app .artist-songs-page .pad .tracks {
   margin-inline: -16px;
   padding-inline: 0;
 }

@@ -301,7 +301,7 @@ export function SpotifyArtistPage() {
   };
 
   return (
-    <div className="artist-page">
+    <div className={section === "songs" ? "artist-page artist-songs-page" : "artist-page"}>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
         <div className="bg"><Art images={artist.images} px={900} eager fallback="artist" /></div>

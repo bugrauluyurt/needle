@@ -8,6 +8,11 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.8.1 - 2026-10-02
+
+### Fixed
+- Match the back and forward buttons to the glass search field and remove the extra side inset from full artist song lists.
+
 ## 1.8.0 - 2026-10-02
 
 ### Changed
