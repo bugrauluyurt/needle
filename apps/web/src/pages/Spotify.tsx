@@ -13,7 +13,7 @@ import { TrackList } from "../components/TrackList.tsx";
 import { api } from "../lib/api.ts";
 import { ago, count, longDuration, plain, plural, releaseDateLabel, releaseKind } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
-import { image, sp, spId, spotifyLink, uniqueSpotifyItems } from "../lib/spotify.ts";
+import { image, sp, spId, spotifyLink, uniqueSpotifyItems, useSpotifyStatus } from "../lib/spotify.ts";
 import { releaseYear, spotifyAlbumItem } from "../components/SpotifyCards.tsx";
 import { SpotifyMark } from "../components/SpotifyMark.tsx";
 import { useTone } from "../lib/tone.ts";
@@ -55,17 +55,18 @@ function NotConnected() {
 }
 
 function SpotifyError({ what, retry }: { what: string; retry: () => void }) {
+  const blocked = useSpotifyStatus((s) => s.blocked);
   const mobile = useIsMobile();
   return (
     <>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="empty">
         <div className="empty-in">
-          <h1>Couldn’t load this {what} from Spotify</h1>
-          <p>Spotify didn’t answer, or this {what} isn’t available to apps. Try again, or reconnect Spotify in Settings.</p>
-          <div className="acts">
+          <h1>{blocked ? "Spotify requests are paused" : `Couldn’t load this ${what} from Spotify`}</h1>
+          <p>{blocked ? "This item has not been loaded yet. It will be requested when the cooldown ends." : `Spotify didn’t answer, or this ${what} isn’t available to apps. Try again, or reconnect Spotify in Settings.`}</p>
+          {!blocked ? <div className="acts">
             <button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button>
-          </div>
+          </div> : null}
         </div>
       </div>
     </>
@@ -74,14 +75,14 @@ function SpotifyError({ what, retry }: { what: string; retry: () => void }) {
 
 export function SpotifyLikedPage() {
   const on = useSpotifyOn();
-  const { data: songs, isLoading, isError, refetch } = useSpotifyLiked();
+  const { data: songs, isLoading, refetch } = useSpotifyLiked();
   const [filter, setFilter] = useState("");
   const [order, setOrder] = useState<SongOrder>(RECENT_FIRST);
   usePageTone("#1F5A3A");
   const shown = useMemo(() => shownSongs(songs ?? [], order, filter), [songs, order, filter]);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
-  if (isError || !songs) return <SpotifyError what="list" retry={() => void refetch()} />;
+  if (!songs) return <SpotifyError what="list" retry={() => void refetch()} />;
   const context: PlayContext = { kind: "liked", id: "sp:liked", name: "Liked on Spotify" };
   return (
     <div className="tinted">
@@ -98,7 +99,7 @@ export function SpotifyLikedPage() {
 export function SpotifyPlaylistPage() {
   const { id = "" } = useParams();
   const on = useSpotifyOn();
-  const { data, isLoading, isError, refetch } = useSpotifyPlaylist(id);
+  const { data, isLoading, refetch } = useSpotifyPlaylist(id);
   const edits = useSpotifyPlaylistEdits();
   const { data: playlists } = useSpotifyPlaylists();
   const mine = playlists?.find((p) => p.id === id)?.mine;
@@ -109,7 +110,7 @@ export function SpotifyPlaylistPage() {
   usePageTone(tone);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
-  if (isError || !data) return <SpotifyError what="playlist" retry={() => void refetch()} />;
+  if (!data) return <SpotifyError what="playlist" retry={() => void refetch()} />;
   const { meta, songs } = data;
   const context: PlayContext = { kind: "playlist", id: spId(id), name: meta.name };
   const total = meta.items?.total ?? meta.tracks?.total ?? songs?.length ?? 0;
@@ -172,7 +173,7 @@ export function SpotifyPlaylistPage() {
 export function SpotifyAlbumPage() {
   const { id = "" } = useParams();
   const on = useSpotifyOn();
-  const { data, isLoading, isError, refetch } = useSpotifyAlbum(id);
+  const { data, isLoading, refetch } = useSpotifyAlbum(id);
   const { data: saved } = useSpotifyAlbums();
   const caps = useCapabilities();
   const qc = useQueryClient();
@@ -184,7 +185,7 @@ export function SpotifyAlbumPage() {
   const visibleSongs = useMemo(() => shownSongs(data?.songs ?? [], songOrder, songFilter), [data?.songs, songOrder, songFilter]);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
-  if (isError || !data) return <SpotifyError what="album" retry={() => void refetch()} />;
+  if (!data) return <SpotifyError what="album" retry={() => void refetch()} />;
   const { album, songs } = data;
   const context: PlayContext = { kind: "album", id: spId(album.id), name: album.name, ordered: true };
   const isSaved = Boolean(saved?.some((a) => a.id === album.id));
@@ -267,8 +268,9 @@ export function SpotifyArtistPage() {
   const section = artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
   const [songFilter, setSongFilter] = useState("");
   const on = useSpotifyOn();
+  const blocked = useSpotifyStatus((s) => s.blocked);
   const mobile = useIsMobile();
-  const { data, isLoading, isError, refetch } = useSpotifyArtist(id);
+  const { data, isLoading, refetch } = useSpotifyArtist(id);
   const artistSongs = useSpotifyArtistSongs(data?.artist.id ?? "", data?.artist.name ?? "");
   const artistAlbums = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "album");
   const artistSingles = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "single");
@@ -282,7 +284,7 @@ export function SpotifyArtistPage() {
   usePageTone(tone);
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
-  if (isError || !data) return <SpotifyError what="artist" retry={() => void refetch()} />;
+  if (!data) return <SpotifyError what="artist" retry={() => void refetch()} />;
   const { artist } = data;
   const following = Boolean(followed?.some((a) => a.id === artist.id));
   const releaseQuery = section === "albums" ? artistAlbums : artistSingles;
@@ -335,22 +337,22 @@ export function SpotifyArtistPage() {
                 </div>
               }
             />
-            {artistSongs.isLoading ? <p className="muted" role="status">Loading songs…</p> : artistSongs.isError && !songs.length ? (
+            {blocked && !songs.length ? <p className="muted">Songs will load after Spotify’s cooldown.</p> : artistSongs.isLoading ? <p className="muted" role="status">Loading songs…</p> : artistSongs.isError && !songs.length ? (
               <div className="empty-inline">
                 <p className="muted">Couldn’t load this artist’s songs from Spotify.</p>
-                <button type="button" className="btn ghost sm" onClick={() => void artistSongs.refetch()}>Try again</button>
+                <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistSongs.refetch()}>Try again</button>
               </div>
             ) : (
               <TrackList songs={visibleSongs} context={context} art album header={section === "songs"} {...(!section ? { limit: 10 } : {})} column={{ label: "Release date", value: releaseDateLabel }} canSort={false} />
             )}
-            {section === "songs" && artistSongs.hasNextPage ? <button type="button" className="btn ghost sm" disabled={artistSongs.isFetchingNextPage} onClick={() => void artistSongs.fetchNextPage()}>{artistSongs.isFetchingNextPage ? "Loading…" : artistSongs.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
+            {section === "songs" && artistSongs.hasNextPage ? <button type="button" className="btn ghost sm" disabled={blocked || artistSongs.isFetchingNextPage} onClick={() => void artistSongs.fetchNextPage()}>{artistSongs.isFetchingNextPage ? "Loading…" : artistSongs.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
           </section>
         ) : null}
-        {!section || section === "albums" ? <Collection id="spotify-artist-albums" title="Albums" items={fullAlbums.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty="No albums here." {...(artistAlbums.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("albums") } : { subtitle: "Search the albums loaded here." })} /> : null}
-        {!section || section === "singles" ? <Collection id="spotify-artist-singles" title="Singles and EPs" items={singles.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty="No singles or EPs here." {...(artistSingles.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("singles") } : { subtitle: "Search the releases loaded here." })} /> : null}
-        {(section === "albums" || section === "singles") && releaseQuery.hasNextPage ? <button type="button" className="btn ghost sm" disabled={releaseQuery.isFetchingNextPage} onClick={() => void releaseQuery.fetchNextPage()}>{releaseQuery.isFetchingNextPage ? "Loading…" : releaseQuery.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
-        {(!section || section === "albums") && artistAlbums.isError && !fullAlbums.length ? <button type="button" className="btn ghost sm" onClick={() => void artistAlbums.refetch()}>Try loading albums again</button> : null}
-        {(!section || section === "singles") && artistSingles.isError && !singles.length ? <button type="button" className="btn ghost sm" onClick={() => void artistSingles.refetch()}>Try loading singles and EPs again</button> : null}
+        {!section || section === "albums" ? <Collection id="spotify-artist-albums" title="Albums" items={fullAlbums.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty={blocked ? "Albums will load after Spotify’s cooldown." : "No albums here."} {...(artistAlbums.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("albums") } : { subtitle: "Search the albums loaded here." })} /> : null}
+        {!section || section === "singles" ? <Collection id="spotify-artist-singles" title="Singles and EPs" items={singles.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty={blocked ? "Releases will load after Spotify’s cooldown." : "No singles or EPs here."} {...(artistSingles.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("singles") } : { subtitle: "Search the releases loaded here." })} /> : null}
+        {(section === "albums" || section === "singles") && releaseQuery.hasNextPage ? <button type="button" className="btn ghost sm" disabled={blocked || releaseQuery.isFetchingNextPage} onClick={() => void releaseQuery.fetchNextPage()}>{releaseQuery.isFetchingNextPage ? "Loading…" : releaseQuery.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
+        {(!section || section === "albums") && artistAlbums.isError && !fullAlbums.length ? <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistAlbums.refetch()}>Try loading albums again</button> : null}
+        {(!section || section === "singles") && artistSingles.isError && !singles.length ? <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistSingles.refetch()}>Try loading singles and EPs again</button> : null}
       </div>
     </div>
   );

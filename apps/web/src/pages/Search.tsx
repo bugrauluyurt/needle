@@ -20,7 +20,7 @@ import { usePageTone } from "../layout/Shell.tsx";
 import { SearchHeader } from "../layout/SearchHeader.tsx";
 import { albumPath } from "../lib/paths.ts";
 import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch, useSpotifySearchCategory } from "../queries/spotify.ts";
-import { uniqueSpotifyItems } from "../lib/spotify.ts";
+import { uniqueSpotifyItems, useSpotifyStatus } from "../lib/spotify.ts";
 import type { SpotifySearchKind } from "../lib/spotify.ts";
 import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylistItem } from "../components/SpotifyCards.tsx";
 
@@ -99,9 +99,11 @@ function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPic
 const SPOTIFY_KINDS: Record<SearchKind, SpotifySearchKind> = { Songs: "songs", Albums: "albums", Artists: "artists", Playlists: "playlists" };
 
 function SpotifySource({ q, filter, setFilter, onShowAll }: { q: string; filter: Filter; setFilter: (f: Filter) => void; onShowAll: (kind: SearchKind) => void }) {
+  const blocked = useSpotifyStatus((s) => s.blocked);
   const debouncedQuery = useDebounced(q);
   const search = useSpotifySearch(debouncedQuery);
-  const { data, isError } = search;
+  const { isError } = search;
+  const data = blocked && search.isPlaceholderData ? undefined : search.data;
   const category = filter !== "All" && filter !== "Get music" ? SPOTIFY_KINDS[filter] : undefined;
   const pagination = useSpotifySearchCategory(debouncedQuery, category, search.isPlaceholderData ? undefined : data);
   const { data: own = [] } = useSpotifyPlaylists();
@@ -131,8 +133,6 @@ function SpotifySource({ q, filter, setFilter, onShowAll }: { q: string; filter:
   ];
   const page = category ? (resultPages?.at(-1)?.pagination[category] ?? data?.pagination[category]) : undefined;
 
-  if (isError) return null;
-
   return (
     <>
       <Source
@@ -144,14 +144,14 @@ function SpotifySource({ q, filter, setFilter, onShowAll }: { q: string; filter:
         top={top}
         songs={songs}
         context={context}
-        status={data ? "ok" : "loading"}
+        status={data || resultPages ? "ok" : blocked ? "paused" : isError ? "error" : "loading"}
         empty={(kind) => `Spotify found no ${kind || "results"} for “${q}”.`}
       />
       {category && page && !search.isPlaceholderData ? (
         <div className="search-pagination">
           {pagination.isFetchNextPageError ? <p className="muted source-note">Spotify didn’t load the next page. Try again.</p> : null}
           {pagination.hasNextPage ? (
-            <button type="button" className="btn ghost sm" disabled={pagination.isFetchingNextPage} onClick={() => void pagination.fetchNextPage()}>
+            <button type="button" className="btn ghost sm" disabled={blocked || pagination.isFetchingNextPage} onClick={() => void pagination.fetchNextPage()}>
               {pagination.isFetchingNextPage ? "Loading…" : "Load more"}
             </button>
           ) : !pagination.isPending && page.total > 0 ? (

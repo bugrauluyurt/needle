@@ -76,3 +76,115 @@ describe("Spotify search pagination", () => {
     expect(requestedUrls[0]?.searchParams.get("type")).toBe("track");
   });
 });
+
+describe("Spotify cooldown", () => {
+  const start = new Date("2026-10-02T10:00:00Z").getTime();
+  let storage: Map<string, string>;
+  const limited = (retryAfter?: string) => Response.json({ error: { message: "Too many requests" } }, {
+    status: 429,
+    headers: retryAfter === undefined ? {} : { "retry-after": retryAfter },
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    storage = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it("honors a long Retry-After and resumes only when it expires", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(limited("58577")).mockResolvedValue(Response.json({ id: "me" }));
+    vi.stubGlobal("fetch", fetch);
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    await expect(sp.me()).rejects.toMatchObject({ status: 429 });
+    expect(useSpotifyStatus.getState()).toEqual({ blocked: true, until: start + 58_577_000 });
+    await expect(sp.artist("artist")).rejects.toMatchObject({ status: 429 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(58_576_999);
+    expect(useSpotifyStatus.getState().blocked).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(useSpotifyStatus.getState().blocked).toBe(false);
+    expect(storage.has("needle.spotifyBlockedUntil")).toBe(false);
+    await expect(sp.me()).resolves.toEqual({ id: "me" });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([undefined, "", "invalid", "-1"])("uses the fallback for unreadable Retry-After %s", async (header) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited(header)));
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    await expect(sp.me()).rejects.toMatchObject({ status: 429 });
+    expect(useSpotifyStatus.getState().until).toBe(start + 3_600_000);
+  });
+
+  it("preserves a legacy cooldown across module reloads", async () => {
+    storage.set("needle.spotifyBlockedUntil", String(start + 60_000));
+    const fetch = vi.fn().mockResolvedValue(Response.json({ id: "me" }));
+    vi.stubGlobal("fetch", fetch);
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    await expect(sp.me()).rejects.toMatchObject({ status: 429 });
+    expect(fetch).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(useSpotifyStatus.getState().blocked).toBe(false);
+    await sp.me();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("pauses after a token request failure without calling Spotify", async () => {
+    const { api } = await import("../src/lib/api.ts");
+    vi.spyOn(api, "spotifyToken").mockRejectedValueOnce(new Error("Needle unavailable"));
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    await expect(sp.me()).rejects.toThrow("Needle unavailable");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(useSpotifyStatus.getState().until).toBe(start + 300_000);
+  });
+
+  it("does not shorten a cooldown when another in-flight request fails", async () => {
+    const responses: ((response: Response) => void)[] = [];
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve))));
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    const pending = Promise.allSettled([sp.me(), sp.artist("artist")]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(responses).toHaveLength(2);
+    responses[0]?.(limited("58577"));
+    await vi.advanceTimersByTimeAsync(0);
+    responses[1]?.(limited("300"));
+    await pending;
+    expect(useSpotifyStatus.getState().until).toBe(start + 58_577_000);
+    expect(storage.get("needle.spotifyBlockedUntil")).toBe(String(start + 58_577_000));
+  });
+
+  it("retries a short limit once without issuing requests during the wait", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(limited("2")).mockResolvedValue(Response.json({ id: "me" }));
+    vi.stubGlobal("fetch", fetch);
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    const result = sp.me();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(useSpotifyStatus.getState().blocked).toBe(true);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(result).resolves.toEqual({ id: "me" });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not overflow the browser timer for waits longer than 24 days", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited("3000000")));
+    const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
+    await expect(sp.me()).rejects.toMatchObject({ status: 429 });
+    await vi.advanceTimersByTimeAsync(2_147_483_647);
+    expect(useSpotifyStatus.getState().blocked).toBe(true);
+    await vi.advanceTimersByTimeAsync(3_000_000_000 - 2_147_483_647);
+    expect(useSpotifyStatus.getState().blocked).toBe(false);
+  });
+});

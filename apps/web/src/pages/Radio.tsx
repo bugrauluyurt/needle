@@ -18,7 +18,7 @@ import { keys } from "../queries/keys.ts";
 import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
 import { isSpotify, rawId } from "../lib/spotify.ts";
-import { useSpotifyArtist } from "../queries/spotify.ts";
+import { useSpotifyArtistProfile } from "../queries/spotify.ts";
 
 type StationFields = { name: string; url: string; home: string };
 
@@ -115,8 +115,8 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
 }
 
 function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
-  const { data } = useSpotifyArtist(isSpotify(id) ? rawId(id) : undefined);
-  const source = isSpotify(id) ? { images: data?.artist.images } : { id: library?.find((x) => x.id === id)?.coverArt };
+  const { data } = useSpotifyArtistProfile(isSpotify(id) ? rawId(id) : undefined);
+  const source = isSpotify(id) ? { images: data?.images } : { id: library?.find((x) => x.id === id)?.coverArt };
   return <Art {...source} px={180} round fallback="artist" />;
 }
 

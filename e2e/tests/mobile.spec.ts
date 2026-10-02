@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers.ts";
+import { mockSpotify } from "./spotify-mock.ts";
 
 test("moves between tabs and plays from the mini player", async ({ page }) => {
   await signIn(page);
@@ -176,4 +177,19 @@ test("composition confirmation keeps mobile search focused and does not commit",
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Browse your library" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent searches" })).toHaveCount(0);
+});
+
+
+test("mobile Spotify remains connected with a visible cooldown notice", async ({ page }) => {
+  await mockSpotify(page);
+  await page.addInitScript(() => localStorage.setItem("needle.spotifyBlockedUntil", String(Date.now() + 3_600_000)));
+  let calls = 0;
+  page.on("request", (request) => {
+    if (request.url().startsWith("https://api.spotify.com/") || request.url().startsWith("https://sdk.scdn.co/")) calls += 1;
+  });
+  await signIn(page, "/search?q=glass");
+  await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
+  expect(await page.locator("#main").evaluate((main) => main.scrollWidth <= main.clientWidth)).toBe(true);
+  expect(calls).toBe(0);
 });
