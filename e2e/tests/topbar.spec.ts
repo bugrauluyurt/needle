@@ -96,4 +96,6 @@ test("keeps the glass search placeholder readable over white album art", async (
   await searchSurface.hover();
   await expect.poll(async () => (await searchAppearance()).contrast).toBeGreaterThanOrEqual(4.5);
   await expect.poll(() => searchSurface.evaluate((searchElement) => getComputedStyle(searchElement).backdropFilter)).not.toBe("none");
+  await searchInput.focus();
+  await expect.poll(async () => (await searchAppearance()).contrast).toBeGreaterThanOrEqual(4.5);
 });

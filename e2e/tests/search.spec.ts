@@ -114,3 +114,16 @@ test("fetches a single song from Soulseek and follows it on the Requests page", 
   await row.getByRole("button", { name: "Remove Undertow from this list" }).click();
   await expect(row).toHaveCount(0);
 });
+
+
+test("desktop search keeps focus after committing and records the query", async ({ page }) => {
+  await signIn(page, "/search");
+  const search = page.getByRole("searchbox", { name: "Search", exact: true });
+  await search.fill("neon");
+  await search.press("Enter");
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue("neon");
+  await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
+  await page.getByRole("button", { name: "Clear search", exact: true }).click();
+  await expect(page.locator(".recent .pill button", { hasText: "neon" })).toBeVisible();
+});

@@ -1,0 +1,1 @@
+- Dismiss the mobile keyboard when submitting a search or collection filter, preserving the query and results without interrupting text composition.

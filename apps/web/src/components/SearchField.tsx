@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useIsMobile } from "../lib/media.ts";
 import { Icon } from "./Icon.tsx";
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function SearchField({ value, onChange, label, placeholder = label, variant, collapsible = false, autoFocus = false, focusKey, busy = false, onCommit, onFocusChange, className }: Props) {
+  const mobile = useIsMobile();
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -51,7 +53,13 @@ export function SearchField({ value, onChange, label, placeholder = label, varia
           if (!value) setOpen(false);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") onCommit?.();
+          if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onCommit?.();
+            if (mobile) input.current?.blur();
+            return;
+          }
           if (e.key !== "Escape") return;
           e.stopPropagation();
           if (value) onChange("");

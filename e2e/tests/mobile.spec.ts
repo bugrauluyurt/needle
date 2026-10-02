@@ -135,3 +135,45 @@ test("shows the You tab with install steps for iPhone", async ({ page }) => {
   await page.getByRole("link", { name: /Your listening/ }).tap();
   await expect(page.locator(".stat-lede")).toContainText(/\d+(?:\.\d+)? (?:minutes?|hours?) of music/);
 });
+
+
+for (const [path, label] of [["/search?focus", "Search"], ["/library", "Search in your library"]]) {
+  test(`submitting ${label} dismisses focus and preserves delayed results`, async ({ page }) => {
+    await signIn(page, path);
+    const search = page.getByRole("searchbox", { name: label, exact: true });
+    await search.fill("neon");
+    await search.press("Enter");
+    await expect(search).not.toBeFocused();
+    await expect(search).toHaveValue("neon");
+    await expect(page.locator(".top-card h2")).toHaveText("Neon Harbor");
+    await expect(search).not.toBeFocused();
+    await page.getByRole("button", { name: "Clear search", exact: true }).click();
+    await expect(search).toHaveValue("");
+    await expect(search).toBeFocused();
+  });
+}
+
+test("mobile inline filters dismiss focus without a commit callback", async ({ page }) => {
+  await signIn(page, "/library");
+  await page.locator(".lib-item", { hasText: "Late night drive" }).click();
+  await page.getByRole("button", { name: "Find in playlist", exact: true }).click();
+  const search = page.getByRole("searchbox", { name: "Find in playlist", exact: true });
+  await search.fill("neon");
+  await search.press("Enter");
+  await expect(search).not.toBeFocused();
+  await expect(search).toHaveValue("neon");
+  await expect(page.locator(".tr").first()).toBeVisible();
+});
+
+test("composition confirmation keeps mobile search focused and does not commit", async ({ page }) => {
+  await signIn(page, "/search");
+  const search = page.getByRole("searchbox", { name: "Search", exact: true });
+  await search.fill("neon");
+  await search.dispatchEvent("keydown", { key: "Enter", code: "Enter", isComposing: true });
+  await expect(search).toBeFocused();
+  await search.dispatchEvent("keydown", { key: "Enter", code: "Enter", keyCode: 229 });
+  await expect(search).toBeFocused();
+  await page.getByRole("button", { name: "Clear search", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Browse your library" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent searches" })).toHaveCount(0);
+});
