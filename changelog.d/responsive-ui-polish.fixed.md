@@ -1,0 +1,1 @@
+- Mobile player links, responsive navigation, Spotify notices and locked playlist spacing now work without overlap.
