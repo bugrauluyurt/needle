@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import type { BrowseTile } from "@needle/shared";
 import { openAlbum, signIn } from "./helpers.ts";
 
 const stable = (page: Page) => [page.locator("footer.bar"), page.locator("aside.right"), page.locator(".lib-list"), page.locator(".hello")];
@@ -27,6 +28,20 @@ test("album page", async ({ page }) => {
 });
 
 test("search browse", async ({ page }) => {
+  const genreRanks = new Map<string, number>(
+    ["Synthwave", "Ambient", "Downtempo", "Jazz", "House", "Indie Folk", "Electronic"].map((genreName, genreIndex) => [`/genre/${encodeURIComponent(genreName)}`, genreIndex]),
+  );
+
+  await page.route("**/api/browse", async (browseRoute) => {
+    const browseResponse = await browseRoute.fetch();
+
+    const browseTiles = await browseResponse.json() as BrowseTile[];
+    const orderedBrowseTiles = browseTiles.toSorted((leftTile, rightTile) =>
+      (genreRanks.get(leftTile.to) ?? genreRanks.size) - (genreRanks.get(rightTile.to) ?? genreRanks.size));
+
+    await browseRoute.fulfill({ response: browseResponse, json: orderedBrowseTiles });
+  });
+
   await signIn(page, "/search");
   await page.waitForLoadState("networkidle");
   await expect(page.locator(".genre").first()).toBeVisible();
