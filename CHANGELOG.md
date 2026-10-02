@@ -8,6 +8,11 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.8.3 - 2026-10-02
+
+### Fixed
+- Mobile player links, responsive navigation, Spotify notices and locked playlist spacing now work without overlap.
+
 ## 1.8.2 - 2026-10-02
 
 ### Fixed
