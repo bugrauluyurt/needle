@@ -263,6 +263,10 @@
   padding: 0;
 }
 
+.artist-songs-page .tracks {
+  margin-inline: -24px;
+}
+
 .about {
   position: relative;
   border-radius: 12px;
