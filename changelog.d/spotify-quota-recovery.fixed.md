@@ -1,1 +1,0 @@
-- Load artist pictures without fetching album catalogues, and keep Spotify visible with previously loaded content and a clear retry time while requests are paused.
