@@ -1,4 +1,4 @@
-import { createContext, lazy, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, lazy, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
@@ -17,6 +17,7 @@ import { SearchFocusProxy, useOpenSearch } from "./TopBar.tsx";
 import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
 import { useActiveRemote } from "../remote/client.ts";
+import { useIsMobile, useIsWide } from "../lib/media.ts";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
@@ -24,24 +25,7 @@ import { PlayerBar } from "./PlayerBar.tsx";
 import { RightPanel, RightPanelOver } from "./RightPanel.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 
-const MOBILE = "(max-width: 767px)";
-const WIDE = "(min-width: 1180px)";
-
-export function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia(query);
-      mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
-    },
-    () => window.matchMedia(query).matches,
-    () => false,
-  );
-}
-
-export const useIsMobile = () => useMediaQuery(MOBILE);
-
-export const useIsWide = () => useMediaQuery(WIDE);
+export { useMediaQuery, useIsMobile, useIsWide } from "../lib/media.ts";
 
 const ToneContext = createContext<(tone: string) => void>(() => undefined);
 

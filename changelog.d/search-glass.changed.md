@@ -1,0 +1,1 @@
+- Lighten the top search field while keeping its glass blur and focus outline readable over artwork.
