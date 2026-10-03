@@ -1,26 +1,33 @@
 import { useEffect } from "react";
-import { loadOffline } from "../../offline/store.ts";
-import { startPlayer } from "../../player/controller.ts";
+import { loadOffline, resetOfflineAccount } from "../../offline/store.ts";
+import { resetPlayerAccount, startPlayer } from "../../player/controller.ts";
 import { queryClient } from "../../queries/client.ts";
 import { prefetchStart } from "../../queries/hooks.ts";
 import { clearSpotifyCache } from "../../features/spotify/hooks/useSpotify.ts";
 import { clearYouTubeMusicCache } from "../../features/youtube-music/hooks/useYouTubeMusic.ts";
 import { startRemote, stopRemote } from "../../features/remote/client.ts";
+import { useDetails } from "../../components/songDetailsStore.ts";
+import { registerAccountResetHandler } from "../../state/accountLifecycle.ts";
 
-export function useAppRuntime(signedIn: boolean) {
+export function resetAccountRuntime(): void {
+  stopRemote();
+  queryClient.clear();
+  clearSpotifyCache();
+  clearYouTubeMusicCache();
+  resetOfflineAccount();
+  resetPlayerAccount();
+  useDetails.setState({ song: null });
+}
+
+registerAccountResetHandler(resetAccountRuntime);
+
+export function useAppRuntime(accountUser: string | null) {
   useEffect(() => {
-    if (!signedIn) {
-      stopRemote();
-      queryClient.clear();
-      clearSpotifyCache();
-      clearYouTubeMusicCache();
-
-      return;
-    }
+    if (!accountUser) return;
 
     prefetchStart(queryClient);
     startPlayer();
     startRemote();
     void loadOffline();
-  }, [signedIn]);
+  }, [accountUser]);
 }

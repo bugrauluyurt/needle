@@ -11,7 +11,10 @@ vi.mock("../src/offline/idb.ts", () => ({
   idbAll: vi.fn(),
   idbDelete: vi.fn(),
   idbGet: vi.fn(),
+  removeLegacyOfflineDatabase: vi.fn(() => Promise.resolve()),
 }));
+
+vi.mock("../src/state/session.ts", () => ({ credentials: () => null }));
 
 vi.mock("../src/lib/subsonic.ts", () => ({ sub: {}, subsonicUrl }));
 

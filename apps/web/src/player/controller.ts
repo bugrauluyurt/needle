@@ -50,6 +50,7 @@ let dirty = false;
 let dismissed = "";
 let lastPositionSave = 0;
 let lastSessionPosition = 0;
+let accountGeneration = 0;
 const resolved = new Map<string, string>();
 const objectUrls = new Set<string>();
 
@@ -169,6 +170,7 @@ function beginListen(item: Q.QueueItem, announce: boolean) {
 }
 
 async function loadCurrent(autoplay: boolean, startAt = 0) {
+  const loadGeneration = accountGeneration;
   const s = get();
   const item = s.items[s.index];
   if (!engine) return;
@@ -211,7 +213,9 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
       duration: item.song.duration ?? 0,
       buffered: 0,
     });
-    if (autoplay) await startSpotify(item, startAt);
+    if (autoplay) await startSpotify(item, startAt, loadGeneration);
+    if (loadGeneration !== accountGeneration) return;
+
     scheduleSave();
     return;
   }
@@ -222,7 +226,7 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
 
     return null;
   });
-  if (!src) return;
+  if (!src || loadGeneration !== accountGeneration) return;
   if (get().items[get().index]?.uid !== item.uid) return;
   if (onYouTubeMusic(item.song) && !youtubeMusicAllowed) return;
 
@@ -304,7 +308,7 @@ export function allowSpotify(on: boolean) {
   if (!on && backend === "spotify") leaveSpotify();
 }
 
-async function startSpotify(item: Q.QueueItem, startAt: number) {
+async function startSpotify(item: Q.QueueItem, startAt: number, loadGeneration: number) {
   if (!spotifyAllowed) {
     onError(translate("player.spotifyUnavailable"));
     return;
@@ -315,9 +319,16 @@ async function startSpotify(item: Q.QueueItem, startAt: number) {
   }
   try {
     await connectSpotify();
-    if (get().items[get().index]?.uid !== item.uid) return;
+    if (loadGeneration !== accountGeneration || get().items[get().index]?.uid !== item.uid) return;
+
     spotifyPlayer.setVolume(get().muted ? 0 : get().volume);
     await spotifyPlayer.play(item.song.uri, startAt);
+    if (loadGeneration !== accountGeneration) {
+      spotifyPlayer.stop();
+
+      return;
+    }
+
     spotifyTicker ??= window.setInterval(tickSpotify, SPOTIFY_TICK);
   } catch (e) {
     set({
@@ -417,7 +428,7 @@ function onEnded() {
     const item = s.items[s.index];
     if (item) beginListen(item, true);
     if (backend === "spotify" && item) {
-      void startSpotify(item, 0);
+      void startSpotify(item, 0, accountGeneration);
       return;
     }
     engine?.seek(0);
@@ -768,6 +779,7 @@ function saveNow() {
   if (saveTimer !== null) window.clearTimeout(saveTimer);
   saveTimer = null;
   const s = get();
+  const saveGeneration = accountGeneration;
   const song = current(s);
   if (!dirty || !song || s.station || !isLocalSong(song)) return;
   dirty = false;
@@ -777,6 +789,8 @@ function saveNow() {
     .map((queueItem) => queueItem.song.id);
   void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(
     () => {
+      if (saveGeneration !== accountGeneration) return;
+
       try {
         localStorage.setItem(SAVED_AT, String(Date.now()));
       } catch {
@@ -886,8 +900,68 @@ async function offerResume() {
   set({ resume: offer });
 }
 
+export function resetPlayerAccount(): void {
+  accountGeneration++;
+
+  if (saveTimer !== null) window.clearTimeout(saveTimer);
+  saveTimer = null;
+
+  engine?.stop();
+  spotifyPlayer.stop();
+  stopSpotifyTicker();
+  backend = "local";
+  loadedUid = null;
+  listenedSong = null;
+  listenedMs = 0;
+  lastTick = 0;
+  scrobbled = false;
+  reported = false;
+  dirty = false;
+  dismissed = "";
+  lastPositionSave = 0;
+  lastSessionPosition = 0;
+  resumeCheckedAt = 0;
+  spotifyAllowed = false;
+  youtubeMusicAllowed = false;
+  releaseSources(new Set());
+
+  const { volume, muted } = get();
+  set({
+    items: [],
+    index: -1,
+    original: null,
+    context: null,
+    shuffle: false,
+    repeat: "off",
+    playing: false,
+    buffering: false,
+    volume,
+    muted,
+    station: null,
+    lastPosition: 0,
+    resume: null,
+    error: null,
+  });
+  progress.set({ position: 0, duration: 0, buffered: 0 });
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = "none";
+  }
+
+  try {
+    localStorage.removeItem(SAVED_AT);
+  } catch {
+    return;
+  }
+}
+
 export function startPlayer() {
-  if (engine) return;
+  if (engine) {
+    void offerResume();
+
+    return;
+  }
   engine = new AudioEngine(
     {
       time: onTime,

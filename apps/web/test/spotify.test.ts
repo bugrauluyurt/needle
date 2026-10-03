@@ -147,6 +147,27 @@ describe("Spotify search pagination", () => {
   });
 });
 
+describe("Spotify account isolation", () => {
+  it("rejects a token request that finishes after an account reset", async () => {
+    const { api } = await import("../src/lib/api.ts");
+    let resolveAliceToken: (token: { accessToken: string; expiresAt: number }) => void = () => undefined;
+    const aliceToken = new Promise<{ accessToken: string; expiresAt: number }>((resolve) => {
+      resolveAliceToken = resolve;
+    });
+    vi.spyOn(api, "spotifyToken")
+      .mockImplementationOnce(() => aliceToken)
+      .mockResolvedValueOnce({ accessToken: "bob-token", expiresAt: Date.now() + 3_600_000 });
+
+    const spotify = await import("../src/features/spotify/api/client.ts");
+    const pendingAliceToken = spotify.spotifyToken();
+    spotify.clearSpotifyClient();
+    resolveAliceToken({ accessToken: "alice-token", expiresAt: Date.now() + 3_600_000 });
+
+    await expect(pendingAliceToken).rejects.toMatchObject({ status: 401 });
+    await expect(spotify.spotifyToken()).resolves.toBe("bob-token");
+  });
+});
+
 describe("Spotify cooldown", () => {
   const start = new Date("2026-10-02T10:00:00Z").getTime();
   let storage: Map<string, string>;

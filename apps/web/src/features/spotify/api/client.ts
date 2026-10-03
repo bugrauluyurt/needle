@@ -105,13 +105,27 @@ export class SpotifyApiError extends Error {
 
 let token: SpotifyToken | null = null;
 let pending: Promise<SpotifyToken> | null = null;
+let tokenGeneration = 0;
 
 export async function spotifyToken(force = false): Promise<string> {
   if (!force && token && token.expiresAt - 30_000 > Date.now()) return token.accessToken;
-  pending ??= api.spotifyToken().finally(() => {
-    pending = null;
-  });
-  token = await pending;
+
+  const requestGeneration = tokenGeneration;
+  if (!pending) {
+    const tokenRequest = api.spotifyToken();
+    pending = tokenRequest;
+    const clearTokenRequest = () => {
+      if (pending === tokenRequest) pending = null;
+    };
+
+    void tokenRequest.then(clearTokenRequest, clearTokenRequest);
+  }
+
+  const nextToken = await pending;
+  if (requestGeneration !== tokenGeneration) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
+  token = nextToken;
+
   return token.accessToken;
 }
 
@@ -122,6 +136,21 @@ const DOWN_WAIT_MS = 5 * MINUTE_MS;
 
 export const useSpotifyStatus = create<{ blocked: boolean; until: number }>(() => ({ blocked: false, until: 0 }));
 let unblock: ReturnType<typeof setTimeout> | undefined;
+
+export function clearSpotifyClient(): void {
+  tokenGeneration++;
+  token = null;
+  pending = null;
+  clearTimeout(unblock);
+  unblock = undefined;
+  useSpotifyStatus.setState({ blocked: false, until: 0 });
+
+  try {
+    localStorage.removeItem(BLOCK_KEY);
+  } catch {
+    return;
+  }
+}
 
 function blockUntil(until: number) {
   clearTimeout(unblock);
@@ -160,17 +189,23 @@ try {
 }
 
 async function req<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  const requestGeneration = tokenGeneration;
   if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, translate("spotify.unavailableNow"));
   const url = path.startsWith("http") ? path : `${SPOTIFY_API}${path}`;
   const headers = new Headers(init.headers);
   const bearer = await spotifyToken().catch((e: unknown) => {
-    block(DOWN_WAIT_MS);
+    if (requestGeneration === tokenGeneration) block(DOWN_WAIT_MS);
+
     throw e;
   });
+  if (requestGeneration !== tokenGeneration) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
   if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, translate("spotify.paused"));
   headers.set("authorization", `Bearer ${bearer}`);
   if (init.body) headers.set("content-type", "application/json");
   const res = await fetch(url, { ...init, headers });
+  if (requestGeneration !== tokenGeneration) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
   if (res.status === 401 && retry) {
     await spotifyToken(true);
     return req<T>(path, init, false);

@@ -1,0 +1,1 @@
+- Browser sessions no longer persist Navidrome credentials, downloads, queues, or provider state across different signed-in users.

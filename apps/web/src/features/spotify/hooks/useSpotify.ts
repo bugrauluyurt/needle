@@ -14,6 +14,7 @@ import {
   isSpotify,
   nextSpotifySearchOffset,
   rawId,
+  clearSpotifyClient,
   sp,
   SpotifyApiError,
   spotifySearchResults,
@@ -80,6 +81,8 @@ queryClient.getQueryCache().subscribe((e) => {
 });
 
 export function clearSpotifyCache() {
+  clearSpotifyClient();
+
   try {
     for (const k of Object.keys(localStorage)) if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
   } catch {

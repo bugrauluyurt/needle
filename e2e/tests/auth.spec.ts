@@ -10,7 +10,7 @@ test("explains a wrong password", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveText("That username and password don’t match a Navidrome account.");
 });
 
-test("signs in, stays signed in after a reload, and signs out", async ({ page }) => {
+test("signs in, stays signed in after a same-tab reload, and signs out", async ({ page }) => {
   await signIn(page);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening|night)/);
   await page.reload();
@@ -20,9 +20,13 @@ test("signs in, stays signed in after a reload, and signs out", async ({ page })
   await expect(page.getByRole("heading", { name: "Sign in to your music" })).toBeVisible();
 });
 
-test("keeps the password out of storage", async ({ page }) => {
+test("keeps credentials out of persistent browser storage", async ({ page }) => {
   await signIn(page);
-  const stored = await page.evaluate(() => JSON.stringify(localStorage));
-  expect(stored).not.toContain(PASSWORD);
-  expect(stored).toContain("token");
+  const persistentStorage = await page.evaluate(() => JSON.stringify(localStorage));
+  const tabStorage = await page.evaluate(() => JSON.stringify(sessionStorage));
+
+  expect(persistentStorage).not.toContain(PASSWORD);
+  expect(persistentStorage).not.toContain("token");
+  expect(tabStorage).not.toContain(PASSWORD);
+  expect(tabStorage).toContain("token");
 });

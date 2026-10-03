@@ -16,6 +16,8 @@ const playerMocks = vi.hoisted(() => ({
   similarSongs: vi.fn(() => Promise.resolve([])),
   radio: vi.fn(() => Promise.resolve([])),
   reportPlay: vi.fn(() => Promise.resolve()),
+  storageRemoveItem: vi.fn(),
+  storageSetItem: vi.fn(),
 }));
 
 vi.mock("../src/player/engine.ts", () => ({
@@ -131,8 +133,8 @@ beforeEach(() => {
 
   const storage = {
     getItem: () => null,
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
+    setItem: playerMocks.storageSetItem,
+    removeItem: playerMocks.storageRemoveItem,
   };
 
   vi.stubGlobal("window", {
@@ -260,6 +262,67 @@ describe("YouTube Music playback boundaries", () => {
     controller.player.addToQueue([{ ...youtubeSong, id: "ytm:unavailable", isAvailable: false }]);
 
     expect(controller.usePlayer.getState().items.map((queueItem) => queueItem.song.id)).toEqual([youtubeSong.id]);
+  });
+
+  it("clears account playback and metadata while preserving device volume", async () => {
+    const mediaSession = {
+      metadata: { title: "Alice song" },
+      playbackState: "playing",
+      setActionHandler: vi.fn(),
+    };
+    vi.stubGlobal("navigator", { mediaSession });
+    const controller = await initializedPlayer();
+    controller.usePlayer.setState({
+      items: [{ uid: "alice-song", song: youtubeSong }],
+      index: 0,
+      context: { kind: "album", id: "alice-album", name: "Alice album" },
+      shuffle: true,
+      repeat: "all",
+      playing: true,
+      buffering: true,
+      volume: 0.35,
+      muted: true,
+      station: { id: "alice-station", name: "Alice station", streamUrl: "https://radio.invalid" },
+      lastPosition: 42,
+      resume: {
+        songs: [youtubeSong],
+        index: 0,
+        position: 20,
+        changedBy: "Alice device",
+        changed: "2026-01-01T00:00:00.000Z",
+      },
+      error: "Alice playback error",
+    });
+
+    controller.resetPlayerAccount();
+
+    expect(playerMocks.stop).toHaveBeenCalled();
+    expect(controller.usePlayer.getState()).toMatchObject({
+      items: [],
+      index: -1,
+      context: null,
+      shuffle: false,
+      repeat: "off",
+      playing: false,
+      buffering: false,
+      volume: 0.35,
+      muted: true,
+      station: null,
+      lastPosition: 0,
+      resume: null,
+      error: null,
+    });
+    const playerStorageWrites = playerMocks.storageSetItem.mock.calls.filter(
+      ([storageKey]) => storageKey === "needle.player",
+    );
+    const persistedPlayer = JSON.parse(String(playerStorageWrites.at(-1)?.[1])) as {
+      state: { items: unknown[]; index: number; context: unknown; lastPosition: number };
+    };
+
+    expect(persistedPlayer.state).toMatchObject({ items: [], index: -1, context: null, lastPosition: 0 });
+    expect(playerMocks.storageRemoveItem).toHaveBeenCalledWith("needle.queueSavedAt");
+    expect(mediaSession.metadata).toBeNull();
+    expect(mediaSession.playbackState).toBe("none");
   });
 
   it("records YouTube listening in Needle while excluding both Navidrome scrobble modes", async () => {
