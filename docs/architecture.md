@@ -74,6 +74,8 @@ e2e/            Playwright, test Navidrome and external integration mocks
   Spotify missing-track imports allow 64 MiB. WebSocket frames allow 8 MiB.
 - Authentication, administration, permission and integration checks are reusable
   Hono middleware.
+- Cache-miss Navidrome verification is shared by API, media and WebSocket paths,
+  bounded globally and rate limited by client address plus user after repeated denial.
 - Every HTTP response receives `x-request-id`. Failures use
   `{ error, code, requestId, issues? }`; unexpected errors are logged with the same id.
 - `/api/devices` uses Hono's WebSocket upgrade. Query credentials are validated
@@ -113,12 +115,15 @@ allowed; the server refuses it anyway with 403.
 | `needle.db`                       | Plays, requests, profiles, people, permissions, Spotify tokens and OAuth state, YouTube Music tokens and pending device logins, ListenBrainz tokens, and `needle_migrations` history |
 | `needle.pre-migrations.db`        | One-time integrity-checked copy made before adopting versioned migrations for an existing populated database                                                                         |
 | Navidrome                         | The library, users, playlists, likes and the play queue each device syncs                                                                                                            |
-| Browser localStorage              | Session, queue, UI state, provider caches and `needle.settings`, including the manually selected language                                                                            |
-| Browser Cache Storage + IndexedDB | Offline downloads and service-worker caches for the app shell and cover art                                                                                                          |
+| Browser sessionStorage            | Replayable Navidrome credentials for the current tab session only                                                                                                                    |
+| Browser localStorage              | Device identity, queue, UI state, provider caches and `needle.settings`, including the manually selected language                                                                    |
+| Browser Cache Storage + IndexedDB | Offline downloads namespaced by Navidrome user, plus service-worker caches for the app shell and cover art                                                                           |
 
 Database migrations run under `BEGIN IMMEDIATE`. Startup rejects unknown migration
 history or incompatible tables, columns and indexes instead of continuing with a
-partially understood database.
+partially understood database. On disk, `DATA_DIR` is mode `0700`; the database,
+sidecars and migration backups are regular, non-symlink files restricted to mode
+`0600`.
 
 ## Localization
 
@@ -168,7 +173,7 @@ separate; changing the query cancels outstanding requests.
 ## Spotify
 
 ```
- app ──► /api/spotify/token ──► server refreshes with the stored refresh token ──► short-lived token
+app ──► /api/spotify/token ──► server refreshes with the stored refresh token ──► short-lived token
  app ──► api.spotify.com with that token   (library, search, playlist edits, likes, follows)
  app ──► sdk.scdn.co Web Playback SDK      (Premium; desktop and Android browsers)
 ```
@@ -186,6 +191,9 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
   Spotify queries never refetch on focus and never retry.
 - Settings → **Use Spotify in Needle** (`PUT /api/spotify/enabled`) switches Spotify
   off for the account: the token endpoint refuses (409), so no device can call it.
+- The OAuth state and PKCE verifier remain server-side. A callback succeeds only when
+  its state also matches the short-lived HttpOnly cookie set in the browser that
+  started sign-in.
 
 ## YouTube Music
 
@@ -302,11 +310,12 @@ its own. **Refresh page** in the same menu reloads without updating.
 ## Offline downloads
 
 Albums and playlists saved for offline listening live in the browser, not on the
-server: audio files in Cache Storage, the list of saved songs in IndexedDB, both
-private to the site's origin on that one device. A browser can't show them as a
-folder. The Downloads page says so and shows each album's size and the space used
-and left (`navigator.storage.estimate()`). A download that stalls for 60 s fails
-that song; unfinished albums resume when the app opens, or with **Try again**.
+server: audio files in Cache Storage and the saved-song index in IndexedDB. Both are
+namespaced by the exact Navidrome user and reset before another account starts. Legacy
+global offline stores are removed. A browser can't show them as a folder. The Downloads
+page says so and shows each album's size and the space used and left
+(`navigator.storage.estimate()`). A download that stalls for 60 s fails that song;
+unfinished albums resume when the app opens, or with **Try again**.
 
 ## Tests and CI
 

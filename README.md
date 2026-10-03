@@ -479,7 +479,8 @@ nothing to set up. Choose qualities in Needle's Settings.
 - The first upgrade of a populated database from before versioned migrations creates
   `DATA_DIR/needle.pre-migrations.db` after checking its integrity. This is a one-time
   safety copy, not a rolling backup.
-- Offline downloads live in each browser and are never on the server.
+- Offline downloads live in each browser, are isolated by Navidrome account and
+  are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
   the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
   means your setup needs a change; the changelog says what. Each release publishes
@@ -499,10 +500,17 @@ nothing to set up. Choose qualities in Needle's Settings.
 ## Security
 
 - Needle checks every request against Navidrome, so it's only as open as your
-  Navidrome accounts. Use strong passwords.
+  Navidrome accounts. Repeated failed checks are rate limited across HTTP, media
+  and remote-device connections. Use strong passwords.
 - Don't expose Needle to the internet without HTTPS. A private network such as
   Tailscale is the simplest safe setup.
+- The browser keeps the replayable Navidrome token only for the current tab session
+  and clears account-specific queues, provider caches and offline state on sign-out
+  or account change. Client-side tokens remain readable to code running on Needle's
+  origin, so only install trusted releases and keep the server updated.
 - API keys and the Spotify client secret never reach the browser.
+- Spotify sign-in state is bound to the browser that started the flow with a
+  short-lived HttpOnly cookie.
 - YouTube Music client secrets and account tokens stay on the server. Needle never
   asks for copied Google browser cookies and never passes account tokens to the
   playback resolver. Protect and back up `DATA_DIR`, which holds connected-account
@@ -512,6 +520,11 @@ nothing to set up. Choose qualities in Needle's Settings.
   stations you add.
 - A Navidrome password typed in Settings → ListenBrainz is used once to link the token
   in Navidrome and never stored or logged.
+- `DATA_DIR` is private to the server account. Needle restricts its SQLite database,
+  sidecars and migration backup to that account and refuses symlinked database paths.
+- Files fetched through slskd must remain inside the configured download and singles
+  roots. Needle refuses traversal, symlinks, ambiguous matches and destination
+  replacement.
 
 ## Troubleshooting
 
