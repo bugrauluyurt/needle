@@ -10,14 +10,15 @@ import { useSession } from "../state/session.ts";
 import type { Quality } from "../state/settings.ts";
 import { AudioEngine, dbToGain } from "./engine.ts";
 import { prepareSpotify, spotifyPlayer } from "./spotify.ts";
-import { rawId } from "../lib/spotify.ts";
-import { ytm } from "../lib/youtube-music.ts";
-import { spotifyArtistSongs } from "../queries/spotify.ts";
+import { rawId } from "../features/spotify/api/client.ts";
+import { ytm } from "../features/youtube-music/api/client.ts";
+import { spotifyArtistSongs } from "../features/spotify/hooks/useSpotify.ts";
 import { toast } from "../state/ui.ts";
 import { progress } from "./progress.ts";
 import * as Q from "./queue.ts";
 import type { PlayContext, PlayerState, ResumeOffer } from "./store.ts";
 import { current, usePlayer } from "./store.ts";
+import { translate } from "../i18n/index.ts";
 
 const PRELOAD_AT = 30;
 export const MIN_REPORT_MS = 30_000;
@@ -49,6 +50,7 @@ let dirty = false;
 let dismissed = "";
 let lastPositionSave = 0;
 let lastSessionPosition = 0;
+let accountGeneration = 0;
 const resolved = new Map<string, string>();
 const objectUrls = new Set<string>();
 
@@ -74,27 +76,43 @@ function quality(): Quality {
 
 export function streamUrl(song: Song, q: Quality = quality()): string {
   if (onYouTubeMusic(song)) {
-    if (!youtubeMusicAllowed) throw new Error("YouTube Music is switched off or unavailable in Needle.");
+    if (!youtubeMusicAllowed) throw new Error(translate("player.youtubeUnavailable"));
 
     const credentials = useSession.getState().credentials;
-    if (!credentials) throw new Error("Sign in to play YouTube Music.");
+    if (!credentials) throw new Error(translate("player.signInYouTube"));
 
-    const query = new URLSearchParams({ u: credentials.user, t: credentials.token, s: credentials.salt });
+    const query = new URLSearchParams({
+      u: credentials.user,
+      t: credentials.token,
+      s: credentials.salt,
+    });
 
     return `/youtube-music/stream/${encodeURIComponent(youtubeMusicRawId(song.id))}?${query.toString()}`;
   }
 
-  if (!isLocalSong(song)) throw new Error("Spotify songs play through the Spotify player.");
+  if (!isLocalSong(song)) throw new Error(translate("player.spotifyOnly"));
 
   if (q === "original") return subsonicUrl("stream", { id: song.id });
   codec ??= codecFor();
-  return subsonicUrl("stream", { id: song.id, format: codec, maxBitRate: Number(q), estimateContentLength: true });
+  return subsonicUrl("stream", {
+    id: song.id,
+    format: codec,
+    maxBitRate: Number(q),
+    estimateContentLength: true,
+  });
 }
 
-async function sourceFor(item: Q.QueueItem): Promise<string> {
+async function sourceFor(item: Q.QueueItem, sourceGeneration = accountGeneration): Promise<string | null> {
   const cached = resolved.get(item.uid);
   if (cached) return cached;
   const offline = isLocalSong(item.song) ? await offlineSource(item.song.id) : null;
+
+  if (sourceGeneration !== accountGeneration) {
+    if (offline) URL.revokeObjectURL(offline);
+
+    return null;
+  }
+
   const src = offline ?? streamUrl(item.song);
   if (offline) objectUrls.add(offline);
   resolved.set(item.uid, src);
@@ -159,6 +177,7 @@ function beginListen(item: Q.QueueItem, announce: boolean) {
 }
 
 async function loadCurrent(autoplay: boolean, startAt = 0) {
+  const loadGeneration = accountGeneration;
   const s = get();
   const item = s.items[s.index];
   if (!engine) return;
@@ -185,10 +204,7 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
     set({
       playing: false,
       buffering: false,
-      error:
-        item.song.isAvailable === false
-          ? "This song is unavailable. Open it in YouTube Music."
-          : "YouTube Music is switched off or unavailable in Needle.",
+      error: translate(item.song.isAvailable === false ? "player.unavailableYouTube" : "player.youtubeUnavailable"),
     });
 
     return;
@@ -199,19 +215,25 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   if (onSpotify(item.song)) {
     engine.stop();
     backend = "spotify";
-    progress.set({ position: startAt, duration: item.song.duration ?? 0, buffered: 0 });
-    if (autoplay) await startSpotify(item, startAt);
+    progress.set({
+      position: startAt,
+      duration: item.song.duration ?? 0,
+      buffered: 0,
+    });
+    if (autoplay) await startSpotify(item, startAt, loadGeneration);
+    if (loadGeneration !== accountGeneration) return;
+
     scheduleSave();
     return;
   }
   if (backend === "spotify") leaveSpotify();
   const src = await sourceFor(item).catch((error: unknown) => {
-    if (get().items[get().index]?.uid === item.uid)
-      onError(error instanceof Error ? error.message : "The stream could not be loaded.");
+    if (loadGeneration === accountGeneration && get().items[get().index]?.uid === item.uid)
+      onError(error instanceof Error ? error.message : translate("player.streamFailed"));
 
     return null;
   });
-  if (!src) return;
+  if (!src || loadGeneration !== accountGeneration) return;
   if (get().items[get().index]?.uid !== item.uid) return;
   if (onYouTubeMusic(item.song) && !youtubeMusicAllowed) return;
 
@@ -236,7 +258,11 @@ function spotifyEvents() {
     lost: () => {
       if (backend !== "spotify") return;
       stopSpotifyTicker();
-      set({ playing: false, buffering: false, lastPosition: spotifyPlayer.position() });
+      set({
+        playing: false,
+        buffering: false,
+        lastPosition: spotifyPlayer.position(),
+      });
     },
   };
 }
@@ -289,26 +315,35 @@ export function allowSpotify(on: boolean) {
   if (!on && backend === "spotify") leaveSpotify();
 }
 
-async function startSpotify(item: Q.QueueItem, startAt: number) {
+async function startSpotify(item: Q.QueueItem, startAt: number, loadGeneration: number) {
   if (!spotifyAllowed) {
-    onError("Spotify is switched off or unavailable in Needle.");
+    onError(translate("player.spotifyUnavailable"));
     return;
   }
   if (!item.song.uri) {
-    onError("This song has no Spotify link.");
+    onError(translate("player.noSpotifyLink"));
     return;
   }
   try {
     await connectSpotify();
-    if (get().items[get().index]?.uid !== item.uid) return;
+    if (loadGeneration !== accountGeneration || get().items[get().index]?.uid !== item.uid) return;
+
     spotifyPlayer.setVolume(get().muted ? 0 : get().volume);
     await spotifyPlayer.play(item.song.uri, startAt);
+    if (loadGeneration !== accountGeneration) {
+      spotifyPlayer.stop();
+
+      return;
+    }
+
     spotifyTicker ??= window.setInterval(tickSpotify, SPOTIFY_TICK);
   } catch (e) {
+    if (loadGeneration !== accountGeneration) return;
+
     set({
       playing: false,
       buffering: false,
-      error: e instanceof Error ? e.message : "Spotify couldn’t play that song",
+      error: e instanceof Error ? e.message : translate("player.spotifyFailed"),
     });
   }
 }
@@ -365,9 +400,9 @@ function onTime(position: number, duration: number, buffered: number) {
     return;
   if (onSpotify(song)) {
     if (remaining < PRELOAD_AT && !resolved.has(next.uid))
-      void sourceFor(next)
+      void sourceFor(next, accountGeneration)
         .then((src) => {
-          if (!onYouTubeMusic(next.song) || youtubeMusicAllowed) engine?.preload(src);
+          if (src && (!onYouTubeMusic(next.song) || youtubeMusicAllowed)) engine?.preload(src);
         })
         .catch(() => undefined);
     return;
@@ -385,9 +420,13 @@ function onTime(position: number, duration: number, buffered: number) {
     }
   }
   if (remaining < PRELOAD_AT && !resolved.has(next.uid)) {
-    void sourceFor(next)
+    void sourceFor(next, accountGeneration)
       .then((src) => {
-        if ((!onYouTubeMusic(next.song) || youtubeMusicAllowed) && (settings().gapless || crossfadeSeconds() > 0))
+        if (
+          src &&
+          (!onYouTubeMusic(next.song) || youtubeMusicAllowed) &&
+          (settings().gapless || crossfadeSeconds() > 0)
+        )
           engine?.preload(src);
       })
       .catch(() => undefined);
@@ -402,7 +441,7 @@ function onEnded() {
     const item = s.items[s.index];
     if (item) beginListen(item, true);
     if (backend === "spotify" && item) {
-      void startSpotify(item, 0);
+      void startSpotify(item, 0, accountGeneration);
       return;
     }
     engine?.seek(0);
@@ -415,12 +454,17 @@ function onEnded() {
 function onError(message: string) {
   const s = get();
   if (s.station) {
-    set({ error: `${s.station.name} isn't responding`, playing: false });
+    set({
+      error: translate("player.stationFailed", { name: s.station.name }),
+      playing: false,
+    });
     return;
   }
   const song = current(s);
-  const detail = message.trim() || "The file couldn’t be played.";
-  set({ error: song ? `Couldn’t play “${song.title}”. ${detail}` : detail });
+  const detail = message.trim() || translate("player.fileFailed");
+  set({
+    error: song ? translate("player.playFailed", { title: song.title, detail }) : detail,
+  });
   if (onYouTubeMusic(song)) {
     engine?.stop();
     loadedUid = null;
@@ -435,22 +479,33 @@ function onError(message: string) {
 }
 
 async function appendSimilar(): Promise<boolean> {
+  const appendGeneration = accountGeneration;
   const song = current();
   if (!song || !isLocalSong(song)) return false;
   const have = new Set(get().items.map((i) => i.song.id));
   let songs = (await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])).filter((x) => !have.has(x.id));
-  if (songs.length < 5)
+
+  if (appendGeneration !== accountGeneration) return false;
+
+  if (songs.length < 5) {
     songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
+  }
+
+  if (appendGeneration !== accountGeneration) return false;
   if (!songs.length) return false;
+
   set({ items: [...get().items, ...songs.map((x) => Q.makeItem(x))] });
+
   return true;
 }
 
 export async function next() {
+  const nextGeneration = accountGeneration;
   const s = get();
   if (s.station) return;
   let n = Q.nextIndex(s, s.repeat);
   if (n === null && settings().autoplay && (await appendSimilar())) n = get().index + 1;
+  if (nextGeneration !== accountGeneration) return;
   if (n === null) {
     finishListen();
     engine?.pause();
@@ -495,11 +550,7 @@ export function playSongs(
     : Math.max(0, Math.min(startIndex, songs.length - 1));
   const selectedSong = songs[selectedIndex];
   if (!selectedSong || selectedSong.isAvailable === false || (onYouTubeMusic(selectedSong) && !youtubeMusicAllowed)) {
-    toast(
-      selectedSong?.isAvailable === false
-        ? "This song is unavailable. Open it in YouTube Music."
-        : "YouTube Music is switched off or unavailable in Needle.",
-    );
+    toast(translate(selectedSong?.isAvailable === false ? "player.unavailableYouTube" : "player.youtubeUnavailable"));
 
     return;
   }
@@ -680,14 +731,17 @@ export function playStation(station: InternetRadioStation) {
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
-      artist: "Internet radio",
+      artist: translate("player.internetRadio"),
       album: "Needle",
     });
   }
 }
 
-async function similarTo(id: string, genre: string | undefined): Promise<Song[]> {
+async function similarTo(id: string, genre: string | undefined, radioGeneration: number): Promise<Song[]> {
   const similar = await sub.similarSongs(id, 60).catch(() => [] as Song[]);
+
+  if (radioGeneration !== accountGeneration) return [];
+
   return similar.length < 5 && genre ? sub.randomSongs(60, genre).catch(() => []) : similar;
 }
 
@@ -697,12 +751,13 @@ async function spotifyRadio(artistId: string): Promise<Song[]> {
 }
 
 export async function startRadio(seed: { song?: Song; artistId?: string; name: string }) {
+  const radioGeneration = accountGeneration;
   const id = seed.song?.id ?? seed.artistId;
   if (!id) return;
   const artistId = seed.artistId ?? seed.song?.artistId;
   const source = seed.song ? songSource(seed.song) : musicSource(id);
   if (source === "youtubeMusic" && !youtubeMusicAllowed) {
-    toast("YouTube Music is switched off or unavailable in Needle.");
+    toast(translate("player.youtubeUnavailable"));
 
     return;
   }
@@ -716,13 +771,16 @@ export async function startRadio(seed: { song?: Song; artistId?: string; name: s
         ? artistId
           ? await spotifyRadio(artistId)
           : []
-        : await similarTo(id, seed.song?.genre);
+        : await similarTo(id, seed.song?.genre, radioGeneration);
+
+  if (radioGeneration !== accountGeneration) return;
+
   const songs = seed.song ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)] : pool;
   if (songs.length < 2) {
-    toast(`Couldn’t find songs for ${seed.name} radio`);
+    toast(translate("player.radioNotFound", { name: seed.name }));
     return;
   }
-  playSongs(songs, 0, { kind: "radio", name: `${seed.name} radio` }, { shuffle: false });
+  playSongs(songs, 0, { kind: "radio", name: translate("player.radioName", { name: seed.name }) }, { shuffle: false });
 }
 
 export function acceptResume() {
@@ -731,7 +789,7 @@ export function acceptResume() {
   set({
     ...Q.start(offer.songs, offer.index, false),
     shuffle: false,
-    context: { kind: "queue", name: "Your queue" },
+    context: { kind: "queue", name: translate("player.queueName") },
     resume: null,
   });
   void loadCurrent(true, offer.position);
@@ -752,6 +810,7 @@ function saveNow() {
   if (saveTimer !== null) window.clearTimeout(saveTimer);
   saveTimer = null;
   const s = get();
+  const saveGeneration = accountGeneration;
   const song = current(s);
   if (!dirty || !song || s.station || !isLocalSong(song)) return;
   dirty = false;
@@ -761,6 +820,8 @@ function saveNow() {
     .map((queueItem) => queueItem.song.id);
   void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(
     () => {
+      if (saveGeneration !== accountGeneration) return;
+
       try {
         localStorage.setItem(SAVED_AT, String(Date.now()));
       } catch {
@@ -768,6 +829,8 @@ function saveNow() {
       }
     },
     () => {
+      if (saveGeneration !== accountGeneration) return;
+
       dirty = true;
     },
   );
@@ -776,7 +839,11 @@ function saveNow() {
 function updateMediaSession(song: Song) {
   if (!("mediaSession" in navigator)) return;
   const art = [96, 192, 256, 512]
-    .map((size) => ({ src: coverUrl(song.coverArt, size) ?? "", sizes: `${size}x${size}`, type: "image/jpeg" }))
+    .map((size) => ({
+      src: coverUrl(song.coverArt, size) ?? "",
+      sizes: `${size}x${size}`,
+      type: "image/jpeg",
+    }))
     .filter((a) => a.src);
   navigator.mediaSession.metadata = new MediaMetadata({
     title: song.title,
@@ -789,7 +856,11 @@ function updateMediaSession(song: Song) {
 function setPositionState(position: number, duration: number) {
   if (!("mediaSession" in navigator) || !duration || !Number.isFinite(duration)) return;
   try {
-    navigator.mediaSession.setPositionState({ duration, position: Math.min(position, duration), playbackRate: 1 });
+    navigator.mediaSession.setPositionState({
+      duration,
+      position: Math.min(position, duration),
+      playbackRate: 1,
+    });
   } catch {
     return;
   }
@@ -824,15 +895,23 @@ let resumeCheckedAt = 0;
 
 async function offerResume() {
   if (Date.now() - resumeCheckedAt < RESUME_CHECK_MS) return;
+
+  const resumeGeneration = accountGeneration;
   resumeCheckedAt = Date.now();
   const q = await sub.playQueue().catch(() => null);
+
+  if (resumeGeneration !== accountGeneration) return;
   if (!q?.entry?.length || !q.current) return;
   const index = q.entry.findIndex((e) => e.id === q.current);
   if (index < 0) return;
   const s = get();
   const position = (q.position ?? 0) / 1000;
   if (!s.items.length) {
-    set({ ...Q.start(q.entry, index, false), lastPosition: position, context: { kind: "queue", name: "Your queue" } });
+    set({
+      ...Q.start(q.entry, index, false),
+      lastPosition: position,
+      context: { kind: "queue", name: translate("player.queueName") },
+    });
     return;
   }
   const changed = q.changed ? Date.parse(q.changed) : 0;
@@ -852,14 +931,74 @@ async function offerResume() {
     songs: q.entry,
     index,
     position,
-    changedBy: (q.changedBy ?? "another device").replace(/^Needle /, ""),
+    changedBy: (q.changedBy ?? translate("player.anotherDevice")).replace(/^Needle /, ""),
     changed: q.changed ?? "",
   };
   set({ resume: offer });
 }
 
+export function resetPlayerAccount(): void {
+  accountGeneration++;
+
+  if (saveTimer !== null) window.clearTimeout(saveTimer);
+  saveTimer = null;
+
+  engine?.stop();
+  spotifyPlayer.dispose();
+  stopSpotifyTicker();
+  backend = "local";
+  loadedUid = null;
+  listenedSong = null;
+  listenedMs = 0;
+  lastTick = 0;
+  scrobbled = false;
+  reported = false;
+  dirty = false;
+  dismissed = "";
+  lastPositionSave = 0;
+  lastSessionPosition = 0;
+  resumeCheckedAt = 0;
+  spotifyAllowed = false;
+  youtubeMusicAllowed = false;
+  releaseSources(new Set());
+
+  const { volume, muted } = get();
+  set({
+    items: [],
+    index: -1,
+    original: null,
+    context: null,
+    shuffle: false,
+    repeat: "off",
+    playing: false,
+    buffering: false,
+    volume,
+    muted,
+    station: null,
+    lastPosition: 0,
+    resume: null,
+    error: null,
+  });
+  progress.set({ position: 0, duration: 0, buffered: 0 });
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = "none";
+  }
+
+  try {
+    localStorage.removeItem(SAVED_AT);
+  } catch {
+    return;
+  }
+}
+
 export function startPlayer() {
-  if (engine) return;
+  if (engine) {
+    void offerResume();
+
+    return;
+  }
   engine = new AudioEngine(
     {
       time: onTime,

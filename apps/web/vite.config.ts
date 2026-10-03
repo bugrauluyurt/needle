@@ -50,15 +50,9 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,woff2,svg,png}"],
+        importScripts: ["/sw-cleanup.js"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /^\/rest\//, /^\/radio\//],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/rest/getCoverArt"),
-            handler: "CacheFirst",
-            options: { cacheName: "covers", expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 180 } },
-          },
-        ],
       },
     }),
   ],

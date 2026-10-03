@@ -85,6 +85,9 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
 - **On phones:** installs to the home screen, a mini player and full-screen player,
   song options as a sheet from the bottom, and a header that turns to glass and shows
   the page's title as you scroll.
+- **Languages:** English is the default, and Turkish can be selected manually in
+  Settings. The choice stays on that device and updates the page language and localized
+  install manifest.
 - **People:** everyone with a Navidrome account signs in with their own likes,
   playlists, stats and mixes; admins choose who may request music or use Spotify.
 - Internet radio, keyboard shortcuts (`?` lists them), lock-screen controls, an
@@ -130,10 +133,11 @@ flowchart LR
 - The browser talks only to the Needle server (plus Spotify, when it's on). `/rest/*`
   is Navidrome's Subsonic API passed through, so Navidrome never needs its own
   public address. `/api/*` is Needle's own API, signed with the same Navidrome token.
-  `/api/devices` is a WebSocket for the device list.
+  `/api/devices` is a Hono WebSocket endpoint for the device list and remote controls.
 - Lidarr's and slskd's API keys and Spotify's client secret stay on the server.
-- `needle.db` (SQLite) keeps play history, requests, account photos and Spotify
-  sign-ins and ListenBrainz tokens. Your music, playlists and likes stay in Navidrome.
+- `needle.db` (SQLite) keeps play history, requests, account photos, permissions,
+  Spotify and YouTube Music connections, and ListenBrainz tokens. Your music,
+  playlists and likes stay in Navidrome.
 
 Fetching a single song, end to end:
 
@@ -369,7 +373,7 @@ uv sync --project bridges/youtube-music --locked
 YTMUSIC_PYTHON="$PWD/bridges/youtube-music/.venv/bin/python" pnpm dev
 ```
 
-Python 3.10 or newer and Node 24 are required. Needle locks ytmusicapi, yt-dlp
+Python 3.10 through 3.14 and Node 24 are supported. Needle locks ytmusicapi, yt-dlp
 and its challenge scripts. Upgrade them through a tested Needle release when
 YouTube changes. Settings → Connections distinguishes account access from the
 local playback resolver.
@@ -439,6 +443,7 @@ as unset.
 | -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                               | Navidrome as the Needle server reaches it                    |
 | `PUBLIC_URL`                                 |                                                       | The `https://` address people open. Needed for Spotify       |
+| `TRUST_PROXY`                                | `false`                                               | Trust the nearest address in `X-Forwarded-For`               |
 | `PORT`                                       | `4535`                                                | Port the server listens on                                   |
 | `DATA_DIR`                                   | `/data` in the image                                  | Where `needle.db` lives                                      |
 | `TZ`                                         | `UTC`                                                 | Time zone for daily mixes and listening stats                |
@@ -456,16 +461,26 @@ as unset.
 | `DEEZER_URL`                                 | `https://api.deezer.com`                              | Popular songs for an artist                                  |
 | `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                        | ListenBrainz playlists; the tests point it at a mock         |
 
+Set `TRUST_PROXY=true` only when every request reaches Needle through a proxy you
+control that appends `X-Forwarded-For`. Leave it false when Needle accepts direct
+connections.
+
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's
 nothing to set up. Choose qualities in Needle's Settings.
 
 ## Data, backups and updates
 
-- Back up `DATA_DIR` (`needle.db` holds plays, requests, photos, Spotify sign-ins,
-  ListenBrainz tokens and who may do what) along with Navidrome's data folder. Your music, playlists and likes live
-  in Navidrome.
-- Offline downloads live in each browser and are never on the server.
+- Back up `DATA_DIR` along with Navidrome's data folder. `needle.db` holds plays,
+  requests, photos, permissions and connected account credentials. Your music,
+  playlists and likes live in Navidrome.
+- Needle applies ordered SQLite migrations in one transaction and verifies the
+  expected tables, columns and indexes before it starts.
+- The first upgrade of a populated database from before versioned migrations creates
+  `DATA_DIR/needle.pre-migrations.db` after checking its integrity. This is a one-time
+  safety copy, not a rolling backup.
+- Offline downloads live in each browser, are isolated by Navidrome account and
+  are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
   the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
   means your setup needs a change; the changelog says what. Each release publishes
@@ -478,17 +493,27 @@ nothing to set up. Choose qualities in Needle's Settings.
   the tag first if you pinned a version). Building from source, point `build:` at the
   new tag, or in a clone run `git fetch --tags && git checkout vX.Y.Z`, then
   `docker compose up -d --build needle`.
-- The database migrates itself on start. Open apps show **Update Needle** in the
-  account menu; the new version loads when you choose it, so music isn't cut off.
+- Open apps show **Update Needle** in the account menu; the new version loads when
+  you choose it, so music isn't cut off.
   Settings → This app shows which version you're running.
 
 ## Security
 
 - Needle checks every request against Navidrome, so it's only as open as your
-  Navidrome accounts. Use strong passwords.
+  Navidrome accounts. Repeated failed checks are rate limited across HTTP, media
+  and remote-device connections. Use strong passwords.
 - Don't expose Needle to the internet without HTTPS. A private network such as
   Tailscale is the simplest safe setup.
+- Needle sends a restrictive content security policy, frame denial, MIME-sniffing
+  protection, a strict referrer policy, HSTS and camera, location and microphone
+  restrictions.
+- The browser keeps the replayable Navidrome token only for the current tab session
+  and clears account-specific queues, provider caches and offline state on sign-out
+  or account change. Client-side tokens remain readable to code running on Needle's
+  origin, so only install trusted releases and keep the server updated.
 - API keys and the Spotify client secret never reach the browser.
+- Spotify sign-in state is bound to the browser that started the flow with a
+  short-lived HttpOnly cookie.
 - YouTube Music client secrets and account tokens stay on the server. Needle never
   asks for copied Google browser cookies and never passes account tokens to the
   playback resolver. Protect and back up `DATA_DIR`, which holds connected-account
@@ -498,6 +523,11 @@ nothing to set up. Choose qualities in Needle's Settings.
   stations you add.
 - A Navidrome password typed in Settings → ListenBrainz is used once to link the token
   in Navidrome and never stored or logged.
+- `DATA_DIR` is private to the server account. Needle restricts its SQLite database,
+  sidecars and migration backup to that account and refuses symlinked database paths.
+- Files fetched through slskd must remain inside the configured download and singles
+  roots. Needle refuses traversal, symlinks, ambiguous matches and destination
+  replacement.
 
 ## Troubleshooting
 
@@ -556,12 +586,16 @@ Common problems:
 
 ## Development
 
-Needle is a pnpm monorepo: `apps/web` (React 19, Vite, TanStack Query, plain CSS),
-`apps/server` (Node 24 and Hono, running TypeScript directly with no build step) and
-`packages/shared` (types and text matching).
+Needle is a pnpm monorepo: `apps/web` contains React 19 and Vite, `apps/server`
+contains Node 24 and Hono, `packages/shared` contains shared contracts and runtime
+schemas, and `bridges/youtube-music` is an isolated uv project for the Python
+integration.
+
+Source development requires Node 24, pnpm, Docker, uv and Python 3.10 through 3.14.
 
 ```bash
 pnpm install
+uv sync --project bridges/youtube-music --locked
 pnpm fixtures              # generates e2e/.library: 38 tagged songs with covers and lyrics
 pnpm navidrome:test        # a throwaway Navidrome on 127.0.0.1:14533 (admin / needle-test)
 NEEDLE_DATA_DIR=./data pnpm seed   # playlists, likes, radio stations, 75 days of plays
@@ -570,14 +604,18 @@ pnpm dev                   # server on :14535 and Vite on :5173
 ```
 
 ```bash
-pnpm lint && pnpm typecheck
-pnpm test                  # unit tests (Vitest)
-pnpm --filter @needle/web build && pnpm e2e   # end-to-end, desktop and phone sizes
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm e2e
 ```
 
-`pnpm e2e` starts what it needs: the test Navidrome, a mock Lidarr, a mock
-slskd/MusicBrainz and a Needle server on the production build. Contributor
-conventions are in [AGENTS.md](AGENTS.md).
+`pnpm lint` checks TypeScript with ESLint and Python with Ruff. `pnpm test` runs
+Vitest and the Python bridge tests. `pnpm e2e` starts a test Navidrome, external
+integration mocks and a Needle server on the production build. Contributor conventions
+are in [AGENTS.md](AGENTS.md).
 
 ## License and credits
 

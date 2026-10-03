@@ -5,8 +5,9 @@ import { lineAt, pickLyrics } from "../lib/lyrics.ts";
 import { player } from "../player/controller.ts";
 import { useProgress } from "../player/progress.ts";
 import { useLyrics } from "../queries/hooks.ts";
-import { useYouTubeMusicLyrics } from "../queries/youtube-music.ts";
+import { useYouTubeMusicLyrics } from "../features/youtube-music/hooks/useYouTubeMusic.ts";
 import { Icon } from "./Icon.tsx";
+import { translate } from "../i18n/index.ts";
 
 const USER_SCROLL_PAUSE = 4_000;
 
@@ -35,7 +36,10 @@ export function LyricsView({
   useEffect(() => {
     if (!synced || active < 0 || Date.now() - userScrolled.current < USER_SCROLL_PAUSE) return;
     const el = box.current?.querySelector<HTMLElement>(`[data-line="${active}"]`);
-    el?.scrollIntoView({ block: variant === "peek" ? "start" : "center", behavior: "smooth" });
+    el?.scrollIntoView({
+      block: variant === "peek" ? "start" : "center",
+      behavior: "smooth",
+    });
   }, [active, synced, variant]);
 
   if (isLoading) {
@@ -50,14 +54,16 @@ export function LyricsView({
   if (!lines.length) {
     return (
       <div className={`lyrics ${variant} none`}>
-        <p className="lyrics-none">No lyrics for this song</p>
+        <p className="lyrics-none">{translate("lyrics.none")}</p>
         {variant !== "peek" ? (
           <p className="lyrics-hint">
-            {source === "spotify"
-              ? "Spotify doesn’t share lyrics with other apps."
-              : source === "youtubeMusic"
-                ? "YouTube Music has no lyrics available for this song."
-                : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}
+            {translate(
+              source === "spotify"
+                ? "lyrics.spotifyHint"
+                : source === "youtubeMusic"
+                  ? "lyrics.youtubeHint"
+                  : "lyrics.fileHint",
+            )}
           </p>
         ) : null}
       </div>
@@ -76,30 +82,35 @@ export function LyricsView({
         <p className="lyrics-src">
           <Icon name="mic" size={15} />
           {source === "youtubeMusic"
-            ? `Lyrics from ${youtubeMusicLyrics.data?.source ?? "YouTube Music"}${synced ? ", timed" : ". These aren’t timed, so they don’t follow along."}`
-            : synced
-              ? "Lyrics, timed, from the song’s file"
-              : "Lyrics from the song’s file. These aren’t timed, so they don’t follow along."}
+            ? translate(synced ? "lyrics.youtubeTimedSource" : "lyrics.youtubePlainSource", {
+                source: youtubeMusicLyrics.data?.source ?? "YouTube Music",
+              })
+            : translate(synced ? "lyrics.fileTimedSource" : "lyrics.filePlainSource")}
         </p>
       ) : null}
-      {shown.map((l, i) => {
-        const idx = base + i;
-        const state = !synced ? "" : idx < active ? "past" : idx === active ? "now" : "";
+      {shown.map((lyricLine, lyricLineIndex) => {
+        const lyricIndex = base + lyricLineIndex;
+        const state = !synced ? "" : lyricIndex < active ? "past" : lyricIndex === active ? "now" : "";
+        const lyricText = lyricLine.value || "♪";
+        const lyricStart = lyricLine.start;
+
+        if (synced && lyricStart !== undefined) {
+          return (
+            <button
+              key={lyricIndex}
+              type="button"
+              data-line={lyricIndex}
+              className={`lyric ${state}`}
+              onClick={() => player.seek(lyricStart / 1000)}
+            >
+              {lyricText}
+            </button>
+          );
+        }
+
         return (
-          <p
-            key={idx}
-            data-line={idx}
-            className={`lyric ${state}`}
-            {...(synced && l.start !== undefined
-              ? {
-                  role: "button",
-                  tabIndex: 0,
-                  onClick: () => player.seek((l.start ?? 0) / 1000),
-                  onKeyDown: (e) => e.key === "Enter" && player.seek((l.start ?? 0) / 1000),
-                }
-              : {})}
-          >
-            {l.value || "♪"}
+          <p key={lyricIndex} data-line={lyricIndex} className={`lyric ${state}`}>
+            {lyricText}
           </p>
         );
       })}

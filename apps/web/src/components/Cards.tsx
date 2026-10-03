@@ -13,8 +13,9 @@ import { artistPath } from "../lib/paths.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
-import { useArtistImage } from "../queries/spotify.ts";
-import type { CollectionItem } from "./Collection.tsx";
+import { useArtistImage } from "../features/spotify/hooks/useSpotify.ts";
+import type { CollectionItem } from "./collectionTypes.ts";
+import { translate } from "../i18n/index.ts";
 
 type CardProps = {
   to: string;
@@ -43,7 +44,9 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
         <button
           type="button"
           className={current ? "hover-play on" : "hover-play"}
-          aria-label={playing ? `Pause ${title}` : (playLabel ?? `Play ${title}`)}
+          aria-label={
+            playing ? translate("track.pauseNamed", { title }) : (playLabel ?? translate("track.playNamed", { title }))
+          }
           onClick={current ? player.toggle : onPlay}
         >
           <Icon name={playing ? "pause" : "play"} size={18} />
@@ -95,7 +98,7 @@ export function albumItem(album: Album, subtitle?: string): CollectionItem {
   };
 }
 
-export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem {
+export function artistItem(artist: Artist, subtitle = translate("catalog.artist")): CollectionItem {
   const source = musicSource(artist.id);
 
   return {
@@ -159,7 +162,7 @@ export function RowHeader({
       {action ??
         (to ? (
           <Link to={to} className="show-all">
-            Show all
+            {translate("common.showAll")}
           </Link>
         ) : null)}
     </div>

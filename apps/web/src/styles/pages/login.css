@@ -1,0 +1,109 @@
+/* login */
+.login {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ink);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.wall {
+  position: absolute;
+  inset: -120px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 180px);
+  gap: 16px;
+  transform: rotate(-8deg);
+  opacity: 0.3;
+}
+
+.wall-tile {
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+}
+
+.wall-tile.t0 {
+  background: radial-gradient(circle at 50% 60%, #ffb86b 26%, transparent 27%), linear-gradient(#1c1242, #e0457b);
+}
+.wall-tile.t1 {
+  background:
+    radial-gradient(60% 55% at 30% 30%, #8fb3e8, transparent 70%),
+    radial-gradient(50% 50% at 75% 70%, #f2b8c6, transparent 70%), #e7e2f1;
+}
+.wall-tile.t2 {
+  background: repeating-radial-gradient(circle at 50% 50%, #c9a86a 0 2px, #121018 3px 9px);
+}
+.wall-tile.t3 {
+  background: linear-gradient(160deg, #f3e8d6 55%, #2e6b5e 56%);
+}
+.wall-tile.t4 {
+  background:
+    radial-gradient(circle at 60% 40%, #1fb5a0 22%, transparent 23%),
+    radial-gradient(#0c4d46 1px, transparent 1.5px) 0 0 / 18px 18px,
+    #07201f;
+}
+.wall-tile.t5 {
+  background: radial-gradient(60% 60% at 40% 40%, #f27d2e, transparent 70%), #1a0f0a;
+}
+.wall-tile.t6 {
+  background: repeating-linear-gradient(90deg, #b9a58c 0 12px, #efe6da 12px 22px, #6f5e4b 22px 26px, #efe6da 26px 40px);
+}
+.wall-tile.t7 {
+  background: repeating-radial-gradient(circle at 45% 50%, #7fb7d9 0 1.5px, #0f2436 2.5px 8px);
+}
+.wall-tile.t8 {
+  background:
+    radial-gradient(circle at 70% 25%, #ffe066 12%, transparent 13%), linear-gradient(200deg, #ff8a3d 50%, #1d7a46 51%);
+}
+
+.login::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px 520px at 50% 50%, var(--ink) 35%, rgba(15, 14, 19, 0.4) 100%);
+  z-index: 1;
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: min(420px, 100%);
+}
+
+.login-card .brand {
+  padding: 0;
+  font-size: 30px;
+  gap: 12px;
+}
+
+.login-card h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 46px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 34px 0 10px;
+}
+
+.login-card > p {
+  color: var(--sleeve);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.login-card .btn {
+  width: 100%;
+  height: 50px;
+  border-radius: 25px;
+  margin-top: 28px;
+  font-size: 15px;
+}
+
+.login-card .fine {
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 18px;
+}

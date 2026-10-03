@@ -1,4 +1,6 @@
-import { sp, spotifyToken } from "../lib/spotify.ts";
+import { sp, spotifyToken } from "../features/spotify/api/client.ts";
+import { translate } from "../i18n/index.ts";
+import type { TranslationKey } from "../i18n/locales/en.ts";
 
 type SdkTrack = { uri: string };
 type SdkState = {
@@ -18,7 +20,11 @@ type SdkPlayer = {
   seek(ms: number): Promise<void>;
   activateElement?(): Promise<void>;
 };
-type SdkOptions = { name: string; getOAuthToken: (cb: (token: string) => void) => void; volume?: number };
+type SdkOptions = {
+  name: string;
+  getOAuthToken: (cb: (token: string) => void) => void;
+  volume?: number;
+};
 
 const sdkWindow = window as Window & {
   Spotify?: { Player: new (options: SdkOptions) => SdkPlayer };
@@ -34,11 +40,11 @@ export type SpotifyEvents = {
 
 const SDK = "https://sdk.scdn.co/spotify-player.js";
 const READY_TIMEOUT = 15_000;
-const ERRORS: Record<string, string> = {
-  initialization_error: "Spotify can’t play in this browser",
-  authentication_error: "Spotify refused the sign-in. Reconnect Spotify in Settings.",
-  account_error: "Playing Spotify in Needle needs Spotify Premium",
-  playback_error: "Spotify couldn’t play that song",
+const ERRORS: Record<string, TranslationKey> = {
+  initialization_error: "spotify.browserPlaybackFailed",
+  authentication_error: "spotify.signInRefused",
+  account_error: "spotify.premiumRequired",
+  playback_error: "player.spotifyFailed",
 };
 
 let sdk: Promise<void> | null = null;
@@ -48,6 +54,9 @@ let events: SpotifyEvents | null = null;
 let current: string | null = null;
 let last: { state: SdkState; at: number } | null = null;
 let volume = 0.8;
+let playerGeneration = 0;
+let rejectDevice: ((error: Error) => void) | null = null;
+let readyTimer: number | null = null;
 
 function loadSdk(): Promise<void> {
   sdk ??= new Promise((resolve, reject) => {
@@ -58,7 +67,7 @@ function loadSdk(): Promise<void> {
     script.async = true;
     script.onerror = () => {
       sdk = null;
-      reject(new Error("Couldn’t load Spotify’s player"));
+      reject(new Error(translate("spotify.playerLoadFailed")));
     };
     document.head.appendChild(script);
   });
@@ -71,17 +80,24 @@ function positionMs(): number {
   return state.paused ? state.position : state.position + (performance.now() - at);
 }
 
-function lose() {
+function lose(eventGeneration: number) {
+  if (eventGeneration !== playerGeneration) return;
   if (!current) return;
   current = null;
-  if (last) last = { state: { ...last.state, paused: true, position: positionMs() }, at: performance.now() };
+  if (last)
+    last = {
+      state: { ...last.state, paused: true, position: positionMs() },
+      at: performance.now(),
+    };
   events?.lost();
 }
 
-function onState(payload: unknown) {
+function onState(payload: unknown, eventGeneration: number) {
+  if (eventGeneration !== playerGeneration) return;
+
   const state = payload as SdkState | null;
   if (!state) {
-    lose();
+    lose(eventGeneration);
     return;
   }
   const prev = last?.state;
@@ -98,42 +114,83 @@ function onState(payload: unknown) {
     events?.ended();
     return;
   }
-  events?.state({ position: state.position / 1000, duration: state.duration / 1000, paused: state.paused });
+  events?.state({
+    position: state.position / 1000,
+    duration: state.duration / 1000,
+    paused: state.paused,
+  });
 }
 
 export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string> {
   events = on;
+  const prepareGeneration = playerGeneration;
+  let preparedPlayer: SdkPlayer | null = null;
+
   device ??= (async () => {
     await loadSdk();
+
+    if (prepareGeneration !== playerGeneration) throw new Error(translate("spotify.playerNotReady"));
+
     const Player = sdkWindow.Spotify?.Player;
-    if (!Player) throw new Error("Spotify’s player didn’t start");
+    if (!Player) throw new Error(translate("spotify.playerStartFailed"));
     const p = new Player({
       name,
       volume,
-      getOAuthToken: (cb) => void spotifyToken().then(cb, () => events?.error(ERRORS.authentication_error ?? "")),
+      getOAuthToken: (cb) =>
+        void spotifyToken().then(
+          (token) => {
+            if (prepareGeneration === playerGeneration && player === p) cb(token);
+          },
+          () => {
+            if (prepareGeneration === playerGeneration && player === p) {
+              events?.error(translate(ERRORS.authentication_error ?? "spotify.signInRefused"));
+            }
+          },
+        ),
     });
+    preparedPlayer = p;
     player = p;
     const id = await new Promise<string>((resolve, reject) => {
-      const timer = window.setTimeout(() => reject(new Error("Spotify’s player didn’t answer")), READY_TIMEOUT);
+      rejectDevice = reject;
+      readyTimer = window.setTimeout(() => reject(new Error(translate("spotify.playerAnswerFailed"))), READY_TIMEOUT);
       p.addListener("ready", (payload) => {
-        window.clearTimeout(timer);
+        if (prepareGeneration !== playerGeneration || player !== p) return;
+
+        if (readyTimer !== null) window.clearTimeout(readyTimer);
+        readyTimer = null;
+        rejectDevice = null;
         resolve((payload as { device_id: string }).device_id);
       });
-      for (const [event, message] of Object.entries(ERRORS)) {
+      for (const [event, messageKey] of Object.entries(ERRORS)) {
         p.addListener(event, () => {
-          window.clearTimeout(timer);
+          if (prepareGeneration !== playerGeneration || player !== p) return;
+
+          const message = translate(messageKey);
+
+          if (readyTimer !== null) window.clearTimeout(readyTimer);
+          readyTimer = null;
+          rejectDevice = null;
           events?.error(message);
           reject(new Error(message));
         });
       }
-      p.addListener("player_state_changed", onState);
-      p.addListener("not_ready", lose);
+      p.addListener("player_state_changed", (payload) => onState(payload, prepareGeneration));
+      p.addListener("not_ready", () => lose(prepareGeneration));
       void p.connect();
     });
     return id;
   })().catch((e: unknown) => {
-    device = null;
-    player = null;
+    if (prepareGeneration === playerGeneration) {
+      preparedPlayer?.disconnect();
+
+      device = null;
+      player = null;
+      rejectDevice = null;
+
+      if (readyTimer !== null) window.clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+
     throw e;
   });
   return device;
@@ -144,7 +201,7 @@ export const spotifyPlayer = {
     void player?.activateElement?.();
   },
   async play(uri: string, positionSeconds: number) {
-    const id = await (device ?? Promise.reject(new Error("Spotify isn’t ready")));
+    const id = await (device ?? Promise.reject(new Error(translate("spotify.playerNotReady"))));
     current = uri;
     last = null;
     await sp.play(id, [uri], positionSeconds * 1000);
@@ -159,6 +216,24 @@ export const spotifyPlayer = {
   stop() {
     current = null;
     void player?.pause();
+  },
+  dispose() {
+    playerGeneration += 1;
+
+    if (readyTimer !== null) window.clearTimeout(readyTimer);
+    readyTimer = null;
+
+    rejectDevice?.(new Error(translate("spotify.playerNotReady")));
+    rejectDevice = null;
+
+    const disposedPlayer = player;
+    player = null;
+    device = null;
+    events = null;
+    current = null;
+    last = null;
+
+    disposedPlayer?.disconnect();
   },
   get playingUri() {
     return current;

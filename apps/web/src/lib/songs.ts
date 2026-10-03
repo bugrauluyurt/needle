@@ -3,6 +3,7 @@ import { matchesTerms, queryTerms } from "@needle/shared";
 import { artistName } from "./format.ts";
 import { applyOrder, compareText, naturalOrder } from "./order.ts";
 import type { Order } from "./order.ts";
+import { translate } from "../i18n/index.ts";
 
 export type SongSort = "custom" | "added" | "title" | "artist" | "album" | "duration" | "plays" | "year";
 export type SongOrder = Order<SongSort>;
@@ -10,25 +11,28 @@ export type SongOrder = Order<SongSort>;
 export const AS_GIVEN: SongOrder = { key: "custom", desc: false };
 export const RECENT_FIRST: SongOrder = naturalOrder("added");
 
-export const SONG_SORTS: [SongSort, string][] = [
-  ["custom", "Custom order"],
-  ["added", "Date added"],
-  ["title", "Title"],
-  ["artist", "Artist"],
-  ["album", "Album"],
-];
-export const LIKED_SORTS = SONG_SORTS.filter(([k]) => k !== "custom");
+export const totalSongDuration = (songs: Song[]) =>
+  songs.reduce((durationSeconds, song) => durationSeconds + (song.duration ?? 0), 0);
 
-export const SEARCH_SONG_SORTS: [SongSort, string][] = [
-  ["custom", "Most relevant"],
-  ["title", "Title"],
-  ["year", "Release date"],
-  ["plays", "Most played"],
+export const songSorts = (): [SongSort, string][] => [
+  ["custom", translate("sort.custom")],
+  ["added", translate("sort.dateAdded")],
+  ["title", translate("sort.title")],
+  ["artist", translate("sort.artist")],
+  ["album", translate("sort.album")],
 ];
-export const LIBRARY_SONG_SORTS: [SongSort, string][] = [
-  ...LIKED_SORTS,
-  ["year", "Release date"],
-  ["plays", "Most played"],
+export const likedSorts = () => songSorts().filter(([songSort]) => songSort !== "custom");
+
+export const searchSongSorts = (): [SongSort, string][] => [
+  ["custom", translate("sort.mostRelevant")],
+  ["title", translate("sort.title")],
+  ["year", translate("sort.releaseDate")],
+  ["plays", translate("sort.mostPlayed")],
+];
+export const librarySongSorts = (): [SongSort, string][] => [
+  ...likedSorts(),
+  ["year", translate("sort.releaseDate")],
+  ["plays", translate("sort.mostPlayed")],
 ];
 
 const added = (s: Song) => s.starred ?? s.created ?? "";

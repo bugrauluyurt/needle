@@ -1,3 +1,5 @@
+import { translate } from "../i18n/index.ts";
+
 export const PHOTO_PX = 256;
 
 export async function squarePhoto(file: Blob, px = PHOTO_PX): Promise<Blob> {
@@ -11,6 +13,10 @@ export async function squarePhoto(file: Blob, px = PHOTO_PX): Promise<Blob> {
     ?.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, px, px);
   bitmap.close();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t read that image"))), "image/webp", 0.86),
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error(translate("settings.photoReadFailed")))),
+      "image/webp",
+      0.86,
+    ),
   );
 }

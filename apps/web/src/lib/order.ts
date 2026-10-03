@@ -5,7 +5,10 @@ const UNORDERED: ReadonlySet<string> = new Set(["custom", "default"]);
 
 export const directional = (key: string) => !UNORDERED.has(key);
 
-export const naturalOrder = <K extends string>(key: K): Order<K> => ({ key, desc: DESC_FIRST.has(key) });
+export const naturalOrder = <K extends string>(key: K): Order<K> => ({
+  key,
+  desc: DESC_FIRST.has(key),
+});
 
 export const pickOrder = <K extends string>(order: Order<K>, key: K): Order<K> =>
   order.key === key ? { key, desc: !order.desc } : naturalOrder(key);

@@ -46,7 +46,12 @@ export function toneFromPixels(data: Uint8ClampedArray): string {
     const bucket = Math.round(h / 20) % 18;
     const weight = s * (1 - Math.abs(l - 0.5));
     const b = buckets.get(bucket) ?? { w: 0, h: 0, s: 0, l: 0 };
-    buckets.set(bucket, { w: b.w + weight, h: b.h + h * weight, s: b.s + s * weight, l: b.l + l * weight });
+    buckets.set(bucket, {
+      w: b.w + weight,
+      h: b.h + h * weight,
+      s: b.s + s * weight,
+      l: b.l + l * weight,
+    });
   }
   const best = [...buckets.values()].sort((a, b) => b.w - a.w)[0];
   if (!best || best.w < 0.6)

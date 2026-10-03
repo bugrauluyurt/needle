@@ -1,0 +1,178 @@
+/* cards */
+.row-h {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 34px 0 14px;
+}
+
+.row-h h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.row-h h2 a:hover {
+  text-decoration: underline;
+}
+
+.row-h .sub {
+  color: var(--sleeve);
+  font-size: 13.5px;
+  margin-top: 3px;
+}
+
+.show-all {
+  color: var(--sleeve);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+
+.show-all:hover {
+  color: var(--label);
+  text-decoration: underline;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(154px, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: 0;
+  overflow: hidden;
+  column-gap: 8px;
+  margin: 0 -10px;
+}
+
+.cards.grid {
+  grid-auto-rows: auto;
+  row-gap: 8px;
+}
+
+.card {
+  padding: 10px;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s;
+  text-align: left;
+  min-width: 0;
+}
+
+.card:hover,
+.card:focus-within {
+  background: var(--groove);
+}
+
+.card-link {
+  display: block;
+}
+
+.card-art {
+  position: relative;
+}
+
+.card-art .art {
+  width: 100%;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.8);
+}
+
+.card .t {
+  font-weight: 600;
+  font-size: 14.5px;
+  margin-top: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card .s {
+  color: var(--sleeve);
+  font-size: 13px;
+  margin-top: 3px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card {
+  container-type: inline-size;
+}
+
+.card .hover-play {
+  position: absolute;
+  right: 18px;
+  top: calc(100cqw - 42px);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--on-amber);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s,
+    background 0.15s;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.card:hover .hover-play,
+.card:focus-within .hover-play {
+  opacity: 1;
+  transform: none;
+}
+
+.card .hover-play.on {
+  opacity: 1;
+  transform: none;
+}
+
+.card .hover-play:hover {
+  background: var(--amber-hi);
+  transform: scale(1.05);
+}
+
+.card-skel {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.card-skel.round {
+  border-radius: 50%;
+}
+
+.line-skel {
+  height: 12px;
+  margin-top: 12px;
+  width: 80%;
+}
+
+.line-skel.short {
+  width: 50%;
+  margin-top: 8px;
+}
+
+.title-skel {
+  height: 64px;
+  width: min(460px, 70%);
+  margin: 14px 0;
+}
+
+.hero-skel {
+  width: 232px;
+  height: 232px;
+  border-radius: 8px;
+}
+
+.lyric-skel {
+  height: 34px;
+  margin: 14px 0;
+}

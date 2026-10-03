@@ -1,0 +1,1 @@
+- Restore browser zoom, keyboard radio navigation and predictable focus for lyrics and mobile action sheets.

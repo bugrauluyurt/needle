@@ -1,10 +1,11 @@
 import type { Mix } from "@needle/shared";
 import { player } from "../player/controller.ts";
+import { translate } from "../i18n/index.ts";
 
 export function MixArt({
   mix,
   className,
-  label = "Mix",
+  label = translate("mix.kind"),
 }: {
   mix: Pick<Mix, "name" | "palette">;
   className?: string;

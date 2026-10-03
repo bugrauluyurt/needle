@@ -2,15 +2,16 @@ import { useEffect, useState } from "react";
 import { Art } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
-import { YouTubeMusicPlaybackError } from "../components/YouTubeMusicPlaybackError.tsx";
+import { YouTubeMusicPlaybackError } from "../features/youtube-music/components/YouTubeMusicPlaybackError.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { player } from "../player/controller.ts";
 import { usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi } from "../state/ui.ts";
-import { usePlayback } from "../remote/client.ts";
-import { DevicesButton } from "../remote/DevicesButton.tsx";
+import { usePlayback } from "../features/remote/client.ts";
+import { DevicesButton } from "../features/remote/components/DevicesButton.tsx";
 import { LikeCurrent, LiveLabel, SeekBar, Transport, Volume } from "./PlayerBar.tsx";
+import { translate } from "../i18n/index.ts";
 
 export default function FullScreenPlayer() {
   const open = useUi((s) => s.fullScreen);
@@ -35,16 +36,20 @@ export default function FullScreenPlayer() {
       style={{ "--tone": tone } as React.CSSProperties}
       role="dialog"
       aria-modal="true"
-      aria-label="Full screen player"
+      aria-label={translate("player.fullScreenPlayer")}
     >
       <div className="full-top">
         <Logo size={26} />
         <div className="from">
           {remote
-            ? "Playing on"
+            ? translate("player.playingOnShort")
             : station
-              ? "Internet radio"
-              : `Playing from ${context?.kind === "playlist" ? "playlist" : context?.kind === "album" ? "album" : ""}`}
+              ? translate("player.internetRadio")
+              : context?.kind === "playlist"
+                ? translate("player.playingFromPlaylist")
+                : context?.kind === "album"
+                  ? translate("player.playingFromAlbum")
+                  : translate("player.playing")}
           <b>{remote?.name ?? station?.name ?? context?.name ?? song?.album}</b>
         </div>
         <div className="full-top-r">
@@ -52,12 +57,12 @@ export default function FullScreenPlayer() {
             type="button"
             className="icon-btn"
             aria-pressed={lyrics}
-            aria-label="Lyrics"
+            aria-label={translate("player.lyrics")}
             onClick={() => setLyrics(!lyrics)}
           >
             <Icon name="mic" />
           </button>
-          <button type="button" className="icon-btn" aria-label="Exit full screen" onClick={close}>
+          <button type="button" className="icon-btn" aria-label={translate("player.exitFullScreen")} onClick={close}>
             <Icon name="close" />
           </button>
         </div>
@@ -80,7 +85,7 @@ export default function FullScreenPlayer() {
             </div>
           ) : upNext.length ? (
             <div className="upnext">
-              <h6>Up next</h6>
+              <h6>{translate("panel.upNext")}</h6>
               {upNext.map((it) => (
                 <button key={it.uid} type="button" className="mini" onClick={() => player.playQueueItem(it.uid)}>
                   <Art id={it.song.coverArt} px={44} />

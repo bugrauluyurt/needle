@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import type { RemoteImage } from "@needle/shared";
 import { coverUrl } from "../lib/subsonic.ts";
 import { hashPalette } from "../lib/palette.ts";
-import { image } from "../lib/spotify.ts";
+import { image } from "../features/spotify/api/client.ts";
 import { Icon } from "./Icon.tsx";
 
 const dpr = typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);

@@ -380,7 +380,7 @@ describe("Spotify import", () => {
       navidrome: new Navidrome("http://nd"),
       library: new LibrarySearch(new Navidrome("http://nd")),
     });
-    const url = new URL(spotify.authorizeUrl("alex"));
+    const url = new URL(spotify.getAuthorization("alex").url);
     expect(url.searchParams.get("redirect_uri")).toBe("https://needle.example/api/spotify/callback");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("scope")).toContain("user-library-read");
@@ -602,6 +602,7 @@ describe("single songs", () => {
           queueLength: 50,
           uploadSpeed: 0,
         }),
+        peer("unsafe", [{ filename: "..\\Undertow.flac", size: 7, length: 417 }]),
       ],
       want,
     );
@@ -612,10 +613,10 @@ describe("single songs", () => {
     expect(
       singlePath(
         "/singles",
-        { title: "One/Two?", artist: "Stop/Go" },
+        { title: "Jóga?", artist: "Björk" },
         { filename: "x\\a.FLAC", size: 1, extension: "FLAC" },
       ),
-    ).toBe("/singles/Stop_Go/Stop_Go - One_Two_.flac");
+    ).toBe("/singles/Björk/Björk - Jóga_.flac");
   });
 
   it("turns MusicBrainz recordings into songs, once each", () => {

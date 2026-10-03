@@ -1,29 +1,29 @@
 # Needle architecture
 
-How the app is put together, how a request travels, where data lives, and the
-flows that are easy to get wrong (Spotify's limits, fetching songs, ListenBrainz). For installing
-Needle and connecting it to Navidrome, Lidarr, slskd and Spotify, see the
-[README](../README.md).
+How the app is put together, how requests travel, where data lives, and the
+integration flows that are easy to get wrong. For installation and configuration,
+see the [README](../README.md).
 
 ## The big picture
 
 ```
- Browser (desktop or iPhone PWA)                          Needle server (Node 24 + Hono, one process)
-┌───────────────────────────────────────┐   /rest/*     ┌────────────────────────────────────────────┐
-│ React app (apps/web)                  │──────────────►│ proxy.ts ─────────────────────────► Navidrome (Subsonic API)
-│  pages, components, layout            │   /api/*      │ app.ts routes                              │
-│  player/ (audio engine, queue,        │──────────────►│  search.ts   library index, browse tiles   │──► Navidrome
-│          Spotify backend)             │  /api/devices │  stats.ts    play log, listening stats     │
-│  queries/ (TanStack Query)            │◄═════════════►│  devices.ts  device hub (WebSocket)        │
-│  offline/ (Cache Storage + IndexedDB) │   /radio/:id  │  mixes.ts    daily mixes                   │
-│  service worker (app shell, covers)   │──────────────►│  lidarr.ts   albums you don't have         │──► Lidarr
-│                                       │               │  soulseek.ts single songs                  │──► slskd (Soulseek)
-│  Spotify (optional, direct):          │               │  musicbrainz.ts song lookup                │──► musicbrainz.org
-│   api.spotify.com, sdk.scdn.co ◄──────┼── token ──────│  spotify.ts  sign-in, tokens, switch       │──► accounts.spotify.com
-└───────────────────────────────────────┘               │  requests.ts / profiles.ts                 │
-                                                        │  listenbrainz.ts discovery playlists       │──► api.listenbrainz.org
-                                                        │  needle.db (SQLite, node:sqlite)           │
-                                                        └────────────────────────────────────────────┘
+ Browser or installed PWA
+   apps/web/src/app             application bootstrap and router
+   apps/web/src/features        contextual routes, components, hooks and clients
+   player, shared components, i18n, offline storage and state
+        |
+        | /rest/*, /api/*, media routes and /api/devices WebSocket
+        v
+ Needle server, Node 24 and Hono
+   app.ts                       service construction and route registration
+   routes/                      contextual HTTP routes
+   http/                        authentication, authorization, validation and errors
+   realtime/devices.ts          Hono WebSocket upgrade and device hub
+   db/                          node:sqlite schema, migrations and startup checks
+   integration clients          Navidrome, Lidarr, slskd, Spotify and discovery APIs
+        |
+        +--> Navidrome, Lidarr, slskd, Spotify, ListenBrainz and metadata services
+        +--> uv-managed YouTube Music bridge subprocess
 ```
 
 The browser only ever talks to the Needle server (plus Spotify when that's on).
@@ -33,74 +33,108 @@ Keys for Lidarr, slskd and Spotify's client secret stay on the server.
 
 ```
 apps/web/src
-  pages/        one file per screen (Home, Search, Album, Artist, Library, Requests, Spotify, ...)
-  components/   shared UI: TrackList (virtualized), Cards, Collection (sort + view menu),
-                SearchField, SearchResults (the "In your library" results Search and Your library
-                share), GetCard (albums/songs you don't have), RequestState, Art (with the record
-                fallback), TrackMenu (dropdown on desktop, ActionSheet on phones)
-  layout/       Shell, Sidebar, TopBar, PlayerBar, RightPanel, Mobile (tab bar, mini player, player sheet)
-  player/       controller.ts (queue, play/pause, scrobbling, queue sync), engine.ts (two <audio>
-                elements + Web Audio for crossfade and ReplayGain), spotify.ts (Web Playback SDK)
-  queries/      TanStack Query hooks: hooks.ts (Navidrome + Needle API), spotify.ts, likes.ts
-  lib/          api.ts (Needle API), subsonic.ts (Navidrome API), spotify.ts (Spotify Web API),
-                format, lyrics, palette, tone, songs (song sorting), photo (resize before upload)
-  offline/      downloads for offline listening
-  remote/       device hub client
-  state/        zustand stores: session, settings, ui (persisted to localStorage)
+  app/          application bootstrap, router and runtime hooks
+  features/     contextual routes, components, hooks and clients for catalog,
+                library, search, settings, Spotify, YouTube Music and remote devices
+  pages/        cross-feature screens such as Home, Login, Requests and Stats
+  components/   shared UI; tracks/ owns track rows, menus and track actions
+  layout/       desktop and mobile application shell
+  player/       queue, audio engine, controller and Spotify playback
+  queries/      shared TanStack Query client, keys and common hooks
+  offline/      Cache Storage and IndexedDB downloads
+  state/        persisted Zustand session, settings and UI stores
+  i18n/         typed English and Turkish dictionaries and language runtime
+  styles/       global, layout and mobile entry points plus components/ and pages/
 apps/server/src
-  app.ts        every route; config.ts reads the environment; db.ts creates/migrates needle.db
-  people.ts     who has opened Needle and what each may do; status.ts Settings → Connections
-  one file per integration: navidrome.ts (+ proxy.ts), lidarr.ts, soulseek.ts, musicbrainz.ts,
-                deezer.ts, listenbrainz.ts, spotify.ts; search.ts, stats.ts, mixes.ts, requests.ts, profiles.ts, devices.ts
-packages/shared types used by both sides, plus fold/matchesTerms (accent-insensitive matching)
-e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + MusicBrainz
+  app.ts        constructs services and registers contextual route modules
+  routes/       library, requests, people, integrations, media, system and static routes
+  http/         authentication, authorization, validation, request context and errors
+  realtime/     Hono WebSocket upgrade for the device hub
+  db/           SQLite schema, ordered migrations, backup and startup verification
+  *.ts          concrete integration clients and domain services
+packages/shared/src
+  types/        shared compile-time contracts
+  constants/    shared literals such as authentication headers
+  schemas/      runtime Zod schemas for socket messages
+  utils/        shared domain utilities
+bridges/youtube-music
+  pyproject.toml and uv.lock
+  src/          JSON stdin/stdout Python bridge
+  test/         Python unit tests
+e2e/            Playwright, test Navidrome and external integration mocks
 ```
 
-## How a request travels
+## HTTP and realtime boundaries
 
-```
- /rest/getAlbum.view?u=…&t=…&s=…      ──► proxy.ts ──► Navidrome, response gzipped,
-                                            covers cached "immutable" by the browser/service worker
-
- /api/…  headers x-needle-user/-token/-salt (the same Subsonic token the app already has)
-        ──► auth middleware ──► Navidrome ping (answer cached 5 min) ──► route
-                                 denied → 401 → the app signs out; Navidrome down → 503
-
- /api/devices   WebSocket: presence, "play here", "send my queue", remote pause/skip
- /radio/:id     internet radio streams proxied so HTTPS pages can play http:// stations
- anything else  static files from apps/web/dist (Brotli/gzip precompressed), SPA fallback
-```
+- `/api/health` and the Spotify callback are public. Other HTTP `/api/*` routes
+  validate the authentication headers and verify them with Navidrome.
+- Contextual routes validate path parameters, query values, headers and JSON bodies
+  with Zod before domain services run.
+- JSON request bodies default to 64 KiB. Photos are limited to 400,000 bytes.
+  Spotify missing-track imports allow 64 MiB. WebSocket frames allow 8 MiB.
+- Authentication, administration, permission and integration checks are reusable
+  Hono middleware.
+- Cache-miss Navidrome verification is shared by API, media and WebSocket paths,
+  bounded globally and rate limited by client address plus user after repeated denial.
+- Every HTTP response receives `x-request-id`. Failures use
+  `{ error, code, requestId, issues? }`; unexpected errors are logged with the same id.
+- Every route receives a content security policy, frame denial, HSTS, MIME-sniffing
+  protection, a strict referrer policy and a restrictive permissions policy. The CSP
+  allows the same-origin app and media plus the configured Spotify browser SDK hosts.
+- `/api/devices` uses Hono's WebSocket upgrade. Query credentials are validated
+  before upgrading, messages use shared Zod schemas, transfers allow at most 300
+  songs, and invalid messages close with code 1008.
+- `/rest/*` proxies Subsonic calls. Radio and YouTube Music audio validate route,
+  query and header inputs before proxying. Static files and the SPA fallback are
+  registered last, so unknown `/api/*` paths remain API errors.
 
 ## Who may do what
 
 ```
- every /api request ─► isAdmin(user): Navidrome getUser → adminRole (cached 10 min)
-                         └► people.seen(user, admin)   (Navidrome won't list other users,
-                                                        so Needle remembers who has signed in)
- people.allowed(user, admin, "request")  admins always; others when switched on in People
- people.allowed(user, admin, "spotify")  admins unless switched off; others when switched on
+ authenticated request -> isAdmin(user): Navidrome getUser -> adminRole, cached 10 min
+                          -> people.seen(user, admin)
+ people.allowed(user, admin, "request")       admins always; others when enabled in People
+ people.allowed(user, admin, "spotify")       admins unless disabled; others when enabled
+ people.allowed(user, admin, "youtubeMusic")  admins unless disabled; others when enabled
 ```
 
 | Needs         | Routes                                                                                                                                                                                                       |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Request music | `GET /api/lidarr/search`, `/albums`, `/artists`, `POST /api/lidarr/albums/:id`, `/api/songs*`, `POST /api/requests/:id/retry`, `POST /api/spotify/missing`, `POST /api/listenbrainz/playlists/:mbid/missing` |
-| Spotify       | `/api/spotify/*` (except the sign-in callback)                                                                                                                                                               |
+| Spotify       | `/api/spotify/*`, except the sign-in callback                                                                                                                                                                |
+| YouTube Music | `/api/youtube-music/*` and `/youtube-music/stream/:id`                                                                                                                                                       |
 | Admin         | `GET`/`DELETE /api/lidarr/downloads[/:id]`, `GET /api/status`, `GET`/`PUT /api/people[/:user]`, `GET /api/requests?everyone=1`, removing anyone's request                                                    |
-| Signed in     | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests, the rest of `/api/listenbrainz*` (each person's own connection)                                            |
+| Signed in     | Stats, plays, search, library, browse, mixes, photos, own requests, devices and each person's ListenBrainz connection                                                                                        |
 
 `/api/capabilities` tells the app what this person may do: `admin`, `lidarr` and `songs`
-(may request), and Spotify (configured and allowed, connected, allowed to play, needs
-reconnecting, switched on), plus `listenbrainzUser` and `listenbrainzNavidrome`. The app hides what isn't allowed; the server refuses it
-anyway (403).
+(may request), Spotify and YouTube Music availability, connection and enabled state,
+provider reconnect state, and ListenBrainz connection state. The app hides what is not
+allowed; the server refuses it anyway with 403.
 
 ## Where data lives
 
-| Where                             | What                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `needle.db` (server, `DATA_DIR`)  | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress), `listenbrainz` (each person's ListenBrainz token and user name, whether Needle linked it in Navidrome; never a password) |
-| Navidrome                         | The library, users, playlists, likes, the play queue each device syncs                                                                                                                                                                                                                                                                                                                                                                              |
-| Browser localStorage              | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil`                                                                                                                                                                                        |
-| Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art                                                                                                                                                                                                                                                                                                                                                                            |
+| Where                             | What                                                                                                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `needle.db`                       | Plays, requests, profiles, people, permissions, Spotify tokens and OAuth state, YouTube Music tokens and pending device logins, ListenBrainz tokens, and `needle_migrations` history |
+| `needle.pre-migrations.db`        | One-time integrity-checked copy made before adopting versioned migrations for an existing populated database                                                                         |
+| Navidrome                         | The library, users, playlists, likes and the play queue each device syncs                                                                                                            |
+| Browser sessionStorage            | Replayable Navidrome credentials for the current tab session only                                                                                                                    |
+| Browser localStorage              | Device identity, UI state, account-namespaced recent searches and provider caches, plus `needle.settings`; persisted queue data is cleared before another account starts             |
+| Browser Cache Storage + IndexedDB | Offline downloads namespaced by Navidrome user, plus service-worker caches for the app shell and cover art                                                                           |
+
+Database migrations run under `BEGIN IMMEDIATE`. Startup rejects unknown migration
+history or incompatible tables, columns and indexes instead of continuing with a
+partially understood database. On disk, `DATA_DIR` is mode `0700`; the database,
+sidecars and migration backups are regular, non-symlink files restricted to mode
+`0600`.
+
+## Localization
+
+English and Turkish live in typed dictionaries under `apps/web/src/i18n/locales`.
+English defines the allowed keys and Turkish must satisfy the same key set. English
+is the default. The app does not infer a language from the browser: the person selects
+it in Settings, and Zustand persists it in `needle.settings`. Changing language updates
+the React UI, document language, title, description and localized web manifest.
 
 ## Search and browse
 
@@ -142,7 +176,7 @@ separate; changing the query cancels outstanding requests.
 ## Spotify
 
 ```
- app ──► /api/spotify/token ──► server refreshes with the stored refresh token ──► short-lived token
+app ──► /api/spotify/token ──► server refreshes with the stored refresh token ──► short-lived token
  app ──► api.spotify.com with that token   (library, search, playlist edits, likes, follows)
  app ──► sdk.scdn.co Web Playback SDK      (Premium; desktop and Android browsers)
 ```
@@ -150,7 +184,7 @@ separate; changing the query cancels outstanding requests.
 Spotify limits "development mode" apps per developer account and can lock them out
 for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
 
-- `lib/spotify.ts` `req()`: a 429 with a short `Retry-After` (≤ 5 s) waits once;
+- `features/spotify/api/client.ts` `req()`: a 429 with a short `Retry-After` (≤ 5 s) waits once;
   anything longer (or unreadable, one hour) blocks every Spotify call until then,
   saved in `needle.spotifyBlockedUntil` so reloads don't retry.
 - While blocked, `useSpotifyOn()` is false: Spotify queries are removed and every
@@ -160,6 +194,9 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
   Spotify queries never refetch on focus and never retry.
 - Settings → **Use Spotify in Needle** (`PUT /api/spotify/enabled`) switches Spotify
   off for the account: the token endpoint refuses (409), so no device can call it.
+- The OAuth state and PKCE verifier remain server-side. A callback succeeds only when
+  its state also matches the short-lived HttpOnly cookie set in the browser that
+  started sign-in.
 
 ## YouTube Music
 
@@ -173,9 +210,10 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
 ```
 
 The optional integration uses Python in the same container as the Node server.
-The uv project in `bridges/youtube-music` locks ytmusicapi and yt-dlp. The bridge accepts fixed operations
-and JSON over stdin and returns JSON over stdout; credentials never appear in
-process arguments. Node validates metadata before returning shared DTOs to React.
+The uv project in `bridges/youtube-music` locks ytmusicapi and yt-dlp. Its bridge
+accepts fixed operations and JSON over stdin, and returns JSON over stdout.
+Credentials never appear in process arguments. Node validates metadata before
+returning shared DTOs to React.
 
 All YouTube Music entities use `ytm:` IDs. `MusicSource`, source helpers and the
 existing route helpers preserve the identity through queue persistence, source
@@ -275,18 +313,21 @@ its own. **Refresh page** in the same menu reloads without updating.
 ## Offline downloads
 
 Albums and playlists saved for offline listening live in the browser, not on the
-server: audio files in Cache Storage, the list of saved songs in IndexedDB, both
-private to the site's origin on that one device. A browser can't show them as a
-folder. The Downloads page says so and shows each album's size and the space used
-and left (`navigator.storage.estimate()`). A download that stalls for 60 s fails
-that song; unfinished albums resume when the app opens, or with **Try again**.
+server: audio files in Cache Storage and the saved-song index in IndexedDB. Both are
+namespaced by the exact Navidrome user and reset before another account starts. Legacy
+global offline stores are removed. A browser can't show them as a folder. The Downloads
+page says so and shows each album's size and the space used and left
+(`navigator.storage.estimate()`). A download that stalls for 60 s fails that song;
+unfinished albums resume when the app opens, or with **Try again**.
 
-## Tests
+## Tests and CI
 
-- `pnpm test`: Vitest unit tests for matching, sorting, search index, browse tiles,
-  song picking, MusicBrainz ranking, requests, Spotify tokens/switch, photos,
-  ListenBrainz (token, Navidrome link, playlists, matching, rate limits, caching).
-- `pnpm e2e`: Playwright against a real Navidrome in Docker with a generated
-  library, a mock Lidarr (`e2e/mock-lidarr.ts`) and a mock slskd + MusicBrainz +
-  ListenBrainz (`e2e/mock-soulseek.ts`; the test Navidrome's `ND_LISTENBRAINZ_BASEURL`
-  points there too, so linking the token in Navidrome is tested for real); Spotify is mocked in the browser (`e2e/tests/spotify-mock.ts`).
+- `pnpm format:check`: Prettier plus Ruff formatting.
+- `pnpm lint`: ESLint plus Ruff linting.
+- `pnpm typecheck`: every workspace package and the e2e TypeScript project.
+- `pnpm test`: Vitest plus Python bridge unit tests.
+- `pnpm build`: the production web build.
+- `pnpm e2e`: Playwright against a real Navidrome with mocked external integrations.
+
+CI runs the first five in `checks`, then runs the production build and full Playwright
+suite in the separate required `e2e` job.

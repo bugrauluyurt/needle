@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIsMobile } from "../lib/media.ts";
 import { Icon } from "./Icon.tsx";
+import { translate } from "../i18n/index.ts";
 
 type Props = {
   value: string;
@@ -104,7 +105,7 @@ export function SearchField({
       <button
         type="button"
         className="sf-clear"
-        aria-label="Clear search"
+        aria-label={translate("search.clear")}
         aria-hidden={!value}
         tabIndex={value ? 0 : -1}
         onClick={() => {

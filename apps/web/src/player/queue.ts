@@ -27,7 +27,12 @@ export function shuffleArray<T>(arr: T[], random = Math.random): T[] {
 
 export function start(songs: Song[], startIndex: number, shuffle: boolean, random = Math.random): QueueState {
   const items = songs.map((s) => makeItem(s));
-  if (!shuffle) return { items, index: Math.max(0, Math.min(startIndex, items.length - 1)), original: null };
+  if (!shuffle)
+    return {
+      items,
+      index: Math.max(0, Math.min(startIndex, items.length - 1)),
+      original: null,
+    };
   const first = items[startIndex] ?? items[0];
   if (!first) return { items: [], index: -1, original: null };
   const rest = shuffleArray(
@@ -47,7 +52,12 @@ export function addToQueue(q: QueueState, songs: Song[]): QueueState {
   const at = q.index + 1 + userItemsAfter(q);
   const added = songs.map((s) => makeItem(s, true));
   const items = [...q.items.slice(0, at), ...added, ...q.items.slice(at)];
-  return { ...q, items, index: q.items.length ? q.index : 0, original: q.original ? [...q.original, ...added] : null };
+  return {
+    ...q,
+    items,
+    index: q.items.length ? q.index : 0,
+    original: q.original ? [...q.original, ...added] : null,
+  };
 }
 
 export function playNext(q: QueueState, songs: Song[]): QueueState {
@@ -86,7 +96,11 @@ export function move(q: QueueState, uid: string, toIndex: number): QueueState {
 
 export function clearUserQueue(q: QueueState): QueueState {
   const items = q.items.filter((it, i) => i <= q.index || !it.fromUser);
-  return { ...q, items, original: q.original?.filter((it) => !it.fromUser) ?? null };
+  return {
+    ...q,
+    items,
+    original: q.original?.filter((it) => !it.fromUser) ?? null,
+  };
 }
 
 export function setShuffle(q: QueueState, on: boolean, random = Math.random): QueueState {
@@ -111,7 +125,11 @@ export function setShuffle(q: QueueState, on: boolean, random = Math.random): Qu
   const pendingUids = new Set(pendingUser.map((it) => it.uid));
   const rest = original.slice(pos + 1).filter((it) => !pendingUids.has(it.uid));
   const before = original.slice(0, pos).filter((it) => !pendingUids.has(it.uid));
-  return { items: [...before, current, ...pendingUser, ...rest], index: before.length, original: null };
+  return {
+    items: [...before, current, ...pendingUser, ...rest],
+    index: before.length,
+    original: null,
+  };
 }
 
 export function nextIndex(q: QueueState, repeat: Repeat): number | null {

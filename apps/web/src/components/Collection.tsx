@@ -13,34 +13,29 @@ import type { Order } from "../lib/order.ts";
 import type { IconName } from "./Icon.tsx";
 import { SearchField } from "./SearchField.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
-import type { MusicSource } from "@needle/shared";
+import type { CollectionItem } from "./collectionTypes.ts";
+import { translate } from "../i18n/index.ts";
 
-export type CollectionItem = {
-  key: string;
-  to: string;
-  art: (px: number) => ReactNode;
-  title: string;
-  subtitle: string;
-  by?: string;
-  added?: string;
-  year?: number;
-  releaseDate?: string;
-  playCount?: number;
-  contextId?: string;
-  downloaded?: boolean;
-  pinned?: boolean;
-  source?: Exclude<MusicSource, "library">;
-  onPlay?: () => void;
-};
+export type { CollectionItem } from "./collectionTypes.ts";
 
 export type SortOption = [SortKey, string];
 export type CollectionOrder = Order<SortKey>;
 
 const LIST_ART = 56;
 
-export const SORT_LABELS = { added: "Date added", title: "Alphabetical", year: "Release date" } as const;
+export const SORT_LABELS = {
+  get added() {
+    return translate("sort.dateAdded");
+  },
+  get title() {
+    return translate("library.alphabetical");
+  },
+  get year() {
+    return translate("sort.releaseDate");
+  },
+};
 
-export const RELEASE_SORTS: SortOption[] = [
+export const releaseSorts = (): SortOption[] => [
   ["year", SORT_LABELS.year],
   ["title", SORT_LABELS.title],
 ];
@@ -90,7 +85,12 @@ export function useCollectionView(id: string, sorts: SortOption[], fallback: Col
   };
   const view = saved?.view ?? fallback;
   const set = (patch: CollectionState) =>
-    useUi.setState((s) => ({ collections: { ...s.collections, [id]: { ...s.collections[id], ...patch } } }));
+    useUi.setState((s) => ({
+      collections: {
+        ...s.collections,
+        [id]: { ...s.collections[id], ...patch },
+      },
+    }));
   return {
     view,
     order,
@@ -103,14 +103,18 @@ export function SortArrow({ desc }: { desc: boolean }) {
   return <Icon name="arrow" size={14} className={desc ? "sort-arrow" : "sort-arrow up"} />;
 }
 
-const VIEWS: [CollectionView, string, IconName][] = [
-  ["compact", "Compact", "rows"],
-  ["list", "List", "list"],
-  ["dense", "Compact grid", "gridDense"],
-  ["grid", "Grid", "grid"],
+const viewOptions = (): [CollectionView, string, IconName][] => [
+  ["compact", translate("collection.compact"), "rows"],
+  ["list", translate("collection.list"), "list"],
+  ["dense", translate("collection.compactGrid"), "gridDense"],
+  ["grid", translate("collection.grid"), "grid"],
 ];
 
-export type ShowFilter<S extends string> = { value: S; options: [S, string][]; onChange: (s: S) => void };
+export type ShowFilter<S extends string> = {
+  value: S;
+  options: [S, string][];
+  onChange: (s: S) => void;
+};
 
 export function CollectionTools<K extends string, S extends string = string>({
   sorts,
@@ -133,10 +137,13 @@ export function CollectionTools<K extends string, S extends string = string>({
   const showLabel =
     show && show.value !== show.options[0]?.[0] ? show.options.find(([v]) => v === show.value)?.[1] : undefined;
   const label = [showLabel, sortLabel].filter(Boolean).join(", ") || (show?.options[0]?.[1] ?? "");
-  const direction = directed && sorting ? (sorting.order.desc ? ", descending" : ", ascending") : "";
+  const direction =
+    directed && sorting ? `, ${translate(sorting.order.desc ? "sort.descending" : "sort.ascending")}` : "";
   const views = Boolean(view && onView);
   if (!sorting && !views && !show) return null;
-  const icon = VIEWS.find(([v]) => v === view)?.[2] ?? "sort";
+  const selectedView = viewOptions().find(([collectionView]) => collectionView === view);
+  const icon = selectedView?.[2] ?? "sort";
+  const viewLabel = selectedView?.[1] ?? "";
   return (
     <div className="coll-tools">
       <DM.Root modal={false}>
@@ -144,7 +151,7 @@ export function CollectionTools<K extends string, S extends string = string>({
           <button
             type="button"
             className="coll-sort"
-            aria-label={`${show ? "Show and sort" : "Sort"}: ${label}${direction}${views ? `, view as ${view ?? ""}` : ""}`}
+            aria-label={`${translate(show ? "collection.showSort" : "collection.sort")}: ${label}${direction}${views ? `, ${translate("collection.viewAs")} ${viewLabel}` : ""}`}
             data-no-tip
           >
             <span>{label}</span>
@@ -156,7 +163,7 @@ export function CollectionTools<K extends string, S extends string = string>({
           <DM.Content className="menu coll-menu" align="end" sideOffset={6} collisionPadding={12}>
             {show ? (
               <>
-                <DM.Label className="menu-heading">Show</DM.Label>
+                <DM.Label className="menu-heading">{translate("collection.show")}</DM.Label>
                 <DM.RadioGroup value={show.value} onValueChange={(v) => show.onChange(v as S)}>
                   {show.options.map(([v, l]) => (
                     <DM.RadioItem key={v} value={v} className="menu-item">
@@ -172,7 +179,7 @@ export function CollectionTools<K extends string, S extends string = string>({
             ) : null}
             {sorting ? (
               <>
-                <DM.Label className="menu-heading">Sort by</DM.Label>
+                <DM.Label className="menu-heading">{translate("collection.sortBy")}</DM.Label>
                 <DM.RadioGroup value={sorting.order.key}>
                   {sorts.map(([k, l]) => (
                     <DM.RadioItem
@@ -196,9 +203,9 @@ export function CollectionTools<K extends string, S extends string = string>({
             {views && onView ? (
               <>
                 {sorting ? <DM.Separator className="menu-sep" /> : null}
-                <DM.Label className="menu-heading">View as</DM.Label>
+                <DM.Label className="menu-heading">{translate("collection.viewAs")}</DM.Label>
                 <DM.RadioGroup className="view-as" value={view} onValueChange={(v) => onView(v as CollectionView)}>
-                  {VIEWS.map(([v, l, i]) => (
+                  {viewOptions().map(([v, l, i]) => (
                     <DM.RadioItem
                       key={v}
                       value={v}
@@ -347,7 +354,9 @@ export function Collection({
               <SearchField
                 variant="inline"
                 collapsible
-                label={`Search ${title.toLowerCase()}`}
+                label={translate("collection.search", {
+                  title: title.toLocaleLowerCase(),
+                })}
                 value={query}
                 onChange={setQuery}
               />
@@ -355,7 +364,7 @@ export function Collection({
             <CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
             {preview && sorted.length > preview && to ? (
               <Link to={to} className="show-all">
-                Show all
+                {translate("common.showAll")}
               </Link>
             ) : null}
           </div>
@@ -364,7 +373,14 @@ export function Collection({
       <CollectionBody
         items={shownItems}
         view={c.view}
-        empty={searchable && query.trim() ? `No ${title.toLowerCase()} match “${query.trim()}”.` : (empty ?? "")}
+        empty={
+          searchable && query.trim()
+            ? translate("collection.noMatch", {
+                title: title.toLocaleLowerCase(),
+                query: query.trim(),
+              })
+            : (empty ?? "")
+        }
         {...(loading ? { loading } : {})}
       />
     </section>

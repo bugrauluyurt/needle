@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { useLocation, useSearchParams } from "react-router";
 import { SearchField } from "../components/SearchField.tsx";
 import { MobileHeader } from "./Mobile.tsx";
-import { useIsMobile } from "./Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
 import { TopBar } from "./TopBar.tsx";
+import { translate } from "../i18n/index.ts";
 
 type Props = {
   title: string;
@@ -65,7 +66,7 @@ export function SearchHeader({
               (document.activeElement as HTMLElement | null)?.blur();
             }}
           >
-            Cancel
+            {translate("common.cancel")}
           </button>
         </div>
       </div>

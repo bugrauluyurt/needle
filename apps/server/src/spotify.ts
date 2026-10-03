@@ -48,16 +48,7 @@ export class SpotifyError extends Error {
   }
 }
 
-const b64url = (buf: Buffer) => buf.toString("base64url");
-
 export class Spotify {
-  private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly redirectUri: string;
-  private readonly db: Database;
-  private readonly navidrome: Navidrome;
-  private readonly library: LibrarySearch;
-
   constructor(opts: {
     clientId: string;
     clientSecret: string;
@@ -88,24 +79,18 @@ export class Spotify {
     this.db.prepare("UPDATE spotify_tokens SET enabled = ? WHERE user = ?").run(on ? 1 : 0, user);
   }
 
-  private scopes(user: string): Set<string> {
-    const row = this.db.prepare("SELECT scope FROM spotify_tokens WHERE user = ?").get(user) as
-      { scope: string } | undefined;
-    return new Set(row?.scope.split(" "));
-  }
-
   canPlay(user: string): boolean {
-    return this.scopes(user).has("streaming");
+    return this.getScopes(user).has("streaming");
   }
 
   needsReconnect(user: string): boolean {
-    const granted = this.scopes(user);
-    return this.connected(user) && SCOPES.some((s) => !granted.has(s));
+    const grantedScopes = this.getScopes(user);
+    return this.connected(user) && SCOPES.some((scope) => !grantedScopes.has(scope));
   }
 
   async token(user: string): Promise<{ accessToken: string; expiresAt: number }> {
     if (!this.enabled(user)) throw new SpotifyError(409, "Spotify is switched off in Needle");
-    const accessToken = await this.access(user);
+    const accessToken = await this.getAccessToken(user);
     const row = this.db.prepare("SELECT expires_at FROM spotify_tokens WHERE user = ?").get(user) as {
       expires_at: number;
     };
@@ -116,152 +101,209 @@ export class Spotify {
     this.db.prepare("DELETE FROM spotify_tokens WHERE user = ?").run(user);
   }
 
-  authorizeUrl(user: string): string {
-    const state = b64url(randomBytes(18));
-    const verifier = b64url(randomBytes(48));
+  getAuthorization(user: string): { maxAgeSeconds: number; secure: boolean; state: string; url: string } {
+    const state = Spotify.base64Url(randomBytes(18));
+    const verifier = Spotify.base64Url(randomBytes(48));
     this.db.prepare("DELETE FROM oauth_states WHERE created_at < ?").run(Date.now() - STATE_TTL);
     this.db
       .prepare("INSERT INTO oauth_states (state, user, verifier, created_at) VALUES (?, ?, ?, ?)")
       .run(state, user, verifier, Date.now());
-    const q = new URLSearchParams({
+    const authorizationParameters = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
       redirect_uri: this.redirectUri,
       scope: SCOPES.join(" "),
       state,
       code_challenge_method: "S256",
-      code_challenge: b64url(createHash("sha256").update(verifier).digest()),
+      code_challenge: Spotify.base64Url(createHash("sha256").update(verifier).digest()),
     });
-    return `${AUTHORIZE}?${q.toString()}`;
+    return {
+      maxAgeSeconds: STATE_TTL / 1000,
+      secure: new URL(this.redirectUri).protocol === "https:",
+      state,
+      url: `${AUTHORIZE}?${authorizationParameters.toString()}`,
+    };
   }
 
-  private async exchange(fields: Record<string, string>): Promise<Tokens> {
-    const res = await fetch(TOKEN, {
+  usesSecureCallbackCookie(): boolean {
+    return new URL(this.redirectUri).protocol === "https:";
+  }
+
+  async complete(code: string, state: string): Promise<string> {
+    const oauthState = this.db
+      .prepare("SELECT user, verifier, created_at FROM oauth_states WHERE state = ?")
+      .get(state) as { user: string; verifier: string; created_at: number } | undefined;
+    this.db.prepare("DELETE FROM oauth_states WHERE state = ?").run(state);
+    if (!oauthState || oauthState.created_at < Date.now() - STATE_TTL)
+      throw new SpotifyError(400, "The Spotify sign-in expired; start it again");
+    const tokenResponse = await this.getTokenResponse({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: this.redirectUri,
+      code_verifier: oauthState.verifier,
+    });
+    this.save(oauthState.user, tokenResponse, tokenResponse.refresh_token ?? "", "");
+    return oauthState.user;
+  }
+
+  async playlists(user: string): Promise<SpotifyPlaylist[]> {
+    const spotifyProfile = await this.getSpotifyData<{ id: string }>(user, "/me");
+    const playlists = await this.getPaginatedItems<SpPlaylist>(user, "/me/playlists?limit=50");
+    return playlists
+      .filter((playlist) => playlist.owner.id === spotifyProfile.id || playlist.collaborative)
+      .map((playlist) => ({
+        id: playlist.id,
+        name: playlist.name,
+        trackCount: playlist.items?.total ?? playlist.tracks?.total ?? 0,
+        image: playlist.images?.[0]?.url ?? null,
+      }));
+  }
+
+  async import(auth: Auth, source: string): Promise<ImportResult> {
+    const [{ name: playlistName, tracks }, libraryMatcher] = await Promise.all([
+      this.getImportedTracks(auth.user, source),
+      this.library.matcher(auth),
+    ]);
+    const songIds: string[] = [];
+    const missingTracks: ImportedTrack[] = [];
+    for (const importedTrack of tracks) {
+      const matchedSong = findSong(libraryMatcher, importedTrack);
+      if (matchedSong) songIds.push(matchedSong.id);
+      else missingTracks.push(importedTrack);
+    }
+    const playlistId = songIds.length
+      ? await this.navidrome.upsertPlaylist(auth, `${playlistName} (from Spotify)`, songIds)
+      : null;
+    return {
+      source: playlistName,
+      total: tracks.length,
+      matched: songIds.length,
+      playlistId,
+      missing: missingTracks,
+    };
+  }
+
+  private static base64Url(bytes: Buffer): string {
+    return bytes.toString("base64url");
+  }
+
+  private getScopes(user: string): Set<string> {
+    const savedToken = this.db.prepare("SELECT scope FROM spotify_tokens WHERE user = ?").get(user) as
+      { scope: string } | undefined;
+    return new Set(savedToken?.scope.split(" "));
+  }
+
+  private async getTokenResponse(tokenFields: Record<string, string>): Promise<Tokens> {
+    const tokenResponse = await fetch(TOKEN, {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64")}`,
       },
-      body: new URLSearchParams(fields),
+      body: new URLSearchParams(tokenFields),
       signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) throw new SpotifyError(res.status, `Spotify refused the sign-in (${res.status})`);
-    return (await res.json()) as Tokens;
+    if (!tokenResponse.ok) {
+      throw new SpotifyError(tokenResponse.status, `Spotify refused the sign-in (${tokenResponse.status})`);
+    }
+    return (await tokenResponse.json()) as Tokens;
   }
 
-  private save(user: string, t: Tokens, refresh: string, scope: string) {
+  private save(user: string, tokenResponse: Tokens, refreshToken: string, scope: string) {
     this.db
       .prepare(
         `INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at, scope) VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(user) DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token,
         expires_at = excluded.expires_at, scope = excluded.scope`,
       )
-      .run(user, t.access_token, t.refresh_token ?? refresh, Date.now() + (t.expires_in - 60) * 1000, t.scope ?? scope);
+      .run(
+        user,
+        tokenResponse.access_token,
+        tokenResponse.refresh_token ?? refreshToken,
+        Date.now() + (tokenResponse.expires_in - 60) * 1000,
+        tokenResponse.scope ?? scope,
+      );
   }
 
-  async complete(code: string, state: string): Promise<string> {
-    const row = this.db.prepare("SELECT user, verifier, created_at FROM oauth_states WHERE state = ?").get(state) as
-      { user: string; verifier: string; created_at: number } | undefined;
-    this.db.prepare("DELETE FROM oauth_states WHERE state = ?").run(state);
-    if (!row || row.created_at < Date.now() - STATE_TTL)
-      throw new SpotifyError(400, "The Spotify sign-in expired; start it again");
-    const t = await this.exchange({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: this.redirectUri,
-      code_verifier: row.verifier,
-    });
-    this.save(row.user, t, t.refresh_token ?? "", "");
-    return row.user;
-  }
-
-  private async access(user: string): Promise<string> {
-    const row = this.db
+  private async getAccessToken(user: string): Promise<string> {
+    const savedToken = this.db
       .prepare("SELECT access_token, refresh_token, expires_at, scope FROM spotify_tokens WHERE user = ?")
       .get(user) as { access_token: string; refresh_token: string; expires_at: number; scope: string } | undefined;
-    if (!row) throw new SpotifyError(401, "Connect Spotify first");
-    if (row.expires_at > Date.now()) return row.access_token;
-    const t = await this.exchange({ grant_type: "refresh_token", refresh_token: row.refresh_token });
-    this.save(user, t, row.refresh_token, row.scope);
-    return t.access_token;
+    if (!savedToken) throw new SpotifyError(401, "Connect Spotify first");
+    if (savedToken.expires_at > Date.now()) return savedToken.access_token;
+    const tokenResponse = await this.getTokenResponse({
+      grant_type: "refresh_token",
+      refresh_token: savedToken.refresh_token,
+    });
+    this.save(user, tokenResponse, savedToken.refresh_token, savedToken.scope);
+    return tokenResponse.access_token;
   }
 
-  private async get<T>(user: string, pathOrUrl: string): Promise<T> {
+  private async getSpotifyData<T>(user: string, pathOrUrl: string): Promise<T> {
     const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${API}${pathOrUrl}`;
-    const res = await fetch(url, {
-      headers: { authorization: `Bearer ${await this.access(user)}` },
+    const providerResponse = await fetch(url, {
+      headers: { authorization: `Bearer ${await this.getAccessToken(user)}` },
       signal: AbortSignal.timeout(20_000),
     });
-    if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, Number(res.headers.get("retry-after") ?? 2) * 1000));
-      return this.get(user, pathOrUrl);
+    if (providerResponse.status === 429) {
+      await new Promise((resolveRetry) =>
+        setTimeout(resolveRetry, Number(providerResponse.headers.get("retry-after") ?? 2) * 1000),
+      );
+      return this.getSpotifyData(user, pathOrUrl);
     }
-    if (!res.ok)
-      throw new SpotifyError(res.status, `Spotify answered ${res.status} for ${url.replace(API, "").split("?")[0]}`);
-    return (await res.json()) as T;
+    if (!providerResponse.ok)
+      throw new SpotifyError(
+        providerResponse.status,
+        `Spotify answered ${providerResponse.status} for ${url.replace(API, "").split("?")[0]}`,
+      );
+    return (await providerResponse.json()) as T;
   }
 
-  private async pages<T>(user: string, first: string): Promise<T[]> {
-    const out: T[] = [];
-    let next: string | null = first;
-    while (next) {
-      const page: SpPage<T> = await this.get<SpPage<T>>(user, next);
-      out.push(...page.items);
-      next = page.next;
+  private async getPaginatedItems<T>(user: string, firstPageUrl: string): Promise<T[]> {
+    const collectedItems: T[] = [];
+    let nextPageUrl: string | null = firstPageUrl;
+    while (nextPageUrl) {
+      const page: SpPage<T> = await this.getSpotifyData<SpPage<T>>(user, nextPageUrl);
+      collectedItems.push(...page.items);
+      nextPageUrl = page.next;
     }
-    return out;
+    return collectedItems;
   }
 
-  async playlists(user: string): Promise<SpotifyPlaylist[]> {
-    const me = await this.get<{ id: string }>(user, "/me");
-    const all = await this.pages<SpPlaylist>(user, "/me/playlists?limit=50");
-    return all
-      .filter((p) => p.owner.id === me.id || p.collaborative)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        trackCount: p.items?.total ?? p.tracks?.total ?? 0,
-        image: p.images?.[0]?.url ?? null,
-      }));
-  }
-
-  private async tracks(user: string, source: string): Promise<{ name: string; tracks: ImportedTrack[] }> {
-    const toTrack = (t: SpTrack): ImportedTrack => ({
-      title: t.name,
-      artist: t.artists[0]?.name ?? "",
-      album: t.album.name,
+  private async getImportedTracks(user: string, source: string): Promise<{ name: string; tracks: ImportedTrack[] }> {
+    const toTrack = (track: SpTrack): ImportedTrack => ({
+      title: track.name,
+      artist: track.artists[0]?.name ?? "",
+      album: track.album.name,
     });
     if (source === "liked") {
-      const items = await this.pages<SpItem>(user, "/me/tracks?limit=50");
+      const items = await this.getPaginatedItems<SpItem>(user, "/me/tracks?limit=50");
       return {
         name: "Liked on Spotify",
         tracks: items
-          .map((i) => i.track)
-          .filter((t): t is SpTrack => Boolean(t))
+          .map((item) => item.track)
+          .filter((track): track is SpTrack => Boolean(track))
           .map(toTrack),
       };
     }
-    const meta = await this.get<{ name: string }>(user, `/playlists/${encodeURIComponent(source)}?fields=name`);
-    const items = await this.pages<SpItem>(user, `/playlists/${encodeURIComponent(source)}/items?limit=50`);
+    const playlist = await this.getSpotifyData<{ name: string }>(
+      user,
+      `/playlists/${encodeURIComponent(source)}?fields=name`,
+    );
+    const items = await this.getPaginatedItems<SpItem>(user, `/playlists/${encodeURIComponent(source)}/items?limit=50`);
     return {
-      name: meta.name,
+      name: playlist.name,
       tracks: items
-        .map((i) => i.item ?? i.track)
-        .filter((t): t is SpTrack => Boolean(t?.name))
+        .map((item) => item.item ?? item.track)
+        .filter((track): track is SpTrack => Boolean(track?.name))
         .map(toTrack),
     };
   }
 
-  async import(auth: Auth, source: string): Promise<ImportResult> {
-    const [{ name, tracks }, matcher] = await Promise.all([this.tracks(auth.user, source), this.library.matcher(auth)]);
-    const ids: string[] = [];
-    const missing: ImportedTrack[] = [];
-    for (const t of tracks) {
-      const song = findSong(matcher, t);
-      if (song) ids.push(song.id);
-      else missing.push(t);
-    }
-    const playlistId = ids.length ? await this.navidrome.upsertPlaylist(auth, `${name} (from Spotify)`, ids) : null;
-    return { source: name, total: tracks.length, matched: ids.length, playlistId, missing };
-  }
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+  private readonly redirectUri: string;
+  private readonly db: Database;
+  private readonly navidrome: Navidrome;
+  private readonly library: LibrarySearch;
 }

@@ -6,6 +6,7 @@ import { discoveryOptions } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
 import { Collage } from "./Art.tsx";
 import { Card } from "./Cards.tsx";
+import { translate } from "../i18n/index.ts";
 
 export const discoveryContext = (p: Pick<DiscoveryPlaylist, "id" | "name">): PlayContext => ({
   kind: "playlist",
@@ -17,15 +18,19 @@ export const librarySongs = (d: DiscoveryDetail) => d.tracks.flatMap((t) => (t.s
 
 export function discoverySummary(p: Pick<DiscoveryPlaylist, "total" | "inLibrary">): string {
   const toGet = p.total - p.inLibrary;
-  if (!toGet) return `All ${p.total} in your library`;
-  if (!p.inLibrary) return `${toGet} to get`;
-  return `${p.inLibrary} in your library, ${toGet} to get`;
+  if (!toGet) return translate("discovery.allInLibrary", { count: p.total });
+  if (!p.inLibrary) return translate("discovery.toGet", { count: toGet });
+
+  return translate("discovery.inAndMissing", {
+    available: p.inLibrary,
+    missing: toGet,
+  });
 }
 
 export async function playDiscovery(p: Pick<DiscoveryPlaylist, "id" | "name">, shuffle = false) {
   const detail = await queryClient.fetchQuery(discoveryOptions(p.id)).catch(() => null);
   if (!detail) {
-    toast("ListenBrainz didn’t send this playlist. Try again in a moment.");
+    toast(translate("discovery.playFailed"));
     return;
   }
   player.playSongs(librarySongs(detail), 0, discoveryContext(p), { shuffle });

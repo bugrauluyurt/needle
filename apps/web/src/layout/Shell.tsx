@@ -1,40 +1,34 @@
-import { createContext, lazy, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
 import { allowSpotify, allowYouTubeMusic, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
-import { useSpotifyRequestsAllowed } from "../queries/spotify.ts";
-import { useYouTubeMusicOn } from "../queries/youtube-music.ts";
+import { useSpotifyRequestsAllowed } from "../features/spotify/hooks/useSpotify.ts";
+import { useYouTubeMusicOn } from "../features/youtube-music/hooks/useYouTubeMusic.ts";
 import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
-import { SpotifyNotice } from "../components/SpotifyNotice.tsx";
+import { SpotifyNotice } from "../features/spotify/components/SpotifyNotice.tsx";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { SearchFocusProxy, useOpenSearch } from "./TopBar.tsx";
-import { closeTrackMenu, TrackMenuHost } from "../components/TrackMenu.tsx";
+import { closeTrackMenu, TrackMenuHost } from "../components/tracks/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
-import { useActiveRemote } from "../remote/client.ts";
+import { useActiveRemote } from "../features/remote/client.ts";
 import { useIsMobile, useIsWide } from "../lib/media.ts";
+import { translate } from "../i18n/index.ts";
+import { PageToneProvider } from "./pageTone.ts";
 
 const FullScreenPlayer = lazy(() => import("./FullScreen.tsx"));
 const ShortcutsDialog = lazy(() => import("./Shortcuts.tsx"));
 import { PlayerBar } from "./PlayerBar.tsx";
 import { RightPanel, RightPanelOver } from "./RightPanel.tsx";
 import { Sidebar } from "./Sidebar.tsx";
-
-export { useMediaQuery, useIsMobile, useIsWide } from "../lib/media.ts";
-
-const ToneContext = createContext<(tone: string) => void>(() => undefined);
-
-export function usePageTone(tone: string | null) {
-  const setTone = useContext(ToneContext);
-  useEffect(() => setTone(tone ?? DEFAULT_TONE), [tone, setTone]);
-}
 
 function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -158,7 +152,7 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
   return (
-    <ToneContext.Provider value={setTone}>
+    <PageToneProvider value={setTone}>
       <ScrollContext.Provider value={ref}>
         <main
           ref={ref}
@@ -170,7 +164,7 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
           {children}
         </main>
       </ScrollContext.Provider>
-    </ToneContext.Provider>
+    </PageToneProvider>
   );
 }
 
@@ -199,6 +193,8 @@ function usePanelOver(narrow: boolean): boolean {
 }
 
 export function Shell() {
+  useTranslation();
+
   const mobile = useIsMobile();
   const panel = useUi((s) => s.rightPanel);
   const fullScreen = useUi((s) => s.fullScreen);
@@ -239,7 +235,7 @@ export function Shell() {
   return (
     <div className={`app ${showRight ? "" : "solo"}`}>
       <a href="#main" className="skip">
-        Skip to content
+        {translate("shell.skipContent")}
       </a>
       <Sidebar />
       <Main mobile={false}>

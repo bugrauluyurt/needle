@@ -6,13 +6,23 @@ const { idbPut, subsonicUrl } = vi.hoisted(() => ({
   subsonicUrl: vi.fn(() => "/subsonic/stream"),
 }));
 
-vi.mock("../src/offline/idb.ts", () => ({ idbPut, idbAll: vi.fn(), idbDelete: vi.fn(), idbGet: vi.fn() }));
+vi.mock("../src/offline/idb.ts", () => ({
+  idbPut,
+  idbAll: vi.fn(),
+  idbDelete: vi.fn(),
+  idbGet: vi.fn(),
+  removeLegacyOfflineDatabase: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../src/state/session.ts", () => ({ credentials: () => null }));
 
 vi.mock("../src/lib/subsonic.ts", () => ({ sub: {}, subsonicUrl }));
 
-vi.mock("../src/state/settings.ts", () => ({ settings: () => ({ downloadQuality: "original" }) }));
+vi.mock("../src/state/settings.ts", () => ({
+  settings: () => ({ downloadQuality: "original" }),
+}));
 
-vi.mock("../src/lib/spotify.ts", () => ({
+vi.mock("../src/features/spotify/api/client.ts", () => ({
   isSpotify: (id: string | undefined) => Boolean(id?.startsWith("sp:")),
   rawId: (id: string) => id.replace(/^sp:/, ""),
 }));

@@ -27,6 +27,7 @@ import type {
 } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 import { credentials } from "../state/session.ts";
+import { translate } from "../i18n/index.ts";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -47,8 +48,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   const res = await fetch(`/api${path}`, { ...init, headers });
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(res.status, body?.error ?? `Needle server answered ${res.status}`);
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new ApiError(res.status, body?.error ?? translate("error.serverAnswered", { status: res.status }));
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
@@ -56,7 +59,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 const send =
   (method: string) =>
   <T>(path: string, body?: unknown) =>
-    request<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    request<T>(path, {
+      method,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
 const post = send("POST");
 const put = send("PUT");
 const del = send("DELETE");
@@ -81,20 +87,24 @@ export const api = {
   retryRequest: (id: number) => post<RequestItem>(`/requests/${id}/retry`),
   removeRequest: (id: number) => request<void>(`/requests/${id}`, { method: "DELETE" }),
   setPhoto: (photo: Blob) =>
-    request<void>("/me/photo", { method: "PUT", body: photo, headers: { "content-type": photo.type } }),
+    request<void>("/me/photo", {
+      method: "PUT",
+      body: photo,
+      headers: { "content-type": photo.type },
+    }),
   removePhoto: () => request<void>("/me/photo", { method: "DELETE" }),
   librarySongs: () => request<Song[]>("/library/songs"),
   search: (q: string, signal?: AbortSignal) =>
     request<SearchResult3>(`/search?q=${encodeURIComponent(q)}`, signal ? { signal } : {}),
   lidarrSearch: (q: string) => request<LidarrSearch>(`/lidarr/search?q=${encodeURIComponent(q)}`),
-  lidarrAlbums: (ids: string[]) =>
-    request<LidarrAlbum[]>(`/lidarr/albums?ids=${ids.map(encodeURIComponent).join(",")}`),
   lidarrGet: (foreignAlbumId: string) => post<LidarrAlbum>(`/lidarr/albums/${encodeURIComponent(foreignAlbumId)}`),
   lidarrArtists: (names: string[]) =>
     request<LidarrArtist[]>(`/lidarr/artists?names=${names.map(encodeURIComponent).join("|")}`),
   lidarrDownloads: () => request<DownloadItem[]>("/lidarr/downloads"),
   removeDownload: (id: number, findAnother: boolean) =>
-    request<void>(`/lidarr/downloads/${id}${findAnother ? "?find=1" : ""}`, { method: "DELETE" }),
+    request<void>(`/lidarr/downloads/${id}${findAnother ? "?find=1" : ""}`, {
+      method: "DELETE",
+    }),
   spotifyLogin: () => request<{ url: string }>("/spotify/login"),
   spotifyToken: () => request<SpotifyToken>("/spotify/token"),
   spotifyDisconnect: () => request<void>("/spotify", { method: "DELETE" }),
@@ -102,7 +112,10 @@ export const api = {
   spotifyPlaylists: () => request<SpotifyPlaylist[]>("/spotify/playlists"),
   spotifyImport: (source: string) => post<ImportResult>("/spotify/import", { source }),
   listenbrainzConnect: (token: string, password: string) =>
-    put<ListenBrainzLink>("/listenbrainz", { token, ...(password ? { password } : {}) }),
+    put<ListenBrainzLink>("/listenbrainz", {
+      token,
+      ...(password ? { password } : {}),
+    }),
   listenbrainzDisconnect: (password: string) => del<ListenBrainzUnlink>("/listenbrainz", password ? { password } : {}),
   discoveries: () => request<DiscoveryPlaylist[]>("/listenbrainz/playlists"),
   discovery: (id: string) => request<DiscoveryDetail>(lbPlaylist(id)),

@@ -1,4 +1,6 @@
 import type { ImportedTrack } from "@needle/shared";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import type { CookieOptions } from "hono/utils/cookie";
 import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
@@ -10,6 +12,8 @@ const MISSING_ALBUMS_LIMIT = 25;
 const MISSING_TRACKS_BODY_MAX_BYTES = 64 * 1024 * 1024;
 const spotifyPermissionMessage = "Ask an admin to let you use Spotify in Needle";
 const requestPermissionMessage = "Ask an admin to let you request music";
+export const SPOTIFY_OAUTH_STATE_COOKIE = "needle_spotify_oauth_state";
+const SPOTIFY_CALLBACK_PATH = "/api/spotify/callback";
 const spotifyCallbackQuerySchema = z.object({
   code: z.string().min(1).max(4096).optional(),
   state: z.string().min(1).max(4096).optional(),
@@ -33,29 +37,53 @@ type SpotifyRouteDependencies = {
 };
 
 export function registerSpotifyCallbackRoute(app: App, { spotify }: SpotifyCallbackDependencies) {
-  app.get("/api/spotify/callback", validate("query", spotifyCallbackQuerySchema), async (context) => {
-    const { code, state } = context.req.valid("query");
-
-    if (!spotify || !code || !state) return context.redirect("/settings?spotify=error");
+  app.get(SPOTIFY_CALLBACK_PATH, async (context) => {
+    const callbackQuery = spotifyCallbackQuerySchema.safeParse(context.req.query());
+    const cookieState = getCookie(context, SPOTIFY_OAUTH_STATE_COOKIE);
+    let redirectLocation = "/settings?spotify=error";
 
     try {
-      await spotify.complete(code, state);
+      if (spotify && callbackQuery.success) {
+        const { code, state } = callbackQuery.data;
 
-      return context.redirect("/settings?spotify=connected");
+        if (code && state && state === cookieState) {
+          await spotify.complete(code, state);
+
+          redirectLocation = "/settings?spotify=connected";
+        }
+      }
     } catch {
-      return context.redirect("/settings?spotify=error");
+      redirectLocation = "/settings?spotify=error";
+    } finally {
+      deleteCookie(
+        context,
+        SPOTIFY_OAUTH_STATE_COOKIE,
+        getSpotifyStateCookieOptions({ secure: spotify?.usesSecureCallbackCookie() ?? false }),
+      );
     }
+
+    return context.redirect(redirectLocation);
   });
 }
 
 export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: SpotifyRouteDependencies) {
   const requireSpotifyPermission = authorization.requirePermission("spotify", spotifyPermissionMessage);
 
-  app.get("/api/spotify/login", authorization.requireSpotify, requireSpotifyPermission, (context) =>
-    context.json({
-      url: context.get("spotify").authorizeUrl(context.get("auth").user),
-    }),
-  );
+  app.get("/api/spotify/login", authorization.requireSpotify, requireSpotifyPermission, (context) => {
+    const spotifyAuthorization = context.get("spotify").getAuthorization(context.get("auth").user);
+
+    setCookie(
+      context,
+      SPOTIFY_OAUTH_STATE_COOKIE,
+      spotifyAuthorization.state,
+      getSpotifyStateCookieOptions({
+        maxAge: spotifyAuthorization.maxAgeSeconds,
+        secure: spotifyAuthorization.secure,
+      }),
+    );
+
+    return context.json({ url: spotifyAuthorization.url });
+  });
 
   app.delete("/api/spotify", authorization.requireSpotify, requireSpotifyPermission, (context) => {
     context.get("spotify").disconnect(context.get("auth").user);
@@ -127,4 +155,14 @@ export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: 
       });
     },
   );
+}
+
+function getSpotifyStateCookieOptions({ secure, maxAge }: { secure: boolean; maxAge?: number }): CookieOptions {
+  return {
+    httpOnly: true,
+    path: SPOTIFY_CALLBACK_PATH,
+    sameSite: "Lax",
+    secure,
+    ...(maxAge === undefined ? {} : { maxAge }),
+  };
 }

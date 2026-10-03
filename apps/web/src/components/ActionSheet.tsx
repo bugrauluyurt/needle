@@ -46,20 +46,31 @@ export function useDragToClose(onClose: () => void, { follow = false }: { follow
   return { ref, handlers };
 }
 
-type Props = { open: boolean; onClose: () => void; label: string; tone?: string; children: ReactNode };
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  label: string;
+  tone?: string;
+  returnFocus?: HTMLElement;
+  children: ReactNode;
+};
 
-export function ActionSheet({ open, onClose, label, tone, children }: Props) {
+export function ActionSheet({ open, onClose, label, tone, returnFocus, children }: Props) {
   const { ref, handlers } = useDragToClose(onClose, { follow: true });
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="scrim as-scrim" />
         <Dialog.Content
           ref={ref}
           className="action-sheet"
           aria-describedby={undefined}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(focusEvent) => {
+            if (!returnFocus?.isConnected) return;
+
+            focusEvent.preventDefault();
+            returnFocus.focus();
+          }}
           style={tone ? ({ "--tone": tone } as CSSProperties) : undefined}
           {...handlers}
         >

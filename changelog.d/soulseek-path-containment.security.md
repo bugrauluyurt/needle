@@ -1,0 +1,1 @@
+- Soulseek downloads use stable directory handles, safely finish identical retries, stay inside the configured download and singles folders, and never overwrite a different file during directory swaps.

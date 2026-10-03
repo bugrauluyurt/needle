@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 export type Quality = "original" | "320" | "192";
 export type Normalize = "off" | "track" | "album";
 export type Theme = "dark" | "light" | "system";
+export type Language = "en" | "tr";
 
 export type Settings = {
   crossfade: number;
@@ -15,10 +16,13 @@ export type Settings = {
   downloadOnCellular: boolean;
   artColor: boolean;
   theme: Theme;
+  language: Language;
   autoplay: boolean;
 };
 
-type SettingsStore = Settings & { set: <K extends keyof Settings>(key: K, value: Settings[K]) => void };
+type SettingsStore = Settings & {
+  set: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+};
 
 export const useSettings = create<SettingsStore>()(
   persist(
@@ -32,6 +36,7 @@ export const useSettings = create<SettingsStore>()(
       downloadOnCellular: false,
       artColor: true,
       theme: "dark",
+      language: "en",
       autoplay: true,
       set: (key, value) => set({ [key]: value } as Partial<SettingsStore>),
     }),

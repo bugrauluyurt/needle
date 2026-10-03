@@ -1,7 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.tsx";
+import { App } from "./app/App.tsx";
 import { useUpdate } from "./state/update.ts";
+import "./i18n/index.ts";
 import "./styles/global.css";
 import "./styles/layout.css";
 import "./styles/components.css";
@@ -16,9 +17,6 @@ if (root) {
     </StrictMode>,
   );
 }
-
-for (const gesture of ["gesturestart", "gesturechange"])
-  document.addEventListener(gesture, (e) => e.preventDefault(), { passive: false });
 
 if ("serviceWorker" in navigator && import.meta.env.PROD && window.isSecureContext) {
   void import("workbox-window").then(({ Workbox }) => {

@@ -1,3 +1,5 @@
+import { translate } from "../i18n/index.ts";
+
 export type EngineEvents = {
   time: (position: number, duration: number, buffered: number) => void;
   ended: () => void;
@@ -6,7 +8,11 @@ export type EngineEvents = {
   error: (message: string) => void;
 };
 
-type Graph = { ctx: AudioContext; gains: [GainNode, GainNode]; master: GainNode };
+type Graph = {
+  ctx: AudioContext;
+  gains: [GainNode, GainNode];
+  master: GainNode;
+};
 
 const MIN_GAIN = 0.0001;
 
@@ -26,6 +32,7 @@ export class AudioEngine {
   private gainTargets: [number, number] = [1, 1];
   private fadeTimer: number | null = null;
   private srcs: [string | null, string | null] = [null, null];
+  private loadGenerations: [number, number] = [0, 0];
 
   constructor(on: EngineEvents, useWebAudio: boolean) {
     this.on = on;
@@ -128,17 +135,23 @@ export class AudioEngine {
     if (this.srcs[other] === src) {
       this.releaseSlot(this.active);
       this.active = other;
+      this.loadGenerations[this.active] += 1;
     } else {
       this.releaseSlot(other);
       const el = this.element;
+      this.loadGenerations[this.active] += 1;
       this.srcs[this.active] = src;
       el.src = src;
       el.load();
     }
     this.setGain(this.active, opts.gain ?? 1);
     const el = this.element;
+    const loadSlot = this.active;
+    const loadGeneration = this.loadGenerations[loadSlot];
     if (opts.startAt) {
       const seek = () => {
+        if (this.loadGenerations[loadSlot] !== loadGeneration) return;
+
         el.currentTime = opts.startAt ?? 0;
       };
       if (el.readyState >= 1) seek();
@@ -151,6 +164,7 @@ export class AudioEngine {
   preload(src: string) {
     const other = (1 - this.active) as 0 | 1;
     if (this.srcs[other] === src) return;
+    this.loadGenerations[other] += 1;
     this.srcs[other] = src;
     const el = this.els[other];
     el.src = src;
@@ -207,6 +221,7 @@ export class AudioEngine {
 
   private releaseSlot(slot: 0 | 1) {
     const el = this.els[slot];
+    this.loadGenerations[slot] += 1;
     el.pause();
     if (this.srcs[slot]) {
       el.removeAttribute("src");
@@ -224,7 +239,7 @@ export class AudioEngine {
       if (e instanceof DOMException && e.name === "AbortError") return;
       this.on.playing(false);
       if (e instanceof DOMException && e.name === "NotAllowedError") return;
-      this.on.error(e instanceof Error ? e.message : "Playback failed");
+      this.on.error(e instanceof Error ? e.message : translate("player.playbackFailed"));
     }
   }
 

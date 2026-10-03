@@ -15,9 +15,10 @@ import type {
   SubsonicEnvelope,
 } from "@needle/shared";
 import { md5 } from "./md5.ts";
-import { sizedCover } from "./spotify.ts";
+import { sizedCover } from "../features/spotify/api/client.ts";
 import type { Credentials } from "../state/session.ts";
 import { credentials, useSession } from "../state/session.ts";
+import { translate } from "../i18n/index.ts";
 
 export const API_VERSION = "1.16.1";
 
@@ -31,6 +32,8 @@ export class SubsonicError extends Error {
 
 type Param = string | number | boolean | undefined | null | (string | number)[];
 type Params = Record<string, Param>;
+
+const AUTHENTICATION_FAILURE_CODES = new Set<number>([40, 41, 44, 401]);
 
 const clientName = () => `Needle ${useSession.getState().deviceName}`;
 
@@ -66,28 +69,54 @@ export function coverUrl(id: string | undefined, size = 300, version?: string): 
   return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle", ...(version ? { changed: version } : {}) }).toString()}`;
 }
 
+function signOutForAuthenticationFailure(errorCode: number, requestCredentials: Credentials | null): void {
+  const activeCredentials = credentials();
+  const requestIsStillActive =
+    requestCredentials !== null &&
+    activeCredentials?.user === requestCredentials.user &&
+    activeCredentials.token === requestCredentials.token &&
+    activeCredentials.salt === requestCredentials.salt;
+
+  if (requestIsStillActive && AUTHENTICATION_FAILURE_CODES.has(errorCode)) useSession.getState().signOut();
+}
+
 export async function call<T>(
   method: string,
   params: Params = {},
-  creds?: Credentials,
+  providedCredentials?: Credentials,
   signal?: AbortSignal,
 ): Promise<T> {
-  const body = query(params, creds ?? credentials());
-  const res = await fetch(`/rest/${method}.view`, {
+  const availableCredentials = providedCredentials ?? credentials();
+  const requestCredentials = availableCredentials ? { ...availableCredentials } : null;
+  const body = query(params, requestCredentials);
+  const response = await fetch(`/rest/${method}.view`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,
     signal: signal ?? null,
   });
-  if (!res.ok) throw new SubsonicError(res.status, `Navidrome answered ${res.status}`);
-  const json = (await res.json()) as SubsonicEnvelope<T>;
-  const r = json["subsonic-response"];
-  if (r.status !== "ok") {
-    const err = new SubsonicError(r.error?.code ?? 0, r.error?.message ?? "Navidrome request failed");
-    if (!creds && (err.code === 40 || err.code === 41 || err.code === 44)) useSession.getState().signOut();
-    throw err;
+  if (!response.ok) {
+    const error = new SubsonicError(response.status, translate("error.navidromeAnswered", { status: response.status }));
+
+    signOutForAuthenticationFailure(error.code, requestCredentials);
+
+    throw error;
   }
-  return r;
+
+  const responseBody = (await response.json()) as SubsonicEnvelope<T>;
+  const subsonicResponse = responseBody["subsonic-response"];
+  if (subsonicResponse.status !== "ok") {
+    const error = new SubsonicError(
+      subsonicResponse.error?.code ?? 0,
+      subsonicResponse.error?.message ?? translate("error.navidromeRequestFailed"),
+    );
+
+    signOutForAuthenticationFailure(error.code, requestCredentials);
+
+    throw error;
+  }
+
+  return subsonicResponse;
 }
 
 export type AlbumListType =
@@ -105,11 +134,19 @@ export type AlbumListType =
 export const sub = {
   ping: (creds?: Credentials) => call<{ serverVersion?: string }>("ping", {}, creds),
   user: (username: string) =>
-    call<{ user: { username: string; adminRole?: boolean } }>("getUser", { username }).then((r) => r.user),
+    call<{ user: { username: string; adminRole?: boolean } }>("getUser", {
+      username,
+    }).then((r) => r.user),
 
   albumList: (
     type: AlbumListType,
-    opts: { size?: number; offset?: number; genre?: string; fromYear?: number; toYear?: number } = {},
+    opts: {
+      size?: number;
+      offset?: number;
+      genre?: string;
+      fromYear?: number;
+      toYear?: number;
+    } = {},
   ) =>
     call<{ albumList2: { album?: Album[] } }>("getAlbumList2", {
       type,
@@ -126,32 +163,45 @@ export const sub = {
     ),
   artist: (id: string) => call<{ artist: ArtistWithAlbums }>("getArtist", { id }).then((r) => r.artist),
   artistInfo: (id: string, count = 12, includeNotPresent = false) =>
-    call<{ artistInfo2: ArtistInfo }>("getArtistInfo2", { id, count, includeNotPresent }).then((r) => r.artistInfo2),
-  topSongs: (artist: string, count = 10) =>
-    call<{ topSongs: { song?: Song[] } }>("getTopSongs", { artist, count }).then((r) => r.topSongs.song ?? []),
+    call<{ artistInfo2: ArtistInfo }>("getArtistInfo2", {
+      id,
+      count,
+      includeNotPresent,
+    }).then((r) => r.artistInfo2),
   similarSongs: (id: string, count = 50) =>
-    call<{ similarSongs2: { song?: Song[] } }>("getSimilarSongs2", { id, count }).then(
-      (r) => r.similarSongs2.song ?? [],
-    ),
-  song: (id: string) => call<{ song: Song }>("getSong", { id }).then((r) => r.song),
+    call<{ similarSongs2: { song?: Song[] } }>("getSimilarSongs2", {
+      id,
+      count,
+    }).then((r) => r.similarSongs2.song ?? []),
   randomSongs: (size = 50, genre?: string) =>
-    call<{ randomSongs: { song?: Song[] } }>("getRandomSongs", { size, genre }).then((r) => r.randomSongs.song ?? []),
-  songsByGenre: (genre: string, count = 100, offset = 0) =>
-    call<{ songsByGenre: { song?: Song[] } }>("getSongsByGenre", { genre, count, offset }).then(
-      (r) => r.songsByGenre.song ?? [],
-    ),
+    call<{ randomSongs: { song?: Song[] } }>("getRandomSongs", {
+      size,
+      genre,
+    }).then((r) => r.randomSongs.song ?? []),
   genres: () => call<{ genres: { genre?: Genre[] } }>("getGenres").then((r) => r.genres.genre ?? []),
 
   playlists: () =>
     call<{ playlists: { playlist?: Playlist[] } }>("getPlaylists").then((r) => r.playlists.playlist ?? []),
   playlist: (id: string) => call<{ playlist: PlaylistWithSongs }>("getPlaylist", { id }).then((r) => r.playlist),
   createPlaylist: (name: string, songId: string[] = []) =>
-    call<{ playlist: PlaylistWithSongs }>("createPlaylist", { name, songId }).then((r) => r.playlist),
+    call<{ playlist: PlaylistWithSongs }>("createPlaylist", {
+      name,
+      songId,
+    }).then((r) => r.playlist),
   replacePlaylistSongs: (playlistId: string, songId: string[]) =>
-    call<{ playlist: PlaylistWithSongs }>("createPlaylist", { playlistId, songId }),
+    call<{ playlist: PlaylistWithSongs }>("createPlaylist", {
+      playlistId,
+      songId,
+    }),
   updatePlaylist: (
     playlistId: string,
-    changes: { name?: string; comment?: string; public?: boolean; add?: string[]; removeIndex?: number[] },
+    changes: {
+      name?: string;
+      comment?: string;
+      public?: boolean;
+      add?: string[];
+      removeIndex?: number[];
+    },
   ) =>
     call("updatePlaylist", {
       playlistId,
@@ -179,9 +229,9 @@ export const sub = {
     ),
 
   radios: () =>
-    call<{ internetRadioStations: { internetRadioStation?: InternetRadioStation[] } }>("getInternetRadioStations").then(
-      (r) => r.internetRadioStations.internetRadioStation ?? [],
-    ),
+    call<{
+      internetRadioStations: { internetRadioStation?: InternetRadioStation[] };
+    }>("getInternetRadioStations").then((r) => r.internetRadioStations.internetRadioStation ?? []),
   addRadio: (name: string, streamUrl: string, homepageUrl?: string) =>
     call("createInternetRadioStation", { name, streamUrl, homepageUrl }),
   deleteRadio: (id: string) => call("deleteInternetRadioStation", { id }),

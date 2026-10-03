@@ -9,8 +9,10 @@ import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase } from "../src/db.ts";
 import { createRealtimeApp, DEVICE_MAX_PAYLOAD_BYTES } from "../src/realtime/devices.ts";
+import { NAVIDROME_VERIFICATION_ATTEMPT_LIMIT } from "../src/http/navidrome-verifier.ts";
 
 const openServers: Server[] = [];
+const nativeFetch = globalThis.fetch;
 
 afterEach(async () => {
   vi.unstubAllGlobals();
@@ -31,6 +33,33 @@ describe("device realtime route", () => {
 
     await expect(getRejectedStatus(`${baseUrl}/api/devices`)).resolves.toBe(401);
     await expect(getRejectedStatus(`${baseUrl}/api/devices?u=alex&t=wrong&s=salt`)).resolves.toBe(401);
+  });
+
+  it("shares one invalid-credential budget across HTTP and WebSocket verification", async () => {
+    const baseUrl = await startRealtimeServer();
+    const httpBaseUrl = baseUrl.replace("ws://", "http://");
+    const httpAttemptCount = NAVIDROME_VERIFICATION_ATTEMPT_LIMIT / 2;
+
+    for (let attemptIndex = 0; attemptIndex < httpAttemptCount; attemptIndex += 1) {
+      const response = await nativeFetch(`${httpBaseUrl}/api/stats`, {
+        headers: {
+          "x-needle-user": "alex",
+          "x-needle-token": `http-wrong-${attemptIndex}`,
+          "x-needle-salt": "salt",
+          "x-forwarded-for": `198.51.100.${attemptIndex + 1}`,
+        },
+      });
+
+      expect(response.status).toBe(401);
+    }
+
+    for (let attemptIndex = httpAttemptCount; attemptIndex < NAVIDROME_VERIFICATION_ATTEMPT_LIMIT; attemptIndex += 1) {
+      await expect(getRejectedStatus(`${baseUrl}/api/devices?u=alex&t=wrong-${attemptIndex}&s=salt`)).resolves.toBe(
+        401,
+      );
+    }
+
+    await expect(getRejectedStatus(`${baseUrl}/api/devices?u=alex&t=limited&s=salt`)).resolves.toBe(429);
   });
 
   it("upgrades a valid authenticated device connection", async () => {
@@ -159,7 +188,8 @@ async function startRealtimeServer() {
 
   const realtimeApp = createRealtimeApp(createdApp.app, {
     hub: createdApp.hub,
-    navidrome: createdApp.navidrome,
+    verifier: createdApp.verifier,
+    trustedProxy: false,
   });
 
   const webSocketServer = new WebSocketServer({

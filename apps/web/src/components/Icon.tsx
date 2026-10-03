@@ -1,3 +1,5 @@
+import { translate } from "../i18n/index.ts";
+
 const PATHS = {
   home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm10 17-5.2-5.2",
@@ -100,7 +102,11 @@ export function Logo({ size = 28 }: { size?: number }) {
 
 export function Eq({ paused = false }: { paused?: boolean }) {
   return (
-    <span className={paused ? "eq paused" : "eq"} aria-label={paused ? "Paused" : "Playing"} role="img">
+    <span
+      className={paused ? "eq paused" : "eq"}
+      aria-label={translate(paused ? "devices.paused" : "devices.playing")}
+      role="img"
+    >
       <i />
       <i />
       <i />

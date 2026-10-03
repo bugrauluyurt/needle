@@ -9,7 +9,10 @@ test("follows the lyrics line by line and seeks when a line is clicked", async (
   await expect(page).toHaveURL(/\/lyrics$/);
   await expect(page.getByText("Lyrics, timed, from the song’s file")).toBeVisible();
   await expect(page.locator(".lyric.now")).toHaveText("Streetlights hum a quiet tune", { timeout: 8_000 });
-  await page.locator(".lyric", { hasText: "Every story fades by noon" }).click();
+  const seekableLyric = page.getByRole("button", { name: "Every story fades by noon" });
+
+  await expect(seekableLyric).toHaveJSProperty("tagName", "BUTTON");
+  await seekableLyric.click();
   await expect(page.locator(".lyric.now")).toHaveText("Every story fades by noon");
   expect(await position(page)).toBeGreaterThanOrEqual(18);
 
@@ -85,6 +88,74 @@ test("changes settings and keeps them", async ({ page }) => {
   await expect(page.getByRole("switch", { name: "Colour from album art" })).toHaveAttribute("aria-checked", "false");
   await expect(page.getByLabel("Device name")).toHaveValue("Test bench");
   await expect(page.getByRole("button", { name: "Connect Spotify" })).toBeDisabled();
+});
+
+test("supports page zoom and keyboard radio navigation", async ({ page }) => {
+  await signIn(page, "/settings");
+
+  const viewportContent = await page.locator('meta[name="viewport"]').getAttribute("content");
+  const gesturePrevented = await page.evaluate(() => {
+    const gestureEvent = new Event("gesturestart", { cancelable: true });
+
+    document.dispatchEvent(gestureEvent);
+
+    return gestureEvent.defaultPrevented;
+  });
+  const disabledNormalization = page.getByRole("radio", { name: "Off", exact: true });
+  const perSongNormalization = page.getByRole("radio", { name: "Per song", exact: true });
+  const perAlbumNormalization = page.getByRole("radio", { name: "Per album", exact: true });
+
+  expect(viewportContent).not.toContain("maximum-scale");
+  expect(viewportContent).not.toContain("user-scalable=no");
+  expect(gesturePrevented).toBe(false);
+  await disabledNormalization.focus();
+  await disabledNormalization.press("ArrowRight");
+  await expect(perSongNormalization).toBeFocused();
+  await expect(perSongNormalization).toHaveAttribute("aria-checked", "true");
+  await perSongNormalization.press("End");
+  await expect(perAlbumNormalization).toBeFocused();
+  await expect(perAlbumNormalization).toHaveAttribute("aria-checked", "true");
+  await perAlbumNormalization.press("Home");
+  await expect(disabledNormalization).toBeFocused();
+  await expect(disabledNormalization).toHaveAttribute("aria-checked", "true");
+});
+
+test("changes language without remounting settings", async ({ page }) => {
+  await signIn(page, "/settings");
+
+  const deviceName = page.getByLabel("Device name");
+  const turkish = page.getByRole("radio", { name: "Turkish", exact: true });
+  const main = page.locator("#main");
+
+  await deviceName.fill("Unsaved device name");
+  await turkish.scrollIntoViewIfNeeded();
+  await turkish.focus();
+
+  const scrollTopBeforeLanguageChange = await main.evaluate((mainElement) => {
+    mainElement.scrollTop = 800;
+
+    return mainElement.scrollTop;
+  });
+
+  await page.keyboard.press("Space");
+
+  await expect(page.getByRole("link", { name: "Ana Sayfa", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Cihaz adı")).toHaveValue("Unsaved device name");
+  await expect
+    .poll(() => main.evaluate((mainElement) => mainElement.scrollTop))
+    .toBeGreaterThan(scrollTopBeforeLanguageChange - 200);
+
+  await page.goto("/albums/newest");
+
+  const collectionTools = page.locator("#main .coll-sort");
+
+  await collectionTools.click();
+  await page.getByRole("menuitemradio", { name: "Alfabetik", exact: true }).click();
+
+  const collectionLabel = await collectionTools.getAttribute("aria-label");
+
+  expect(collectionLabel).toMatch(/artan|azalan/);
+  expect(collectionLabel).not.toMatch(/ascending|descending|\bgrid\b|\blist\b/i);
 });
 
 test("admins see what the server can reach", async ({ page }) => {

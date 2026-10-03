@@ -10,6 +10,7 @@ import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase } from "../src/db.ts";
 import { DeviceHub } from "../src/devices.ts";
+import { SUBSONIC_FORM_BODY_MAX_BYTES } from "../src/routes/media.ts";
 
 const ND = "http://navidrome.test";
 const LB = "http://lb.test";
@@ -176,6 +177,57 @@ describe("server", () => {
       version: expect.any(String) as string,
     });
     expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("sets compatible security headers on API, static app, and proxied media responses", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "needle-web-"));
+    const database = openDatabase(":memory:");
+
+    await writeFile(join(webDist, "index.html"), "<main>Needle app</main>");
+
+    try {
+      const productionApp = createApp(
+        loadConfig({
+          navidromeUrl: ND,
+          listenbrainzUrl: LB,
+          dataDir: ":memory:",
+          webDist,
+          lidarr: null,
+          spotify: null,
+          soulseek: null,
+        }),
+        database,
+      ).app;
+      const responses = [
+        await productionApp.request("/"),
+        await productionApp.request("/api/health"),
+        await productionApp.request("/rest/stream.view?id=1&u=alex&t=tok&s=salt"),
+      ];
+
+      for (const response of responses) {
+        expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+        expect(response.headers.get("x-frame-options")).toBe("DENY");
+        expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+        expect(response.headers.get("strict-transport-security")).toBe("max-age=15552000; includeSubDomains");
+        expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
+        expect(response.headers.get("permissions-policy")).toContain("camera=()");
+        expect(response.headers.get("permissions-policy")).toContain("geolocation=()");
+        expect(response.headers.get("permissions-policy")).toContain("microphone=()");
+      }
+
+      const contentSecurityPolicy = responses[0]?.headers.get("content-security-policy") ?? "";
+
+      expect(contentSecurityPolicy).toContain("script-src 'self' https://sdk.scdn.co");
+      expect(contentSecurityPolicy).toContain("style-src 'self' 'unsafe-inline'");
+      expect(contentSecurityPolicy).toContain("connect-src 'self'");
+      expect(contentSecurityPolicy).toContain("https://api.spotify.com");
+      expect(contentSecurityPolicy).toContain("wss://*.spotify.com");
+      expect(contentSecurityPolicy).toContain("img-src 'self' data: blob: https:");
+      expect(contentSecurityPolicy).toContain("worker-src 'self' blob:");
+    } finally {
+      database.close();
+      await rm(webDist, { recursive: true });
+    }
   });
 
   it("turns away requests without valid Navidrome credentials", async () => {
@@ -490,6 +542,115 @@ describe("server", () => {
     expect(part.status).toBe(206);
     expect(part.headers.get("content-range")).toBe("bytes 2-5/6");
     expect(await part.text()).toBe("cdef");
+  });
+
+  it("authenticates Subsonic POST form credentials without consuming the proxied body", async () => {
+    let proxiedBody = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        if (!(init?.body instanceof URLSearchParams)) {
+          proxiedBody = await new Response(init?.body).text();
+        }
+
+        return Response.json({
+          "subsonic-response": {
+            status: "ok",
+            version: "1.16.1",
+          },
+        });
+      }),
+    );
+    const formBody = new URLSearchParams({
+      u: "alex",
+      t: "tok",
+      s: "salt",
+      v: "1.16.1",
+      c: "Needle test",
+      f: "json",
+    });
+    const response = await app.request("/rest/ping.view", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: formBody,
+    });
+    const body = (await response.json()) as { "subsonic-response": { status: string } };
+
+    expect(response.status).toBe(200);
+    expect(body["subsonic-response"].status).toBe("ok");
+    expect(proxiedBody).toBe(formBody.toString());
+  });
+
+  it("rejects an oversized Subsonic form by content length before contacting Navidrome", async () => {
+    const upstreamFetch = vi.mocked(fetch);
+    upstreamFetch.mockClear();
+    const oversizedFormBody = `u=alex&t=tok&s=salt&f=json&songId=${"x".repeat(SUBSONIC_FORM_BODY_MAX_BYTES)}`;
+    const response = await app.request("/rest/createPlaylist.view", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "content-length": String(Buffer.byteLength(oversizedFormBody)),
+      },
+      body: oversizedFormBody,
+    });
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it("stops reading an oversized unknown-length Subsonic form before contacting Navidrome", async () => {
+    const upstreamFetch = vi.mocked(fetch);
+    upstreamFetch.mockClear();
+    const textEncoder = new TextEncoder();
+    const streamedFormBody = getStreamingBodyHarness([
+      textEncoder.encode(`u=alex&t=tok&s=salt&f=json&songId=${"x".repeat(SUBSONIC_FORM_BODY_MAX_BYTES)}`),
+      textEncoder.encode("&songId=unread"),
+    ]);
+    const requestInit: StreamingRequestInit = {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: streamedFormBody.body,
+      duplex: "half",
+    };
+    const response = await app.fetch(new Request("http://localhost/rest/createPlaylist.view", requestInit));
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+    expect(streamedFormBody.getReadChunkCount()).toBe(1);
+    expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it("preserves a bounded unknown-length Subsonic form while checking authentication", async () => {
+    let proxiedBody = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        if (!(init?.body instanceof URLSearchParams)) {
+          proxiedBody = await new Response(init?.body).text();
+        }
+
+        return Response.json({
+          "subsonic-response": {
+            status: "ok",
+            version: "1.16.1",
+          },
+        });
+      }),
+    );
+    const formBody = "u=alex&t=tok&s=salt&f=json&id=track-1";
+    const streamedFormBody = getStreamingBodyHarness([new TextEncoder().encode(formBody)]);
+    const requestInit: StreamingRequestInit = {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: streamedFormBody.body,
+      duplex: "half",
+    };
+    const response = await app.fetch(new Request("http://localhost/rest/stream.view", requestInit));
+
+    expect(response.status).toBe(200);
+    expect(proxiedBody).toBe(formBody);
+    expect(streamedFormBody.getReadChunkCount()).toBe(1);
   });
 
   it("gzips JSON when the browser accepts it", async () => {

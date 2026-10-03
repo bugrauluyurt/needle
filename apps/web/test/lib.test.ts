@@ -18,7 +18,7 @@ import { toneFromPixels } from "../src/lib/tone.ts";
 import { dbToGain } from "../src/player/engine.ts";
 import { albumPath, artistPath } from "../src/lib/paths.ts";
 import { browserChecks } from "../src/lib/connections.ts";
-import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
+import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/features/spotify/api/client.ts";
 import { naturalOrder, nextOrder, pickOrder } from "../src/lib/order.ts";
 import { shownSongs } from "../src/lib/songs.ts";
 import { useSession } from "../src/state/session.ts";
@@ -238,7 +238,9 @@ describe("responsive artwork", () => {
   it("builds every local cover size with the matching width descriptor", () => {
     const previousCredentials = useSession.getState().credentials;
 
-    useSession.setState({ credentials: { user: "listener", token: "token", salt: "salt" } });
+    useSession.setState({
+      credentials: { user: "listener", token: "token", salt: "salt" },
+    });
 
     let coverSources: string | undefined;
 
@@ -252,7 +254,11 @@ describe("responsive artwork", () => {
       const [coverSource, coverWidth] = coverCandidate.split(" ");
       const coverParams = new URL(coverSource ?? "", "https://needle.test").searchParams;
 
-      return { size: coverParams.get("size"), width: coverWidth, version: coverParams.get("changed") };
+      return {
+        size: coverParams.get("size"),
+        width: coverWidth,
+        version: coverParams.get("changed"),
+      };
     });
 
     expect(coverCandidates).toEqual(
@@ -286,7 +292,11 @@ describe("responsive artwork", () => {
 
   it("leaves direct URLs and incomplete Spotify metadata on their fallback source", () => {
     expect(artSrcSet({ id: "https://images.example/artist.jpg" })).toBeUndefined();
-    expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }] })).toBeUndefined();
+    expect(
+      artSrcSet({
+        images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }],
+      }),
+    ).toBeUndefined();
     expect(
       artSrcSet({
         images: [{ url: "https://i.scdn.co/image/artist-a" }, { url: "https://i.scdn.co/image/artist-b", width: null }],
@@ -334,12 +344,21 @@ describe("sort order", () => {
   });
 
   it("switches to another column in its natural direction", () => {
-    expect(nextOrder({ key: "title", desc: true }, "album", custom)).toEqual({ key: "album", desc: false });
+    expect(nextOrder({ key: "title", desc: true }, "album", custom)).toEqual({
+      key: "album",
+      desc: false,
+    });
   });
 
   it("flips the direction when the menu picks the current sort again", () => {
-    expect(pickOrder({ key: "title", desc: false }, "title")).toEqual({ key: "title", desc: true });
-    expect(pickOrder({ key: "title", desc: true }, "added")).toEqual({ key: "added", desc: true });
+    expect(pickOrder({ key: "title", desc: false }, "title")).toEqual({
+      key: "title",
+      desc: true,
+    });
+    expect(pickOrder({ key: "title", desc: true }, "added")).toEqual({
+      key: "added",
+      desc: true,
+    });
   });
 });
 

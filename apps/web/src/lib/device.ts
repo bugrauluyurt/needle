@@ -1,4 +1,5 @@
 import type { DeviceKind } from "@needle/shared";
+import { translate } from "../i18n/index.ts";
 
 const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
 const touchMac = typeof navigator !== "undefined" && /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
@@ -19,7 +20,7 @@ export function deviceKind(): DeviceKind {
 export function defaultDeviceName(): string {
   if (/iPhone/.test(ua)) return "iPhone";
   if (/iPad/.test(ua) || touchMac) return "iPad";
-  if (isAndroid) return /Mobile/.test(ua) ? "Android phone" : "Android tablet";
+  if (isAndroid) return translate(/Mobile/.test(ua) ? "device.androidPhone" : "device.androidTablet");
   const browser = /Edg\//.test(ua)
     ? "Edge"
     : /Firefox\//.test(ua)
@@ -28,9 +29,9 @@ export function defaultDeviceName(): string {
         ? "Chrome"
         : /Safari\//.test(ua)
           ? "Safari"
-          : "Browser";
+          : translate("device.browser");
   const os = /Mac OS X/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";
-  return os ? `${browser} on ${os}` : browser;
+  return os ? translate("device.browserOnOs", { browser, os }) : browser;
 }
 
 export function randomId(): string {

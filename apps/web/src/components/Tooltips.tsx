@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-type Tip = { text: string; key: string | null; x: number; y: number; below: boolean };
+type Tip = {
+  text: string;
+  key: string | null;
+  x: number;
+  y: number;
+  below: boolean;
+};
 
 const DELAY = 450;
 const EDGE = 8;
