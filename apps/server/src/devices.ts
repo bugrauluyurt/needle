@@ -1,10 +1,5 @@
-import {
-  ClientMessageSchema,
-  REPLACED_CLOSE_CODE,
-  type ClientMessage,
-  type Device,
-  type ServerMessage,
-} from "@needle/shared";
+import { REPLACED_CLOSE_CODE, type ClientMessage, type Device, type ServerMessage } from "@needle/shared";
+import { ClientMessageSchema } from "@needle/shared/schemas/devices";
 import type { WebSocket } from "ws";
 
 const INVALID_MESSAGE_CLOSE_CODE = 1008;
