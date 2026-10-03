@@ -5,6 +5,10 @@ import { join } from "node:path";
 const root = join(import.meta.dirname, "..");
 const run = (cmd: string, args: string[], env: Record<string, string> = {}) =>
   execFileSync(cmd, args, { cwd: root, stdio: "inherit", env: { ...process.env, ...env } });
+const composeUserEnvironment = {
+  UID: String(process.getuid?.() ?? 1000),
+  GID: String(process.getgid?.() ?? 1000),
+};
 
 export default async function globalSetup() {
   if (!existsSync(join(root, "e2e/.library"))) run("node", ["e2e/fixtures/make-library.ts"]);
@@ -15,7 +19,7 @@ export default async function globalSetup() {
     mkdirSync(join(root, dir), { recursive: true });
   }
 
-  run("docker", ["compose", "-f", "e2e/compose.yml", "up", "-d", "--wait"]);
+  run("docker", ["compose", "-f", "e2e/compose.yml", "up", "-d", "--wait"], composeUserEnvironment);
   const q = "u=admin&p=needle-test&c=e2e&v=1.16.1&f=json";
   await fetch(`http://127.0.0.1:14533/rest/startScan.view?${q}&fullScan=true`);
   for (let i = 0; i < 60; i++) {

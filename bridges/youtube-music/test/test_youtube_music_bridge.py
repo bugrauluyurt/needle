@@ -10,7 +10,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 
-bridge_spec = importlib.util.spec_from_file_location("needle_youtube_music", Path(__file__).parent.parent / "src" / "youtube-music.py")
+bridge_spec = importlib.util.spec_from_file_location(
+    "needle_youtube_music", Path(__file__).parent.parent / "src" / "youtube_music_bridge.py"
+)
 bridge_module = importlib.util.module_from_spec(bridge_spec)
 bridge_spec.loader.exec_module(bridge_module)
 Bridge = bridge_module.YouTubeMusicBridge
@@ -27,11 +29,14 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
         self.enum_module = types.ModuleType("ytmusicapi.models.content.enums")
         self.enum_module.LikeStatus = types.SimpleNamespace(LIKE="LIKE", INDIFFERENT="INDIFFERENT")
 
-        self.modules = patch.dict(sys.modules, {
-            "ytmusicapi": self.ytmusic_module,
-            "requests": self.requests_module,
-            "ytmusicapi.models.content.enums": self.enum_module,
-        })
+        self.modules = patch.dict(
+            sys.modules,
+            {
+                "ytmusicapi": self.ytmusic_module,
+                "requests": self.requests_module,
+                "ytmusicapi.models.content.enums": self.enum_module,
+            },
+        )
         self.modules.start()
         self.addCleanup(self.modules.stop)
 
@@ -40,8 +45,14 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
             "operation": operation,
             "parameters": parameters or {},
             "credentials": {"clientId": "client", "clientSecret": "secret"},
-            "token": {"access_token": "access", "refresh_token": "refresh", "expires_at": 2000000000,
-                      "expires_in": 3600, "scope": "https://www.googleapis.com/auth/youtube", "token_type": "Bearer"},
+            "token": {
+                "access_token": "access",
+                "refresh_token": "refresh",
+                "expires_at": 2000000000,
+                "expires_in": 3600,
+                "scope": "https://www.googleapis.com/auth/youtube",
+                "token_type": "Bearer",
+            },
         }
 
     def test_followed_artists_use_subscriptions(self):
@@ -81,7 +92,9 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
 
         Bridge.run(self.request("radio", {"id": "abcdefghijk", "limit": 50}))
         self.music.get_watch_playlist.assert_called_with(videoId="abcdefghijk", radio=True, limit=50)
-        self.assertEqual(Bridge.run(self.request("lyrics", {"id": "abcdefghijk"})), {"lyrics": "Words", "hasTimestamps": False})
+        self.assertEqual(
+            Bridge.run(self.request("lyrics", {"id": "abcdefghijk"})), {"lyrics": "Words", "hasTimestamps": False}
+        )
         self.music.get_lyrics.assert_called_once_with("MPLYlyrics", timestamps=True)
 
     def test_auth_uses_in_memory_token_dictionary(self):
@@ -95,7 +108,11 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
     def test_stream_resolution_never_uses_google_credentials_or_cookies(self):
         options = {}
         resolver = MagicMock()
-        resolver.extract_info.return_value = {"url": "https://rr1.googlevideo.com/audio", "ext": "m4a", "acodec": "mp4a.40.2"}
+        resolver.extract_info.return_value = {
+            "url": "https://rr1.googlevideo.com/audio",
+            "ext": "m4a",
+            "acodec": "mp4a.40.2",
+        }
         resolver.__enter__.return_value = resolver
         resolver_module = types.ModuleType("yt_dlp")
 
@@ -107,7 +124,9 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
         resolver_module.YoutubeDL = youtube_dl
         with patch.dict(sys.modules, {"yt_dlp": resolver_module}):
             request = {"operation": "resolve", "parameters": {"id": "abcdefghijk"}, "node": "/usr/local/bin/node"}
-            self.assertEqual(Bridge.run(request), {"url": "https://rr1.googlevideo.com/audio", "ext": "m4a", "codec": "mp4a.40.2"})
+            self.assertEqual(
+                Bridge.run(request), {"url": "https://rr1.googlevideo.com/audio", "ext": "m4a", "codec": "mp4a.40.2"}
+            )
 
         resolver.extract_info.assert_called_once_with("https://music.youtube.com/watch?v=abcdefghijk", download=False)
         self.assertFalse(options["cachedir"])
@@ -127,7 +146,10 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
         self.music.get_account_info.side_effect = RuntimeError("401 access-token-private refresh-token-private")
         output = io.StringIO()
 
-        with patch.object(sys, "stdin", io.StringIO(json.dumps(self.request("account")))), contextlib.redirect_stdout(output):
+        with (
+            patch.object(sys, "stdin", io.StringIO(json.dumps(self.request("account")))),
+            contextlib.redirect_stdout(output),
+        ):
             Bridge.main()
 
         self.assertEqual(json.loads(output.getvalue()), {"error": "auth_reconnect"})
@@ -148,10 +170,16 @@ class YouTubeMusicBridgeTests(unittest.TestCase):
         self.music.get_lyrics.return_value = Lyrics([LyricLine("First line", 1250)], True)
         output = io.StringIO()
 
-        with patch.object(sys, "stdin", io.StringIO(json.dumps(self.request("lyrics", {"id": "abcdefghijk"})))), contextlib.redirect_stdout(output):
+        with (
+            patch.object(sys, "stdin", io.StringIO(json.dumps(self.request("lyrics", {"id": "abcdefghijk"})))),
+            contextlib.redirect_stdout(output),
+        ):
             Bridge.main()
 
-        self.assertEqual(json.loads(output.getvalue()), {"data": {"lyrics": [{"text": "First line", "start_time": 1250}], "hasTimestamps": True}})
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            {"data": {"lyrics": [{"text": "First line", "start_time": 1250}], "hasTimestamps": True}},
+        )
 
 
 if __name__ == "__main__":

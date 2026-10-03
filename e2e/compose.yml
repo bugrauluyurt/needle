@@ -1,7 +1,7 @@
 name: needle-test
 services:
   navidrome:
-    image: deluan/navidrome:latest
+    image: deluan/navidrome@sha256:38dc2727bfcfd5ede290f8ada114fc90368146f265ae4701ddddbcbe2a44ee52
     user: "${UID:-1000}:${GID:-1000}"
     # Host networking lets Navidrome reach the ListenBrainz mock, which host firewalls block from containers.
     network_mode: host

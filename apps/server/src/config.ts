@@ -1,4 +1,9 @@
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const YOUTUBE_MUSIC_BRIDGE = fileURLToPath(
+  new URL("../../../bridges/youtube-music/src/youtube_music_bridge.py", import.meta.url),
+);
 
 const env = (name: string) => {
   const value = process.env[name]?.trim();
@@ -11,7 +16,7 @@ export type Config = {
   navidromeUrl: string;
   lidarr: { url: string; apiKey: string; qualityProfile: string | null; rootFolder: string | null } | null;
   spotify: { clientId: string; clientSecret: string } | null;
-  youtubeMusic: { clientId: string; clientSecret: string; python: string } | null;
+  youtubeMusic: { clientId: string; clientSecret: string; python: string; bridgePath?: string } | null;
   soulseek: { url: string; apiKey: string; downloadsDir: string; singlesDir: string } | null;
   publicUrl: string | null;
   musicbrainzUrl: string;
@@ -46,7 +51,12 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     spotify: spotifyId && spotifySecret ? { clientId: spotifyId, clientSecret: spotifySecret } : null,
     youtubeMusic:
       youtubeMusicId && youtubeMusicSecret
-        ? { clientId: youtubeMusicId, clientSecret: youtubeMusicSecret, python: env("YTMUSIC_PYTHON") ?? "python3" }
+        ? {
+            clientId: youtubeMusicId,
+            clientSecret: youtubeMusicSecret,
+            python: env("YTMUSIC_PYTHON") ?? "python3",
+            bridgePath: env("YTMUSIC_BRIDGE_PATH") ?? YOUTUBE_MUSIC_BRIDGE,
+          }
         : null,
     soulseek:
       slskdUrl && slskdKey

@@ -17,16 +17,23 @@ function precompress(): Plugin {
     name: "needle-precompress",
     apply: "build",
     closeBundle() {
-      const walk = (dir: string): string[] =>
-        readdirSync(dir).flatMap((f) => {
-          const p = join(dir, f);
-          return statSync(p).isDirectory() ? walk(p) : [p];
+      const walk = (directory: string): string[] =>
+        readdirSync(directory).flatMap((directoryEntry) => {
+          const filePath = join(directory, directoryEntry);
+
+          return statSync(filePath).isDirectory() ? walk(filePath) : [filePath];
         });
-      for (const file of walk("dist").filter((f) => COMPRESS.test(f))) {
-        const data = readFileSync(file);
-        if (data.length < 1024) continue;
-        writeFileSync(`${file}.br`, brotliCompressSync(data, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }));
-        writeFileSync(`${file}.gz`, gzipSync(data, { level: 9 }));
+
+      for (const filePath of walk("dist").filter((candidateFilePath) => COMPRESS.test(candidateFilePath))) {
+        const fileContents = readFileSync(filePath);
+
+        if (fileContents.length < 1024) continue;
+
+        writeFileSync(
+          `${filePath}.br`,
+          brotliCompressSync(fileContents, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }),
+        );
+        writeFileSync(`${filePath}.gz`, gzipSync(fileContents, { level: 9 }));
       }
     },
   };
@@ -72,7 +79,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 400,
     rolldownOptions: {
       output: {
-        advancedChunks: {
+        codeSplitting: {
           groups: [
             { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
             { name: "router", test: /node_modules[\\/](react-router|cookie|set-cookie-parser)[\\/]/ },

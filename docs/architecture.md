@@ -173,7 +173,7 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
 ```
 
 The optional integration uses Python in the same container as the Node server.
-`requirements.txt` pins ytmusicapi and yt-dlp. The bridge accepts fixed operations
+The uv project in `bridges/youtube-music` locks ytmusicapi and yt-dlp. The bridge accepts fixed operations
 and JSON over stdin and returns JSON over stdout; credentials never appear in
 process arguments. Node validates metadata before returning shared DTOs to React.
 
