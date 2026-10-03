@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
-import type { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type {
   ImportResult,
@@ -23,6 +22,7 @@ import type {
   YouTubeMusicSearchKind,
 } from "@needle/shared";
 import { youtubeMusicId, youtubeMusicRawId } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { LibrarySearch } from "./search.ts";
 import { findSong } from "./search.ts";
@@ -100,7 +100,7 @@ type Options = {
   clientId: string;
   clientSecret: string;
   python: string;
-  db: DatabaseSync;
+  db: Database;
   navidrome: Navidrome;
   library: LibrarySearch;
   bridgePath?: string;
