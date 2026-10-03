@@ -1,1 +1,1 @@
-- Soulseek downloads stay inside the configured download and singles folders, and never overwrite an existing file.
+- Soulseek downloads use stable directory handles, stay inside the configured download and singles folders, and never overwrite an existing file during directory swaps.

@@ -9,6 +9,7 @@ import { createAuthorization } from "./http/authorization.ts";
 import type { AppEnv } from "./http/context.ts";
 import { registerErrorHandler } from "./http/errors.ts";
 import { InMemoryNavidromeVerifier } from "./http/navidrome-verifier.ts";
+import { registerSecurityHeaders } from "./http/security.ts";
 import { Lidarr } from "./lidarr.ts";
 import { ListenBrainz } from "./listenbrainz.ts";
 import { Mixes } from "./mixes.ts";
@@ -97,6 +98,7 @@ export function createApp(config: Config, db: DatabaseSync) {
   const app = new Hono<AppEnv>();
 
   registerErrorHandler(app);
+  registerSecurityHeaders(app);
   registerHealthRoute(app);
   registerSpotifyCallbackRoute(app, { spotify });
   registerAuthentication(app, { trustedProxy: config.trustedProxy, verifier });

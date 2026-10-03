@@ -54,6 +54,9 @@ let events: SpotifyEvents | null = null;
 let current: string | null = null;
 let last: { state: SdkState; at: number } | null = null;
 let volume = 0.8;
+let playerGeneration = 0;
+let rejectDevice: ((error: Error) => void) | null = null;
+let readyTimer: number | null = null;
 
 function loadSdk(): Promise<void> {
   sdk ??= new Promise((resolve, reject) => {
@@ -77,7 +80,8 @@ function positionMs(): number {
   return state.paused ? state.position : state.position + (performance.now() - at);
 }
 
-function lose() {
+function lose(eventGeneration: number) {
+  if (eventGeneration !== playerGeneration) return;
   if (!current) return;
   current = null;
   if (last)
@@ -88,10 +92,12 @@ function lose() {
   events?.lost();
 }
 
-function onState(payload: unknown) {
+function onState(payload: unknown, eventGeneration: number) {
+  if (eventGeneration !== playerGeneration) return;
+
   const state = payload as SdkState | null;
   if (!state) {
-    lose();
+    lose(eventGeneration);
     return;
   }
   const prev = last?.state;
@@ -117,42 +123,70 @@ function onState(payload: unknown) {
 
 export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string> {
   events = on;
+  const prepareGeneration = playerGeneration;
+
   device ??= (async () => {
     await loadSdk();
+
+    if (prepareGeneration !== playerGeneration) throw new Error(translate("spotify.playerNotReady"));
+
     const Player = sdkWindow.Spotify?.Player;
     if (!Player) throw new Error(translate("spotify.playerStartFailed"));
     const p = new Player({
       name,
       volume,
       getOAuthToken: (cb) =>
-        void spotifyToken().then(cb, () =>
-          events?.error(translate(ERRORS.authentication_error ?? "spotify.signInRefused")),
+        void spotifyToken().then(
+          (token) => {
+            if (prepareGeneration === playerGeneration && player === p) cb(token);
+          },
+          () => {
+            if (prepareGeneration === playerGeneration && player === p) {
+              events?.error(translate(ERRORS.authentication_error ?? "spotify.signInRefused"));
+            }
+          },
         ),
     });
     player = p;
     const id = await new Promise<string>((resolve, reject) => {
-      const timer = window.setTimeout(() => reject(new Error(translate("spotify.playerAnswerFailed"))), READY_TIMEOUT);
+      rejectDevice = reject;
+      readyTimer = window.setTimeout(() => reject(new Error(translate("spotify.playerAnswerFailed"))), READY_TIMEOUT);
       p.addListener("ready", (payload) => {
-        window.clearTimeout(timer);
+        if (prepareGeneration !== playerGeneration || player !== p) return;
+
+        if (readyTimer !== null) window.clearTimeout(readyTimer);
+        readyTimer = null;
+        rejectDevice = null;
         resolve((payload as { device_id: string }).device_id);
       });
       for (const [event, messageKey] of Object.entries(ERRORS)) {
         p.addListener(event, () => {
+          if (prepareGeneration !== playerGeneration || player !== p) return;
+
           const message = translate(messageKey);
 
-          window.clearTimeout(timer);
+          if (readyTimer !== null) window.clearTimeout(readyTimer);
+          readyTimer = null;
+          rejectDevice = null;
           events?.error(message);
           reject(new Error(message));
         });
       }
-      p.addListener("player_state_changed", onState);
-      p.addListener("not_ready", lose);
+      p.addListener("player_state_changed", (payload) => onState(payload, prepareGeneration));
+      p.addListener("not_ready", () => lose(prepareGeneration));
       void p.connect();
     });
     return id;
   })().catch((e: unknown) => {
-    device = null;
-    player = null;
+    if (prepareGeneration === playerGeneration) {
+      device = null;
+      player = null;
+      rejectDevice = null;
+
+      if (readyTimer !== null) window.clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+
     throw e;
   });
   return device;
@@ -178,6 +212,24 @@ export const spotifyPlayer = {
   stop() {
     current = null;
     void player?.pause();
+  },
+  dispose() {
+    playerGeneration += 1;
+
+    if (readyTimer !== null) window.clearTimeout(readyTimer);
+    readyTimer = null;
+
+    rejectDevice?.(new Error(translate("spotify.playerNotReady")));
+    rejectDevice = null;
+
+    const disposedPlayer = player;
+    player = null;
+    device = null;
+    events = null;
+    current = null;
+    last = null;
+
+    disposedPlayer?.disconnect();
   },
   get playingUri() {
     return current;

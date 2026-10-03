@@ -102,10 +102,17 @@ export function streamUrl(song: Song, q: Quality = quality()): string {
   });
 }
 
-async function sourceFor(item: Q.QueueItem): Promise<string> {
+async function sourceFor(item: Q.QueueItem, sourceGeneration = accountGeneration): Promise<string | null> {
   const cached = resolved.get(item.uid);
   if (cached) return cached;
   const offline = isLocalSong(item.song) ? await offlineSource(item.song.id) : null;
+
+  if (sourceGeneration !== accountGeneration) {
+    if (offline) URL.revokeObjectURL(offline);
+
+    return null;
+  }
+
   const src = offline ?? streamUrl(item.song);
   if (offline) objectUrls.add(offline);
   resolved.set(item.uid, src);
@@ -221,7 +228,7 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   }
   if (backend === "spotify") leaveSpotify();
   const src = await sourceFor(item).catch((error: unknown) => {
-    if (get().items[get().index]?.uid === item.uid)
+    if (loadGeneration === accountGeneration && get().items[get().index]?.uid === item.uid)
       onError(error instanceof Error ? error.message : translate("player.streamFailed"));
 
     return null;
@@ -331,6 +338,8 @@ async function startSpotify(item: Q.QueueItem, startAt: number, loadGeneration: 
 
     spotifyTicker ??= window.setInterval(tickSpotify, SPOTIFY_TICK);
   } catch (e) {
+    if (loadGeneration !== accountGeneration) return;
+
     set({
       playing: false,
       buffering: false,
@@ -391,9 +400,9 @@ function onTime(position: number, duration: number, buffered: number) {
     return;
   if (onSpotify(song)) {
     if (remaining < PRELOAD_AT && !resolved.has(next.uid))
-      void sourceFor(next)
+      void sourceFor(next, accountGeneration)
         .then((src) => {
-          if (!onYouTubeMusic(next.song) || youtubeMusicAllowed) engine?.preload(src);
+          if (src && (!onYouTubeMusic(next.song) || youtubeMusicAllowed)) engine?.preload(src);
         })
         .catch(() => undefined);
     return;
@@ -411,9 +420,13 @@ function onTime(position: number, duration: number, buffered: number) {
     }
   }
   if (remaining < PRELOAD_AT && !resolved.has(next.uid)) {
-    void sourceFor(next)
+    void sourceFor(next, accountGeneration)
       .then((src) => {
-        if ((!onYouTubeMusic(next.song) || youtubeMusicAllowed) && (settings().gapless || crossfadeSeconds() > 0))
+        if (
+          src &&
+          (!onYouTubeMusic(next.song) || youtubeMusicAllowed) &&
+          (settings().gapless || crossfadeSeconds() > 0)
+        )
           engine?.preload(src);
       })
       .catch(() => undefined);
@@ -466,22 +479,33 @@ function onError(message: string) {
 }
 
 async function appendSimilar(): Promise<boolean> {
+  const appendGeneration = accountGeneration;
   const song = current();
   if (!song || !isLocalSong(song)) return false;
   const have = new Set(get().items.map((i) => i.song.id));
   let songs = (await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])).filter((x) => !have.has(x.id));
-  if (songs.length < 5)
+
+  if (appendGeneration !== accountGeneration) return false;
+
+  if (songs.length < 5) {
     songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
+  }
+
+  if (appendGeneration !== accountGeneration) return false;
   if (!songs.length) return false;
+
   set({ items: [...get().items, ...songs.map((x) => Q.makeItem(x))] });
+
   return true;
 }
 
 export async function next() {
+  const nextGeneration = accountGeneration;
   const s = get();
   if (s.station) return;
   let n = Q.nextIndex(s, s.repeat);
   if (n === null && settings().autoplay && (await appendSimilar())) n = get().index + 1;
+  if (nextGeneration !== accountGeneration) return;
   if (n === null) {
     finishListen();
     engine?.pause();
@@ -713,8 +737,11 @@ export function playStation(station: InternetRadioStation) {
   }
 }
 
-async function similarTo(id: string, genre: string | undefined): Promise<Song[]> {
+async function similarTo(id: string, genre: string | undefined, radioGeneration: number): Promise<Song[]> {
   const similar = await sub.similarSongs(id, 60).catch(() => [] as Song[]);
+
+  if (radioGeneration !== accountGeneration) return [];
+
   return similar.length < 5 && genre ? sub.randomSongs(60, genre).catch(() => []) : similar;
 }
 
@@ -724,6 +751,7 @@ async function spotifyRadio(artistId: string): Promise<Song[]> {
 }
 
 export async function startRadio(seed: { song?: Song; artistId?: string; name: string }) {
+  const radioGeneration = accountGeneration;
   const id = seed.song?.id ?? seed.artistId;
   if (!id) return;
   const artistId = seed.artistId ?? seed.song?.artistId;
@@ -743,7 +771,10 @@ export async function startRadio(seed: { song?: Song; artistId?: string; name: s
         ? artistId
           ? await spotifyRadio(artistId)
           : []
-        : await similarTo(id, seed.song?.genre);
+        : await similarTo(id, seed.song?.genre, radioGeneration);
+
+  if (radioGeneration !== accountGeneration) return;
+
   const songs = seed.song ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)] : pool;
   if (songs.length < 2) {
     toast(translate("player.radioNotFound", { name: seed.name }));
@@ -798,6 +829,8 @@ function saveNow() {
       }
     },
     () => {
+      if (saveGeneration !== accountGeneration) return;
+
       dirty = true;
     },
   );
@@ -862,8 +895,12 @@ let resumeCheckedAt = 0;
 
 async function offerResume() {
   if (Date.now() - resumeCheckedAt < RESUME_CHECK_MS) return;
+
+  const resumeGeneration = accountGeneration;
   resumeCheckedAt = Date.now();
   const q = await sub.playQueue().catch(() => null);
+
+  if (resumeGeneration !== accountGeneration) return;
   if (!q?.entry?.length || !q.current) return;
   const index = q.entry.findIndex((e) => e.id === q.current);
   if (index < 0) return;
@@ -907,7 +944,7 @@ export function resetPlayerAccount(): void {
   saveTimer = null;
 
   engine?.stop();
-  spotifyPlayer.stop();
+  spotifyPlayer.dispose();
   stopSpotifyTicker();
   backend = "local";
   loadedUid = null;

@@ -1,1 +1,1 @@
-- Browser sessions no longer expose Navidrome credentials, downloads, queues, provider state or recent searches across different signed-in users, and a late failed request cannot sign out a newer session.
+- Keep credentials, downloads, queues, provider state, pending playback and recent searches isolated between signed-in users, including late requests and Spotify devices.

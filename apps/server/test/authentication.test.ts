@@ -54,7 +54,7 @@ describe("in-memory Navidrome verification", () => {
     expect(upstreamVerification).toHaveBeenCalledTimes(3);
   });
 
-  it("serves valid cached credentials without consuming another attempt", async () => {
+  it("does not charge successful fresh or cached verifications to the failure budget", async () => {
     const upstreamVerification = vi.fn<NavidromeVerificationUpstream["verify"]>(() => Promise.resolve("ok"));
     const verifier = new InMemoryNavidromeVerifier(
       { verify: upstreamVerification },
@@ -69,10 +69,38 @@ describe("in-memory Navidrome verification", () => {
 
     await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("ok");
     await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("ok");
+    upstreamVerification.mockResolvedValue("denied");
     await expect(verifier.verify({ ...validAuth, token: "different" }, { clientAddress: "192.0.2.10" })).resolves.toBe(
+      "denied",
+    );
+    await expect(verifier.verify({ ...validAuth, token: "third" }, { clientAddress: "192.0.2.10" })).resolves.toBe(
       "limited",
     );
-    expect(upstreamVerification).toHaveBeenCalledTimes(1);
+    expect(upstreamVerification).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not charge an unavailable upstream to the failure budget", async () => {
+    const upstreamVerification = vi
+      .fn<NavidromeVerificationUpstream["verify"]>()
+      .mockResolvedValueOnce("down")
+      .mockResolvedValueOnce("down")
+      .mockResolvedValueOnce("denied");
+    const verifier = new InMemoryNavidromeVerifier(
+      { verify: upstreamVerification },
+      {
+        attemptLimit: 1,
+        attemptWindowMs: 1_000,
+        concurrentLimit: 2,
+        entryLimit: 20,
+        now: () => 1_000,
+      },
+    );
+
+    await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("down");
+    await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("down");
+    await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("denied");
+    await expect(verifier.verify(validAuth, { clientAddress: "192.0.2.10" })).resolves.toBe("limited");
+    expect(upstreamVerification).toHaveBeenCalledTimes(3);
   });
 
   it("caps concurrent upstream verification globally", async () => {
@@ -102,6 +130,36 @@ describe("in-memory Navidrome verification", () => {
     resolveFirstVerification?.("denied");
 
     await expect(pendingVerification).resolves.toBe("denied");
+  });
+
+  it("shares one upstream verification between concurrent identical credentials", async () => {
+    let resolveVerification: ((verification: "ok") => void) | undefined;
+    const upstreamResult = new Promise<"ok">((resolveUpstreamVerification) => {
+      resolveVerification = resolveUpstreamVerification;
+    });
+    const upstreamVerification = vi.fn<NavidromeVerificationUpstream["verify"]>(() => upstreamResult);
+    const verifier = new InMemoryNavidromeVerifier(
+      { verify: upstreamVerification },
+      {
+        attemptLimit: 10,
+        attemptWindowMs: 1_000,
+        concurrentLimit: 2,
+        entryLimit: 20,
+        now: () => 1_000,
+      },
+    );
+
+    const firstVerification = verifier.verify(validAuth, { clientAddress: "192.0.2.10" });
+    const secondVerification = verifier.verify(validAuth, { clientAddress: "192.0.2.11" });
+
+    await Promise.resolve();
+
+    expect(upstreamVerification).toHaveBeenCalledOnce();
+
+    resolveVerification?.("ok");
+
+    await expect(firstVerification).resolves.toBe("ok");
+    await expect(secondVerification).resolves.toBe("ok");
   });
 
   it("keeps attempt state bounded and evicts the oldest key", async () => {
@@ -185,6 +243,65 @@ describe("HTTP authentication limiting", () => {
       requestId: limitedResponse.headers.get("x-request-id"),
     });
     expect(upstreamVerificationCount).toBe(NAVIDROME_VERIFICATION_ATTEMPT_LIMIT);
+  });
+
+  it("shares the failed sign-in budget with the Navidrome proxy before reaching the requested upstream route", async () => {
+    const upstreamRequests: string[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const requestUrl = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+
+        upstreamRequests.push(requestUrl.pathname);
+
+        return Promise.resolve(
+          Response.json({
+            "subsonic-response": {
+              status: "failed",
+              version: "1.16.1",
+              error: { code: 40, message: "Wrong username or password" },
+            },
+          }),
+        );
+      }),
+    );
+
+    const app = createApp(
+      loadConfig({
+        navidromeUrl: "http://navidrome.test",
+        dataDir: ":memory:",
+        webDist: "/nonexistent",
+        trustedProxy: false,
+      }),
+      openDatabase(":memory:"),
+    ).app;
+
+    for (let attemptIndex = 0; attemptIndex < NAVIDROME_VERIFICATION_ATTEMPT_LIMIT - 1; attemptIndex += 1) {
+      const apiResponse = await app.request("/api/stats", {
+        headers: { ...validHeaders, "x-needle-token": `api-invalid-${attemptIndex}` },
+      });
+
+      expect(apiResponse.status).toBe(401);
+    }
+
+    const proxyDeniedResponse = await app.request(
+      "/rest/ping.view?u=alex&t=proxy-invalid&s=salt&v=1.16.1&c=security-test&f=json",
+    );
+    const proxyLimitedResponse = await app.request(
+      "/rest/ping.view?u=alex&t=proxy-limited&s=salt&v=1.16.1&c=security-test&f=json",
+    );
+
+    expect(proxyDeniedResponse.status).toBe(200);
+    expect(await proxyDeniedResponse.json()).toMatchObject({
+      "subsonic-response": {
+        status: "failed",
+        error: { code: 40 },
+      },
+    });
+    expect(proxyLimitedResponse.status).toBe(429);
+    expect(upstreamRequests).toHaveLength(NAVIDROME_VERIFICATION_ATTEMPT_LIMIT);
+    expect(upstreamRequests).toEqual(Array(NAVIDROME_VERIFICATION_ATTEMPT_LIMIT).fill("/rest/ping"));
   });
 });
 

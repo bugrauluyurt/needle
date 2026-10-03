@@ -2,6 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Song } from "@needle/shared";
 import type { EngineEvents } from "../src/player/engine.ts";
 
+type PlayQueueFixture = {
+  entry: Song[];
+  current: string;
+  position: number;
+  changed: string;
+  changedBy: string;
+};
+
 const playerMocks = vi.hoisted(() => ({
   events: null as EngineEvents | null,
   load: vi.fn(),
@@ -10,14 +18,24 @@ const playerMocks = vi.hoisted(() => ({
   fading: false,
   scrobble: vi.fn(() => Promise.resolve()),
   savePlayQueue: vi.fn(() => Promise.resolve()),
-  playQueue: vi.fn(() => Promise.resolve(null)),
-  offlineSource: vi.fn(() => Promise.resolve(null)),
+  playQueue: vi.fn<() => Promise<PlayQueueFixture | null>>(() => Promise.resolve(null)),
+  offlineSource: vi.fn<(songId: string) => Promise<string | null>>(() => Promise.resolve(null)),
   subsonicUrl: vi.fn(() => "/subsonic/stream"),
-  similarSongs: vi.fn(() => Promise.resolve([])),
-  radio: vi.fn(() => Promise.resolve([])),
+  similarSongs: vi.fn<(songId: string, limit: number) => Promise<Song[]>>(() => Promise.resolve([])),
+  randomSongs: vi.fn<(limit: number, genre?: string) => Promise<Song[]>>(() => Promise.resolve([])),
+  radio: vi.fn<(videoId: string) => Promise<Song[]>>(() => Promise.resolve([])),
+  artist: vi.fn(() => Promise.resolve({ songs: [] })),
   reportPlay: vi.fn(() => Promise.resolve()),
   storageRemoveItem: vi.fn(),
   storageSetItem: vi.fn(),
+  settings: {
+    wifiQuality: "original",
+    cellularQuality: "original",
+    normalize: "off",
+    crossfade: 0,
+    autoplay: false,
+    gapless: false,
+  },
 }));
 
 vi.mock("../src/player/engine.ts", () => ({
@@ -63,6 +81,7 @@ vi.mock("../src/player/spotify.ts", () => ({
     activate: vi.fn(),
     setVolume: vi.fn(),
     stop: vi.fn(),
+    dispose: vi.fn(),
     pause: vi.fn(),
   },
 }));
@@ -72,7 +91,7 @@ vi.mock("../src/features/spotify/hooks/useSpotify.ts", () => ({
 }));
 
 vi.mock("../src/features/youtube-music/api/client.ts", () => ({
-  ytm: { radio: playerMocks.radio, artist: vi.fn() },
+  ytm: { radio: playerMocks.radio, artist: playerMocks.artist },
 }));
 
 vi.mock("../src/features/spotify/api/client.ts", () => ({
@@ -86,6 +105,7 @@ vi.mock("../src/lib/subsonic.ts", () => ({
     savePlayQueue: playerMocks.savePlayQueue,
     playQueue: playerMocks.playQueue,
     similarSongs: playerMocks.similarSongs,
+    randomSongs: playerMocks.randomSongs,
   },
   subsonicUrl: playerMocks.subsonicUrl,
   coverUrl: () => null,
@@ -100,14 +120,7 @@ vi.mock("../src/offline/store.ts", () => ({
 }));
 
 vi.mock("../src/state/settings.ts", () => ({
-  settings: () => ({
-    wifiQuality: "original",
-    cellularQuality: "original",
-    normalize: "off",
-    crossfade: 0,
-    autoplay: false,
-    gapless: false,
-  }),
+  settings: () => playerMocks.settings,
 }));
 
 vi.mock("../src/lib/device.ts", () => ({
@@ -130,6 +143,7 @@ beforeEach(() => {
   });
   playerMocks.events = null;
   playerMocks.fading = false;
+  playerMocks.settings.autoplay = false;
 
   const storage = {
     getItem: () => null,
@@ -410,5 +424,96 @@ describe("YouTube Music playback boundaries", () => {
 
     expect(playerMocks.radio).toHaveBeenCalledWith(remoteSong.id);
     expect(playerMocks.similarSongs).not.toHaveBeenCalled();
+  });
+
+  it("does not append Alice autoplay results after the account resets", async () => {
+    let resolveSimilarSongs: (songs: Song[]) => void = () => undefined;
+    const similarSongs = new Promise<Song[]>((resolveSongs) => {
+      resolveSimilarSongs = resolveSongs;
+    });
+    playerMocks.settings.autoplay = true;
+    playerMocks.similarSongs.mockReturnValueOnce(similarSongs);
+    const controller = await initializedPlayer();
+    const localSong = { id: "alice-song", title: "Alice song" };
+
+    controller.player.playSongs([localSong]);
+    await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
+
+    const pendingNext = controller.player.next();
+    await Promise.resolve();
+    controller.resetPlayerAccount();
+    resolveSimilarSongs([{ id: "alice-similar", title: "Alice similar" }]);
+    await pendingNext;
+
+    expect(controller.usePlayer.getState().items).toEqual([]);
+    expect(playerMocks.load).toHaveBeenCalledOnce();
+  });
+
+  it("does not start Alice radio after the account resets", async () => {
+    let resolveRadioSongs: (songs: Song[]) => void = () => undefined;
+    const radioSongs = new Promise<Song[]>((resolveSongs) => {
+      resolveRadioSongs = resolveSongs;
+    });
+    playerMocks.radio.mockReturnValueOnce(radioSongs);
+    const controller = await initializedPlayer();
+    controller.allowYouTubeMusic(true);
+    const pendingRadio = controller.player.startRadio({ song: youtubeSong, name: youtubeSong.title });
+
+    await Promise.resolve();
+    controller.resetPlayerAccount();
+    resolveRadioSongs([{ ...youtubeSong, id: "ytm:alice-radio" }]);
+    await pendingRadio;
+
+    expect(controller.usePlayer.getState().items).toEqual([]);
+    expect(playerMocks.load).not.toHaveBeenCalled();
+  });
+
+  it("does not offer Alice queue data after the account resets", async () => {
+    let resolvePlayQueue: (queue: PlayQueueFixture) => void = () => undefined;
+    const playQueue = new Promise<PlayQueueFixture>((resolveQueue) => {
+      resolvePlayQueue = resolveQueue;
+    });
+    playerMocks.playQueue.mockReturnValueOnce(playQueue);
+    const controller = await initializedPlayer();
+
+    await Promise.resolve();
+    controller.resetPlayerAccount();
+    resolvePlayQueue({
+      entry: [{ id: "alice-queue", title: "Alice queue" }],
+      current: "alice-queue",
+      position: 10_000,
+      changed: new Date().toISOString(),
+      changedBy: "Needle Alice device",
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(controller.usePlayer.getState().items).toEqual([]);
+    expect(controller.usePlayer.getState().resume).toBeNull();
+  });
+
+  it("does not reuse an Alice offline source after the account resets", async () => {
+    let resolveAliceSource: (source: string | null) => void = () => undefined;
+    const aliceSource = new Promise<string | null>((resolveSource) => {
+      resolveAliceSource = resolveSource;
+    });
+    playerMocks.offlineSource.mockReturnValueOnce(aliceSource).mockResolvedValueOnce("blob:bob-source");
+    const controller = await initializedPlayer();
+    const { useSession } = await import("../src/state/session.ts");
+    const sharedSong = { id: "shared-song", title: "Shared song" };
+
+    controller.player.playSongs([sharedSong]);
+    await Promise.resolve();
+    controller.resetPlayerAccount();
+    resolveAliceSource("blob:alice-source");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    useSession.setState({ credentials: { user: "bob", token: "bob-token", salt: "bob-salt" } });
+    controller.player.playSongs([sharedSong]);
+    await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
+
+    expect(playerMocks.offlineSource).toHaveBeenCalledTimes(2);
+    expect(playerMocks.load).toHaveBeenCalledWith("blob:bob-source", expect.anything());
   });
 });
