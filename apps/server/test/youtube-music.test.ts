@@ -192,6 +192,28 @@ describe("YouTube Music metadata", () => {
 });
 
 describe("YouTube Music OAuth", () => {
+  it.each([SCOPE, `openid ${SCOPE} email`])("accepts the exact YouTube scope in %s", async (grantedScopes) => {
+    const db = database();
+    seed(db, auth.user, { expiresAt: Date.now() - 1 });
+
+    const youtube = client(() => Promise.resolve({ accountName: "Needle listener" }), db);
+    providerFetch(() => Response.json({ access_token: "refreshed-access", expires_in: 3600, scope: grantedScopes }));
+
+    await expect(youtube.account(auth.user)).resolves.toMatchObject({ name: "Needle listener" });
+    expect(db.prepare("SELECT scope FROM youtube_music_tokens WHERE user = ?").get(auth.user)).toEqual({ scope: grantedScopes });
+  });
+
+  it.each([`${SCOPE}.readonly`, `https://evil.example/?scope=${SCOPE}`, `prefix${SCOPE}`])("rejects a lookalike YouTube scope in %s", async (grantedScopes) => {
+    const db = database();
+    seed(db, auth.user, { expiresAt: Date.now() - 1 });
+
+    const youtube = client(() => Promise.resolve({ accountName: "Needle listener" }), db);
+    providerFetch(() => Response.json({ access_token: "refreshed-access", expires_in: 3600, scope: grantedScopes }));
+
+    await expect(youtube.account(auth.user)).rejects.toMatchObject({ status: 502, message: "Google refused the YouTube Music connection" });
+    expect(db.prepare("SELECT access_token FROM youtube_music_tokens WHERE user = ?").get(auth.user)).toEqual({ access_token: `${auth.user}-access` });
+  });
+
   it("honors polling intervals, slow_down, completion and per-user tokens", async () => {
     vi.useFakeTimers();
     const db = database();

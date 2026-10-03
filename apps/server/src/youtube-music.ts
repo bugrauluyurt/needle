@@ -988,7 +988,7 @@ export class YouTubeMusic {
     const refreshToken = YouTubeMusic.text(value.refresh_token);
     const expiresIn = YouTubeMusic.number(value.expires_in);
     const scope = YouTubeMusic.text(value.scope) ?? SCOPE;
-    if (!accessToken || !refreshToken || !expiresIn || !scope.split(" ").includes(SCOPE)) throw new YouTubeMusicError(502, "Google refused the YouTube Music connection");
+    if (!accessToken || !refreshToken || !expiresIn || !scope.split(" ").some((grantedScope) => grantedScope === SCOPE)) throw new YouTubeMusicError(502, "Google refused the YouTube Music connection");
 
     return { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn, scope };
   }
