@@ -75,3 +75,7 @@ jobs:
       - run: pnpm build
 
       - run: pnpm e2e
+
+      - name: Print container logs after failure
+        if: failure()
+        run: docker compose -f e2e/compose.yml logs
