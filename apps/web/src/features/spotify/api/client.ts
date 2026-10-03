@@ -3,6 +3,7 @@ import { HOUR_MS, MINUTE_MS } from "@needle/shared";
 import { create } from "zustand";
 import { api } from "../../../lib/api.ts";
 import { translate } from "../../../i18n/index.ts";
+import { credentials } from "../../../state/session.ts";
 
 export const SPOTIFY_API = "https://api.spotify.com/v1";
 const MAX_ITEMS = 3000;
@@ -129,100 +130,170 @@ export async function spotifyToken(force = false): Promise<string> {
   return token.accessToken;
 }
 
-const BLOCK_KEY = "needle.spotifyBlockedUntil";
+const LEGACY_BLOCK_KEY = "needle.spotifyBlockedUntil";
+const BLOCK_KEY_PREFIX = "needle.spotifyBlockedUntil.";
 const SHORT_WAIT_S = 5;
 const QUOTA_WAIT_MS = HOUR_MS;
 const DOWN_WAIT_MS = 5 * MINUTE_MS;
 
 export const useSpotifyStatus = create<{ blocked: boolean; until: number }>(() => ({ blocked: false, until: 0 }));
 let unblock: ReturnType<typeof setTimeout> | undefined;
+let activeAccountUser: string | null = null;
 
-export function clearSpotifyClient(): void {
+type SpotifyAccountContext = { accountUser: string | null; generation: number };
+
+export function spotifyCooldownStorageKey(accountUser: string): string {
+  return `${BLOCK_KEY_PREFIX}${encodeURIComponent(accountUser)}`;
+}
+
+function removeStoredCooldown(storageKey: string): void {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    return;
+  }
+}
+
+function storedCooldown(accountUser: string): number {
+  try {
+    return Number(localStorage.getItem(spotifyCooldownStorageKey(accountUser)) ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+function resetSpotifyMemory(): void {
   tokenGeneration++;
   token = null;
   pending = null;
   clearTimeout(unblock);
   unblock = undefined;
   useSpotifyStatus.setState({ blocked: false, until: 0 });
-
-  try {
-    localStorage.removeItem(BLOCK_KEY);
-  } catch {
-    return;
-  }
 }
 
-function blockUntil(until: number) {
+function accountContextIsCurrent(accountContext: SpotifyAccountContext): boolean {
+  return accountContext.generation === tokenGeneration && accountContext.accountUser === activeAccountUser;
+}
+
+function activeAccountContext(): SpotifyAccountContext {
+  const sessionAccountUser = credentials()?.user;
+  if (sessionAccountUser && sessionAccountUser !== activeAccountUser) activateSpotifyAccount(sessionAccountUser);
+
+  return { accountUser: activeAccountUser, generation: tokenGeneration };
+}
+
+export function clearSpotifyClient(): void {
+  resetSpotifyMemory();
+  activeAccountUser = null;
+  removeStoredCooldown(LEGACY_BLOCK_KEY);
+}
+
+export function activateSpotifyAccount(accountUser: string): void {
+  if (activeAccountUser !== accountUser) resetSpotifyMemory();
+
+  activeAccountUser = accountUser;
+  removeStoredCooldown(LEGACY_BLOCK_KEY);
+
+  const accountContext = { accountUser, generation: tokenGeneration };
+  const until = storedCooldown(accountUser);
+  if (Number.isFinite(until) && until > Date.now()) {
+    blockUntil(until, accountContext);
+
+    return;
+  }
+
+  removeStoredCooldown(spotifyCooldownStorageKey(accountUser));
+}
+
+function blockUntil(until: number, accountContext: SpotifyAccountContext) {
+  if (!accountContextIsCurrent(accountContext)) return;
+
   clearTimeout(unblock);
   const ms = until - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) return;
+  if (!Number.isFinite(ms) || ms <= 0) {
+    useSpotifyStatus.setState({ blocked: false, until: 0 });
+    if (accountContext.accountUser) removeStoredCooldown(spotifyCooldownStorageKey(accountContext.accountUser));
+
+    return;
+  }
+
   useSpotifyStatus.setState({ blocked: true, until });
   unblock = setTimeout(
     () => {
+      if (!accountContextIsCurrent(accountContext)) return;
       if (useSpotifyStatus.getState().until !== until) return;
-      if (Date.now() < until) return blockUntil(until);
+      if (Date.now() < until) return blockUntil(until, accountContext);
+
       useSpotifyStatus.setState({ blocked: false, until: 0 });
-      try {
-        localStorage.removeItem(BLOCK_KEY);
-      } catch {
-        return;
-      }
+      if (accountContext.accountUser) removeStoredCooldown(spotifyCooldownStorageKey(accountContext.accountUser));
     },
     Math.min(ms, 2_147_483_647),
   );
 }
 
-function block(ms: number) {
+function block(ms: number, accountContext: SpotifyAccountContext) {
+  if (!accountContextIsCurrent(accountContext)) return;
+
   const until = Math.max(useSpotifyStatus.getState().until, Date.now() + ms);
-  try {
-    localStorage.setItem(BLOCK_KEY, String(until));
-  } catch {
-    return blockUntil(until);
+  if (accountContext.accountUser) {
+    try {
+      localStorage.setItem(spotifyCooldownStorageKey(accountContext.accountUser), String(until));
+    } catch {
+      blockUntil(until, accountContext);
+
+      return;
+    }
   }
-  blockUntil(until);
+
+  blockUntil(until, accountContext);
 }
 
-try {
-  blockUntil(Number(localStorage.getItem(BLOCK_KEY) ?? 0));
-} catch {
-  blockUntil(0);
-}
+removeStoredCooldown(LEGACY_BLOCK_KEY);
+
+const hydratedAccountUser = credentials()?.user;
+if (hydratedAccountUser) activateSpotifyAccount(hydratedAccountUser);
 
 async function req<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
-  const requestGeneration = tokenGeneration;
+  const requestAccount = activeAccountContext();
   if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, translate("spotify.unavailableNow"));
   const url = path.startsWith("http") ? path : `${SPOTIFY_API}${path}`;
   const headers = new Headers(init.headers);
   const bearer = await spotifyToken().catch((e: unknown) => {
-    if (requestGeneration === tokenGeneration) block(DOWN_WAIT_MS);
+    block(DOWN_WAIT_MS, requestAccount);
 
     throw e;
   });
-  if (requestGeneration !== tokenGeneration) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+  if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
 
   if (useSpotifyStatus.getState().blocked) throw new SpotifyApiError(429, translate("spotify.paused"));
   headers.set("authorization", `Bearer ${bearer}`);
   if (init.body) headers.set("content-type", "application/json");
   const res = await fetch(url, { ...init, headers });
-  if (requestGeneration !== tokenGeneration) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+  if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
 
   if (res.status === 401 && retry) {
     await spotifyToken(true);
+    if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
     return req<T>(path, init, false);
   }
   const retryAfter = res.headers.get("retry-after");
   const seconds = retryAfter?.trim() ? Number(retryAfter) : Number.NaN;
   const wait = Number.isFinite(seconds) && seconds >= 0 ? seconds : Number.NaN;
   if (res.status === 429 && retry && wait <= SHORT_WAIT_S) {
-    block(wait * 1000);
+    block(wait * 1000, requestAccount);
     await new Promise((r) => setTimeout(r, wait * 1000));
+    if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
     return req<T>(path, init, false);
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
     } | null;
-    if (res.status === 429) block(Number.isNaN(wait) ? QUOTA_WAIT_MS : wait * 1000);
+    if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
+    if (res.status === 429) block(Number.isNaN(wait) ? QUOTA_WAIT_MS : wait * 1000, requestAccount);
     throw new SpotifyApiError(
       res.status,
       body?.error?.message ?? translate("error.spotifyAnswered", { status: res.status }),

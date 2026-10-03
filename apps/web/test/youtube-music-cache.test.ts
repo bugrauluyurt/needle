@@ -29,6 +29,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
 }));
 
 vi.mock("../src/state/session.ts", () => ({
+  credentials: () => ({ user: mutationHarness.user }),
   useSession: {
     getState: () => ({ credentials: { user: mutationHarness.user } }),
   },

@@ -4,6 +4,7 @@ import { resetPlayerAccount, startPlayer } from "../../player/controller.ts";
 import { queryClient } from "../../queries/client.ts";
 import { prefetchStart } from "../../queries/hooks.ts";
 import { clearSpotifyCache } from "../../features/spotify/hooks/useSpotify.ts";
+import { activateSpotifyAccount } from "../../features/spotify/api/client.ts";
 import { clearYouTubeMusicCache } from "../../features/youtube-music/hooks/useYouTubeMusic.ts";
 import { startRemote, stopRemote } from "../../features/remote/client.ts";
 import { useDetails } from "../../components/songDetailsStore.ts";
@@ -25,6 +26,7 @@ export function useAppRuntime(accountUser: string | null) {
   useEffect(() => {
     if (!accountUser) return;
 
+    activateSpotifyAccount(accountUser);
     prefetchStart(queryClient);
     startPlayer();
     startRemote();

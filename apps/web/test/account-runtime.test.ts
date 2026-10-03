@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const runtimeMocks = vi.hoisted(() => ({
+  activateSpotify: vi.fn(),
   clearQueries: vi.fn(),
   clearSpotify: vi.fn(),
   clearYouTubeMusic: vi.fn(),
@@ -29,6 +30,10 @@ vi.mock("../src/queries/hooks.ts", () => ({ prefetchStart: vi.fn() }));
 
 vi.mock("../src/features/spotify/hooks/useSpotify.ts", () => ({
   clearSpotifyCache: runtimeMocks.clearSpotify,
+}));
+
+vi.mock("../src/features/spotify/api/client.ts", () => ({
+  activateSpotifyAccount: runtimeMocks.activateSpotify,
 }));
 
 vi.mock("../src/features/youtube-music/hooks/useYouTubeMusic.ts", () => ({

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bar, openAlbum, signIn } from "./helpers.ts";
+import { bar, openAlbum, signIn, USER } from "./helpers.ts";
 import { mockSpotify } from "./spotify-mock.ts";
 
 test("shows the Spotify library next to your own", async ({ page }) => {
@@ -346,15 +346,15 @@ test("retains cached Spotify library through a quota error and reload", async ({
 test("resumes search automatically after a persisted cooldown expires", async ({ page }) => {
   await mockSpotify(page);
   await page.clock.install();
-  await page.addInitScript(() => {
-    if (!localStorage.getItem("needle.spotifyBlockedUntil"))
-      localStorage.setItem("needle.spotifyBlockedUntil", String(Date.now() + 60_000));
-  });
   let searches = 0;
   page.on("request", (request) => {
     if (request.url().startsWith("https://api.spotify.com/v1/search")) searches += 1;
   });
-  await signIn(page, "/search?q=glass");
+  await signIn(page);
+  await page.evaluate((accountUser) => {
+    localStorage.setItem(`needle.spotifyBlockedUntil.${encodeURIComponent(accountUser)}`, String(Date.now() + 60_000));
+  }, USER);
+  await page.goto("/search?q=glass");
   await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
   expect(searches).toBe(0);
