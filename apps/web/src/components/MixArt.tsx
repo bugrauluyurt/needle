@@ -1,10 +1,11 @@
 import type { Mix } from "@needle/shared";
 import { player } from "../player/controller.ts";
+import { translate } from "../i18n/index.ts";
 
 export function MixArt({
   mix,
   className,
-  label = "Mix",
+  label = translate("mix.kind"),
 }: {
   mix: Pick<Mix, "name" | "palette">;
   className?: string;
@@ -25,5 +26,10 @@ export function MixArt({
 }
 
 export function playMix(mix: Mix, shuffle = false) {
-  player.playSongs(mix.songs, 0, { kind: "mix", id: mix.id, name: mix.name }, { shuffle });
+  player.playSongs(
+    mix.songs,
+    0,
+    { kind: "mix", id: mix.id, name: mix.name },
+    { shuffle },
+  );
 }

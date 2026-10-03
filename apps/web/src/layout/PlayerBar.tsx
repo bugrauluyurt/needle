@@ -3,6 +3,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import type { Device, Song } from "@needle/shared";
+import { translate } from "../i18n/index.ts";
 import { Art } from "../components/Art.tsx";
 import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
@@ -12,12 +13,17 @@ import { player } from "../player/controller.ts";
 import { locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
-import { usePlayback, useShownProgress } from "../remote/client.ts";
-import { DevicesButton, kindIcon } from "../remote/DevicesButton.tsx";
+import { usePlayback, useShownProgress } from "../features/remote/client.ts";
+import {
+  DevicesButton,
+  kindIcon,
+} from "../features/remote/components/DevicesButton.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
-import { useIsWide } from "./Shell.tsx";
+import { useIsWide } from "../lib/media.ts";
 
-export const LiveLabel = () => <span className="live">Live radio</span>;
+export const LiveLabel = () => (
+  <span className="live">{translate("player.liveRadio")}</span>
+);
 
 export function SeekBar({
   className = "seek",
@@ -27,7 +33,10 @@ export function SeekBar({
   times?: "side" | "below" | "remaining";
 }) {
   const { remote, station, controls } = usePlayback();
-  const position = useShownProgress(remote, (p) => Math.floor(p.position * 4) / 4);
+  const position = useShownProgress(
+    remote,
+    (p) => Math.floor(p.position * 4) / 4,
+  );
   const duration = useShownProgress(remote, (p) => p.duration);
   const buffered = useShownProgress(remote, (p) => Math.floor(p.buffered));
   const [preview, setPreview] = useState<number | null>(null);
@@ -39,9 +48,14 @@ export function SeekBar({
       max={duration}
       buffered={buffered}
       needle
-      label="Seek"
+      label={translate("player.seek")}
       step={5}
-      valueText={(v) => `${clock(v)} of ${clock(duration)}`}
+      valueText={(v) =>
+        translate("player.seekValue", {
+          position: clock(v),
+          duration: clock(duration),
+        })
+      }
       onChange={setPreview}
       onCommit={(v) => {
         setPreview(null);
@@ -65,7 +79,9 @@ export function SeekBar({
       <span className="time">{clock(shown)}</span>
       {slider}
       <span className="time">
-        {times === "remaining" ? `-${clock(Math.max(0, duration - shown))}` : clock(duration)}
+        {times === "remaining"
+          ? `-${clock(Math.max(0, duration - shown))}`
+          : clock(duration)}
       </span>
     </div>
   );
@@ -81,7 +97,12 @@ export function Transport({ big = false }: { big?: boolean }) {
   if (station) {
     return (
       <div className="ctl-btns">
-        <button type="button" className="pp" aria-label={playing ? "Stop" : "Play"} onClick={controls.toggle}>
+        <button
+          type="button"
+          className="pp"
+          aria-label={translate(playing ? "player.stop" : "player.play")}
+          onClick={controls.toggle}
+        >
           <Icon name={playing ? "pause" : "play"} size={big ? 26 : 16} />
         </button>
       </div>
@@ -94,7 +115,9 @@ export function Transport({ big = false }: { big?: boolean }) {
         className="icon-btn"
         data-key="S"
         aria-pressed={shuffle}
-        aria-label={shuffle ? "Turn off shuffle" : "Shuffle"}
+        aria-label={translate(
+          shuffle ? "player.turnOffShuffle" : "player.shuffle",
+        )}
         disabled={empty || Boolean(remote)}
         onClick={() => player.setShuffle(!shuffle)}
       >
@@ -104,7 +127,7 @@ export function Transport({ big = false }: { big?: boolean }) {
         type="button"
         className="icon-btn"
         data-key="Shift ←"
-        aria-label="Previous"
+        aria-label={translate("player.previous")}
         disabled={empty}
         onClick={controls.previous}
       >
@@ -114,7 +137,7 @@ export function Transport({ big = false }: { big?: boolean }) {
         type="button"
         className={`pp ${buffering && playing ? "buffering" : ""}`}
         data-key="Space"
-        aria-label={playing ? "Pause" : "Play"}
+        aria-label={translate(playing ? "player.pause" : "player.play")}
         disabled={empty}
         onClick={controls.toggle}
       >
@@ -124,7 +147,7 @@ export function Transport({ big = false }: { big?: boolean }) {
         type="button"
         className="icon-btn"
         data-key="Shift →"
-        aria-label="Next"
+        aria-label={translate("player.next")}
         disabled={empty}
         onClick={controls.next}
       >
@@ -135,17 +158,21 @@ export function Transport({ big = false }: { big?: boolean }) {
         className="icon-btn"
         data-key="R"
         aria-pressed={repeat !== "off"}
-        aria-label={repeat === "off" ? "Repeat" : repeat === "all" ? "Repeat one" : "Turn off repeat"}
+        aria-label={repeatLabel(repeat)}
         disabled={empty || Boolean(remote)}
         onClick={player.cycleRepeat}
       >
-        <Icon name={repeat === "one" ? "repeatOne" : "repeat"} size={big ? 22 : size} />
+        <Icon
+          name={repeat === "one" ? "repeatOne" : "repeat"}
+          size={big ? 22 : size}
+        />
       </button>
     </div>
   );
 }
 
-const volumeIcon = (volume: number): IconName => (volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume");
+const volumeIcon = (volume: number): IconName =>
+  volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume";
 
 export function Volume() {
   const { volume, controls } = usePlayback();
@@ -154,7 +181,7 @@ export function Volume() {
       <button
         type="button"
         className="icon-btn"
-        aria-label={volume === 0 ? "Unmute" : "Mute"}
+        aria-label={translate(volume === 0 ? "player.unmute" : "player.mute")}
         onClick={controls.toggleMute}
       >
         <Icon name={volumeIcon(volume)} size={18} />
@@ -164,7 +191,7 @@ export function Volume() {
         value={volume}
         max={1}
         step={0.05}
-        label="Volume"
+        label={translate("player.volume")}
         valueText={(v) => `${Math.round(v * 100)}%`}
         onChange={controls.setVolume}
       />
@@ -172,7 +199,13 @@ export function Volume() {
   );
 }
 
-export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: number; className?: string }) {
+export function LikeCurrent({
+  size = 18,
+  className = "icon-btn",
+}: {
+  size?: number;
+  className?: string;
+}) {
   const { song } = usePlayback();
   const likes = useSongLikes();
   if (!song) return null;
@@ -182,7 +215,7 @@ export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: numb
       type="button"
       className={className}
       aria-pressed={on}
-      aria-label={on ? "Remove from liked songs" : "Add to liked songs"}
+      aria-label={translate(on ? "player.removeLiked" : "player.addLiked")}
       onClick={() => likes.setLiked(song, !on)}
     >
       <Icon name={on ? "heartFill" : "heart"} size={size} />
@@ -221,7 +254,11 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
   return (
     <DM.Root modal={false}>
       <DM.Trigger asChild>
-        <button type="button" className="icon-btn" aria-label="More">
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={translate("player.moreOptions")}
+        >
           <Icon name="more" size={18} />
         </button>
       </DM.Trigger>
@@ -238,10 +275,17 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
           }}
         >
           {actions.map((a) => (
-            <DM.Item key={a.label} className="menu-item" disabled={a.disabled} onSelect={() => (picked.current = a)}>
+            <DM.Item
+              key={a.label}
+              className="menu-item"
+              disabled={a.disabled}
+              onSelect={() => (picked.current = a)}
+            >
               <Icon name={a.icon} size={18} />
               <span className="menu-label">{a.label}</span>
-              {a.pressed ? <Icon name="check" size={16} className="menu-end" /> : null}
+              {a.pressed ? (
+                <Icon name="check" size={16} className="menu-end" />
+              ) : null}
             </DM.Item>
           ))}
         </DM.Content>
@@ -256,7 +300,11 @@ function VolumeButton() {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button type="button" className="icon-btn" aria-label="Volume">
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={translate("player.volume")}
+        >
           <Icon name={volumeIcon(volume)} size={18} />
         </button>
       </Popover.Trigger>
@@ -282,12 +330,21 @@ function VolumeButton() {
 function SongTitle({ song, locatable }: { song: Song; locatable: boolean }) {
   if (locatable) {
     return (
-      <button type="button" className="np-locate" aria-label={`Show ${song.title} in the list`} onClick={locatePlaying}>
+      <button
+        type="button"
+        className="np-locate"
+        aria-label={translate("player.showInList", { title: song.title })}
+        onClick={locatePlaying}
+      >
         {song.title}
       </button>
     );
   }
-  return song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : <>{song.title}</>;
+  return song.albumId ? (
+    <Link to={albumPath(song.albumId)}>{song.title}</Link>
+  ) : (
+    <>{song.title}</>
+  );
 }
 
 function RemoteStrip({ remote }: { remote: Device }) {
@@ -296,7 +353,7 @@ function RemoteStrip({ remote }: { remote: Device }) {
       trigger={
         <button type="button" className="remote-strip">
           <Icon name={kindIcon(remote.kind)} size={14} />
-          Playing on {remote.name}
+          {translate("player.playingOn", { device: remote.name })}
         </button>
       }
     />
@@ -322,14 +379,14 @@ function Bar() {
   const wide = useIsWide();
   const fmt = station ? null : formatLabel(song);
   const nowPanel: BarAction = {
-    label: "Now playing panel",
+    label: translate("player.nowPlayingPanel"),
     icon: "album",
     size: 18,
     pressed: panel === "now",
     run: () => toggleRightPanel("now"),
   };
   const queue: BarAction = {
-    label: "Queue",
+    label: translate("player.queue"),
     icon: "queue",
     size: 18,
     keyHint: "Q",
@@ -337,15 +394,16 @@ function Bar() {
     run: () => toggleRightPanel("queue"),
   };
   const lyrics: BarAction = {
-    label: "Lyrics",
+    label: translate("player.lyrics"),
     icon: "mic",
     size: 18,
     keyHint: "Y",
     pressed: pathname === "/lyrics",
-    run: () => void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")),
+    run: () =>
+      void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")),
   };
   const full: BarAction = {
-    label: "Full screen",
+    label: translate("player.fullScreen"),
     icon: "expand",
     size: 17,
     keyHint: "F",
@@ -353,7 +411,7 @@ function Bar() {
     run: () => setFullScreen(true),
   };
   return (
-    <footer className="bar" aria-label="Player">
+    <footer className="bar" aria-label={translate("player.label")}>
       <div className="np">
         {station ? (
           <>
@@ -369,7 +427,12 @@ function Bar() {
           </>
         ) : song ? (
           <>
-            <Link to={song.albumId ? albumPath(song.albumId) : "#"} aria-label={`Go to ${song.album ?? "album"}`}>
+            <Link
+              to={song.albumId ? albumPath(song.albumId) : "#"}
+              aria-label={translate("player.goToAlbum", {
+                album: song.album ?? "album",
+              })}
+            >
               <Art id={song.coverArt} px={56} />
             </Link>
             <div className="np-text">
@@ -377,7 +440,11 @@ function Bar() {
                 <SongTitle song={song} locatable={locatable} />
               </div>
               <div className="np-a">
-                {song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}
+                {song.artistId ? (
+                  <Link to={artistPath(song.artistId)}>{artistName(song)}</Link>
+                ) : (
+                  artistName(song)
+                )}
               </div>
             </div>
             <LikeCurrent />
@@ -388,7 +455,9 @@ function Bar() {
               <Icon name="album" size={24} />
             </div>
             <div className="np-text">
-              <div className="np-t muted">Nothing playing</div>
+              <div className="np-t muted">
+                {translate("player.nothingPlaying")}
+              </div>
             </div>
           </>
         )}
@@ -421,4 +490,15 @@ function Bar() {
       </div>
     </footer>
   );
+}
+
+function repeatLabel(repeat: "off" | "all" | "one"): string {
+  switch (repeat) {
+    case "off":
+      return translate("player.repeat");
+    case "all":
+      return translate("player.repeatOne");
+    case "one":
+      return translate("player.turnOffRepeat");
+  }
 }

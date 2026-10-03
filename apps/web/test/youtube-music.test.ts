@@ -1,11 +1,18 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { ApiError } from "../src/lib/api.ts";
 import type * as ApiModule from "../src/lib/api.ts";
-import { clearYouTubeMusicStatus, ytm, useYouTubeMusicStatus } from "../src/lib/youtube-music.ts";
+import {
+  clearYouTubeMusicStatus,
+  ytm,
+  useYouTubeMusicStatus,
+} from "../src/features/youtube-music/api/client.ts";
 
 const request = vi.hoisted(() => vi.fn());
 
-vi.mock("../src/lib/api.ts", async (importOriginal) => ({ ...(await importOriginal<typeof ApiModule>()), request }));
+vi.mock("../src/lib/api.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof ApiModule>()),
+  request,
+}));
 
 beforeEach(() => {
   clearYouTubeMusicStatus();
@@ -17,15 +24,23 @@ it("normalizes YouTube Music IDs and forwards search cancellation", async () => 
 
   await ytm.album("ytm:MPREb_album");
 
-  expect(request).toHaveBeenLastCalledWith("/youtube-music/albums/MPREb_album", {});
+  expect(request).toHaveBeenLastCalledWith(
+    "/youtube-music/albums/MPREb_album",
+    {},
+  );
 
   const searchController = new AbortController();
 
-  await ytm.search("Neon Harbor", { kind: "songs", limit: 100, signal: searchController.signal });
-
-  expect(request).toHaveBeenLastCalledWith("/youtube-music/search?q=Neon+Harbor&kind=songs&limit=100", {
+  await ytm.search("Neon Harbor", {
+    kind: "songs",
+    limit: 100,
     signal: searchController.signal,
   });
+
+  expect(request).toHaveBeenLastCalledWith(
+    "/youtube-music/search?q=Neon+Harbor&kind=songs&limit=100",
+    { signal: searchController.signal },
+  );
 });
 
 it("pauses metadata requests after a quota response without calling upstream again", async () => {
@@ -35,7 +50,9 @@ it("pauses metadata requests after a quota response without calling upstream aga
 
   expect(useYouTubeMusicStatus.getState().blocked).toBe(true);
 
-  await expect(ytm.search("Neon")).rejects.toThrow("YouTube Music requests are paused");
+  await expect(ytm.search("Neon")).rejects.toThrow(
+    "YouTube Music requests are paused",
+  );
 
   expect(request).toHaveBeenCalledTimes(1);
 });

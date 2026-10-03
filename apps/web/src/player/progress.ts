@@ -19,7 +19,11 @@ export const progress = {
   subscribe,
   set(next: Partial<Progress>) {
     const merged = { ...state, ...next };
-    if (merged.position === state.position && merged.duration === state.duration && merged.buffered === state.buffered)
+    if (
+      merged.position === state.position &&
+      merged.duration === state.duration &&
+      merged.buffered === state.buffered
+    )
       return;
     state = merged;
     for (const l of listeners) l();

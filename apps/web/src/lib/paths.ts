@@ -1,5 +1,5 @@
 import { isYouTubeMusic, youtubeMusicRawId } from "@needle/shared";
-import { isSpotify, rawId } from "./spotify.ts";
+import { isSpotify, rawId } from "../features/spotify/api/client.ts";
 
 export const albumPath = (id: string) =>
   isYouTubeMusic(id)

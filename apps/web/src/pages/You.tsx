@@ -3,18 +3,20 @@ import { Icon } from "../components/Icon.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { isIOS, isStandalone } from "../lib/device.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
-import { usePageTone } from "../layout/Shell.tsx";
+import { usePageTone } from "../layout/pageTone.ts";
 import { AvatarFace } from "../layout/TopBar.tsx";
 import { useSession } from "../state/session.ts";
 import { InstallHint } from "../components/InstallHint.tsx";
 import { useCanRequest } from "../queries/hooks.ts";
+import { translate } from "../i18n/index.ts";
+import type { TranslationKey } from "../i18n/locales/en.ts";
 
-const LINKS: [string, IconName, string, string][] = [
-  ["/stats", "chart", "Your listening", "Hours, top artists and when you listen"],
-  ["/downloads", "download", "Downloads", "Music kept on this phone"],
-  ["/requests", "import", "Requests", "Albums and songs you asked for, with progress"],
-  ["/radio", "radio", "Radio", "Song, artist and internet radio"],
-  ["/settings", "settings", "Settings", "Playback, quality and your server"],
+const LINKS: [string, IconName, TranslationKey, TranslationKey][] = [
+  ["/stats", "chart", "common.yourListening", "you.listeningHint"],
+  ["/downloads", "download", "common.downloads", "you.downloadsHint"],
+  ["/requests", "import", "common.requests", "you.requestsHint"],
+  ["/radio", "radio", "navigation.radio", "you.radioHint"],
+  ["/settings", "settings", "common.settings", "you.settingsHint"],
 ];
 
 export default function YouPage() {
@@ -25,7 +27,7 @@ export default function YouPage() {
   usePageTone(null);
   return (
     <>
-      <MobileHeader title="You" />
+      <MobileHeader title={translate("navigation.you")} />
       <div className="pad you">
         <div className="you-card">
           <span className="avatar big">
@@ -33,26 +35,28 @@ export default function YouPage() {
           </span>
           <div>
             <b>{user}</b>
-            <span>Listening on {device}</span>
+            <span>{translate("you.listeningOn", { device })}</span>
           </div>
         </div>
         {isIOS && !isStandalone ? <InstallHint inline /> : null}
         <ul className="you-links">
-          {LINKS.filter(([to]) => to !== "/requests" || canRequest).map(([to, icon, title, sub]) => (
-            <li key={to}>
-              <Link to={to}>
-                <Icon name={icon} size={22} />
-                <div>
-                  <b>{title}</b>
-                  <span>{sub}</span>
-                </div>
-                <Icon name="forward" size={18} />
-              </Link>
-            </li>
-          ))}
+          {LINKS.filter(([to]) => to !== "/requests" || canRequest).map(
+            ([to, icon, titleKey, subtitleKey]) => (
+              <li key={to}>
+                <Link to={to}>
+                  <Icon name={icon} size={22} />
+                  <div>
+                    <b>{translate(titleKey)}</b>
+                    <span>{translate(subtitleKey)}</span>
+                  </div>
+                  <Icon name="forward" size={18} />
+                </Link>
+              </li>
+            ),
+          )}
         </ul>
         <button type="button" className="btn ghost you-out" onClick={signOut}>
-          Sign out
+          {translate("common.signOut")}
         </button>
       </div>
     </>

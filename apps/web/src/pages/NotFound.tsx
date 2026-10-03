@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { usePageTone } from "../layout/Shell.tsx";
+import { translate } from "../i18n/index.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 
 export default function NotFound() {
@@ -9,11 +10,11 @@ export default function NotFound() {
       <TopBar />
       <div className="empty">
         <div className="empty-in">
-          <h1>There’s nothing at this address</h1>
-          <p>The link may be old, or the page moved.</p>
+          <h1>{translate("empty.addressHeading")}</h1>
+          <p>{translate("empty.addressText")}</p>
           <div className="acts">
             <Link to="/" className="btn primary">
-              Go home
+              {translate("empty.goHome")}
             </Link>
           </div>
         </div>

@@ -1,4 +1,6 @@
-import { sp, spotifyToken } from "../lib/spotify.ts";
+import { sp, spotifyToken } from "../features/spotify/api/client.ts";
+import { translate } from "../i18n/index.ts";
+import type { TranslationKey } from "../i18n/locales/en.ts";
 
 type SdkTrack = { uri: string };
 type SdkState = {
@@ -18,7 +20,11 @@ type SdkPlayer = {
   seek(ms: number): Promise<void>;
   activateElement?(): Promise<void>;
 };
-type SdkOptions = { name: string; getOAuthToken: (cb: (token: string) => void) => void; volume?: number };
+type SdkOptions = {
+  name: string;
+  getOAuthToken: (cb: (token: string) => void) => void;
+  volume?: number;
+};
 
 const sdkWindow = window as Window & {
   Spotify?: { Player: new (options: SdkOptions) => SdkPlayer };
@@ -34,11 +40,11 @@ export type SpotifyEvents = {
 
 const SDK = "https://sdk.scdn.co/spotify-player.js";
 const READY_TIMEOUT = 15_000;
-const ERRORS: Record<string, string> = {
-  initialization_error: "Spotify can’t play in this browser",
-  authentication_error: "Spotify refused the sign-in. Reconnect Spotify in Settings.",
-  account_error: "Playing Spotify in Needle needs Spotify Premium",
-  playback_error: "Spotify couldn’t play that song",
+const ERRORS: Record<string, TranslationKey> = {
+  initialization_error: "spotify.browserPlaybackFailed",
+  authentication_error: "spotify.signInRefused",
+  account_error: "spotify.premiumRequired",
+  playback_error: "player.spotifyFailed",
 };
 
 let sdk: Promise<void> | null = null;
@@ -58,7 +64,7 @@ function loadSdk(): Promise<void> {
     script.async = true;
     script.onerror = () => {
       sdk = null;
-      reject(new Error("Couldn’t load Spotify’s player"));
+      reject(new Error(translate("spotify.playerLoadFailed")));
     };
     document.head.appendChild(script);
   });
@@ -68,13 +74,19 @@ function loadSdk(): Promise<void> {
 function positionMs(): number {
   if (!last) return 0;
   const { state, at } = last;
-  return state.paused ? state.position : state.position + (performance.now() - at);
+  return state.paused
+    ? state.position
+    : state.position + (performance.now() - at);
 }
 
 function lose() {
   if (!current) return;
   current = null;
-  if (last) last = { state: { ...last.state, paused: true, position: positionMs() }, at: performance.now() };
+  if (last)
+    last = {
+      state: { ...last.state, paused: true, position: positionMs() },
+      at: performance.now(),
+    };
   events?.lost();
 }
 
@@ -92,35 +104,55 @@ function onState(payload: unknown) {
     state.paused &&
     state.position === 0 &&
     (state.track_window.previous_tracks.some((t) => t.uri === current) ||
-      (uri === current && prev !== undefined && !prev.paused && prev.position > prev.duration - 3000));
+      (uri === current &&
+        prev !== undefined &&
+        !prev.paused &&
+        prev.position > prev.duration - 3000));
   if (finished) {
     current = null;
     events?.ended();
     return;
   }
-  events?.state({ position: state.position / 1000, duration: state.duration / 1000, paused: state.paused });
+  events?.state({
+    position: state.position / 1000,
+    duration: state.duration / 1000,
+    paused: state.paused,
+  });
 }
 
-export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string> {
+export function prepareSpotify(
+  name: string,
+  on: SpotifyEvents,
+): Promise<string> {
   events = on;
   device ??= (async () => {
     await loadSdk();
     const Player = sdkWindow.Spotify?.Player;
-    if (!Player) throw new Error("Spotify’s player didn’t start");
+    if (!Player) throw new Error(translate("spotify.playerStartFailed"));
     const p = new Player({
       name,
       volume,
-      getOAuthToken: (cb) => void spotifyToken().then(cb, () => events?.error(ERRORS.authentication_error ?? "")),
+      getOAuthToken: (cb) =>
+        void spotifyToken().then(cb, () =>
+          events?.error(
+            translate(ERRORS.authentication_error ?? "spotify.signInRefused"),
+          ),
+        ),
     });
     player = p;
     const id = await new Promise<string>((resolve, reject) => {
-      const timer = window.setTimeout(() => reject(new Error("Spotify’s player didn’t answer")), READY_TIMEOUT);
+      const timer = window.setTimeout(
+        () => reject(new Error(translate("spotify.playerAnswerFailed"))),
+        READY_TIMEOUT,
+      );
       p.addListener("ready", (payload) => {
         window.clearTimeout(timer);
         resolve((payload as { device_id: string }).device_id);
       });
-      for (const [event, message] of Object.entries(ERRORS)) {
+      for (const [event, messageKey] of Object.entries(ERRORS)) {
         p.addListener(event, () => {
+          const message = translate(messageKey);
+
           window.clearTimeout(timer);
           events?.error(message);
           reject(new Error(message));
@@ -144,7 +176,8 @@ export const spotifyPlayer = {
     void player?.activateElement?.();
   },
   async play(uri: string, positionSeconds: number) {
-    const id = await (device ?? Promise.reject(new Error("Spotify isn’t ready")));
+    const id = await (device ??
+      Promise.reject(new Error(translate("spotify.playerNotReady"))));
     current = uri;
     last = null;
     await sp.play(id, [uri], positionSeconds * 1000);

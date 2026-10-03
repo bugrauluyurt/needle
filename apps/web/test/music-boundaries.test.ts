@@ -6,13 +6,20 @@ const { idbPut, subsonicUrl } = vi.hoisted(() => ({
   subsonicUrl: vi.fn(() => "/subsonic/stream"),
 }));
 
-vi.mock("../src/offline/idb.ts", () => ({ idbPut, idbAll: vi.fn(), idbDelete: vi.fn(), idbGet: vi.fn() }));
+vi.mock("../src/offline/idb.ts", () => ({
+  idbPut,
+  idbAll: vi.fn(),
+  idbDelete: vi.fn(),
+  idbGet: vi.fn(),
+}));
 
 vi.mock("../src/lib/subsonic.ts", () => ({ sub: {}, subsonicUrl }));
 
-vi.mock("../src/state/settings.ts", () => ({ settings: () => ({ downloadQuality: "original" }) }));
+vi.mock("../src/state/settings.ts", () => ({
+  settings: () => ({ downloadQuality: "original" }),
+}));
 
-vi.mock("../src/lib/spotify.ts", () => ({
+vi.mock("../src/features/spotify/api/client.ts", () => ({
   isSpotify: (id: string | undefined) => Boolean(id?.startsWith("sp:")),
   rawId: (id: string) => id.replace(/^sp:/, ""),
 }));
@@ -43,9 +50,12 @@ describe("music source boundaries", () => {
       { id: "ytm:video-1", title: "Remote" },
     ];
 
-    await expect(download({ id: "collection", kind: "playlist", name: "Queue", subtitle: "" }, songs)).rejects.toThrow(
-      "Only songs in your library can be downloaded",
-    );
+    await expect(
+      download(
+        { id: "collection", kind: "playlist", name: "Queue", subtitle: "" },
+        songs,
+      ),
+    ).rejects.toThrow("Only songs in your library can be downloaded");
     expect(idbPut).not.toHaveBeenCalled();
     expect(subsonicUrl).not.toHaveBeenCalled();
   });
@@ -54,7 +64,8 @@ describe("music source boundaries", () => {
     const cacheOpen = vi.fn();
     vi.stubGlobal("caches", { open: cacheOpen });
 
-    const { offlineSource, useOffline } = await import("../src/offline/store.ts");
+    const { offlineSource, useOffline } =
+      await import("../src/offline/store.ts");
     useOffline.setState({ songs: new Map([["ytm:video-1", 20]]) });
 
     expect(await offlineSource("ytm:video-1")).toBeNull();

@@ -11,16 +11,24 @@ import { MixArt } from "../components/MixArt.tsx";
 import { sub } from "../lib/subsonic.ts";
 import { hashPalette } from "../lib/palette.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
-import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import { usePlayer } from "../player/store.ts";
 import { keys } from "../queries/keys.ts";
-import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../queries/hooks.ts";
+import {
+  useArtists,
+  useIsAdmin,
+  useRadios,
+  useStarred,
+  useStats,
+} from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
-import { isSpotify, rawId } from "../lib/spotify.ts";
-import { useSpotifyArtistProfile } from "../queries/spotify.ts";
-import { useYouTubeMusicArtistImage } from "../queries/youtube-music.ts";
+import { isSpotify, rawId } from "../features/spotify/api/client.ts";
+import { useSpotifyArtistProfile } from "../features/spotify/hooks/useSpotify.ts";
+import { useYouTubeMusicArtistImage } from "../features/youtube-music/hooks/useYouTubeMusic.ts";
+import { translate } from "../i18n/index.ts";
 
 type StationFields = { name: string; url: string; home: string };
 
@@ -30,42 +38,66 @@ const fieldsOf = (s?: InternetRadioStation): StationFields => ({
   home: s?.homePageUrl ?? "",
 });
 
-function StationForm({ station, onDone }: { station?: InternetRadioStation; onDone: () => void }) {
+function StationForm({
+  station,
+  onDone,
+}: {
+  station?: InternetRadioStation;
+  onDone: () => void;
+}) {
   const qc = useQueryClient();
   const [f, setF] = useState(fieldsOf(station));
-  const set = (k: keyof StationFields) => (e: ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof StationFields) => (e: ChangeEvent<HTMLInputElement>) =>
+    setF({ ...f, [k]: e.target.value });
   const refresh = () => qc.invalidateQueries({ queryKey: keys.radios });
-  const run = async (work: Promise<unknown>, done: string, action?: Parameters<typeof toast>[1]) => {
+  const run = async (
+    work: Promise<unknown>,
+    done: string,
+    action?: Parameters<typeof toast>[1],
+  ) => {
     try {
       await work;
       await refresh();
       toast(done, action);
       onDone();
     } catch {
-      toast("Navidrome didn’t save that. Only admins can change stations.");
+      toast(translate("radio.adminFailed"));
     }
   };
-  const [name, url, home] = [f.name.trim(), f.url.trim(), f.home.trim() || undefined];
+  const [name, url, home] = [
+    f.name.trim(),
+    f.url.trim(),
+    f.home.trim() || undefined,
+  ];
   const submit = (e: FormEvent) => {
     e.preventDefault();
     void run(
-      station ? sub.updateRadio(station.id, name, url, home) : sub.addRadio(name, url, home),
-      station ? `Saved ${name}` : `Added ${name}`,
+      station
+        ? sub.updateRadio(station.id, name, url, home)
+        : sub.addRadio(name, url, home),
+      translate(station ? "radio.savedStation" : "radio.addedStation", {
+        name,
+      }),
     );
   };
   const remove = (s: InternetRadioStation) =>
-    void run(sub.deleteRadio(s.id), `Deleted ${s.name}`, {
-      label: "Undo",
-      run: () => void sub.addRadio(s.name, s.streamUrl, s.homePageUrl).then(refresh),
-    });
+    void run(
+      sub.deleteRadio(s.id),
+      translate("radio.deletedStation", { name: s.name }),
+      {
+        label: translate("radio.undo"),
+        run: () =>
+          void sub.addRadio(s.name, s.streamUrl, s.homePageUrl).then(refresh),
+      },
+    );
   return (
     <form onSubmit={submit}>
       <label className="field">
-        <span>Name</span>
+        <span>{translate("radio.name")}</span>
         <input value={f.name} onChange={set("name")} required autoFocus />
       </label>
       <label className="field">
-        <span>Stream address</span>
+        <span>{translate("radio.stream")}</span>
         <input
           type="url"
           value={f.url}
@@ -75,18 +107,22 @@ function StationForm({ station, onDone }: { station?: InternetRadioStation; onDo
         />
       </label>
       <label className="field">
-        <span>Website (optional)</span>
+        <span>{translate("radio.homepage")}</span>
         <input type="url" value={f.home} onChange={set("home")} />
       </label>
       <div className={station ? "dialog-actions" : "dialog-actions end"}>
         {station ? (
-          <button type="button" className="btn ghost danger" onClick={() => remove(station)}>
+          <button
+            type="button"
+            className="btn ghost danger"
+            onClick={() => remove(station)}
+          >
             <Icon name="trash" size={16} />
-            Delete station
+            {translate("radio.delete")}
           </button>
         ) : null}
         <button type="submit" className="btn light">
-          {station ? "Save" : "Add station"}
+          {translate(station ? "common.save" : "radio.add")}
         </button>
       </div>
     </form>
@@ -109,13 +145,19 @@ function StationDialog({
         <Dialog.Content className="dialog edit" aria-describedby={undefined}>
           <div className="dialog-head">
             <Dialog.Title className="dialog-title small">
-              {station ? "Edit station" : "Add an internet radio station"}
+              {translate(station ? "radio.editHeading" : "radio.addHeading")}
             </Dialog.Title>
-            <Dialog.Close className="icon-btn" aria-label="Close" type="button">
+            <Dialog.Close
+              className="icon-btn"
+              aria-label={translate("common.close")}
+              type="button"
+            >
               <Icon name="close" />
             </Dialog.Close>
           </div>
-          {open ? <StationForm station={station} onDone={() => onOpenChange(false)} /> : null}
+          {open ? (
+            <StationForm station={station} onDone={() => onOpenChange(false)} />
+          ) : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -126,9 +168,13 @@ function AddStation() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="btn ghost sm" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="btn ghost sm"
+        onClick={() => setOpen(true)}
+      >
         <Icon name="plus" size={15} />
-        Add station
+        {translate("radio.add")}
       </button>
       <StationDialog open={open} onOpenChange={setOpen} />
     </>
@@ -150,12 +196,19 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
       <div className="station-text">
         <div className="t">{s.name}</div>
         <div className="s ellipsis">
-          {s.homePageUrl ? s.homePageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") : "Internet radio"}
+          {s.homePageUrl
+            ? s.homePageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")
+            : translate("radio.internet")}
         </div>
       </div>
       {admin ? (
         <>
-          <button type="button" className="icon-btn" aria-label={`Edit ${s.name}`} onClick={() => setEditing(true)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={translate("radio.edit", { name: s.name })}
+            onClick={() => setEditing(true)}
+          >
             <Icon name="pencil" size={16} />
           </button>
           <StationDialog station={s} open={editing} onOpenChange={setEditing} />
@@ -164,7 +217,9 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
       <button
         type="button"
         className="icon-btn"
-        aria-label={on ? `Stop ${s.name}` : `Play ${s.name}`}
+        aria-label={translate(on ? "radio.stopStation" : "radio.playStation", {
+          name: s.name,
+        })}
         onClick={() => (active ? player.toggle() : player.playStation(s))}
       >
         <Icon name={on ? "pause" : "play"} size={18} />
@@ -173,9 +228,19 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
   );
 }
 
-function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
-  const { data } = useSpotifyArtistProfile(isSpotify(id) ? rawId(id) : undefined);
-  const youtubeMusicImage = useYouTubeMusicArtistImage(isYouTubeMusic(id) ? id : "");
+function ArtistArt({
+  id,
+  library,
+}: {
+  id: string;
+  library: Artist[] | undefined;
+}) {
+  const { data } = useSpotifyArtistProfile(
+    isSpotify(id) ? rawId(id) : undefined,
+  );
+  const youtubeMusicImage = useYouTubeMusicArtistImage(
+    isYouTubeMusic(id) ? id : "",
+  );
   const source = isYouTubeMusic(id)
     ? { id: youtubeMusicImage }
     : isSpotify(id)
@@ -196,30 +261,37 @@ export default function RadioPage() {
   const songs = (starred?.song ?? []).slice(0, 3);
   return (
     <>
-      {mobile ? <MobileHeader title="Radio" /> : <TopBar />}
+      {mobile ? <MobileHeader title={translate("radio.title")} /> : <TopBar />}
       <div className="pad">
-        {!mobile ? <h1 className="hello">Radio</h1> : null}
+        {!mobile ? <h1 className="hello">{translate("radio.title")}</h1> : null}
         {artists.length || songs.length ? (
           <>
-            <RowHeader title="Start a radio from something you like" subtitle="Plays songs like it, and keeps going" />
+            <RowHeader
+              title={translate("radio.startHeading")}
+              subtitle={translate("radio.startHint")}
+            />
             <CardRow>
               {artists.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   className="card radio-card"
-                  onClick={() => void player.startRadio({ artistId: a.id, name: a.name })}
+                  onClick={() =>
+                    void player.startRadio({ artistId: a.id, name: a.name })
+                  }
                 >
                   <div className="card-art">
                     <ArtistArt id={a.id} library={library} />
                   </div>
-                  <div className="t">{a.name} radio</div>
+                  <div className="t">
+                    {translate("radio.named", { name: a.name })}
+                  </div>
                   <div className="s">
                     {isYouTubeMusic(a.id)
-                      ? "Plays their YouTube Music songs"
+                      ? "YouTube Music"
                       : isSpotify(a.id)
-                        ? "Shuffles their Spotify albums"
-                        : "Artist radio"}
+                        ? "Spotify"
+                        : translate("radio.artist")}
                   </div>
                 </button>
               ))}
@@ -228,25 +300,27 @@ export default function RadioPage() {
                   key={s.id}
                   type="button"
                   className="card radio-card"
-                  onClick={() => void player.startRadio({ song: s, name: s.title })}
+                  onClick={() =>
+                    void player.startRadio({ song: s, name: s.title })
+                  }
                 >
                   <div className="card-art">
                     <Art id={s.coverArt} px={180} />
                   </div>
-                  <div className="t">{s.title} radio</div>
-                  <div className="s">Song radio</div>
+                  <div className="t">
+                    {translate("radio.named", { name: s.title })}
+                  </div>
+                  <div className="s">{translate("radio.song")}</div>
                 </button>
               ))}
             </CardRow>
           </>
         ) : (
-          <p className="muted radio-hint">
-            Right-click any song and choose Start radio, or use Artist radio on an artist’s page.
-          </p>
+          <p className="muted radio-hint">{translate("radio.hint")}</p>
         )}
         <RowHeader
-          title="Internet radio"
-          subtitle="Stations saved in Navidrome"
+          title={translate("radio.internet")}
+          subtitle={translate("radio.savedStations")}
           action={admin ? <AddStation /> : undefined}
         />
         {stations.length ? (
@@ -256,7 +330,9 @@ export default function RadioPage() {
             ))}
           </div>
         ) : !isLoading ? (
-          <p className="muted">No stations yet.{admin ? " Add one with its stream address." : ""}</p>
+          <p className="muted">
+            {translate(admin ? "radio.noStationsAdmin" : "radio.noStations")}
+          </p>
         ) : null}
       </div>
     </>

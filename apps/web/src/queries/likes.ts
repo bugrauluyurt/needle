@@ -2,8 +2,14 @@ import { useCallback } from "react";
 import type { Song } from "@needle/shared";
 import { songSource } from "@needle/shared";
 import { useStarredIds, useToggleStar } from "./hooks.ts";
-import { useSpotifySaved, useToggleSpotifySave } from "./spotify.ts";
-import { useYouTubeMusicSaved, useToggleYouTubeMusicSave } from "./youtube-music.ts";
+import {
+  useSpotifySaved,
+  useToggleSpotifySave,
+} from "../features/spotify/hooks/useSpotify.ts";
+import {
+  useYouTubeMusicSaved,
+  useToggleYouTubeMusicSave,
+} from "../features/youtube-music/hooks/useYouTubeMusic.ts";
 
 export function useSongLikes() {
   const starred = useStarredIds();

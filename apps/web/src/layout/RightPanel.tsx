@@ -7,28 +7,34 @@ import { Icon } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { SearchField } from "../components/SearchField.tsx";
 import { SourceMark } from "../components/SpotifyMark.tsx";
-import { YouTubeMusicPlaybackError } from "../components/YouTubeMusicPlaybackError.tsx";
-import { isLocalSong, matchesTerms, queryTerms, songSource } from "@needle/shared";
-import { TrackMoreButton } from "../components/TrackMenu.tsx";
+import { YouTubeMusicPlaybackError } from "../features/youtube-music/components/YouTubeMusicPlaybackError.tsx";
+import {
+  isLocalSong,
+  matchesTerms,
+  queryTerms,
+  songSource,
+} from "@needle/shared";
+import { TrackMoreButton } from "../components/tracks/TrackMenu.tsx";
 import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
 import type { QueueItem } from "../player/queue.ts";
 import { userItemsAfter } from "../player/queue.ts";
 import { usePlayer } from "../player/store.ts";
 import { useArtistInfo } from "../queries/hooks.ts";
-import { useArtistImage } from "../queries/spotify.ts";
-import { useYouTubeMusicArtist } from "../queries/youtube-music.ts";
-import { usePlayback } from "../remote/client.ts";
+import { useArtistImage } from "../features/spotify/hooks/useSpotify.ts";
+import { useYouTubeMusicArtist } from "../features/youtube-music/hooks/useYouTubeMusic.ts";
+import { translate } from "../i18n/index.ts";
+import { usePlayback } from "../features/remote/client.ts";
 import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 import { LikeCurrent } from "./PlayerBar.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
 
-const TABS: [Panel, string][] = [
-  ["now", "Now playing"],
-  ["queue", "Queue"],
-  ["lyrics", "Lyrics"],
+const panelTabs = (): [Panel, string][] => [
+  ["now", translate("panel.nowPlaying")],
+  ["queue", translate("panel.queue")],
+  ["lyrics", translate("panel.lyrics")],
 ];
 
 export function QueueRow({
@@ -68,11 +74,13 @@ export function QueueRow({
         type="button"
         className="mini-main"
         onClick={() => !playing && player.playQueueItem(item.uid)}
-        aria-label={`Play ${item.song.title}`}
+        aria-label={translate("panel.playSong", { title: item.song.title })}
       >
         <Art id={item.song.coverArt} px={44} />
         <div className="mini-text">
-          <div className={`t ${playing ? "playing" : ""}`}>{item.song.title}</div>
+          <div className={`t ${playing ? "playing" : ""}`}>
+            {item.song.title}
+          </div>
           <div className="s">
             <SourceMark source={songSource(item.song)} compact />
             {artistName(item.song)}
@@ -84,7 +92,9 @@ export function QueueRow({
           <button
             type="button"
             className="icon-btn mini-x"
-            aria-label={`Remove ${item.song.title} from queue`}
+            aria-label={translate("panel.removeQueue", {
+              title: item.song.title,
+            })}
             onClick={() => player.removeFromQueue(item.uid)}
           >
             <Icon name="close" size={16} />
@@ -111,28 +121,47 @@ export function QueueView() {
   const now = items[index];
   const userCount = userItemsAfter({ items, index, original: null });
   const user = items.slice(index + 1, index + 1 + userCount);
-  const rest = items.slice(index + 1 + userCount, queueQuery.trim() ? undefined : index + 1 + userCount + 60);
+  const rest = items.slice(
+    index + 1 + userCount,
+    queueQuery.trim() ? undefined : index + 1 + userCount + 60,
+  );
   const queueTerms = queryTerms(queueQuery);
   const matchesQueueItem = (queueItem: QueueItem) =>
-    matchesTerms(queueTerms, queueItem.song.title, artistName(queueItem.song), queueItem.song.album);
+    matchesTerms(
+      queueTerms,
+      queueItem.song.title,
+      artistName(queueItem.song),
+      queueItem.song.album,
+    );
   const drop = (target: number) => {
     if (dragging.current) player.moveInQueue(dragging.current, target);
     dragging.current = null;
   };
-  if (!now) return <p className="panel-empty">The queue is empty. Play something and what’s next shows up here.</p>;
+  if (!now)
+    return <p className="panel-empty">{translate("panel.emptyQueue")}</p>;
   return (
     <>
       <div className="queue-search">
-        <SearchField variant="inline" collapsible label="Find in queue" value={queueQuery} onChange={setQueueQuery} />
+        <SearchField
+          variant="inline"
+          collapsible
+          label={translate("panel.findQueue")}
+          value={queueQuery}
+          onChange={setQueueQuery}
+        />
       </div>
-      <h6 className="q-h">Now playing</h6>
+      <h6 className="q-h">{translate("track.nowPlaying")}</h6>
       <QueueRow item={now} playing />
       {user.length ? (
         <>
           <h6 className="q-h">
-            Next in queue
-            <button type="button" className="q-clear" onClick={player.clearUserQueue}>
-              Clear
+            {translate("panel.nextQueue")}
+            <button
+              type="button"
+              className="q-clear"
+              onClick={player.clearUserQueue}
+            >
+              {translate("panel.clear")}
             </button>
           </h6>
           {user.map((it, i) =>
@@ -142,7 +171,10 @@ export function QueueView() {
                 item={it}
                 {...(queueQuery.trim()
                   ? {}
-                  : { onDragStart: () => (dragging.current = it.uid), onDrop: () => drop(index + 1 + i) })}
+                  : {
+                      onDragStart: () => (dragging.current = it.uid),
+                      onDrop: () => drop(index + 1 + i),
+                    })}
               />
             ) : null,
           )}
@@ -150,7 +182,11 @@ export function QueueView() {
       ) : null}
       {rest.length ? (
         <>
-          <h6 className="q-h">Next from {context?.name ?? "your queue"}</h6>
+          <h6 className="q-h">
+            {translate("panel.nextFrom", {
+              source: context?.name ?? translate("panel.yourQueue"),
+            })}
+          </h6>
           {rest.map((it, i) =>
             matchesQueueItem(it) ? (
               <QueueRow
@@ -158,7 +194,10 @@ export function QueueView() {
                 item={it}
                 {...(queueQuery.trim()
                   ? {}
-                  : { onDragStart: () => (dragging.current = it.uid), onDrop: () => drop(index + 1 + userCount + i) })}
+                  : {
+                      onDragStart: () => (dragging.current = it.uid),
+                      onDrop: () => drop(index + 1 + userCount + i),
+                    })}
               />
             ) : null,
           )}
@@ -166,15 +205,15 @@ export function QueueView() {
       ) : null}
       <div className="autoplay">
         <div>
-          <b>Keep playing similar songs</b>
-          <span>When the queue ends, play songs like it from your library</span>
+          <b>{translate("panel.autoplayTitle")}</b>
+          <span>{translate("panel.autoplayHint")}</span>
         </div>
         <button
           type="button"
           className="toggle"
           role="switch"
           aria-checked={autoplay}
-          aria-label="Keep playing similar songs"
+          aria-label={translate("panel.autoplayTitle")}
           onClick={() => setSetting("autoplay", !autoplay)}
         />
       </div>
@@ -184,15 +223,27 @@ export function QueueView() {
 
 function AboutArtist({ song }: { song: Song }) {
   const { data } = useArtistInfo(song.artistId);
-  const youtubeMusicArtist = useYouTubeMusicArtist(songSource(song) === "youtubeMusic" ? (song.artistId ?? "") : "");
-  const cover = useArtistImage(song.artistId, song.artists?.[0]?.name ?? song.artist);
-  const bio = plainBio(youtubeMusicArtist.data?.artist.description ?? data?.biography);
+  const youtubeMusicArtist = useYouTubeMusicArtist(
+    songSource(song) === "youtubeMusic" ? (song.artistId ?? "") : "",
+  );
+  const cover = useArtistImage(
+    song.artistId,
+    song.artists?.[0]?.name ?? song.artist,
+  );
+  const bio = plainBio(
+    youtubeMusicArtist.data?.artist.description ?? data?.biography,
+  );
   if (!song.artistId) return null;
   return (
     <Link to={artistPath(song.artistId)} className="rp-card about-card">
       <div className="about-art">
-        <Art id={cover ?? song.coverArt} px={300} fallback="artist" className={cover ? "" : "blurred"} />
-        <span>About the artist</span>
+        <Art
+          id={cover ?? song.coverArt}
+          px={300}
+          fallback="artist"
+          className={cover ? "" : "blurred"}
+        />
+        <span>{translate("panel.aboutArtist")}</span>
       </div>
       <h6>{artistName(song)}</h6>
       {bio ? <p className="about-bio">{bio}</p> : null}
@@ -204,22 +255,44 @@ function NowView() {
   const { remote, song } = usePlayback();
   const items = usePlayer((s) => s.items);
   const index = usePlayer((s) => s.index);
-  if (!song) return <p className="panel-empty">Nothing is playing. Pick an album or a playlist to start.</p>;
+  if (!song)
+    return <p className="panel-empty">{translate("panel.emptyNow")}</p>;
   const next = remote ? undefined : items[index + 1];
   const rows: [string, string][] = [
-    ["Format", formatLong(song)],
-    ["Bitrate", song.bitRate ? `${count(song.bitRate)} kbps` : ""],
-    ["Played", song.playCount ? `${count(song.playCount)} ${song.playCount === 1 ? "time" : "times"}` : "First time"],
+    [translate("panel.format"), formatLong(song)],
+    [
+      translate("panel.bitrate"),
+      song.bitRate ? `${count(song.bitRate)} kbps` : "",
+    ],
+    [
+      translate("panel.played"),
+      song.playCount
+        ? translate(
+            song.playCount === 1 ? "panel.playedOnce" : "panel.playedMany",
+            { count: count(song.playCount) },
+          )
+        : translate("panel.firstTime"),
+    ],
   ];
   return (
     <>
       <Art id={song.coverArt} px={304} className="rp-art" eager />
       <div className="rp-title">
         <div>
-          <h5>{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</h5>
+          <h5>
+            {song.albumId ? (
+              <Link to={albumPath(song.albumId)}>{song.title}</Link>
+            ) : (
+              song.title
+            )}
+          </h5>
           <p>
             <SourceMark source={songSource(song)} compact />
-            {song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}
+            {song.artistId ? (
+              <Link to={artistPath(song.artistId)}>{artistName(song)}</Link>
+            ) : (
+              artistName(song)
+            )}
           </p>
         </div>
         <TrackMoreButton songs={[song]} />
@@ -229,9 +302,13 @@ function NowView() {
       {next ? (
         <div className="rp-card">
           <h6>
-            Next in queue
-            <button type="button" className="rp-link" onClick={() => useUi.setState({ rightPanel: "queue" })}>
-              Open queue
+            {translate("panel.nextQueue")}
+            <button
+              type="button"
+              className="rp-link"
+              onClick={() => useUi.setState({ rightPanel: "queue" })}
+            >
+              {translate("panel.openQueue")}
             </button>
           </h6>
           <QueueRow item={next} />
@@ -239,7 +316,7 @@ function NowView() {
       ) : null}
       {remote || !isLocalSong(song) ? null : (
         <div className="rp-card">
-          <h6>About the file</h6>
+          <h6>{translate("panel.aboutFile")}</h6>
           <dl className="kv">
             {rows
               .filter(([, v]) => v)
@@ -261,8 +338,20 @@ function usePanelTitle(): string {
   const panel = useUi((s) => s.rightPanel);
   const { remote, song } = usePlayback();
   const contextName = usePlayer((s) => s.context?.name);
-  const nowTitle = remote ? `Playing on ${remote.name}` : (contextName ?? song?.album ?? "Now playing");
-  return panel === "queue" ? "Queue" : panel === "lyrics" ? "Lyrics" : nowTitle;
+  const nowTitle = remote
+    ? translate("player.playingOn", { device: remote.name })
+    : (contextName ?? song?.album ?? translate("panel.nowPlaying"));
+
+  switch (panel) {
+    case "lyrics":
+      return translate("panel.lyrics");
+    case "now":
+      return nowTitle;
+    case "queue":
+      return translate("panel.queue");
+    case null:
+      return nowTitle;
+  }
 }
 
 export function RightPanel() {
@@ -277,14 +366,14 @@ export function RightPanel() {
         <button
           type="button"
           className="icon-btn"
-          aria-label="Close panel"
+          aria-label={translate("panel.close")}
           onClick={() => useUi.setState({ rightPanel: null })}
         >
           <Icon name="close" size={18} />
         </button>
       </div>
       <div className="rp-tabs" role="tablist">
-        {TABS.map(([id, label]) => (
+        {panelTabs().map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -305,7 +394,7 @@ export function RightPanel() {
         ) : song ? (
           <LyricsView song={song} variant="panel" />
         ) : (
-          <p className="panel-empty">Play a song to see its lyrics.</p>
+          <p className="panel-empty">{translate("panel.emptyLyrics")}</p>
         )}
       </div>
     </aside>

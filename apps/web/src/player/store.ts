@@ -4,10 +4,30 @@ import type { InternetRadioStation, Song } from "@needle/shared";
 import type { QueueItem, QueueState, Repeat } from "./queue.ts";
 
 export type ContextKind =
-  "album" | "playlist" | "artist" | "liked" | "mix" | "genre" | "search" | "radio" | "queue" | "downloads";
-export type PlayContext = { kind: ContextKind; id?: string; name: string; ordered?: boolean };
+  | "album"
+  | "playlist"
+  | "artist"
+  | "liked"
+  | "mix"
+  | "genre"
+  | "search"
+  | "radio"
+  | "queue"
+  | "downloads";
+export type PlayContext = {
+  kind: ContextKind;
+  id?: string;
+  name: string;
+  ordered?: boolean;
+};
 
-export type ResumeOffer = { songs: Song[]; index: number; position: number; changedBy: string; changed: string };
+export type ResumeOffer = {
+  songs: Song[];
+  index: number;
+  position: number;
+  changedBy: string;
+  changed: string;
+};
 
 export type PlayerState = QueueState & {
   context: PlayContext | null;
@@ -71,12 +91,17 @@ export const usePlayer = create<PlayerState>()(
   ),
 );
 
-export const current = (s: PlayerState = usePlayer.getState()): Song | null => s.items[s.index]?.song ?? null;
+export const current = (s: PlayerState = usePlayer.getState()): Song | null =>
+  s.items[s.index]?.song ?? null;
 
 export function useCurrentSong(): Song | null {
   return usePlayer((s) => s.items[s.index]?.song ?? null);
 }
 
-export const useLocate = create<{ lists: number; request: number }>(() => ({ lists: 0, request: 0 }));
+export const useLocate = create<{ lists: number; request: number }>(() => ({
+  lists: 0,
+  request: 0,
+}));
 
-export const locatePlaying = () => useLocate.setState((s) => ({ request: s.request + 1 }));
+export const locatePlaying = () =>
+  useLocate.setState((s) => ({ request: s.request + 1 }));

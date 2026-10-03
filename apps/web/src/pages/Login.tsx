@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Logo } from "../components/Icon.tsx";
+import { translate } from "../i18n/index.ts";
 import { makeCredentials, SubsonicError, sub } from "../lib/subsonic.ts";
 import { useSession } from "../state/session.ts";
 
@@ -22,8 +23,8 @@ export function Login() {
     } catch (err) {
       setError(
         err instanceof SubsonicError && err.code === 40
-          ? "That username and password don’t match a Navidrome account."
-          : "Couldn’t reach Navidrome. Check that it’s running and that Needle’s server can reach it.",
+          ? translate("login.badCredentials")
+          : translate("login.failed"),
       );
     } finally {
       setBusy(false);
@@ -42,14 +43,19 @@ export function Login() {
           <Logo size={36} />
           Needle
         </div>
-        <h1>Sign in to your music</h1>
-        <p>Use your Navidrome account.</p>
+        <h1>{translate("login.heading")}</h1>
+        <p>{translate("login.subtitle")}</p>
         <label className="field">
-          <span>Server</span>
-          <input value={location.host} readOnly aria-readonly="true" tabIndex={-1} />
+          <span>{translate("login.server")}</span>
+          <input
+            value={location.host}
+            readOnly
+            aria-readonly="true"
+            tabIndex={-1}
+          />
         </label>
         <label className="field">
-          <span>Username</span>
+          <span>{translate("login.username")}</span>
           <input
             value={user}
             onChange={(e) => setUser(e.target.value)}
@@ -62,13 +68,13 @@ export function Login() {
           />
         </label>
         <label className="field">
-          <span>Password</span>
+          <span>{translate("login.password")}</span>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            placeholder="Your Navidrome password"
+            placeholder={translate("login.passwordHint")}
             required
           />
         </label>
@@ -77,12 +83,14 @@ export function Login() {
             {error}
           </p>
         ) : null}
-        <button type="submit" className="btn primary" disabled={busy || !user || !password}>
-          {busy ? "Signing in…" : "Sign in"}
+        <button
+          type="submit"
+          className="btn primary"
+          disabled={busy || !user || !password}
+        >
+          {busy ? translate("login.busy") : translate("login.submit")}
         </button>
-        <p className="fine">
-          Your password goes to your Navidrome server only; Needle keeps a token, not the password.
-        </p>
+        <p className="fine">{translate("login.privacy")}</p>
       </form>
     </div>
   );

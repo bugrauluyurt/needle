@@ -42,7 +42,10 @@ describe("queue", () => {
   });
 
   it("starts from an empty queue when adding", () => {
-    const q = Q.addToQueue({ items: [], index: -1, original: null }, songs("a"));
+    const q = Q.addToQueue(
+      { items: [], index: -1, original: null },
+      songs("a"),
+    );
     expect(ids(q)).toEqual(["a"]);
     expect(q.index).toBe(0);
   });
@@ -82,7 +85,10 @@ describe("queue", () => {
   it("restores the album order when shuffle turns off, from the current song", () => {
     const q = Q.start(songs("a", "b", "c", "d"), 0, false);
     const on = Q.setShuffle(q, true, seq([0.99, 0.01, 0.5]));
-    const moved = { ...on, index: on.items.findIndex((i) => i.song.id === "c") };
+    const moved = {
+      ...on,
+      index: on.items.findIndex((i) => i.song.id === "c"),
+    };
     const off = Q.setShuffle(moved, false);
     expect(ids(off)).toEqual(["a", "b", "c", "d"]);
     expect(off.items[off.index]?.song.id).toBe("c");
@@ -103,6 +109,8 @@ describe("queue", () => {
     expect(Q.nextIndex(q, "all")).toBe(0);
     expect(Q.previousIndex({ ...q, index: 0 }, "off")).toBeNull();
     expect(Q.previousIndex({ ...q, index: 0 }, "all")).toBe(1);
-    expect(Q.nextIndex({ items: [], index: -1, original: null }, "all")).toBeNull();
+    expect(
+      Q.nextIndex({ items: [], index: -1, original: null }, "all"),
+    ).toBeNull();
   });
 });

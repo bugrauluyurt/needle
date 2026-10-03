@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/lib/spotify.ts", () => ({
+vi.mock("../src/features/spotify/api/client.ts", () => ({
   sp: { play: vi.fn(() => Promise.resolve()) },
   spotifyToken: vi.fn(() => Promise.resolve("token")),
 }));
@@ -48,13 +48,26 @@ const sdkState = (position: number, paused = false) => ({
   paused,
   position,
   duration: 200_000,
-  track_window: { current_track: { uri: "spotify:track:1" }, previous_tracks: [] },
+  track_window: {
+    current_track: { uri: "spotify:track:1" },
+    previous_tracks: [],
+  },
 });
 
 async function playing() {
-  vi.stubGlobal("window", { Spotify: { Player: FakeSdkPlayer }, setTimeout, clearTimeout });
-  const { prepareSpotify, spotifyPlayer } = await import("../src/player/spotify.ts");
-  const events = { state: vi.fn(), ended: vi.fn(), error: vi.fn(), lost: vi.fn() };
+  vi.stubGlobal("window", {
+    Spotify: { Player: FakeSdkPlayer },
+    setTimeout,
+    clearTimeout,
+  });
+  const { prepareSpotify, spotifyPlayer } =
+    await import("../src/player/spotify.ts");
+  const events = {
+    state: vi.fn(),
+    ended: vi.fn(),
+    error: vi.fn(),
+    lost: vi.fn(),
+  };
   await prepareSpotify("Needle test", events);
   await spotifyPlayer.play("spotify:track:1", 0);
   const sdk = FakeSdkPlayer.last as FakeSdkPlayer;

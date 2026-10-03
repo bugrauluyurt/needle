@@ -9,72 +9,99 @@ import { Icon } from "../components/Icon.tsx";
 import { count, hours, plural } from "../lib/format.ts";
 import { hashPalette } from "../lib/palette.ts";
 import { MobileHeader } from "../layout/Mobile.tsx";
-import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { useArtists, useStats } from "../queries/hooks.ts";
 import { albumPath, artistPath } from "../lib/paths.ts";
+import { i18next, translate } from "../i18n/index.ts";
 
-const PERIODS: [Period, string][] = [
-  ["month", "This month"],
-  ["quarter", `Last ${QUARTER_DAYS} days`],
-  ["year", "This year"],
-  ["all", "All time"],
-];
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+const periodOptions = (): [Period, string][] => [
+  ["month", translate("stats.thisMonth")],
+  ["quarter", translate("stats.lastDays", { count: QUARTER_DAYS })],
+  ["year", translate("stats.thisYear")],
+  ["all", translate("stats.allTime")],
 ];
 
 function hourLabel(h: number): string {
-  if (h === 0) return "midnight";
-  if (h === 12) return "noon";
-  return h < 12 ? `${h} am` : `${h - 12} pm`;
+  return new Intl.DateTimeFormat(i18next.resolvedLanguage, {
+    hour: "numeric",
+  }).format(new Date(2020, 0, 1, h));
 }
 
 function when(h: number | null): string | null {
   if (h === null) return null;
-  if (h >= 21 || h < 2) return `most of it after ${hourLabel(h >= 21 ? h : 21)}`;
-  if (h < 6) return "most of it in the small hours";
-  if (h < 12) return "most of it in the morning";
-  if (h < 17) return "most of it in the afternoon";
-  return "most of it in the evening";
+  if (h >= 21 || h < 2)
+    return translate("stats.whenAfter", { time: hourLabel(h >= 21 ? h : 21) });
+  if (h < 6) return translate("stats.whenNight");
+  if (h < 12) return translate("stats.whenMorning");
+  if (h < 17) return translate("stats.whenAfternoon");
+
+  return translate("stats.whenEvening");
 }
 
-function headline(s: Stats, period: Period): { lead: string; accent: string | null } {
+function headline(
+  s: Stats,
+  period: Period,
+): { lead: string; accent: string | null } {
   const now = new Date();
-  const span =
-    period === "month"
-      ? `in ${MONTHS[now.getMonth()]}`
-      : period === "quarter"
-        ? `in the last ${QUARTER_DAYS} days`
-        : period === "year"
-          ? `in ${now.getFullYear()}`
-          : "so far";
-  return { lead: `${hours(s.msPlayed)} of music ${span}`, accent: when(s.peakHour) };
+  const month = new Intl.DateTimeFormat(i18next.resolvedLanguage, {
+    month: "long",
+  }).format(now);
+  const listenedHours = hours(s.msPlayed);
+  let lead: string;
+
+  switch (period) {
+    case "month":
+      lead = translate("stats.leadMonth", { hours: listenedHours, month });
+      break;
+    case "quarter":
+      lead = translate("stats.leadQuarter", {
+        hours: listenedHours,
+        count: QUARTER_DAYS,
+      });
+      break;
+    case "year":
+      lead = translate("stats.leadYear", {
+        hours: listenedHours,
+        year: now.getFullYear(),
+      });
+      break;
+    case "all":
+      lead = translate("stats.leadAll", { hours: listenedHours });
+      break;
+  }
+
+  return { lead, accent: when(s.peakHour) };
 }
 
 function comparison(s: Stats, period: Period): string {
-  const base = `${plural(s.songs, "song")} from ${plural(s.artists, "artist")}.`;
+  const base = translate("stats.comparisonBase", {
+    songs: plural(s.songs, "song"),
+    artists: plural(s.artists, "artist"),
+  });
   if (period === "all" || !s.prevMsPlayed) return base;
   const diffH = Math.round((s.msPlayed - s.prevMsPlayed) / HOUR_MS);
+  const previousMonth = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth() - 1,
+    1,
+  );
   const prev =
     period === "month"
-      ? MONTHS[(new Date().getMonth() + 11) % 12]
+      ? new Intl.DateTimeFormat(i18next.resolvedLanguage, {
+          month: "long",
+        }).format(previousMonth)
       : period === "year"
         ? String(new Date().getFullYear() - 1)
-        : `the ${QUARTER_DAYS} days before`;
-  if (diffH === 0) return `${base} About the same as ${prev}.`;
-  return `${base} That’s ${plural(Math.abs(diffH), "hour")} ${diffH > 0 ? "more" : "less"} than ${prev}.`;
+        : translate("stats.previousQuarter", { count: QUARTER_DAYS });
+  if (diffH === 0)
+    return translate("stats.comparisonSame", { base, previous: prev });
+
+  return translate(
+    diffH > 0 ? "stats.comparisonMore" : "stats.comparisonLess",
+    { base, hours: plural(Math.abs(diffH), "hour"), previous: prev },
+  );
 }
 
 export default function StatsPage() {
@@ -89,11 +116,25 @@ export default function StatsPage() {
   const h = s ? headline(s, period) : null;
   return (
     <>
-      {mobile ? <MobileHeader title="Your listening" /> : <TopBar />}
+      {mobile ? (
+        <MobileHeader title={translate("common.yourListening")} />
+      ) : (
+        <TopBar />
+      )}
       <div className="pad stats">
-        <div className="chips page-chips flush" role="group" aria-label="Period">
-          {PERIODS.map(([p, label]) => (
-            <button key={p} type="button" className="pill" aria-pressed={period === p} onClick={() => setPeriod(p)}>
+        <div
+          className="chips page-chips flush"
+          role="group"
+          aria-label={translate("stats.period")}
+        >
+          {periodOptions().map(([p, label]) => (
+            <button
+              key={p}
+              type="button"
+              className="pill"
+              aria-pressed={period === p}
+              onClick={() => setPeriod(p)}
+            >
               {label}
             </button>
           ))}
@@ -102,8 +143,12 @@ export default function StatsPage() {
           <div className="skeleton title-skel" />
         ) : !s.msPlayed ? (
           <div className="empty-inline">
-            <h1 className="stat-lede">Nothing played yet {period === "all" ? "" : "in this period"}</h1>
-            <p className="muted">Listen for a bit and your hours, top artists and favourite times show up here.</p>
+            <h1 className="stat-lede">
+              {translate("stats.emptyHeading", {
+                period: period === "all" ? "" : translate("stats.inPeriod"),
+              })}
+            </h1>
+            <p className="muted">{translate("stats.empty")}</p>
           </div>
         ) : (
           <>
@@ -121,12 +166,17 @@ export default function StatsPage() {
             <div className="stat-grid">
               <section className="stat-box">
                 <h3>
-                  Top artists <span>Plays</span>
+                  {translate("stats.topArtists")}{" "}
+                  <span>{translate("stats.plays")}</span>
                 </h3>
                 {s.topArtists.map((a, i) => (
                   <Link
                     key={a.id}
-                    to={known(a.id) || musicSource(a.id) !== "library" ? artistPath(a.id) : "/stats"}
+                    to={
+                      known(a.id) || musicSource(a.id) !== "library"
+                        ? artistPath(a.id)
+                        : "/stats"
+                    }
                     className="rank"
                   >
                     <span className="n">{i + 1}</span>
@@ -134,10 +184,16 @@ export default function StatsPage() {
                     <div>
                       <div className="t">
                         {a.name}
-                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
+                        {musicSource(a.id) !== "library" ? (
+                          <SourceMark source={musicSource(a.id)} compact />
+                        ) : null}
                       </div>
                       <div className="bar-in">
-                        <i style={{ width: `${(a.plays / (s.topArtists[0]?.plays ?? 1)) * 100}%` }} />
+                        <i
+                          style={{
+                            width: `${(a.plays / (s.topArtists[0]?.plays ?? 1)) * 100}%`,
+                          }}
+                        />
                       </div>
                     </div>
                     <span className="c">{count(a.plays)}</span>
@@ -146,7 +202,8 @@ export default function StatsPage() {
               </section>
               <section className="stat-box">
                 <h3>
-                  Top albums <span>Plays</span>
+                  {translate("stats.topAlbums")}{" "}
+                  <span>{translate("stats.plays")}</span>
                 </h3>
                 {s.topAlbums.map((a, i) => (
                   <Link key={a.id} to={albumPath(a.id)} className="rank">
@@ -155,10 +212,16 @@ export default function StatsPage() {
                     <div>
                       <div className="t">
                         {a.name}
-                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
+                        {musicSource(a.id) !== "library" ? (
+                          <SourceMark source={musicSource(a.id)} compact />
+                        ) : null}
                       </div>
                       <div className="bar-in">
-                        <i style={{ width: `${(a.plays / (s.topAlbums[0]?.plays ?? 1)) * 100}%` }} />
+                        <i
+                          style={{
+                            width: `${(a.plays / (s.topAlbums[0]?.plays ?? 1)) * 100}%`,
+                          }}
+                        />
                       </div>
                     </div>
                     <span className="c">{count(a.plays)}</span>
@@ -167,41 +230,55 @@ export default function StatsPage() {
               </section>
               <section className="stat-box">
                 <h3>
-                  When you listen <span>By hour of day</span>
+                  {translate("stats.when")}{" "}
+                  <span>{translate("stats.byHour")}</span>
                 </h3>
                 <div
                   className="hours"
                   role="img"
                   aria-label={
-                    s.peakHour !== null ? `You listen most around ${hourLabel(s.peakHour)}` : "Listening by hour"
+                    s.peakHour !== null
+                      ? translate("stats.mostAround", {
+                          time: hourLabel(s.peakHour),
+                        })
+                      : translate("stats.listeningByHour")
                   }
                 >
                   {s.hours.map((ms, i) => (
                     <i
                       key={i}
                       className={ms >= maxHour * 0.75 ? "hot" : ""}
-                      style={{ height: `${Math.max(2, (ms / maxHour) * 130)}px` }}
+                      style={{
+                        height: `${Math.max(2, (ms / maxHour) * 130)}px`,
+                      }}
                       title={`${hourLabel(i)}: ${hours(ms)}`}
                     />
                   ))}
                 </div>
                 <div className="hours-x">
-                  <span>Midnight</span>
-                  <span>6 am</span>
-                  <span>Noon</span>
-                  <span>6 pm</span>
-                  <span>11 pm</span>
+                  <span>{translate("stats.midnight")}</span>
+                  <span>{hourLabel(6)}</span>
+                  <span>{translate("stats.noon")}</span>
+                  <span>{hourLabel(18)}</span>
+                  <span>{hourLabel(23)}</span>
                 </div>
               </section>
               <section className="stat-box">
                 <h3>
-                  Genres <span>Share of listening</span>
+                  {translate("stats.genres")}{" "}
+                  <span>{translate("stats.share")}</span>
                 </h3>
                 <div className="genrebar">
                   {s.genres.map((g) => (
                     <i
                       key={g.name}
-                      style={{ background: g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1], flex: g.share }}
+                      style={{
+                        background:
+                          g.name === "Other"
+                            ? "var(--dim)"
+                            : hashPalette(g.name)[1],
+                        flex: g.share,
+                      }}
                     />
                   ))}
                 </div>
@@ -210,10 +287,15 @@ export default function StatsPage() {
                     <span
                       key={g.name}
                       style={
-                        { "--c": g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1] } as React.CSSProperties
+                        {
+                          "--c":
+                            g.name === "Other"
+                              ? "var(--dim)"
+                              : hashPalette(g.name)[1],
+                        } as React.CSSProperties
                       }
                     >
-                      {g.name}
+                      {g.name === "Other" ? translate("stats.other") : g.name}
                       <em>{Math.round(g.share * 100)}%</em>
                     </span>
                   ))}
@@ -224,7 +306,7 @@ export default function StatsPage() {
         )}
         <p className="help">
           <Icon name="info" size={15} />
-          Counted from every song you play for {MIN_REPORT_MS / 1000} seconds or more, on any device signed in as you.
+          {translate("stats.help", { seconds: MIN_REPORT_MS / 1000 })}
         </p>
       </div>
     </>

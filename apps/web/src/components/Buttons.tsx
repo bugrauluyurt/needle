@@ -1,11 +1,17 @@
 import type { Album, Artist } from "@needle/shared";
 import type { Song } from "@needle/shared";
-import { download, removeDownload, useIsDownloaded, useOffline } from "../offline/store.ts";
+import {
+  download,
+  removeDownload,
+  useIsDownloaded,
+  useOffline,
+} from "../offline/store.ts";
 import type { CollectionKind } from "../offline/store.ts";
 import { useStarredIds, useToggleStar } from "../queries/hooks.ts";
 import { useNavigate } from "react-router";
 import { toast } from "../state/ui.ts";
 import { Icon } from "./Icon.tsx";
+import { translate } from "../i18n/index.ts";
 
 export function LikeButton({
   kind,
@@ -20,17 +26,25 @@ export function LikeButton({
 }) {
   const starred = useStarredIds();
   const star = useToggleStar();
-  const on = kind === "album" ? starred.albums.has(item.id) : starred.artists.has(item.id);
-  const noun = kind === "album" ? "your liked albums" : "your liked artists";
+  const on =
+    kind === "album"
+      ? starred.albums.has(item.id)
+      : starred.artists.has(item.id);
+  const addedKey = kind === "album" ? "like.addedAlbums" : "like.addedArtists";
+  const addKey = kind === "album" ? "like.addAlbums" : "like.addArtists";
+  const removedKey =
+    kind === "album" ? "like.removedAlbums" : "like.removedArtists";
+  const removeKey =
+    kind === "album" ? "like.removeAlbums" : "like.removeArtists";
   return (
     <button
       type="button"
       className={className}
       aria-pressed={on}
-      aria-label={on ? `Remove from ${noun}` : `Add to ${noun}`}
+      aria-label={translate(on ? removeKey : addKey)}
       onClick={() => {
         star.mutate({ kind, item, on: !on });
-        toast(on ? `Removed from ${noun}` : `Added to ${noun}`);
+        toast(translate(on ? removedKey : addedKey));
       }}
     >
       <Icon name={on ? "heartFill" : "heart"} size={size} />
@@ -38,7 +52,13 @@ export function LikeButton({
   );
 }
 
-type DownloadTarget = { id: string; kind: CollectionKind; name: string; subtitle: string; coverArt?: string };
+type DownloadTarget = {
+  id: string;
+  kind: CollectionKind;
+  name: string;
+  subtitle: string;
+  coverArt?: string;
+};
 
 export function DownloadButton({
   target,
@@ -55,12 +75,18 @@ export function DownloadButton({
   const job = useOffline((s) => s.jobs[target.id]);
   if (!supported) return null;
   const pct = job ? Math.round(job.progress * 100) : 0;
-  const label = job ? `Downloading, ${pct}%` : done ? "Remove download" : "Download";
+  const label = job
+    ? translate("download.downloading", { percent: pct })
+    : done
+      ? translate("download.remove")
+      : translate("download.label");
   return (
     <button
       type="button"
       className={`dl-ring ${done && !job ? "on" : ""} ${job ? "busy" : ""}`}
-      style={{ width: size, height: size, "--p": `${pct}%` } as React.CSSProperties}
+      style={
+        { width: size, height: size, "--p": `${pct}%` } as React.CSSProperties
+      }
       aria-label={label}
       title={label}
       disabled={!songs?.length}
@@ -68,11 +94,11 @@ export function DownloadButton({
         if (!songs?.length) return;
         if (done) {
           void removeDownload(target.id);
-          toast(`Removed ${target.name} from this device`);
+          toast(translate("download.removed", { name: target.name }));
         } else {
           void download(target, songs);
-          toast(`Saving ${target.name} on this device for offline listening`, {
-            label: "Downloads",
+          toast(translate("download.saving", { name: target.name }), {
+            label: translate("common.downloads"),
             run: () => void navigate("/downloads"),
           });
         }
