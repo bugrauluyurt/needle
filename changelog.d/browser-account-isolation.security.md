@@ -1,1 +1,0 @@
-- Keep credentials, downloads, queues, provider state, pending playback, cover caches and recent searches isolated between signed-in users, including late requests and Spotify devices.

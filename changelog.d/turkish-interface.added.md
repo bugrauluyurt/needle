@@ -1,1 +1,0 @@
-- Add a Turkish interface that can be selected manually in Settings and stays selected on that device.
