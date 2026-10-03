@@ -3,10 +3,19 @@ import type { QueryClient } from "@tanstack/react-query";
 import type * as QueryModule from "@tanstack/react-query";
 import { beforeEach, expect, it, vi } from "vitest";
 import { queryClient } from "../src/queries/client.ts";
-import { useReorderPlaylist, useToggleStar } from "../src/queries/hooks.ts";
+import {
+  useAddToPlaylist,
+  useCreatePlaylist,
+  useDeletePlaylist,
+  useReorderPlaylist,
+  useToggleStar,
+  useUpdatePlaylist,
+} from "../src/queries/hooks.ts";
 import { keys } from "../src/queries/keys.ts";
 import { resetAccountState } from "../src/state/accountLifecycle.ts";
 import { sub } from "../src/lib/subsonic.ts";
+import { ytm } from "../src/features/youtube-music/api/client.ts";
+import { useToggleYouTubeMusicSave } from "../src/features/youtube-music/hooks/useYouTubeMusic.ts";
 
 const mutationHarness = vi.hoisted(
   (): {
@@ -83,6 +92,10 @@ type ReorderCallbacks = {
     context: AccountMutationContext<PlaylistWithSongs> | undefined,
   ) => void;
 };
+type GuardedMutationCallbacks<Variables> = {
+  mutationFn: (variables: Variables) => Promise<unknown>;
+  onMutate: (variables: Variables) => unknown;
+};
 
 const aliceSong: Song = { id: "alice-song", title: "Alice song" };
 const secondAliceSong: Song = { id: "alice-song-2", title: "Second Alice song" };
@@ -102,6 +115,23 @@ beforeEach(() => {
   queryClient.clear();
   resetAccountState();
 });
+
+async function expectMutationBlockedAfterAccountChange<Variables extends object>(
+  registerMutation: () => void,
+  variables: Variables,
+  expectedMessage = "Account changed",
+): Promise<void> {
+  registerMutation();
+
+  const callbacks = mutationHarness.options as GuardedMutationCallbacks<Variables>;
+
+  await callbacks.onMutate(variables);
+
+  resetAccountState();
+  mutationHarness.user = "Bob";
+
+  await expect(callbacks.mutationFn(variables)).rejects.toThrow(expectedMessage);
+}
 
 it("does not restore Alice's starred library or invalidate Bob's cache after switching accounts", async () => {
   queryClient.setQueryData(keys.starred, { song: [aliceSong] });
@@ -137,6 +167,46 @@ it("does not send Alice's star mutation after the account changes", async () => 
   mutationHarness.user = "Bob";
 
   await expect(callbacks.mutationFn(variables)).rejects.toThrow("Account changed");
+  expect(providerWrite).not.toHaveBeenCalled();
+});
+
+it("does not send Alice's playlist mutations after the account changes", async () => {
+  const createPlaylist = vi.spyOn(sub, "createPlaylist").mockResolvedValue(playlist([]));
+  const updatePlaylist = vi.spyOn(sub, "updatePlaylist").mockResolvedValue(undefined);
+  const deletePlaylist = vi.spyOn(sub, "deletePlaylist").mockResolvedValue(undefined);
+
+  await expectMutationBlockedAfterAccountChange(useCreatePlaylist, { name: "Alice playlist" });
+
+  mutationHarness.user = "Alice";
+  await expectMutationBlockedAfterAccountChange(useAddToPlaylist, {
+    playlistId: "playlist-1",
+    songIds: [aliceSong.id],
+  });
+
+  mutationHarness.user = "Alice";
+  await expectMutationBlockedAfterAccountChange(useUpdatePlaylist, {
+    id: "playlist-1",
+    name: "Renamed playlist",
+  });
+
+  mutationHarness.user = "Alice";
+  await expectMutationBlockedAfterAccountChange(useDeletePlaylist, { id: "playlist-1" });
+
+  expect(createPlaylist).not.toHaveBeenCalled();
+  expect(updatePlaylist).not.toHaveBeenCalled();
+  expect(deletePlaylist).not.toHaveBeenCalled();
+});
+
+it("does not send Alice's YouTube Music mutation after the account changes", async () => {
+  const providerWrite = vi.spyOn(ytm, "like").mockResolvedValue(undefined);
+  const variables = { item: aliceSong, on: true };
+
+  await expectMutationBlockedAfterAccountChange(
+    useToggleYouTubeMusicSave,
+    variables,
+    "YouTube Music connection changed",
+  );
+
   expect(providerWrite).not.toHaveBeenCalled();
 });
 

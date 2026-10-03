@@ -310,7 +310,17 @@ type StarKind = "song" | "album" | "artist";
 type Starred = { song?: Song[]; album?: Album[]; artist?: Artist[] };
 type AccountMutationContext = { accountUser: string; generation: number };
 type StarMutationVariables = { kind: StarKind; item: Song | Album | Artist; on: boolean };
+type CreatePlaylistVariables = { name: string; songIds?: string[] };
+type AddToPlaylistVariables = { playlistId: string; songIds: string[] };
+type UpdatePlaylistVariables = {
+  id: string;
+  name?: string;
+  comment?: string;
+  public?: boolean;
+  removeIndex?: number[];
+};
 type ReorderPlaylistVariables = { id: string; songIds: string[] };
+type DeletePlaylistVariables = { id: string };
 
 function getAccountMutationContext(): AccountMutationContext {
   return {
@@ -324,6 +334,48 @@ function accountMutationIsCurrent(accountContext: AccountMutationContext): boole
     accountContext.accountUser === (useSession.getState().credentials?.user ?? "") &&
     accountContext.generation === getAccountGeneration()
   );
+}
+
+async function accountMutationResult<Variables extends object, Result>(
+  mutationContexts: WeakMap<Variables, AccountMutationContext>,
+  variables: Variables,
+  operation: () => Promise<Result>,
+): Promise<Result> {
+  const accountContext = mutationContexts.get(variables);
+
+  if (!accountContext || !accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+  const result = await operation();
+
+  if (!accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+  return result;
+}
+
+function accountMutationOptions<Variables extends object, Result>(
+  operation: (variables: Variables) => Promise<Result>,
+  onSuccess: (result: Result, variables: Variables) => void,
+) {
+  const mutationContexts = new WeakMap<Variables, AccountMutationContext>();
+
+  return {
+    mutationFn: (variables: Variables) =>
+      accountMutationResult(mutationContexts, variables, () => operation(variables)),
+    onMutate: (variables: Variables) => {
+      const accountContext = getAccountMutationContext();
+
+      mutationContexts.set(variables, accountContext);
+
+      return accountContext;
+    },
+    onSuccess: (result: Result, variables: Variables, accountContext: AccountMutationContext) => {
+      if (!accountMutationIsCurrent(accountContext)) return;
+
+      onSuccess(result, variables);
+    },
+    onSettled: (_data: Result | undefined, _error: Error | null, variables: Variables) =>
+      mutationContexts.delete(variables),
+  };
 }
 
 export function useStarredIds() {
@@ -396,51 +448,59 @@ export function useToggleStar() {
 }
 
 export function useCreatePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ name, songIds }: { name: string; songIds?: string[] }) => {
-      if (songIds?.some((songId) => !navidromeId(songId))) throw new Error(translate("query.localPlaylistOnly"));
+  const client = useQueryClient();
 
-      return sub.createPlaylist(name, songIds);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.playlists }),
-  });
+  return useMutation(
+    accountMutationOptions(
+      (variables: CreatePlaylistVariables) => {
+        const { name, songIds } = variables;
+
+        if (songIds?.some((songId) => !navidromeId(songId))) throw new Error(translate("query.localPlaylistOnly"));
+
+        return sub.createPlaylist(name, songIds);
+      },
+      () => void client.invalidateQueries({ queryKey: keys.playlists }),
+    ),
+  );
 }
 
 export function useAddToPlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ playlistId, songIds }: { playlistId: string; songIds: string[] }) => {
-      if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId)))
-        throw new Error(translate("query.localPlaylistOnly"));
+  const client = useQueryClient();
 
-      return sub.updatePlaylist(playlistId, { add: songIds });
-    },
-    onSuccess: (_d, v) => {
-      void qc.invalidateQueries({ queryKey: keys.playlist(v.playlistId) });
-      void qc.invalidateQueries({ queryKey: keys.playlists });
-    },
-  });
+  return useMutation(
+    accountMutationOptions(
+      (variables: AddToPlaylistVariables) => {
+        const { playlistId, songIds } = variables;
+
+        if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId)))
+          throw new Error(translate("query.localPlaylistOnly"));
+
+        return sub.updatePlaylist(playlistId, { add: songIds });
+      },
+      (_data, variables) => {
+        void client.invalidateQueries({ queryKey: keys.playlist(variables.playlistId) });
+        void client.invalidateQueries({ queryKey: keys.playlists });
+      },
+    ),
+  );
 }
 
 export function useUpdatePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      ...changes
-    }: {
-      id: string;
-      name?: string;
-      comment?: string;
-      public?: boolean;
-      removeIndex?: number[];
-    }) => sub.updatePlaylist(id, changes),
-    onSuccess: (_d, v) => {
-      void qc.invalidateQueries({ queryKey: keys.playlist(v.id) });
-      void qc.invalidateQueries({ queryKey: keys.playlists });
-    },
-  });
+  const client = useQueryClient();
+
+  return useMutation(
+    accountMutationOptions(
+      (variables: UpdatePlaylistVariables) => {
+        const { id, ...changes } = variables;
+
+        return sub.updatePlaylist(id, changes);
+      },
+      (_data, variables) => {
+        void client.invalidateQueries({ queryKey: keys.playlist(variables.id) });
+        void client.invalidateQueries({ queryKey: keys.playlists });
+      },
+    ),
+  );
 }
 
 export function useReorderPlaylist() {
@@ -493,9 +553,12 @@ export function useReorderPlaylist() {
 }
 
 export function useDeletePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => sub.deletePlaylist(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.playlists }),
-  });
+  const client = useQueryClient();
+
+  return useMutation(
+    accountMutationOptions(
+      (variables: DeletePlaylistVariables) => sub.deletePlaylist(variables.id),
+      () => void client.invalidateQueries({ queryKey: keys.playlists }),
+    ),
+  );
 }

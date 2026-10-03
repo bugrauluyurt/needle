@@ -251,12 +251,28 @@ function useLibraryMutation<T extends { id: string }>(
   update: (item: T, on: boolean) => Promise<void>,
 ) {
   const client = useQueryClient();
+  type LibraryMutationVariables = { item: T; on: boolean };
+  type LibraryMutationContext = { generation: number; user: string };
+  const mutationContexts = new WeakMap<LibraryMutationVariables, LibraryMutationContext>();
 
   return useMutation({
-    mutationFn: ({ item, on }: { item: T; on: boolean }) => update(item, on),
-    onMutate: async ({ item, on }) => {
+    mutationFn: async (variables: LibraryMutationVariables) => {
+      const mutationContext = mutationContexts.get(variables);
+
+      if (!mutationContext || mutationContext.generation !== cacheGeneration || mutationContext.user !== currentUser())
+        throw new Error(translate("youtube.connectionChanged"));
+
+      await update(variables.item, variables.on);
+
+      if (mutationContext.generation !== cacheGeneration || mutationContext.user !== currentUser())
+        throw new Error(translate("youtube.connectionChanged"));
+    },
+    onMutate: async (variables) => {
       const generation = cacheGeneration;
       const user = currentUser();
+      const { item, on } = variables;
+
+      mutationContexts.set(variables, { generation, user });
 
       await client.cancelQueries({ queryKey });
 
@@ -311,6 +327,7 @@ function useLibraryMutation<T extends { id: string }>(
         useYouTubeMusicStatus.getState().blocked ? translate("youtube.requestPaused") : translate("youtube.saveFailed"),
       );
     },
+    onSettled: (_data, _error, variables) => mutationContexts.delete(variables),
   });
 }
 

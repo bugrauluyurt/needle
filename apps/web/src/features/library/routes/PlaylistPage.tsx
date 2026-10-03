@@ -98,13 +98,16 @@ function EditForm({ playlist, onDone }: { playlist: PlaylistWithSongs; onDone: (
           type="button"
           className="btn ghost danger"
           onClick={() =>
-            remove.mutate(playlist.id, {
-              onSuccess: () => {
-                onDone();
-                toast(translate("playlist.deleted", { name: playlist.name }));
-                void navigate("/library");
+            remove.mutate(
+              { id: playlist.id },
+              {
+                onSuccess: () => {
+                  onDone();
+                  toast(translate("playlist.deleted", { name: playlist.name }));
+                  void navigate("/library");
+                },
               },
-            })
+            )
           }
         >
           <Icon name="trash" size={16} />
