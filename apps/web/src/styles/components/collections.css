@@ -1,0 +1,223 @@
+/* hero */
+.hero {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 20px 28px 26px;
+}
+
+.hero-art > .art {
+  width: 232px;
+  border-radius: 8px;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65);
+}
+
+.hero-text {
+  min-width: 0;
+  flex: 1;
+  container-type: inline-size;
+}
+
+.hero .kind {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: min(var(--title, 96px), 17cqi);
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  margin: 8px 0 16px;
+  font-variation-settings: "opsz" 96;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.hero .desc {
+  color: rgba(243, 239, 232, 0.75);
+  font-size: 14.5px;
+  margin: -6px 0 12px;
+  max-width: 60ch;
+}
+
+.hero .meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 14px;
+  color: rgba(243, 239, 232, 0.8);
+}
+
+.hero .meta b,
+.meta-artist {
+  color: var(--label);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-artist:hover {
+  text-decoration: underline;
+}
+
+.hero .meta .art {
+  width: 24px;
+  height: 24px;
+  box-shadow: none;
+}
+
+.meta-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fmt.on-hero {
+  color: var(--label);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.actbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 28px;
+}
+
+.icon-btn.big {
+  width: 40px;
+  height: 40px;
+  color: var(--sleeve);
+  background: none;
+}
+
+.icon-btn.big:hover {
+  color: var(--label);
+  background: none;
+  transform: scale(1.06);
+}
+
+.icon-btn.big[aria-pressed="true"] {
+  color: var(--amber);
+}
+
+.act-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--sleeve);
+  font-size: 13.5px;
+}
+
+.coll-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  margin-left: auto;
+}
+
+.coll-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  color: var(--sleeve);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+
+.coll-sort:hover,
+.coll-sort[data-state="open"] {
+  color: var(--label);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.collection .row-h {
+  align-items: center;
+}
+
+.dl-ring {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 2px var(--sleeve);
+  color: var(--sleeve);
+  flex: none;
+  transition: transform 0.15s;
+}
+
+.dl-ring:hover {
+  color: var(--label);
+  box-shadow: inset 0 0 0 2px var(--label);
+  transform: scale(1.06);
+}
+
+.dl-ring.on {
+  box-shadow: none;
+  background: var(--amber);
+  color: var(--on-amber);
+}
+
+.dl-ring.busy {
+  box-shadow: none;
+  background: conic-gradient(var(--amber) var(--p), var(--ridge) 0);
+  color: var(--label);
+  position: relative;
+}
+
+.dl-ring.busy::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--deck);
+}
+
+.dl-ring.busy svg {
+  position: relative;
+}
+
+.page-chips {
+  padding: 0 28px 14px;
+}
+
+.page-chips.flush {
+  padding: 0 0 8px;
+}
+
+.disc-h {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sleeve);
+  padding: 16px 32px 6px;
+}
+
+.album-foot {
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.empty-inline {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.empty-inline h2 {
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}

@@ -1,0 +1,125 @@
+@property --tone {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #3a2a5a;
+}
+
+/* art */
+.art {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--groove);
+  aspect-ratio: 1;
+  flex: none;
+}
+
+.art.round {
+  border-radius: 50%;
+}
+
+.art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.art.loaded img,
+.get-art img {
+  opacity: 1;
+}
+
+.art-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+  background: linear-gradient(135deg, var(--groove), var(--ridge));
+}
+
+.art-record {
+  width: 100%;
+  height: 100%;
+}
+
+.art-record .groove {
+  fill: none;
+  stroke: rgba(243, 239, 232, 0.09);
+  stroke-width: 0.7;
+}
+
+.art-record .sheen {
+  fill: none;
+  stroke: rgba(243, 239, 232, 0.22);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.art.collage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.art.collage .art {
+  border-radius: 0;
+}
+
+.liked-art {
+  position: relative;
+  background: linear-gradient(135deg, #f6b23c, #e0457b 60%, #5b2a86);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.lib-item .liked-art svg,
+.q .liked-art svg,
+.plib-row .liked-art svg,
+.dl-row .liked-art svg {
+  width: 45%;
+  height: 45%;
+}
+
+.mix-art {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 12px 10px;
+  color: #fff;
+  container-type: inline-size;
+}
+
+.mix-art small {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  position: relative;
+}
+
+.mix-art b {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(13px, 15.5cqi, 25px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow-wrap: break-word;
+}
+
+.mix-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 70% 20%,
+    rgba(255, 255, 255, 0.08),
+    transparent 60%
+  );
+  pointer-events: none;
+}

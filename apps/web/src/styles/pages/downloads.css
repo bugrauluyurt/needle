@@ -1,0 +1,74 @@
+.downloads .dl-sum,
+.dl-sum {
+  background: var(--groove);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  display: grid;
+  gap: 4px;
+  max-width: 720px;
+}
+
+.dl-sum b {
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.dl-sum span {
+  color: var(--sleeve);
+  font-size: 13px;
+}
+
+.dl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  max-width: 720px;
+}
+
+.dl-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dl-row .art {
+  width: 56px;
+}
+
+.dl-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dl-row .t {
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dl-row .s {
+  color: var(--sleeve);
+  font-size: 12.5px;
+  margin-top: 3px;
+}
+
+.dl-row .line {
+  height: 3px;
+  margin-top: 8px;
+}
+
+.dl-row .line > i {
+  background: var(--amber);
+}
+
+.downloads .set-row {
+  max-width: 720px;
+}
