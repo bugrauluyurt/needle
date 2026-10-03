@@ -504,6 +504,9 @@ nothing to set up. Choose qualities in Needle's Settings.
   and remote-device connections. Use strong passwords.
 - Don't expose Needle to the internet without HTTPS. A private network such as
   Tailscale is the simplest safe setup.
+- Needle sends a restrictive content security policy, frame denial, MIME-sniffing
+  protection, a strict referrer policy, HSTS and camera, location and microphone
+  restrictions.
 - The browser keeps the replayable Navidrome token only for the current tab session
   and clears account-specific queues, provider caches and offline state on sign-out
   or account change. Client-side tokens remain readable to code running on Needle's

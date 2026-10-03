@@ -78,6 +78,9 @@ e2e/            Playwright, test Navidrome and external integration mocks
   bounded globally and rate limited by client address plus user after repeated denial.
 - Every HTTP response receives `x-request-id`. Failures use
   `{ error, code, requestId, issues? }`; unexpected errors are logged with the same id.
+- Every route receives a content security policy, frame denial, HSTS, MIME-sniffing
+  protection, a strict referrer policy and a restrictive permissions policy. The CSP
+  allows the same-origin app and media plus the configured Spotify browser SDK hosts.
 - `/api/devices` uses Hono's WebSocket upgrade. Query credentials are validated
   before upgrading, messages use shared Zod schemas, transfers allow at most 300
   songs, and invalid messages close with code 1008.
@@ -116,7 +119,7 @@ allowed; the server refuses it anyway with 403.
 | `needle.pre-migrations.db`        | One-time integrity-checked copy made before adopting versioned migrations for an existing populated database                                                                         |
 | Navidrome                         | The library, users, playlists, likes and the play queue each device syncs                                                                                                            |
 | Browser sessionStorage            | Replayable Navidrome credentials for the current tab session only                                                                                                                    |
-| Browser localStorage              | Device identity, UI state, account-namespaced queues, recent searches and provider caches, plus `needle.settings`, including the manually selected language                          |
+| Browser localStorage              | Device identity, UI state, account-namespaced recent searches and provider caches, plus `needle.settings`; persisted queue data is cleared before another account starts             |
 | Browser Cache Storage + IndexedDB | Offline downloads namespaced by Navidrome user, plus service-worker caches for the app shell and cover art                                                                           |
 
 Database migrations run under `BEGIN IMMEDIATE`. Startup rejects unknown migration
