@@ -1,92 +1,211 @@
+import {
+  ClientMessageSchema,
+  REPLACED_CLOSE_CODE,
+  type ClientMessage,
+  type Device,
+  type ServerMessage,
+} from "@needle/shared";
 import type { WebSocket } from "ws";
-import { REPLACED_CLOSE_CODE } from "@needle/shared";
-import type { ClientMessage, Device, ServerMessage } from "@needle/shared";
 
-type Conn = { socket: WebSocket; user: string; device: Device | null };
-
+const INVALID_MESSAGE_CLOSE_CODE = 1008;
+const INVALID_MESSAGE_REASON = "invalid message";
 const STALE_MS = 45_000;
 
-export class DeviceHub {
-  private readonly conns = new Set<Conn>();
-  private readonly active = new Map<string, string>();
+type AttachOptions = {
+  managesEvents?: boolean;
+};
 
-  attach(socket: WebSocket, user: string) {
-    const conn: Conn = { socket, user, device: null };
-    this.conns.add(conn);
-    socket.on("message", (raw) =>
-      this.onMessage(
-        conn,
-        Array.isArray(raw) ? Buffer.concat(raw).toString() : Buffer.from(raw as ArrayBuffer).toString(),
-      ),
-    );
-    socket.on("close", () => {
-      this.conns.delete(conn);
-      const id = conn.device?.id;
-      if (id && this.active.get(user) === id && !this.find(user, id)) this.active.delete(user);
-      this.broadcast(user);
-    });
-    socket.on("pong", () => {
-      if (conn.device) conn.device.lastSeen = Date.now();
-    });
+export type DeviceConnection = {
+  socket: WebSocket;
+  user: string;
+  device: Device | null;
+};
+
+export class DeviceHub {
+  attach(socket: WebSocket, user: string, { managesEvents = true }: AttachOptions = {}): DeviceConnection {
+    const connection: DeviceConnection = { socket, user, device: null };
+
+    this.connections.add(connection);
+
+    if (managesEvents) {
+      socket.on("message", (message) => this.receive(connection, message));
+      socket.on("close", () => this.detach(connection));
+    }
+
+    socket.on("pong", () => this.markSeen(connection));
+
+    return connection;
   }
 
-  private onMessage(conn: Conn, raw: string) {
-    let msg: ClientMessage;
-    try {
-      msg = JSON.parse(raw) as ClientMessage;
-    } catch {
+  receive(connection: DeviceConnection, rawMessage: unknown) {
+    const message = DeviceHub.getClientMessage(rawMessage);
+
+    if (!message) {
+      connection.socket.close(INVALID_MESSAGE_CLOSE_CODE, INVALID_MESSAGE_REASON);
+
       return;
     }
-    if (msg.type === "hello") {
-      conn.device = { ...msg.device, lastSeen: Date.now(), state: null };
-      for (const other of this.conns) {
-        if (other !== conn && other.user === conn.user && other.device?.id === msg.device.id)
-          other.socket.close(REPLACED_CLOSE_CODE, "replaced");
-      }
-      this.broadcast(conn.user);
-    } else if (msg.type === "state" && conn.device) {
-      const { id } = conn.device;
-      const wasPlaying = this.active.get(conn.user) === id && Boolean(conn.device.state?.playing);
-      conn.device.state = msg.state;
-      conn.device.lastSeen = Date.now();
-      if (msg.state?.playing && !wasPlaying) this.takeOver(conn.user, id);
-      this.broadcast(conn.user);
-    } else if (msg.type === "command" && conn.device) {
-      this.send(this.find(conn.user, msg.to), { type: "command", from: conn.device.id, command: msg.command });
+
+    switch (message.type) {
+      case "hello":
+        this.hello(connection, message);
+        break;
+      case "state":
+        this.updateState(connection, message);
+        break;
+      case "command":
+        this.forwardCommand(connection, message);
+        break;
+      default:
+        message satisfies never;
     }
   }
 
-  private find(user: string, id: string): Conn | undefined {
-    return [...this.conns].find((c) => c.user === user && c.device?.id === id);
-  }
+  detach(connection: DeviceConnection) {
+    this.connections.delete(connection);
 
-  private takeOver(user: string, id: string) {
-    this.active.set(user, id);
-    for (const c of this.conns) {
-      if (c.user === user && c.device && c.device.id !== id && c.device.state?.playing)
-        this.send(c, { type: "command", from: id, command: { action: "pause" } });
+    const deviceId = connection.device?.id;
+
+    if (deviceId && this.activeDevices.get(connection.user) === deviceId && !this.find(connection.user, deviceId)) {
+      this.activeDevices.delete(connection.user);
     }
+
+    this.broadcast(connection.user);
   }
 
-  private send(conn: Conn | undefined, msg: ServerMessage) {
-    if (conn?.socket.readyState === conn?.socket.OPEN) conn?.socket.send(JSON.stringify(msg));
+  markSeen(connection: DeviceConnection) {
+    if (connection.device) connection.device.lastSeen = Date.now();
   }
 
   devices(user: string): Device[] {
-    return [...this.conns].filter((c) => c.user === user && c.device).map((c) => c.device as Device);
-  }
-
-  private broadcast(user: string) {
-    const devices = this.devices(user);
-    const activeId = this.active.get(user) ?? null;
-    for (const c of this.conns) if (c.user === user) this.send(c, { type: "devices", devices, activeId });
+    return [...this.connections].flatMap((connection) =>
+      connection.user === user && connection.device ? [connection.device] : [],
+    );
   }
 
   heartbeat() {
     const now = Date.now();
-    for (const c of this.conns) {
-      if (c.device && now - c.device.lastSeen > STALE_MS) c.socket.terminate();
-      else c.socket.ping();
+
+    for (const connection of this.connections) {
+      if (connection.device && now - connection.device.lastSeen > STALE_MS) connection.socket.terminate();
+      else connection.socket.ping();
     }
   }
+
+  private hello(connection: DeviceConnection, message: Extract<ClientMessage, { type: "hello" }>) {
+    connection.device = {
+      ...message.device,
+      lastSeen: Date.now(),
+      state: null,
+    };
+
+    for (const otherConnection of this.connections) {
+      if (
+        otherConnection !== connection &&
+        otherConnection.user === connection.user &&
+        otherConnection.device?.id === message.device.id
+      ) {
+        otherConnection.socket.close(REPLACED_CLOSE_CODE, "replaced");
+      }
+    }
+
+    this.broadcast(connection.user);
+  }
+
+  private updateState(connection: DeviceConnection, message: Extract<ClientMessage, { type: "state" }>) {
+    if (!connection.device) return;
+
+    const deviceId = connection.device.id;
+    const wasPlaying =
+      this.activeDevices.get(connection.user) === deviceId && Boolean(connection.device.state?.playing);
+
+    connection.device.state = message.state;
+    connection.device.lastSeen = Date.now();
+
+    if (message.state?.playing && !wasPlaying) this.takeOver(connection.user, deviceId);
+
+    this.broadcast(connection.user);
+  }
+
+  private forwardCommand(connection: DeviceConnection, message: Extract<ClientMessage, { type: "command" }>) {
+    if (!connection.device) return;
+
+    this.send(this.find(connection.user, message.to), {
+      type: "command",
+      from: connection.device.id,
+      command: message.command,
+    });
+  }
+
+  private find(user: string, deviceId: string): DeviceConnection | undefined {
+    return [...this.connections].find((connection) => connection.user === user && connection.device?.id === deviceId);
+  }
+
+  private takeOver(user: string, deviceId: string) {
+    this.activeDevices.set(user, deviceId);
+
+    for (const connection of this.connections) {
+      if (
+        connection.user === user &&
+        connection.device &&
+        connection.device.id !== deviceId &&
+        connection.device.state?.playing
+      ) {
+        this.send(connection, {
+          type: "command",
+          from: deviceId,
+          command: { action: "pause" },
+        });
+      }
+    }
+  }
+
+  private send(connection: DeviceConnection | undefined, message: ServerMessage) {
+    if (!connection || connection.socket.readyState !== connection.socket.OPEN) return;
+
+    try {
+      connection.socket.send(JSON.stringify(message));
+    } catch {
+      connection.socket.terminate();
+    }
+  }
+
+  private broadcast(user: string) {
+    const devices = this.devices(user);
+    const activeId = this.activeDevices.get(user) ?? null;
+
+    for (const connection of this.connections) {
+      if (connection.user === user) this.send(connection, { type: "devices", devices, activeId });
+    }
+  }
+
+  private static getClientMessage(rawMessage: unknown): ClientMessage | null {
+    const messageText = DeviceHub.getMessageText(rawMessage);
+
+    if (messageText === null) return null;
+
+    try {
+      const result = ClientMessageSchema.safeParse(JSON.parse(messageText));
+
+      return result.success ? result.data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private static getMessageText(rawMessage: unknown): string | null {
+    if (typeof rawMessage === "string") return rawMessage;
+    if (rawMessage instanceof ArrayBuffer) return Buffer.from(rawMessage).toString();
+    if (ArrayBuffer.isView(rawMessage)) {
+      return Buffer.from(rawMessage.buffer, rawMessage.byteOffset, rawMessage.byteLength).toString();
+    }
+    if (Array.isArray(rawMessage) && rawMessage.every((messagePart) => messagePart instanceof Uint8Array)) {
+      return Buffer.concat(rawMessage).toString();
+    }
+
+    return null;
+  }
+
+  private readonly connections = new Set<DeviceConnection>();
+  private readonly activeDevices = new Map<string, string>();
 }
