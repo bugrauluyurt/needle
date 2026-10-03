@@ -30,7 +30,7 @@ export function SearchBrowse({
   onRemove,
   onClear,
 }: {
-  recent: string[];
+  recent: readonly string[];
   onPick: (query: string) => void;
   onRemove: (query: string) => void;
   onClear: () => void;

@@ -14,12 +14,13 @@ import { router } from "./router.tsx";
 const SongDetailsDialog = lazy(() => import("../components/SongDetails.tsx"));
 
 export function App() {
-  const signedIn = useSession((sessionState) => Boolean(sessionState.credentials));
+  const accountUser = useSession((sessionState) => sessionState.credentials?.user ?? null);
+  const signedIn = Boolean(accountUser);
   const detailsOpen = useDetails((detailsState) => Boolean(detailsState.song));
   const selectedLanguage = useSettings((settingsState) => settingsState.language);
   const { i18n } = useTranslation();
 
-  useAppRuntime(signedIn);
+  useAppRuntime(accountUser);
 
   useEffect(() => {
     if (i18n.resolvedLanguage !== selectedLanguage) void changeLanguage(selectedLanguage);

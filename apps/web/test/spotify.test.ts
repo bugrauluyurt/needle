@@ -147,6 +147,60 @@ describe("Spotify search pagination", () => {
   });
 });
 
+describe("Spotify account isolation", () => {
+  it("rejects a token request that finishes after an account reset", async () => {
+    const { api } = await import("../src/lib/api.ts");
+    let resolveAliceToken: (token: { accessToken: string; expiresAt: number }) => void = () => undefined;
+    const aliceToken = new Promise<{ accessToken: string; expiresAt: number }>((resolve) => {
+      resolveAliceToken = resolve;
+    });
+    vi.spyOn(api, "spotifyToken")
+      .mockImplementationOnce(() => aliceToken)
+      .mockResolvedValueOnce({ accessToken: "bob-token", expiresAt: Date.now() + 3_600_000 });
+
+    const spotify = await import("../src/features/spotify/api/client.ts");
+    const pendingAliceToken = spotify.spotifyToken();
+    spotify.clearSpotifyClient();
+    resolveAliceToken({ accessToken: "alice-token", expiresAt: Date.now() + 3_600_000 });
+
+    await expect(pendingAliceToken).rejects.toMatchObject({ status: 401 });
+    await expect(spotify.spotifyToken()).resolves.toBe("bob-token");
+  });
+
+  it("rejects a successful response body that finishes after switching accounts", async () => {
+    let resolveAliceBody: (body: string) => void = () => undefined;
+    let markBodyRead: () => void = () => undefined;
+    const bodyRead = new Promise<void>((resolve) => {
+      markBodyRead = resolve;
+    });
+    const aliceBody = new Promise<string>((resolve) => {
+      resolveAliceBody = resolve;
+    });
+    const response = {
+      headers: new Headers(),
+      ok: true,
+      status: 200,
+      text: () => {
+        markBodyRead();
+
+        return aliceBody;
+      },
+    } as Response;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    const spotify = await import("../src/features/spotify/api/client.ts");
+    spotify.activateSpotifyAccount("Alice");
+    const aliceRequest = spotify.sp.me();
+
+    await bodyRead;
+    spotify.clearSpotifyClient();
+    spotify.activateSpotifyAccount("Bob");
+    resolveAliceBody(JSON.stringify({ id: "alice" }));
+
+    await expect(aliceRequest).rejects.toMatchObject({ status: 401 });
+  });
+});
+
 describe("Spotify cooldown", () => {
   const start = new Date("2026-10-02T10:00:00Z").getTime();
   let storage: Map<string, string>;
@@ -181,7 +235,8 @@ describe("Spotify cooldown", () => {
       .mockResolvedValueOnce(limited("58577"))
       .mockResolvedValue(Response.json({ id: "me" }));
     vi.stubGlobal("fetch", fetch);
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     await expect(sp.me()).rejects.toMatchObject({ status: 429 });
     expect(useSpotifyStatus.getState()).toEqual({
       blocked: true,
@@ -193,29 +248,47 @@ describe("Spotify cooldown", () => {
     expect(useSpotifyStatus.getState().blocked).toBe(true);
     await vi.advanceTimersByTimeAsync(1);
     expect(useSpotifyStatus.getState().blocked).toBe(false);
-    expect(storage.has("needle.spotifyBlockedUntil")).toBe(false);
+    expect(storage.has("needle.spotifyBlockedUntil.Alice")).toBe(false);
     await expect(sp.me()).resolves.toEqual({ id: "me" });
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it.each([undefined, "", "invalid", "-1"])("uses the fallback for unreadable Retry-After %s", async (header) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited(header)));
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     await expect(sp.me()).rejects.toMatchObject({ status: 429 });
     expect(useSpotifyStatus.getState().until).toBe(start + 3_600_000);
   });
 
-  it("preserves a legacy cooldown across module reloads", async () => {
-    storage.set("needle.spotifyBlockedUntil", String(start + 60_000));
+  it("loads the active account cooldown while removing the unowned legacy key", async () => {
+    storage.set("needle.spotifyBlockedUntil", String(start + 120_000));
+    storage.set("needle.spotifyBlockedUntil.Alice", String(start + 60_000));
     const fetch = vi.fn().mockResolvedValue(Response.json({ id: "me" }));
     vi.stubGlobal("fetch", fetch);
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     await expect(sp.me()).rejects.toMatchObject({ status: 429 });
     expect(fetch).not.toHaveBeenCalled();
+    expect(storage.has("needle.spotifyBlockedUntil")).toBe(false);
+    expect(storage.get("needle.spotifyBlockedUntil.Alice")).toBe(String(start + 60_000));
     await vi.advanceTimersByTimeAsync(60_000);
     expect(useSpotifyStatus.getState().blocked).toBe(false);
     await sp.me();
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads only the selected account cooldown", async () => {
+    storage.set("needle.spotifyBlockedUntil.Alice", String(start + 60_000));
+    storage.set("needle.spotifyBlockedUntil.Bob", String(start + 90_000));
+    const { activateSpotifyAccount, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+
+    activateSpotifyAccount("Alice");
+    expect(useSpotifyStatus.getState()).toEqual({ blocked: true, until: start + 60_000 });
+
+    activateSpotifyAccount("Bob");
+    expect(useSpotifyStatus.getState()).toEqual({ blocked: true, until: start + 90_000 });
+    expect(storage.get("needle.spotifyBlockedUntil.Alice")).toBe(String(start + 60_000));
   });
 
   it("pauses after a token request failure without calling Spotify", async () => {
@@ -223,7 +296,8 @@ describe("Spotify cooldown", () => {
     vi.spyOn(api, "spotifyToken").mockRejectedValueOnce(new Error("Needle unavailable"));
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     await expect(sp.me()).rejects.toThrow("Needle unavailable");
     expect(fetch).not.toHaveBeenCalled();
     expect(useSpotifyStatus.getState().until).toBe(start + 300_000);
@@ -235,7 +309,8 @@ describe("Spotify cooldown", () => {
       "fetch",
       vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve))),
     );
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     const pending = Promise.allSettled([sp.me(), sp.artist("artist")]);
     await vi.advanceTimersByTimeAsync(0);
     expect(responses).toHaveLength(2);
@@ -244,7 +319,34 @@ describe("Spotify cooldown", () => {
     responses[1]?.(limited("300"));
     await pending;
     expect(useSpotifyStatus.getState().until).toBe(start + 58_577_000);
-    expect(storage.get("needle.spotifyBlockedUntil")).toBe(String(start + 58_577_000));
+    expect(storage.get("needle.spotifyBlockedUntil.Alice")).toBe(String(start + 58_577_000));
+  });
+
+  it("does not persist a late cooldown response after switching accounts", async () => {
+    let resolveAliceResponse: (response: Response) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveAliceResponse = resolve;
+          }),
+      ),
+    );
+    const { activateSpotifyAccount, clearSpotifyClient, sp, useSpotifyStatus } =
+      await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
+    const aliceRequest = sp.me();
+    await vi.advanceTimersByTimeAsync(0);
+
+    clearSpotifyClient();
+    activateSpotifyAccount("Bob");
+    resolveAliceResponse(limited("300"));
+
+    await expect(aliceRequest).rejects.toMatchObject({ status: 401 });
+    expect(useSpotifyStatus.getState()).toEqual({ blocked: false, until: 0 });
+    expect(storage.has("needle.spotifyBlockedUntil.Alice")).toBe(false);
+    expect(storage.has("needle.spotifyBlockedUntil.Bob")).toBe(false);
   });
 
   it("retries a short limit once without issuing requests during the wait", async () => {
@@ -253,7 +355,8 @@ describe("Spotify cooldown", () => {
       .mockResolvedValueOnce(limited("2"))
       .mockResolvedValue(Response.json({ id: "me" }));
     vi.stubGlobal("fetch", fetch);
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     const result = sp.me();
     await vi.advanceTimersByTimeAsync(0);
     expect(useSpotifyStatus.getState().blocked).toBe(true);
@@ -266,7 +369,8 @@ describe("Spotify cooldown", () => {
 
   it("does not overflow the browser timer for waits longer than 24 days", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited("3000000")));
-    const { sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    const { activateSpotifyAccount, sp, useSpotifyStatus } = await import("../src/features/spotify/api/client.ts");
+    activateSpotifyAccount("Alice");
     await expect(sp.me()).rejects.toMatchObject({ status: 429 });
     await vi.advanceTimersByTimeAsync(2_147_483_647);
     expect(useSpotifyStatus.getState().blocked).toBe(true);

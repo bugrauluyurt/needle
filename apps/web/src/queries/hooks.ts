@@ -8,6 +8,7 @@ import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
 import { toast } from "../state/ui.ts";
 import { useSession } from "../state/session.ts";
+import { getAccountGeneration } from "../state/accountLifecycle.ts";
 import { keys } from "./keys.ts";
 import { queryClient } from "./client.ts";
 import { translate } from "../i18n/index.ts";
@@ -307,6 +308,75 @@ export const useSimilarSongs = (id: string | undefined) =>
 
 type StarKind = "song" | "album" | "artist";
 type Starred = { song?: Song[]; album?: Album[]; artist?: Artist[] };
+type AccountMutationContext = { accountUser: string; generation: number };
+type StarMutationVariables = { kind: StarKind; item: Song | Album | Artist; on: boolean };
+type CreatePlaylistVariables = { name: string; songIds?: string[] };
+type AddToPlaylistVariables = { playlistId: string; songIds: string[] };
+type UpdatePlaylistVariables = {
+  id: string;
+  name?: string;
+  comment?: string;
+  public?: boolean;
+  removeIndex?: number[];
+};
+type ReorderPlaylistVariables = { id: string; songIds: string[] };
+type DeletePlaylistVariables = { id: string };
+
+function getAccountMutationContext(): AccountMutationContext {
+  return {
+    accountUser: useSession.getState().credentials?.user ?? "",
+    generation: getAccountGeneration(),
+  };
+}
+
+function accountMutationIsCurrent(accountContext: AccountMutationContext): boolean {
+  return (
+    accountContext.accountUser === (useSession.getState().credentials?.user ?? "") &&
+    accountContext.generation === getAccountGeneration()
+  );
+}
+
+async function accountMutationResult<Variables extends object, Result>(
+  mutationContexts: WeakMap<Variables, AccountMutationContext>,
+  variables: Variables,
+  operation: () => Promise<Result>,
+): Promise<Result> {
+  const accountContext = mutationContexts.get(variables);
+
+  if (!accountContext || !accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+  const result = await operation();
+
+  if (!accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+  return result;
+}
+
+function accountMutationOptions<Variables extends object, Result>(
+  operation: (variables: Variables) => Promise<Result>,
+  onSuccess: (result: Result, variables: Variables) => void,
+) {
+  const mutationContexts = new WeakMap<Variables, AccountMutationContext>();
+
+  return {
+    mutationFn: (variables: Variables) =>
+      accountMutationResult(mutationContexts, variables, () => operation(variables)),
+    onMutate: (variables: Variables) => {
+      const accountContext = getAccountMutationContext();
+
+      mutationContexts.set(variables, accountContext);
+
+      return accountContext;
+    },
+    onSuccess: (result: Result, variables: Variables, accountContext: AccountMutationContext) => {
+      if (!accountMutationIsCurrent(accountContext)) return;
+
+      onSuccess(result, variables);
+    },
+    onSettled: (_data: Result | undefined, _error: Error | null, variables: Variables) =>
+      mutationContexts.delete(variables),
+  };
+}
 
 export function useStarredIds() {
   const { data } = useStarred();
@@ -318,110 +388,177 @@ export function useStarredIds() {
 }
 
 export function useToggleStar() {
-  const qc = useQueryClient();
+  const client = useQueryClient();
+  const mutationContexts = new WeakMap<StarMutationVariables, AccountMutationContext>();
+
   return useMutation({
-    mutationFn: async ({ kind, item, on }: { kind: StarKind; item: Song | Album | Artist; on: boolean }) => {
+    mutationFn: async (variables: StarMutationVariables) => {
+      const accountContext = mutationContexts.get(variables);
+
+      if (!accountContext || !accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+      const { kind, item, on: isStarred } = variables;
+
       if (!navidromeId(item.id)) throw new Error(translate("query.localStarOnly"));
 
-      const ids =
+      const starIds =
         kind === "song" ? { id: [item.id] } : kind === "album" ? { albumId: [item.id] } : { artistId: [item.id] };
-      await (on ? sub.star(ids) : sub.unstar(ids));
+      await (isStarred ? sub.star(starIds) : sub.unstar(starIds));
     },
-    onMutate: async ({ kind, item, on }) => {
-      await qc.cancelQueries({ queryKey: keys.starred });
-      const prev = qc.getQueryData<Starred>(keys.starred);
-      const field = kind === "song" ? "song" : kind === "album" ? "album" : "artist";
-      const list = (prev?.[field] ?? []) as (Song | Album | Artist)[];
-      const stamped = { ...item, starred: new Date().toISOString() };
-      qc.setQueryData<Starred>(keys.starred, {
-        ...prev,
-        [field]: on ? [stamped, ...list.filter((x) => x.id !== item.id)] : list.filter((x) => x.id !== item.id),
+    onMutate: async (variables) => {
+      const accountContext = getAccountMutationContext();
+      const { kind, item, on: isStarred } = variables;
+
+      mutationContexts.set(variables, accountContext);
+
+      await client.cancelQueries({ queryKey: keys.starred });
+
+      if (!accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+      const previousStarred = client.getQueryData<Starred>(keys.starred);
+      const starredField = kind === "song" ? "song" : kind === "album" ? "album" : "artist";
+      const starredItems = (previousStarred?.[starredField] ?? []) as (Song | Album | Artist)[];
+      const starredItemWithTimestamp = { ...item, starred: new Date().toISOString() };
+
+      client.setQueryData<Starred>(keys.starred, {
+        ...previousStarred,
+        [starredField]: isStarred
+          ? [starredItemWithTimestamp, ...starredItems.filter((starredItem) => starredItem.id !== item.id)]
+          : starredItems.filter((starredItem) => starredItem.id !== item.id),
       });
-      return { prev };
+
+      return { previousStarred, ...accountContext };
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(keys.starred, ctx.prev);
+    onError: (_error, variables, context) => {
+      if (!context || !accountMutationIsCurrent(context)) return;
+
+      if (context.previousStarred) client.setQueryData(keys.starred, context.previousStarred);
       toast(translate("query.likesFailed"));
+
+      mutationContexts.delete(variables);
     },
-    onSettled: () => void qc.invalidateQueries({ queryKey: keys.starred }),
+    onSettled: (_data, _error, variables, context) => {
+      mutationContexts.delete(variables);
+
+      if (!context || !accountMutationIsCurrent(context)) return;
+
+      void client.invalidateQueries({ queryKey: keys.starred });
+    },
   });
 }
 
 export function useCreatePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ name, songIds }: { name: string; songIds?: string[] }) => {
-      if (songIds?.some((songId) => !navidromeId(songId))) throw new Error(translate("query.localPlaylistOnly"));
+  const client = useQueryClient();
 
-      return sub.createPlaylist(name, songIds);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.playlists }),
-  });
+  return useMutation(
+    accountMutationOptions(
+      (variables: CreatePlaylistVariables) => {
+        const { name, songIds } = variables;
+
+        if (songIds?.some((songId) => !navidromeId(songId))) throw new Error(translate("query.localPlaylistOnly"));
+
+        return sub.createPlaylist(name, songIds);
+      },
+      () => void client.invalidateQueries({ queryKey: keys.playlists }),
+    ),
+  );
 }
 
 export function useAddToPlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ playlistId, songIds }: { playlistId: string; songIds: string[] }) => {
-      if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId)))
-        throw new Error(translate("query.localPlaylistOnly"));
+  const client = useQueryClient();
 
-      return sub.updatePlaylist(playlistId, { add: songIds });
-    },
-    onSuccess: (_d, v) => {
-      void qc.invalidateQueries({ queryKey: keys.playlist(v.playlistId) });
-      void qc.invalidateQueries({ queryKey: keys.playlists });
-    },
-  });
+  return useMutation(
+    accountMutationOptions(
+      (variables: AddToPlaylistVariables) => {
+        const { playlistId, songIds } = variables;
+
+        if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId)))
+          throw new Error(translate("query.localPlaylistOnly"));
+
+        return sub.updatePlaylist(playlistId, { add: songIds });
+      },
+      (_data, variables) => {
+        void client.invalidateQueries({ queryKey: keys.playlist(variables.playlistId) });
+        void client.invalidateQueries({ queryKey: keys.playlists });
+      },
+    ),
+  );
 }
 
 export function useUpdatePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      ...changes
-    }: {
-      id: string;
-      name?: string;
-      comment?: string;
-      public?: boolean;
-      removeIndex?: number[];
-    }) => sub.updatePlaylist(id, changes),
-    onSuccess: (_d, v) => {
-      void qc.invalidateQueries({ queryKey: keys.playlist(v.id) });
-      void qc.invalidateQueries({ queryKey: keys.playlists });
-    },
-  });
+  const client = useQueryClient();
+
+  return useMutation(
+    accountMutationOptions(
+      (variables: UpdatePlaylistVariables) => {
+        const { id, ...changes } = variables;
+
+        return sub.updatePlaylist(id, changes);
+      },
+      (_data, variables) => {
+        void client.invalidateQueries({ queryKey: keys.playlist(variables.id) });
+        void client.invalidateQueries({ queryKey: keys.playlists });
+      },
+    ),
+  );
 }
 
 export function useReorderPlaylist() {
-  const qc = useQueryClient();
+  const client = useQueryClient();
+  const mutationContexts = new WeakMap<ReorderPlaylistVariables, AccountMutationContext>();
+
   return useMutation({
-    mutationFn: ({ id, songIds }: { id: string; songIds: string[] }) => sub.replacePlaylistSongs(id, songIds),
-    onMutate: ({ id, songIds }) => {
-      const prev = qc.getQueryData<PlaylistWithSongs>(keys.playlist(id));
-      if (prev?.entry) {
-        const byId = new Map(prev.entry.map((s) => [s.id, s]));
-        qc.setQueryData<PlaylistWithSongs>(keys.playlist(id), {
-          ...prev,
-          entry: songIds.map((sid) => byId.get(sid)).filter((s): s is Song => Boolean(s)),
+    mutationFn: async (variables: ReorderPlaylistVariables) => {
+      const accountContext = mutationContexts.get(variables);
+
+      if (!accountContext || !accountMutationIsCurrent(accountContext)) throw new Error("Account changed");
+
+      await sub.replacePlaylistSongs(variables.id, variables.songIds);
+    },
+    onMutate: (variables) => {
+      const accountContext = getAccountMutationContext();
+      const { id, songIds } = variables;
+
+      mutationContexts.set(variables, accountContext);
+
+      const previousPlaylist = client.getQueryData<PlaylistWithSongs>(keys.playlist(id));
+
+      if (previousPlaylist?.entry) {
+        const songsById = new Map(previousPlaylist.entry.map((song) => [song.id, song]));
+
+        client.setQueryData<PlaylistWithSongs>(keys.playlist(id), {
+          ...previousPlaylist,
+          entry: songIds
+            .map((songId) => songsById.get(songId))
+            .filter((playlistSong): playlistSong is Song => Boolean(playlistSong)),
         });
       }
-      return { prev };
+
+      return { previousPlaylist, ...accountContext };
     },
-    onError: (_e, v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(keys.playlist(v.id), ctx.prev);
+    onError: (_error, variables, context) => {
+      if (!context || !accountMutationIsCurrent(context)) return;
+
+      if (context.previousPlaylist) client.setQueryData(keys.playlist(variables.id), context.previousPlaylist);
       toast(translate("query.orderFailed"));
     },
-    onSettled: (_d, _e, v) => void qc.invalidateQueries({ queryKey: keys.playlist(v.id) }),
+    onSettled: (_data, _error, variables, context) => {
+      mutationContexts.delete(variables);
+
+      if (!context || !accountMutationIsCurrent(context)) return;
+
+      void client.invalidateQueries({ queryKey: keys.playlist(variables.id) });
+    },
   });
 }
 
 export function useDeletePlaylist() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => sub.deletePlaylist(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.playlists }),
-  });
+  const client = useQueryClient();
+
+  return useMutation(
+    accountMutationOptions(
+      (variables: DeletePlaylistVariables) => sub.deletePlaylist(variables.id),
+      () => void client.invalidateQueries({ queryKey: keys.playlists }),
+    ),
+  );
 }

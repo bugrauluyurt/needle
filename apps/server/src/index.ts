@@ -8,8 +8,8 @@ import { createRealtimeApp, DEVICE_MAX_PAYLOAD_BYTES } from "./realtime/devices.
 
 const config = loadConfig();
 const db = await openDatabaseWithBackup(config.dataDir);
-const { app, hub, navidrome } = createApp(config, db);
-const realtimeApp = createRealtimeApp(app, { hub, navidrome });
+const { app, hub, verifier } = createApp(config, db);
+const realtimeApp = createRealtimeApp(app, { hub, trustedProxy: config.trustedProxy, verifier });
 const webSocketServer = new WebSocketServer({
   noServer: true,
   maxPayload: DEVICE_MAX_PAYLOAD_BYTES,

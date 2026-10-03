@@ -8,6 +8,8 @@ import { registerAuthentication } from "./http/authentication.ts";
 import { createAuthorization } from "./http/authorization.ts";
 import type { AppEnv } from "./http/context.ts";
 import { registerErrorHandler } from "./http/errors.ts";
+import { InMemoryNavidromeVerifier } from "./http/navidrome-verifier.ts";
+import { registerSecurityHeaders } from "./http/security.ts";
 import { Lidarr } from "./lidarr.ts";
 import { ListenBrainz } from "./listenbrainz.ts";
 import { Mixes } from "./mixes.ts";
@@ -34,6 +36,7 @@ import { YouTubeMusic } from "./youtube-music.ts";
 
 export function createApp(config: Config, db: DatabaseSync) {
   const navidrome = new Navidrome(config.navidromeUrl);
+  const verifier = new InMemoryNavidromeVerifier(navidrome);
   const playLog = new PlayLog(db);
   const mixes = new Mixes(navidrome, playLog);
   const librarySearch = new LibrarySearch(navidrome);
@@ -95,9 +98,10 @@ export function createApp(config: Config, db: DatabaseSync) {
   const app = new Hono<AppEnv>();
 
   registerErrorHandler(app);
+  registerSecurityHeaders(app);
   registerHealthRoute(app);
   registerSpotifyCallbackRoute(app, { spotify });
-  registerAuthentication(app, { navidrome });
+  registerAuthentication(app, { trustedProxy: config.trustedProxy, verifier });
   registerYouTubeMusicRoutes(app, { authorization, youtubeMusic });
   registerSystemRoutes(app, {
     authorization,
@@ -122,8 +126,8 @@ export function createApp(config: Config, db: DatabaseSync) {
   registerPeopleRoutes(app, { authorization, people });
   registerListenBrainzRoutes(app, { authorization, listenbrainz: listenBrainz, navidrome });
   registerSpotifyRoutes(app, { authorization, recordAlbum });
-  registerMediaRoutes(app, { authorization, config, navidrome, youtubeMusic });
+  registerMediaRoutes(app, { authorization, config, navidrome, verifier, youtubeMusic });
   registerStaticRoutes(app, config);
 
-  return { app, hub, navidrome };
+  return { app, hub, verifier };
 }

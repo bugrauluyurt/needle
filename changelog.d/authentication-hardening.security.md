@@ -1,0 +1,1 @@
+- Bind Spotify sign-ins to their browser and protect Navidrome API, media, proxy and remote-device verification with shared brute-force and concurrency limits.

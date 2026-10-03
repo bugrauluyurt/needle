@@ -14,6 +14,7 @@ import {
   isSpotify,
   nextSpotifySearchOffset,
   rawId,
+  clearSpotifyClient,
   sp,
   SpotifyApiError,
   spotifySearchResults,
@@ -40,22 +41,46 @@ import { translate } from "../../../i18n/index.ts";
 const LIBRARY_STALE = 6 * HOUR_MS;
 const CACHE_PREFIX = "needle.sp.";
 const PERSISTED = new Set(["me", "playlists", "liked", "albums", "followed", "artistImage", "artistProfile"]);
+const currentUser = () => useSession.getState().credentials?.user ?? "";
+let cacheGeneration = 0;
+
+type SpotifyCacheContext = { accountUser: string; generation: number };
+
+function getSpotifyCacheContext(): SpotifyCacheContext {
+  return { accountUser: currentUser(), generation: cacheGeneration };
+}
+
+function spotifyCacheContextIsCurrent(cacheContext: SpotifyCacheContext): boolean {
+  return cacheContext.accountUser === currentUser() && cacheContext.generation === cacheGeneration;
+}
 
 export const spKeys = {
-  me: ["sp", "me"] as const,
-  playlists: ["sp", "playlists"] as const,
-  playlist: (id: string) => ["sp", "playlist", id] as const,
-  liked: ["sp", "liked"] as const,
-  albums: ["sp", "albums"] as const,
-  followed: ["sp", "followed"] as const,
-  artistImage: (name: string) => ["sp", "artistImage", name] as const,
-  album: (id: string) => ["sp", "album", id] as const,
-  artistProfile: (id: string) => ["sp", "artistProfile", id] as const,
-  artist: (id: string) => ["sp", "artist", id] as const,
-  artistAlbums: (id: string, category?: "album" | "single") => ["sp", "artistAlbums", id, category ?? "all"] as const,
-  artistSongs: (id: string, artistName: string) => ["sp", "artistSongs", id, artistName] as const,
-  search: (q: string) => ["sp", "search", q] as const,
-  searchCategory: (q: string, category: SpotifySearchKind | undefined) => ["sp", "search", q, category] as const,
+  get me() {
+    return ["sp", "me", currentUser()] as const;
+  },
+  get playlists() {
+    return ["sp", "playlists", currentUser()] as const;
+  },
+  playlist: (id: string) => ["sp", "playlist", id, currentUser()] as const,
+  get liked() {
+    return ["sp", "liked", currentUser()] as const;
+  },
+  get albums() {
+    return ["sp", "albums", currentUser()] as const;
+  },
+  get followed() {
+    return ["sp", "followed", currentUser()] as const;
+  },
+  artistImage: (name: string) => ["sp", "artistImage", name, currentUser()] as const,
+  album: (id: string) => ["sp", "album", id, currentUser()] as const,
+  artistProfile: (id: string) => ["sp", "artistProfile", id, currentUser()] as const,
+  artist: (id: string) => ["sp", "artist", id, currentUser()] as const,
+  artistAlbums: (id: string, category?: "album" | "single") =>
+    ["sp", "artistAlbums", id, category ?? "all", currentUser()] as const,
+  artistSongs: (id: string, artistName: string) => ["sp", "artistSongs", id, artistName, currentUser()] as const,
+  search: (q: string) => ["sp", "search", q, currentUser()] as const,
+  searchCategory: (q: string, category: SpotifySearchKind | undefined) =>
+    ["sp", "search", q, category, currentUser()] as const,
 };
 
 queryClient.setQueryDefaults(["sp"], {
@@ -65,13 +90,22 @@ queryClient.setQueryDefaults(["sp"], {
   staleTime: HOUR_MS,
 });
 
-const cacheKey = (key: readonly unknown[]) =>
-  `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(key)}`;
+const cacheKey = (queryKey: readonly unknown[]) =>
+  `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(queryKey)}`;
 
-queryClient.getQueryCache().subscribe((e) => {
-  if (e.type !== "updated") return;
-  const { queryKey, state } = e.query as Query;
-  if (queryKey[0] !== "sp" || !PERSISTED.has(String(queryKey[1])) || state.status !== "success") return;
+queryClient.getQueryCache().subscribe((queryEvent) => {
+  if (queryEvent.type !== "updated") return;
+
+  const { queryKey, state } = queryEvent.query as Query;
+  if (
+    queryKey[0] !== "sp" ||
+    !PERSISTED.has(String(queryKey[1])) ||
+    state.status !== "success" ||
+    !currentUser() ||
+    queryKey.at(-1) !== currentUser()
+  )
+    return;
+
   try {
     localStorage.setItem(cacheKey(queryKey), JSON.stringify({ at: state.dataUpdatedAt, data: state.data }));
   } catch {
@@ -80,8 +114,15 @@ queryClient.getQueryCache().subscribe((e) => {
 });
 
 export function clearSpotifyCache() {
+  cacheGeneration += 1;
+
+  clearSpotifyClient();
+  queryClient.removeQueries({ queryKey: ["sp"] });
+
   try {
-    for (const k of Object.keys(localStorage)) if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
+    for (const storageKey of Object.keys(localStorage)) {
+      if (storageKey.startsWith(CACHE_PREFIX)) localStorage.removeItem(storageKey);
+    }
   } catch {
     return;
   }
@@ -208,28 +249,67 @@ function notifySpotifyFailure(message: string) {
   toast(useSpotifyStatus.getState().blocked ? translate("spotify.requestPaused") : message);
 }
 
+type SpotifyFollowVariables = { artist: SpArtist; on: boolean };
+
 export function useToggleSpotifyFollow() {
-  const qc = useQueryClient();
+  const client = useQueryClient();
+  const mutationContexts = new WeakMap<SpotifyFollowVariables, SpotifyCacheContext>();
+
   return useMutation({
-    mutationFn: ({ artist, on }: { artist: SpArtist; on: boolean }) => {
-      const uri = [`spotify:artist:${artist.id}`];
-      return on ? sp.save(uri) : sp.unsave(uri);
+    mutationFn: async (variables: SpotifyFollowVariables) => {
+      const cacheContext = mutationContexts.get(variables);
+
+      if (!cacheContext || !spotifyCacheContextIsCurrent(cacheContext)) throw new Error("Account changed");
+
+      const { artist, on: isFollowing } = variables;
+      const artistUris = [`spotify:artist:${artist.id}`];
+
+      await (isFollowing ? sp.save(artistUris) : sp.unsave(artistUris));
     },
-    onMutate: async ({ artist, on }) => {
-      await qc.cancelQueries({ queryKey: spKeys.followed });
-      const prev = qc.getQueryData<SpArtist[]>(spKeys.followed);
-      if (prev)
-        qc.setQueryData<SpArtist[]>(spKeys.followed, on ? [artist, ...prev] : prev.filter((a) => a.id !== artist.id));
-      return { prev };
+    onMutate: async (variables) => {
+      const cacheContext = getSpotifyCacheContext();
+      const queryKey = spKeys.followed;
+      const { artist, on: isFollowing } = variables;
+
+      mutationContexts.set(variables, cacheContext);
+
+      await client.cancelQueries({ queryKey });
+
+      if (!spotifyCacheContextIsCurrent(cacheContext)) throw new Error("Account changed");
+
+      const previousFollowedArtists = client.getQueryData<SpArtist[]>(queryKey);
+
+      if (previousFollowedArtists) {
+        client.setQueryData<SpArtist[]>(
+          queryKey,
+          isFollowing
+            ? [artist, ...previousFollowedArtists]
+            : previousFollowedArtists.filter((followedArtist) => followedArtist.id !== artist.id),
+        );
+      }
+
+      return { previousFollowedArtists, queryKey, ...cacheContext };
     },
-    onSuccess: (_d, { artist, on }) =>
+    onSuccess: (_data, variables, context) => {
+      mutationContexts.delete(variables);
+
+      if (!context || !spotifyCacheContextIsCurrent(context)) return;
+
+      const { artist, on: isFollowing } = variables;
+
       toast(
-        translate(on ? "spotify.followed" : "spotify.followStopped", {
+        translate(isFollowing ? "spotify.followed" : "spotify.followStopped", {
           name: artist.name,
         }),
-      ),
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(spKeys.followed, ctx.prev);
+      );
+    },
+    onError: (_error, variables, context) => {
+      mutationContexts.delete(variables);
+
+      if (!context || !spotifyCacheContextIsCurrent(context)) return;
+
+      if (context.previousFollowedArtists) client.setQueryData(context.queryKey, context.previousFollowedArtists);
+
       notifySpotifyFailure(translate("spotify.updateFailed"));
     },
   });
@@ -384,86 +464,156 @@ export function useSpotifySearchCategory(
   });
 }
 
+type SpotifySaveVariables = { song: Song; on: boolean };
+
 export function useToggleSpotifySave() {
-  const qc = useQueryClient();
+  const client = useQueryClient();
+  const mutationContexts = new WeakMap<SpotifySaveVariables, SpotifyCacheContext>();
+
   return useMutation({
-    mutationFn: async ({ song, on }: { song: Song; on: boolean }) => {
+    mutationFn: async (variables: SpotifySaveVariables) => {
+      const cacheContext = mutationContexts.get(variables);
+
+      if (!cacheContext || !spotifyCacheContextIsCurrent(cacheContext)) throw new Error("Account changed");
+
+      const { song, on: isSaved } = variables;
+
       if (!song.uri) return;
-      await (on ? sp.save([song.uri]) : sp.unsave([song.uri]));
+
+      await (isSaved ? sp.save([song.uri]) : sp.unsave([song.uri]));
     },
-    onMutate: async ({ song, on }) => {
-      await qc.cancelQueries({ queryKey: spKeys.liked });
-      const prev = qc.getQueryData<Song[]>(spKeys.liked);
-      if (prev)
-        qc.setQueryData<Song[]>(
-          spKeys.liked,
-          on ? [{ ...song, starred: new Date().toISOString() }, ...prev] : prev.filter((s) => s.id !== song.id),
+    onMutate: async (variables) => {
+      const cacheContext = getSpotifyCacheContext();
+      const queryKey = spKeys.liked;
+      const { song, on: isSaved } = variables;
+
+      mutationContexts.set(variables, cacheContext);
+
+      await client.cancelQueries({ queryKey });
+
+      if (!spotifyCacheContextIsCurrent(cacheContext)) throw new Error("Account changed");
+
+      const previousLikedSongs = client.getQueryData<Song[]>(queryKey);
+
+      if (previousLikedSongs) {
+        client.setQueryData<Song[]>(
+          queryKey,
+          isSaved
+            ? [{ ...song, starred: new Date().toISOString() }, ...previousLikedSongs]
+            : previousLikedSongs.filter((likedSong) => likedSong.id !== song.id),
         );
-      return { prev };
+      }
+
+      return { previousLikedSongs, queryKey, ...cacheContext };
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(spKeys.liked, ctx.prev);
+    onError: (_error, variables, context) => {
+      mutationContexts.delete(variables);
+
+      if (!context || !spotifyCacheContextIsCurrent(context)) return;
+
+      if (context.previousLikedSongs) client.setQueryData(context.queryKey, context.previousLikedSongs);
+
       notifySpotifyFailure(translate("spotify.saveFailed"));
     },
+    onSettled: (_data, _error, variables) => mutationContexts.delete(variables),
   });
 }
 
 export function useSpotifyPlaylistEdits() {
-  const qc = useQueryClient();
-  const refresh = (id: string) => {
-    void qc.invalidateQueries({ queryKey: spKeys.playlist(id) });
-    void qc.invalidateQueries({ queryKey: spKeys.playlists });
+  const client = useQueryClient();
+  const refresh = (playlistKey: readonly unknown[], playlistsKey: readonly unknown[]) => {
+    void client.invalidateQueries({ queryKey: playlistKey });
+    void client.invalidateQueries({ queryKey: playlistsKey });
   };
-  const fail = () => notifySpotifyFailure(translate("spotify.updateFailed"));
+  const fail = (cacheContext: SpotifyCacheContext) => {
+    if (spotifyCacheContextIsCurrent(cacheContext)) notifySpotifyFailure(translate("spotify.updateFailed"));
+  };
+
   return {
     add: async (playlist: { id: string; name: string }, songs: Song[]) => {
-      const uris = songs.map((s) => s.uri).filter((u): u is string => Boolean(u));
-      if (!uris.length) return;
+      const cacheContext = getSpotifyCacheContext();
+      const playlistKey = spKeys.playlist(playlist.id);
+      const playlistsKey = spKeys.playlists;
+      const songUris = songs.map((song) => song.uri).filter((songUri): songUri is string => Boolean(songUri));
+
+      if (!songUris.length) return;
+
       try {
-        await sp.addToPlaylist(playlist.id, uris);
+        await sp.addToPlaylist(playlist.id, songUris);
+
+        if (!spotifyCacheContextIsCurrent(cacheContext)) return;
+
         toast(translate("spotify.addedPlaylist", { name: playlist.name }));
-        refresh(playlist.id);
+        refresh(playlistKey, playlistsKey);
       } catch {
-        fail();
+        fail(cacheContext);
       }
     },
     create: async (name: string, songs: Song[]) => {
+      const cacheContext = getSpotifyCacheContext();
+      const playlistsKey = spKeys.playlists;
+
       try {
-        const p = await sp.createPlaylist(name);
-        const uris = songs.map((s) => s.uri).filter((u): u is string => Boolean(u));
-        if (uris.length) await sp.addToPlaylist(p.id, uris);
-        toast(translate("spotify.addedPlaylist", { name: p.name }));
-        void qc.invalidateQueries({ queryKey: spKeys.playlists });
-        return p;
+        const createdPlaylist = await sp.createPlaylist(name);
+
+        if (!spotifyCacheContextIsCurrent(cacheContext)) return null;
+
+        const songUris = songs.map((song) => song.uri).filter((songUri): songUri is string => Boolean(songUri));
+
+        if (songUris.length) await sp.addToPlaylist(createdPlaylist.id, songUris);
+
+        if (!spotifyCacheContextIsCurrent(cacheContext)) return null;
+
+        toast(translate("spotify.addedPlaylist", { name: createdPlaylist.name }));
+        void client.invalidateQueries({ queryKey: playlistsKey });
+
+        return createdPlaylist;
       } catch {
-        fail();
+        fail(cacheContext);
+
         return null;
       }
     },
     remove: async (playlistId: string, song: Song) => {
       if (!song.uri) return;
+
+      const cacheContext = getSpotifyCacheContext();
+      const playlistKey = spKeys.playlist(playlistId);
+      const playlistsKey = spKeys.playlists;
+
       try {
         await sp.removeFromPlaylist(playlistId, [song.uri]);
+
+        if (!spotifyCacheContextIsCurrent(cacheContext)) return;
+
         toast(translate("spotify.removedPlaylist"));
-        refresh(playlistId);
+        refresh(playlistKey, playlistsKey);
       } catch {
-        fail();
+        fail(cacheContext);
       }
     },
-    reorder: async (playlistId: string, from: number, to: number) => {
-      const key = spKeys.playlist(playlistId);
-      const prev = qc.getQueryData<{ meta: SpPlaylist; songs: Song[] | null }>(key);
-      if (prev?.songs) {
-        const next = prev.songs.slice();
-        const [moved] = next.splice(from, 1);
-        if (moved) next.splice(to, 0, moved);
-        qc.setQueryData(key, { ...prev, songs: next });
+    reorder: async (playlistId: string, fromIndex: number, toIndex: number) => {
+      const cacheContext = getSpotifyCacheContext();
+      const playlistKey = spKeys.playlist(playlistId);
+      const previousPlaylist = client.getQueryData<{ meta: SpPlaylist; songs: Song[] | null }>(playlistKey);
+
+      if (previousPlaylist?.songs) {
+        const reorderedSongs = previousPlaylist.songs.slice();
+        const [movedSong] = reorderedSongs.splice(fromIndex, 1);
+
+        if (movedSong) reorderedSongs.splice(toIndex, 0, movedSong);
+
+        client.setQueryData(playlistKey, { ...previousPlaylist, songs: reorderedSongs });
       }
+
       try {
-        await sp.reorderPlaylist(playlistId, from, to);
+        await sp.reorderPlaylist(playlistId, fromIndex, toIndex);
       } catch {
-        if (prev) qc.setQueryData(key, prev);
-        fail();
+        if (!spotifyCacheContextIsCurrent(cacheContext)) return;
+
+        if (previousPlaylist) client.setQueryData(playlistKey, previousPlaylist);
+
+        fail(cacheContext);
       }
     },
   };

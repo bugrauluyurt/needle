@@ -24,7 +24,7 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /src/packages/shared ./packages/shared
 RUN rm -rf node_modules/@needle/shared && ln -s ../../packages/shared node_modules/@needle/shared \
- && mkdir -p /data && chown node:node /data
+ && mkdir -p /data && chown node:node /data && chmod 0700 /data
 COPY --from=build /src/apps/server/src ./src
 COPY --from=build /src/apps/web/dist ./web
 USER node

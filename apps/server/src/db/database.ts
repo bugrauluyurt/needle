@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { readdir, rename, rm } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { chmodSync, closeSync, constants, lstatSync, mkdirSync, openSync } from "node:fs";
+import { rename, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
 import { DATABASE_MIGRATIONS, MIGRATION_COLUMNS, MIGRATION_TABLE } from "./migrations.ts";
 import { EXPECTED_SCHEMA } from "./schema.ts";
@@ -11,9 +11,12 @@ import type { Database, DatabaseColumn, DatabaseIndex, DatabaseIndexColumn } fro
 const MEMORY_PATH = ":memory:";
 const DATABASE_FILE = "needle.db";
 const BACKUP_FILE = "needle.pre-migrations.db";
+const DATA_DIRECTORY_MODE = 0o700;
+const DATABASE_FILE_MODE = 0o600;
+const DATABASE_FILE_SUFFIXES = ["", "-journal", "-shm", "-wal"] as const;
 
 export function openDatabase(dataDirectory: string): Database {
-  const { database, databaseExisted } = createDatabase(dataDirectory);
+  const { database, databaseExisted, databasePath } = createDatabase(dataDirectory);
 
   try {
     const isFirstDatabaseAdoption = !tableExists(database, MIGRATION_TABLE);
@@ -22,6 +25,7 @@ export function openDatabase(dataDirectory: string): Database {
     }
 
     migrate(database);
+    restrictDatabaseFiles(databasePath);
 
     return database;
   } catch (error) {
@@ -34,7 +38,7 @@ export function openDatabase(dataDirectory: string): Database {
 export async function openDatabaseWithBackup(dataDirectory: string): Promise<Database> {
   if (dataDirectory === MEMORY_PATH) return openDatabase(dataDirectory);
 
-  const { database, databaseExisted } = createDatabase(dataDirectory);
+  const { database, databaseExisted, databasePath } = createDatabase(dataDirectory);
 
   try {
     const isFirstDatabaseAdoption = !tableExists(database, MIGRATION_TABLE);
@@ -46,6 +50,7 @@ export async function openDatabaseWithBackup(dataDirectory: string): Promise<Dat
     if (isFirstDatabaseAdoption) verifyLegacySchema(database);
 
     migrate(database);
+    restrictDatabaseFiles(databasePath);
 
     return database;
   } catch (error) {
@@ -55,15 +60,27 @@ export async function openDatabaseWithBackup(dataDirectory: string): Promise<Dat
   }
 }
 
-function createDatabase(dataDirectory: string): { database: Database; databaseExisted: boolean } {
-  if (dataDirectory !== MEMORY_PATH) mkdirSync(dataDirectory, { recursive: true });
+function createDatabase(dataDirectory: string): {
+  database: Database;
+  databaseExisted: boolean;
+  databasePath: string;
+} {
+  if (dataDirectory === MEMORY_PATH) {
+    const database = new DatabaseSync(MEMORY_PATH, { timeout: 5_000 });
+    configureDatabase(database);
 
-  const databasePath = dataDirectory === MEMORY_PATH ? MEMORY_PATH : join(dataDirectory, DATABASE_FILE);
-  const databaseExisted = dataDirectory !== MEMORY_PATH && existsSync(databasePath);
+    return { database, databaseExisted: false, databasePath: MEMORY_PATH };
+  }
+
+  prepareDataDirectory(dataDirectory);
+
+  const databasePath = join(dataDirectory, DATABASE_FILE);
+  const databaseExisted = prepareDatabaseFile(databasePath);
   const database = new DatabaseSync(databasePath, { timeout: 5_000 });
   configureDatabase(database);
+  restrictDatabaseFiles(databasePath);
 
-  return { database, databaseExisted };
+  return { database, databaseExisted, databasePath };
 }
 
 function migrate(database: Database): void {
@@ -149,6 +166,8 @@ async function ensureBackup(database: Database, backupPath: string): Promise<voi
   const temporaryBackupPath = `${backupPath}.tmp-${process.pid}-${randomUUID()}`;
 
   try {
+    await removeDatabaseFiles(temporaryBackupPath);
+    createRestrictedFile(temporaryBackupPath);
     await backup(database, temporaryBackupPath);
     if (!hasValidDatabaseIntegrity(temporaryBackupPath)) {
       throw new Error("Needle could not create a valid database backup");
@@ -158,13 +177,15 @@ async function ensureBackup(database: Database, backupPath: string): Promise<voi
 
     await removeDatabaseFiles(backupPath);
     await rename(temporaryBackupPath, backupPath);
+    restrictDatabaseFiles(backupPath);
   } finally {
     await removeDatabaseFiles(temporaryBackupPath);
   }
 }
 
 function isValidLegacyBackup(databasePath: string): boolean {
-  if (!existsSync(databasePath)) return false;
+  restrictDatabaseFiles(databasePath);
+  if (!fileExists(databasePath)) return false;
 
   let backupDatabase: Database | undefined;
 
@@ -185,7 +206,8 @@ function isValidLegacyBackup(databasePath: string): boolean {
 }
 
 function hasValidDatabaseIntegrity(databasePath: string): boolean {
-  if (!existsSync(databasePath)) return false;
+  restrictDatabaseFiles(databasePath);
+  if (!fileExists(databasePath)) return false;
 
   let inspectedDatabase: Database | undefined;
 
@@ -208,16 +230,83 @@ function hasValidIntegrity(database: Database): boolean {
 }
 
 async function removeDatabaseFiles(databasePath: string): Promise<void> {
-  const databaseDirectory = dirname(databasePath);
-  const databaseName = basename(databasePath);
-  const databaseDirectoryFiles = await readdir(databaseDirectory);
-  const matchingDatabaseFiles = databaseDirectoryFiles.filter(
-    (databaseFile) => databaseFile === databaseName || databaseFile.startsWith(`${databaseName}-`),
-  );
+  const databaseFilePaths = pathsForDatabase(databasePath);
+  validateDatabaseFiles(databaseFilePaths);
 
-  await Promise.all(
-    matchingDatabaseFiles.map((databaseFile) => rm(join(databaseDirectory, databaseFile), { force: true })),
+  await Promise.all(databaseFilePaths.map((databaseFilePath) => rm(databaseFilePath, { force: true })));
+}
+
+function prepareDataDirectory(dataDirectory: string): void {
+  const existingDirectory = lstatSync(dataDirectory, { throwIfNoEntry: false });
+  if (existingDirectory?.isSymbolicLink()) throw new Error(`Database data directory cannot be a symbolic link`);
+
+  mkdirSync(dataDirectory, { recursive: true, mode: DATA_DIRECTORY_MODE });
+
+  const dataDirectoryStats = lstatSync(dataDirectory);
+  if (!dataDirectoryStats.isDirectory()) throw new Error("Database data directory must be a directory");
+
+  chmodSync(dataDirectory, DATA_DIRECTORY_MODE);
+}
+
+function prepareDatabaseFile(databasePath: string): boolean {
+  const databaseFilePaths = pathsForDatabase(databasePath);
+  validateDatabaseFiles(databaseFilePaths);
+
+  const databaseExisted = fileExists(databasePath);
+  if (!databaseExisted) {
+    try {
+      createRestrictedFile(databasePath);
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+
+      restrictDatabaseFiles(databasePath);
+
+      return true;
+    }
+  }
+
+  restrictDatabaseFiles(databasePath);
+
+  return databaseExisted;
+}
+
+function createRestrictedFile(filePath: string): void {
+  const fileDescriptor = openSync(
+    filePath,
+    constants.O_CREAT | constants.O_EXCL | constants.O_RDWR,
+    DATABASE_FILE_MODE,
   );
+  closeSync(fileDescriptor);
+}
+
+function restrictDatabaseFiles(databasePath: string): void {
+  if (databasePath === MEMORY_PATH) return;
+
+  const databaseFilePaths = pathsForDatabase(databasePath);
+  validateDatabaseFiles(databaseFilePaths);
+
+  for (const databaseFilePath of databaseFilePaths) {
+    if (fileExists(databaseFilePath)) chmodSync(databaseFilePath, DATABASE_FILE_MODE);
+  }
+}
+
+function validateDatabaseFiles(databaseFilePaths: readonly string[]): void {
+  for (const databaseFilePath of databaseFilePaths) {
+    const databaseFileStats = lstatSync(databaseFilePath, { throwIfNoEntry: false });
+    if (!databaseFileStats) continue;
+    if (databaseFileStats.isSymbolicLink()) {
+      throw new Error(`Database file ${databaseFilePath} cannot be a symbolic link`);
+    }
+    if (!databaseFileStats.isFile()) throw new Error(`Database file ${databaseFilePath} must be a regular file`);
+  }
+}
+
+function pathsForDatabase(databasePath: string): string[] {
+  return DATABASE_FILE_SUFFIXES.map((databaseFileSuffix) => `${databasePath}${databaseFileSuffix}`);
+}
+
+function fileExists(filePath: string): boolean {
+  return lstatSync(filePath, { throwIfNoEntry: false }) !== undefined;
 }
 
 function configureDatabase(database: Database): void {

@@ -443,6 +443,7 @@ as unset.
 | -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                               | Navidrome as the Needle server reaches it                    |
 | `PUBLIC_URL`                                 |                                                       | The `https://` address people open. Needed for Spotify       |
+| `TRUST_PROXY`                                | `false`                                               | Trust the nearest address in `X-Forwarded-For`               |
 | `PORT`                                       | `4535`                                                | Port the server listens on                                   |
 | `DATA_DIR`                                   | `/data` in the image                                  | Where `needle.db` lives                                      |
 | `TZ`                                         | `UTC`                                                 | Time zone for daily mixes and listening stats                |
@@ -460,6 +461,10 @@ as unset.
 | `DEEZER_URL`                                 | `https://api.deezer.com`                              | Popular songs for an artist                                  |
 | `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                        | ListenBrainz playlists; the tests point it at a mock         |
 
+Set `TRUST_PROXY=true` only when every request reaches Needle through a proxy you
+control that appends `X-Forwarded-For`. Leave it false when Needle accepts direct
+connections.
+
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's
 nothing to set up. Choose qualities in Needle's Settings.
@@ -474,7 +479,8 @@ nothing to set up. Choose qualities in Needle's Settings.
 - The first upgrade of a populated database from before versioned migrations creates
   `DATA_DIR/needle.pre-migrations.db` after checking its integrity. This is a one-time
   safety copy, not a rolling backup.
-- Offline downloads live in each browser and are never on the server.
+- Offline downloads live in each browser, are isolated by Navidrome account and
+  are never on the server.
 - **Releases** are tagged `vX.Y.Z` and described in [CHANGELOG.md](CHANGELOG.md) and on
   the [Releases](https://github.com/bugrauluyurt/needle/releases) page. A major version
   means your setup needs a change; the changelog says what. Each release publishes
@@ -494,10 +500,20 @@ nothing to set up. Choose qualities in Needle's Settings.
 ## Security
 
 - Needle checks every request against Navidrome, so it's only as open as your
-  Navidrome accounts. Use strong passwords.
+  Navidrome accounts. Repeated failed checks are rate limited across HTTP, media
+  and remote-device connections. Use strong passwords.
 - Don't expose Needle to the internet without HTTPS. A private network such as
   Tailscale is the simplest safe setup.
+- Needle sends a restrictive content security policy, frame denial, MIME-sniffing
+  protection, a strict referrer policy, HSTS and camera, location and microphone
+  restrictions.
+- The browser keeps the replayable Navidrome token only for the current tab session
+  and clears account-specific queues, provider caches and offline state on sign-out
+  or account change. Client-side tokens remain readable to code running on Needle's
+  origin, so only install trusted releases and keep the server updated.
 - API keys and the Spotify client secret never reach the browser.
+- Spotify sign-in state is bound to the browser that started the flow with a
+  short-lived HttpOnly cookie.
 - YouTube Music client secrets and account tokens stay on the server. Needle never
   asks for copied Google browser cookies and never passes account tokens to the
   playback resolver. Protect and back up `DATA_DIR`, which holds connected-account
@@ -507,6 +523,11 @@ nothing to set up. Choose qualities in Needle's Settings.
   stations you add.
 - A Navidrome password typed in Settings → ListenBrainz is used once to link the token
   in Navidrome and never stored or logged.
+- `DATA_DIR` is private to the server account. Needle restricts its SQLite database,
+  sidecars and migration backup to that account and refuses symlinked database paths.
+- Files fetched through slskd must remain inside the configured download and singles
+  roots. Needle refuses traversal, symlinks, ambiguous matches and destination
+  replacement.
 
 ## Troubleshooting
 

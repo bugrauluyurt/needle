@@ -1,0 +1,1 @@
+- Update the YouTube Music bridge HTTP stack to close known resource-exhaustion and proxy-isolation vulnerabilities.

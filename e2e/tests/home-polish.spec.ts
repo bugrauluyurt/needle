@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import type { Artist, Capabilities, Stats, SubsonicEnvelope } from "@needle/shared";
+import { md5 } from "../../apps/web/src/lib/md5.ts";
 import { PASSWORD, signIn, USER } from "./helpers.ts";
 import { mockSpotify } from "./spotify-mock.ts";
 
@@ -8,7 +9,15 @@ async function mockTopArtists(page: Page, period: "month" | "quarter" = "month")
   const artistFixture = { libraryArtistId: "" };
 
   await page.route(`**/api/stats?period=${period}`, async (route) => {
-    const artistParams = new URLSearchParams({ u: USER, p: PASSWORD, c: "e2e", v: "1.16.1", f: "json" });
+    const salt = "home-polish";
+    const artistParams = new URLSearchParams({
+      u: USER,
+      t: md5(PASSWORD + salt),
+      s: salt,
+      c: "e2e",
+      v: "1.16.1",
+      f: "json",
+    });
     const artistUrl = new URL(`/rest/getArtists.view?${artistParams.toString()}`, route.request().url());
     const [statsResponse, artistsResponse] = await Promise.all([
       route.fetch(),

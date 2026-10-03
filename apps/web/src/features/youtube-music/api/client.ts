@@ -21,6 +21,7 @@ import { ApiError, request } from "../../../lib/api.ts";
 import { queryClient } from "../../../queries/client.ts";
 import { keys } from "../../../queries/keys.ts";
 import { translate } from "../../../i18n/index.ts";
+import { credentials } from "../../../state/session.ts";
 
 export const useYouTubeMusicStatus = create<{
   blocked: boolean;
@@ -28,8 +29,23 @@ export const useYouTubeMusicStatus = create<{
 }>(() => ({ blocked: false, until: 0 }));
 
 let cooldownTimer: ReturnType<typeof setTimeout> | undefined;
+let accountGeneration = 0;
+
+type YouTubeMusicAccountContext = { accountUser: string | null; generation: number };
+
+function accountContext(): YouTubeMusicAccountContext {
+  return { accountUser: credentials()?.user ?? null, generation: accountGeneration };
+}
+
+function accountContextIsCurrent(requestAccount: YouTubeMusicAccountContext): boolean {
+  return (
+    requestAccount.accountUser === (credentials()?.user ?? null) && requestAccount.generation === accountGeneration
+  );
+}
 
 export function clearYouTubeMusicStatus() {
+  accountGeneration += 1;
+
   clearTimeout(cooldownTimer);
 
   useYouTubeMusicStatus.setState({ blocked: false, until: 0 });
@@ -38,13 +54,23 @@ export function clearYouTubeMusicStatus() {
 async function metadata<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (useYouTubeMusicStatus.getState().blocked) throw new ApiError(429, translate("youtube.paused"));
 
+  const requestAccount = accountContext();
+
   try {
-    return await request<T>(`/youtube-music${path}`, init);
+    const response = await request<T>(`/youtube-music${path}`, init);
+
+    if (!accountContextIsCurrent(requestAccount)) throw new ApiError(409, translate("youtube.connectionChanged"));
+
+    return response;
   } catch (requestError) {
-    if (requestError instanceof ApiError && [401, 403, 409].includes(requestError.status))
+    if (
+      accountContextIsCurrent(requestAccount) &&
+      requestError instanceof ApiError &&
+      [401, 403, 409].includes(requestError.status)
+    )
       void queryClient.invalidateQueries({ queryKey: keys.capabilities });
 
-    if (requestError instanceof ApiError && requestError.status === 429) {
+    if (accountContextIsCurrent(requestAccount) && requestError instanceof ApiError && requestError.status === 429) {
       const until = Date.now() + 15 * MINUTE_MS;
 
       clearTimeout(cooldownTimer);

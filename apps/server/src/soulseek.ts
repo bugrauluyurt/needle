@@ -1,9 +1,11 @@
-import { copyFile, mkdir, readdir, rename, rmdir, stat, unlink } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { extname } from "node:path";
 import type { SongCandidate } from "@needle/shared";
 import { fold, OTHER_VERSIONS, queryTerms } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { Requests } from "./requests.ts";
+import { getRemotePathSegments, isSoulseekAudioExtension, moveDownloadedFile, singlePath } from "./soulseek-files.ts";
+
+export { moveDownloadedFile, singlePath };
 
 export type SlskdFile = { filename: string; size: number; bitRate?: number; length?: number; extension?: string };
 export type SlskdResponse = {
@@ -24,7 +26,6 @@ type Transfer = {
 type Search = { id: string; isComplete: boolean };
 export type FilePick = { username: string; file: SlskdFile };
 
-const AUDIO = new Set(["flac", "mp3", "m4a", "ogg", "opus", "wav"]);
 const LOSSLESS = new Set(["flac", "wav"]);
 const DURATION_SLACK_S = 5;
 const SEARCH_WAIT_MS = 20_000;
@@ -35,12 +36,11 @@ const ATTEMPTS = 3;
 const PARALLEL = 2;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const parts = (remote: string) => remote.split(/[\\/]/).filter(Boolean);
 const ext = (f: SlskdFile) => (f.extension ?? extname(f.filename).slice(1)).toLowerCase();
 
 function tier(f: SlskdFile): number {
   const e = ext(f);
-  if (!AUDIO.has(e)) return 0;
+  if (!isSoulseekAudioExtension(e)) return 0;
   if (LOSSLESS.has(e)) return 3;
   const kbps = f.bitRate ?? 0;
   return kbps >= 310 ? 2 : kbps >= 250 ? 1 : 0;
@@ -56,8 +56,11 @@ export function pickFiles(
   const scored: (FilePick & { score: number })[] = [];
   for (const r of responses) {
     for (const file of r.files) {
+      const filenameSegments = getRemotePathSegments(file.filename);
+      if (!filenameSegments) continue;
+
       const q = tier(file);
-      const name = fold(parts(file.filename).at(-1) ?? "");
+      const name = fold(filenameSegments.at(-1) ?? "");
       const path = fold(file.filename);
       if (!q || !title.every((t) => name.includes(t)) || allowed.some((w) => new RegExp(`\\b${w}\\b`).test(name)))
         continue;
@@ -74,17 +77,6 @@ export function pickFiles(
     }
   }
   return scored.sort((a, b) => b.score - a.score).map(({ username, file }) => ({ username, file }));
-}
-
-const safe = (s: string) =>
-  s
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120) || "Unknown";
-
-export function singlePath(dir: string, want: Pick<SongCandidate, "title" | "artist">, file: SlskdFile): string {
-  return join(dir, safe(want.artist), `${safe(want.artist)} - ${safe(want.title)}.${ext(file)}`);
 }
 
 export class SlskdError extends Error {}
@@ -206,7 +198,13 @@ export class SongDownloads {
       const done = await this.follow(id, pick);
       if (!done) continue;
       requests.update(id, { state: "moving", progress: 1 });
-      await this.move(pick, singlePath(this.d.singlesDir, song, pick.file));
+      await moveDownloadedFile({
+        downloadsDir: this.d.downloadsDir,
+        singlesDir: this.d.singlesDir,
+        song,
+        pick,
+        transfer: done,
+      });
       await slskd.remove(done);
       await this.d.navidrome.call(auth, "startScan").catch(() => undefined);
       requests.update(id, { state: "available", detail: null });
@@ -229,42 +227,5 @@ export class SongDownloads {
         return null;
       }
     }
-  }
-
-  private async local(pick: FilePick): Promise<string> {
-    const segs = parts(pick.file.filename);
-    const name = segs.at(-1) ?? "";
-    const expected = join(this.d.downloadsDir, segs.at(-2) ?? "", name);
-    if (
-      await stat(expected).then(
-        () => true,
-        () => false,
-      )
-    )
-      return expected;
-    for (const dir of await readdir(this.d.downloadsDir, { withFileTypes: true })) {
-      const candidate = join(this.d.downloadsDir, dir.name, name);
-      if (
-        dir.isDirectory() &&
-        (await stat(candidate).then(
-          (s) => s.size === pick.file.size,
-          () => false,
-        ))
-      )
-        return candidate;
-    }
-    throw new Error(`The downloaded file ${basename(name)} wasn't found`);
-  }
-
-  private async move(pick: FilePick, target: string) {
-    const from = await this.local(pick);
-    await mkdir(join(target, ".."), { recursive: true });
-    await rename(from, target).catch(async (e: unknown) => {
-      if ((e as NodeJS.ErrnoException).code !== "EXDEV") throw e;
-      await copyFile(from, target);
-      await unlink(from);
-    });
-    const folder = join(from, "..");
-    if (folder !== this.d.downloadsDir) await rmdir(folder).catch(() => undefined);
   }
 }
