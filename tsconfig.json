@@ -2,12 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "*.config.ts",
-    "apps/web/scripts/*.ts"
-  ]
+  "include": ["*.config.ts", "apps/web/scripts/*.ts"]
 }

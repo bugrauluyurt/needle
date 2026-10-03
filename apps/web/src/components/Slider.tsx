@@ -14,17 +14,31 @@ type SliderProps = {
   className?: string;
 };
 
-export function Slider({ value, max, onChange, onCommit, label, valueText, step, needle = false, buffered, className }: SliderProps) {
+export function Slider({
+  value,
+  max,
+  onChange,
+  onCommit,
+  label,
+  valueText,
+  step,
+  needle = false,
+  buffered,
+  className,
+}: SliderProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<number | null>(null);
   const shown = drag ?? value;
   const pct = max > 0 ? Math.min(100, Math.max(0, (shown / max) * 100)) : 0;
 
-  const at = useCallback((clientX: number) => {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r || r.width === 0) return 0;
-    return Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * max;
-  }, [max]);
+  const at = useCallback(
+    (clientX: number) => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r || r.width === 0) return 0;
+      return Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * max;
+    },
+    [max],
+  );
 
   const down = (e: PointerEvent<HTMLDivElement>) => {
     if (max <= 0 || e.button !== 0) return;
@@ -47,7 +61,14 @@ export function Slider({ value, max, onChange, onCommit, label, valueText, step,
   };
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
     const s = step ?? max / 20;
-    const map: Record<string, number> = { ArrowRight: s, ArrowUp: s, ArrowLeft: -s, ArrowDown: -s, PageUp: s * 3, PageDown: -s * 3 };
+    const map: Record<string, number> = {
+      ArrowRight: s,
+      ArrowUp: s,
+      ArrowLeft: -s,
+      ArrowDown: -s,
+      PageUp: s * 3,
+      PageDown: -s * 3,
+    };
     let v: number | null = null;
     if (e.key in map) v = value + (map[e.key] ?? 0);
     if (e.key === "Home") v = 0;
@@ -76,10 +97,18 @@ export function Slider({ value, max, onChange, onCommit, label, valueText, step,
       onPointerCancel={() => setDrag(null)}
       onKeyDown={key}
     >
-      <div className="line" style={{ "--p": `${pct}%`, "--b": `${buffered && max ? Math.min(100, (buffered / max) * 100) : 0}%` } as React.CSSProperties}>
+      <div
+        className="line"
+        style={
+          {
+            "--p": `${pct}%`,
+            "--b": `${buffered && max ? Math.min(100, (buffered / max) * 100) : 0}%`,
+          } as React.CSSProperties
+        }
+      >
         {buffered !== undefined ? <s /> : null}
         <i />
-        {needle ? (max > 0 ? <b /> : null) : <u />}
+        {needle ? max > 0 ? <b /> : null : <u />}
       </div>
     </div>
   );

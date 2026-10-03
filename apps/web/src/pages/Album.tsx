@@ -53,7 +53,9 @@ export default function AlbumPage() {
   const visibleDiscs = useMemo(() => {
     const visibleSongIds = new Set(sorted.map((song) => song.id));
 
-    return discs.map(([discNumber, discSongs]) => [discNumber, discSongs.filter((song) => visibleSongIds.has(song.id))] as const).filter(([, discSongs]) => discSongs.length > 0);
+    return discs
+      .map(([discNumber, discSongs]) => [discNumber, discSongs.filter((song) => visibleSongIds.has(song.id))] as const)
+      .filter(([, discSongs]) => discSongs.length > 0);
   }, [discs, sorted]);
 
   if (isLoading) return <PageSkeleton />;
@@ -63,7 +65,9 @@ export default function AlbumPage() {
   const fmt = commonFormat(songs);
   const artistName = album.displayArtist ?? album.artist ?? "Unknown artist";
   const others = (artist?.album ?? []).filter((a) => a.id !== album.id);
-  const notOwned = (missing.data?.albums ?? []).filter((m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase()).slice(0, 3);
+  const notOwned = (missing.data?.albums ?? [])
+    .filter((m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase())
+    .slice(0, 3);
   const kind = releaseKind(album.songCount, album.duration, album.isCompilation);
   const plays = songs.reduce((n, s) => n + (s.playCount ?? 0), 0);
 
@@ -80,50 +84,102 @@ export default function AlbumPage() {
                 <Art id={artist?.coverArt} px={24} round fallback="artist" />
                 {artistName}
               </Link>
-            ) : <b>{artistName}</b>}
+            ) : (
+              <b>{artistName}</b>
+            )}
             <SourceMark />
             {album.year ? <span>{album.year}</span> : null}
-            <span>{plural(album.songCount, "song")}, {longDuration(album.duration)}</span>
+            <span>
+              {plural(album.songCount, "song")}, {longDuration(album.duration)}
+            </span>
             {fmt ? <span className="fmt on-hero">{fmt}</span> : null}
           </>
         }
       />
-      <ActBar end={<><SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in album" /><CollectionTools sorts={[["custom", "Track order"], ...LIBRARY_SONG_SORTS]} order={order} onOrder={setOrder} />{plays ? <span className="muted">{plural(plays, "play")}</span> : null}</>}>
+      <ActBar
+        end={
+          <>
+            <SearchField
+              variant="inline"
+              collapsible
+              value={songFilter}
+              onChange={setSongFilter}
+              label="Find in album"
+            />
+            <CollectionTools
+              sorts={[["custom", "Track order"], ...LIBRARY_SONG_SORTS]}
+              order={order}
+              onOrder={setOrder}
+            />
+            {plays ? <span className="muted">{plural(plays, "play")}</span> : null}
+          </>
+        }
+      >
         <PlayContextButton contextId={album.id} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
         <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <LikeButton kind="album" item={album} />
-        <DownloadButton target={{ id: album.id, kind: "album", name: album.name, subtitle: `Album, ${artistName}`, ...(album.coverArt ? { coverArt: album.coverArt } : {}) }} songs={songs} />
+        <DownloadButton
+          target={{
+            id: album.id,
+            kind: "album",
+            name: album.name,
+            subtitle: `Album, ${artistName}`,
+            ...(album.coverArt ? { coverArt: album.coverArt } : {}),
+          }}
+          songs={songs}
+        />
         <TrackMoreButton songs={songs} className="icon-btn big" size={26} label={`More options for ${album.name}`} />
       </ActBar>
       {order.key === "custom" ? (
-        visibleDiscs.length ? visibleDiscs.map(([discNumber, discSongs], discIndex) => {
-          return (
-            <section key={discNumber} className="disc">
-              {discs.length > 1 ? <h3 className="disc-h">Disc {discNumber}</h3> : null}
-              <TrackList
-                songs={discSongs}
-                context={context}
-                numbers="track"
-                header={discIndex === 0}
-                column={PLAYS}
-                order={order}
-                onOrder={setOrder}
-                onPlay={(songIndex) => {
-                  const selectedSong = discSongs[songIndex];
+        visibleDiscs.length ? (
+          visibleDiscs.map(([discNumber, discSongs], discIndex) => {
+            return (
+              <section key={discNumber} className="disc">
+                {discs.length > 1 ? <h3 className="disc-h">Disc {discNumber}</h3> : null}
+                <TrackList
+                  songs={discSongs}
+                  context={context}
+                  numbers="track"
+                  header={discIndex === 0}
+                  column={PLAYS}
+                  order={order}
+                  onOrder={setOrder}
+                  onPlay={(songIndex) => {
+                    const selectedSong = discSongs[songIndex];
 
-                  if (selectedSong) player.playSongs(songs, songs.indexOf(selectedSong), context);
-                }}
-              />
-            </section>
-          );
-        }) : <section className="disc"><TrackList songs={sorted} context={context} numbers="track" column={PLAYS} order={order} onOrder={setOrder} /></section>
+                    if (selectedSong) player.playSongs(songs, songs.indexOf(selectedSong), context);
+                  }}
+                />
+              </section>
+            );
+          })
+        ) : (
+          <section className="disc">
+            <TrackList
+              songs={sorted}
+              context={context}
+              numbers="track"
+              column={PLAYS}
+              order={order}
+              onOrder={setOrder}
+            />
+          </section>
+        )
       ) : (
         <section className="disc">
-          <TrackList songs={sorted} context={context} numbers="track" column={PLAYS} order={order} onOrder={setOrder} onPlay={(songIndex) => {
-            const selectedSong = sorted[songIndex];
+          <TrackList
+            songs={sorted}
+            context={context}
+            numbers="track"
+            column={PLAYS}
+            order={order}
+            onOrder={setOrder}
+            onPlay={(songIndex) => {
+              const selectedSong = sorted[songIndex];
 
-            if (selectedSong) player.playSongs(orderedSongs, orderedSongs.indexOf(selectedSong), context);
-          }} />
+              if (selectedSong) player.playSongs(orderedSongs, orderedSongs.indexOf(selectedSong), context);
+            }}
+          />
         </section>
       )}
       <div className="pad">
@@ -134,14 +190,25 @@ export default function AlbumPage() {
         </p>
         {others.length ? (
           <>
-            <RowHeader title={`More by ${artistName}`} {...(album.artistId ? { to: `/artist/${album.artistId}` } : {})} />
-            <CardRow>{others.map((a) => <AlbumCard key={a.id} album={a} subtitle={String(a.year ?? "")} />)}</CardRow>
+            <RowHeader
+              title={`More by ${artistName}`}
+              {...(album.artistId ? { to: `/artist/${album.artistId}` } : {})}
+            />
+            <CardRow>
+              {others.map((a) => (
+                <AlbumCard key={a.id} album={a} subtitle={String(a.year ?? "")} />
+              ))}
+            </CardRow>
           </>
         ) : null}
         {notOwned.length ? (
           <>
             <RowHeader title={`More by ${artistName} you don’t have`} subtitle="Lidarr can fetch these" />
-            <div className="get">{notOwned.map((a) => <GetCard key={a.foreignAlbumId} album={a} />)}</div>
+            <div className="get">
+              {notOwned.map((a) => (
+                <GetCard key={a.foreignAlbumId} album={a} />
+              ))}
+            </div>
           </>
         ) : null}
       </div>

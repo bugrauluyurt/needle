@@ -38,9 +38,14 @@ describe("music source boundaries", () => {
 
   it("rejects a mixed download before storing any collection metadata", async () => {
     const { download } = await import("../src/offline/store.ts");
-    const songs: Song[] = [{ id: "local-1", title: "Local" }, { id: "ytm:video-1", title: "Remote" }];
+    const songs: Song[] = [
+      { id: "local-1", title: "Local" },
+      { id: "ytm:video-1", title: "Remote" },
+    ];
 
-    await expect(download({ id: "collection", kind: "playlist", name: "Queue", subtitle: "" }, songs)).rejects.toThrow("Only songs in your library can be downloaded");
+    await expect(download({ id: "collection", kind: "playlist", name: "Queue", subtitle: "" }, songs)).rejects.toThrow(
+      "Only songs in your library can be downloaded",
+    );
     expect(idbPut).not.toHaveBeenCalled();
     expect(subsonicUrl).not.toHaveBeenCalled();
   });

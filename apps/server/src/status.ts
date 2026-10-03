@@ -18,21 +18,40 @@ const SAMPLE_FILES = 3;
 const LISTEN_WINDOW_MS = 7 * DAY_MS;
 const AUDIO = /\.(flac|mp3|m4a|aac|ogg|opus|wav|alac|aiff?|wma)$/i;
 
-type Deps = { config: Config; navidrome: Navidrome; library: LibrarySearch; lidarr: Lidarr | null; slskd: Slskd | null; musicbrainz: MusicBrainz; deezer: Deezer; listenbrainz: ListenBrainz; youtubeMusic?: YouTubeMusic | null };
+type Deps = {
+  config: Config;
+  navidrome: Navidrome;
+  library: LibrarySearch;
+  lidarr: Lidarr | null;
+  slskd: Slskd | null;
+  musicbrainz: MusicBrainz;
+  deezer: Deezer;
+  listenbrainz: ListenBrainz;
+  youtubeMusic?: YouTubeMusic | null;
+};
 type Outcome = { state: CheckState; detail: string; fix?: string };
 type Check = { id: string; label: string; fix: string; run: () => Promise<Outcome> };
 
 const off = (detail: string, fix: string): Outcome => ({ state: "off", detail, fix });
 
 function spotifyOutcome(config: Config): Outcome {
-  if (!config.spotify) return off("Not set up", "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET from a Spotify developer app.");
-  if (!config.publicUrl) return { state: "warn", detail: "PUBLIC_URL isn't set, so Spotify sign-in can't return to Needle", fix: "Set PUBLIC_URL to the https:// address people open." };
+  if (!config.spotify)
+    return off("Not set up", "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET from a Spotify developer app.");
+  if (!config.publicUrl)
+    return {
+      state: "warn",
+      detail: "PUBLIC_URL isn't set, so Spotify sign-in can't return to Needle",
+      fix: "Set PUBLIC_URL to the https:// address people open.",
+    };
   return { state: "ok", detail: `Redirect URI to register with Spotify: ${config.publicUrl}/api/spotify/callback` };
 }
 
 async function sampleFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-  return entries.filter((e) => e.isFile() && AUDIO.test(e.name)).slice(0, SAMPLE_FILES).map((e) => join(e.parentPath, e.name));
+  return entries
+    .filter((e) => e.isFile() && AUDIO.test(e.name))
+    .slice(0, SAMPLE_FILES)
+    .map((e) => join(e.parentPath, e.name));
 }
 
 export class Status {
@@ -51,7 +70,11 @@ export class Status {
   }
 
   private async run(c: Check): Promise<ConnectionCheck> {
-    const outcome = await c.run().catch((e: unknown): Outcome => ({ state: "fail", detail: e instanceof Error ? e.message : String(e), fix: c.fix }));
+    const outcome = await c.run().catch((e: unknown): Outcome => ({
+      state: "fail",
+      detail: e instanceof Error ? e.message : String(e),
+      fix: c.fix,
+    }));
     return { id: c.id, label: c.label, ...outcome };
   }
 
@@ -66,9 +89,15 @@ export class Status {
         fix: "Check NAVIDROME_URL: Navidrome's address as Needle's server reaches it, such as http://navidrome:4533 in Docker.",
         run: async () => {
           const ping = await navidrome.call<{ serverVersion?: string; version: string }>(auth, "ping");
-          const folders = await navidrome.call<{ musicFolders: { musicFolder?: { name: string }[] } }>(auth, "getMusicFolders");
+          const folders = await navidrome.call<{ musicFolders: { musicFolder?: { name: string }[] } }>(
+            auth,
+            "getMusicFolders",
+          );
           const names = folders.musicFolders.musicFolder?.map((f) => f.name) ?? [];
-          return { state: "ok", detail: `Version ${ping.serverVersion ?? ping.version}. Libraries: ${names.join(", ") || "none"}` };
+          return {
+            state: "ok",
+            detail: `Version ${ping.serverVersion ?? ping.version}. Libraries: ${names.join(", ") || "none"}`,
+          };
         },
       },
       {
@@ -90,7 +119,13 @@ export class Status {
           if (!slskd) return off("Not set up", "Set SLSKD_URL and SLSKD_API_KEY to fetch single songs from Soulseek.");
           const app = await slskd.application();
           const detail = `Version ${app.version.current}. Soulseek: ${app.server.state}`;
-          return app.server.isLoggedIn ? { state: "ok", detail } : { state: "warn", detail, fix: "slskd isn't signed in to Soulseek. Check the Soulseek username and password in slskd's settings." };
+          return app.server.isLoggedIn
+            ? { state: "ok", detail }
+            : {
+                state: "warn",
+                detail,
+                fix: "slskd isn't signed in to Soulseek. Check the Soulseek username and password in slskd's settings.",
+              };
         },
       },
       {
@@ -117,8 +152,11 @@ export class Status {
         run: async () => {
           if (!soulseek) return songsOff;
           const files = await sampleFiles(soulseek.singlesDir);
-          if (!files.length) return off("Nothing fetched yet. Checked after the first song", "Get a song, then check again.");
-          const found = await Promise.all(files.map(async (f) => library.hasFile(auth, (await stat(f)).size, extname(f).slice(1).toLowerCase())));
+          if (!files.length)
+            return off("Nothing fetched yet. Checked after the first song", "Get a song, then check again.");
+          const found = await Promise.all(
+            files.map(async (f) => library.hasFile(auth, (await stat(f)).size, extname(f).slice(1).toLowerCase())),
+          );
           if (found.some(Boolean)) return { state: "ok", detail: "Navidrome lists the songs Needle fetched" };
           throw new Error("Navidrome doesn't list the songs in SINGLES_DIR");
         },
@@ -132,7 +170,11 @@ export class Status {
           await musicbrainz.ping();
           return (await deezer.ping())
             ? { state: "ok", detail: "MusicBrainz and Deezer answer" }
-            : { state: "warn", detail: "MusicBrainz answers, Deezer doesn't", fix: "Popular songs for an artist's name need api.deezer.com." };
+            : {
+                state: "warn",
+                detail: "MusicBrainz answers, Deezer doesn't",
+                fix: "Popular songs for an artist's name need api.deezer.com.",
+              };
         },
       },
       {
@@ -145,7 +187,10 @@ export class Status {
           const last = await listenbrainz.lastListen(auth.user);
           if (last && Date.now() - last.at < LISTEN_WINDOW_MS) {
             const days = Math.floor((Date.now() - last.at) / DAY_MS);
-            return { state: "ok", detail: `Connected as ${account.user}. Navidrome sent a listen ${days < 1 ? "today" : days === 1 ? "yesterday" : `${days} days ago`}` };
+            return {
+              state: "ok",
+              detail: `Connected as ${account.user}. Navidrome sent a listen ${days < 1 ? "today" : days === 1 ? "yesterday" : `${days} days ago`}`,
+            };
           }
           return {
             state: "warn",
@@ -165,11 +210,15 @@ export class Status {
         label: component === "metadata" ? "YouTube Music" : "YouTube Music playback",
         fix: "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET, then install apps/server/requirements.txt in YTMUSIC_PYTHON's environment.",
         run: async () => {
-          if (!this.d.youtubeMusic) return off("Not set up", "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to connect YouTube Music.");
+          if (!this.d.youtubeMusic)
+            return off("Not set up", "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to connect YouTube Music.");
 
           const version = await this.d.youtubeMusic.health(component);
 
-          return { state: "ok", detail: `${component === "metadata" ? "ytmusicapi" : "yt-dlp"} ${version}. Experimental integration.` };
+          return {
+            state: "ok",
+            detail: `${component === "metadata" ? "ytmusicapi" : "yt-dlp"} ${version}. Experimental integration.`,
+          };
         },
       })),
     ];

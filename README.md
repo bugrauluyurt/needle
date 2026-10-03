@@ -408,23 +408,23 @@ doesn't stop Navidrome sending them (remove the token in Navidrome for that).
 
 Every Navidrome user can sign in.
 
-| Separate for each user | Shared by everyone |
-|---|---|
-| Liked songs, albums and artists; ratings | The music itself (users can be limited to some Navidrome libraries) |
-| Playlists (private unless made public) | Internet radio stations |
-| Play counts, Your listening, daily mixes | |
-| The queue, and picking up on another device | |
-| Spotify and YouTube Music connections and their on/off switches; ListenBrainz connection; account photo | |
+| Separate for each user                                                                                  | Shared by everyone                                                  |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Liked songs, albums and artists; ratings                                                                | The music itself (users can be limited to some Navidrome libraries) |
+| Playlists (private unless made public)                                                                  | Internet radio stations                                             |
+| Play counts, Your listening, daily mixes                                                                |                                                                     |
+| The queue, and picking up on another device                                                             |                                                                     |
+| Spotify and YouTube Music connections and their on/off switches; ListenBrainz connection; account photo |                                                                     |
 
 Add users in Navidrome (**Settings → Users**); keep them non-admin. What each person
 may do beyond listening is set in Needle, under **Settings → People** (admins only):
 
-| | Admins | Everyone else |
-|---|---|---|
-| **Request music** (Get album, Get song) | Always | When switched on in People |
-| **Spotify** | On unless switched off | When switched on in People |
-| **YouTube Music** | On unless switched off | When switched on in People |
-| Lidarr's download queue, Connections, People, radio stations | Yes | No |
+|                                                              | Admins                 | Everyone else              |
+| ------------------------------------------------------------ | ---------------------- | -------------------------- |
+| **Request music** (Get album, Get song)                      | Always                 | When switched on in People |
+| **Spotify**                                                  | On unless switched off | When switched on in People |
+| **YouTube Music**                                            | On unless switched off | When switched on in People |
+| Lidarr's download queue, Connections, People, radio stations | Yes                    | No                         |
 
 Requests go straight to Lidarr or slskd. Admins see everyone's requests on the Requests
 page and can remove any of them. Spotify's development mode only works for Spotify
@@ -436,25 +436,25 @@ Spotify allowance.
 All settings are environment variables on the `needle` container. Empty values count
 as unset.
 
-| Variable | Default | |
-|---|---|---|
-| `NAVIDROME_URL` | `http://127.0.0.1:4533` | Navidrome as the Needle server reaches it |
-| `PUBLIC_URL` | | The `https://` address people open. Needed for Spotify |
-| `PORT` | `4535` | Port the server listens on |
-| `DATA_DIR` | `/data` in the image | Where `needle.db` lives |
-| `TZ` | `UTC` | Time zone for daily mixes and listening stats |
-| `LIDARR_URL`, `LIDARR_API_KEY` | | Turns on Get album |
-| `LIDARR_QUALITY_PROFILE` | root folder's default | Quality profile name for new albums |
-| `LIDARR_ROOT_FOLDER` | Lidarr's first root folder | Root folder path for new albums |
-| `SLSKD_URL`, `SLSKD_API_KEY` | | Turns on Get song |
-| `SOULSEEK_DIR` | `/soulseek` | slskd's downloads folder inside the Needle container |
-| `SINGLES_DIR` | `/singles` | Where fetched songs go; a Navidrome library |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | | Turns on Spotify (with `PUBLIC_URL`) |
-| `YTMUSIC_CLIENT_ID`, `YTMUSIC_CLIENT_SECRET` | | Turns on the experimental YouTube Music connection |
-| `YTMUSIC_PYTHON` | bundled Python in Docker, `python3` from source | Python executable with the pinned YouTube Music dependencies |
-| `MUSICBRAINZ_URL` | `https://musicbrainz.org/ws/2` | Song lookups; the tests point it at a mock |
-| `DEEZER_URL` | `https://api.deezer.com` | Popular songs for an artist |
-| `LISTENBRAINZ_URL` | `https://api.listenbrainz.org` | ListenBrainz playlists; the tests point it at a mock |
+| Variable                                     | Default                                         |                                                              |
+| -------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                         | Navidrome as the Needle server reaches it                    |
+| `PUBLIC_URL`                                 |                                                 | The `https://` address people open. Needed for Spotify       |
+| `PORT`                                       | `4535`                                          | Port the server listens on                                   |
+| `DATA_DIR`                                   | `/data` in the image                            | Where `needle.db` lives                                      |
+| `TZ`                                         | `UTC`                                           | Time zone for daily mixes and listening stats                |
+| `LIDARR_URL`, `LIDARR_API_KEY`               |                                                 | Turns on Get album                                           |
+| `LIDARR_QUALITY_PROFILE`                     | root folder's default                           | Quality profile name for new albums                          |
+| `LIDARR_ROOT_FOLDER`                         | Lidarr's first root folder                      | Root folder path for new albums                              |
+| `SLSKD_URL`, `SLSKD_API_KEY`                 |                                                 | Turns on Get song                                            |
+| `SOULSEEK_DIR`                               | `/soulseek`                                     | slskd's downloads folder inside the Needle container         |
+| `SINGLES_DIR`                                | `/singles`                                      | Where fetched songs go; a Navidrome library                  |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |                                                 | Turns on Spotify (with `PUBLIC_URL`)                         |
+| `YTMUSIC_CLIENT_ID`, `YTMUSIC_CLIENT_SECRET` |                                                 | Turns on the experimental YouTube Music connection           |
+| `YTMUSIC_PYTHON`                             | bundled Python in Docker, `python3` from source | Python executable with the pinned YouTube Music dependencies |
+| `MUSICBRAINZ_URL`                            | `https://musicbrainz.org/ws/2`                  | Song lookups; the tests point it at a mock                   |
+| `DEEZER_URL`                                 | `https://api.deezer.com`                        | Popular songs for an artist                                  |
+| `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                  | ListenBrainz playlists; the tests point it at a mock         |
 
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's
@@ -504,20 +504,20 @@ nothing to set up. Choose qualities in Needle's Settings.
 Open **Settings → Connections** as an admin first. It checks each part and says how
 to fix what's wrong:
 
-| Check | Looks at |
-|---|---|
-| Secure address | Whether this page is on HTTPS |
-| Public address | Whether `PUBLIC_URL` matches the address you opened |
-| Navidrome | Reachable, its version and libraries |
-| Lidarr | Reachable, its root folder and quality profile |
-| slskd | Reachable and signed in to Soulseek |
-| Song folders | slskd's downloads readable, the singles folder writable |
-| Singles in Navidrome | Navidrome lists the songs Needle fetched |
-| Song lookups | MusicBrainz and Deezer answer |
-| ListenBrainz | Your connection, and whether Navidrome sent a listen in the last 7 days |
-| Spotify | Keys set, and the redirect URI to register |
-| YouTube Music | The configured client and pinned metadata runtime |
-| YouTube playback | The Python bridge, pinned resolver and Node challenge solver |
+| Check                | Looks at                                                                |
+| -------------------- | ----------------------------------------------------------------------- |
+| Secure address       | Whether this page is on HTTPS                                           |
+| Public address       | Whether `PUBLIC_URL` matches the address you opened                     |
+| Navidrome            | Reachable, its version and libraries                                    |
+| Lidarr               | Reachable, its root folder and quality profile                          |
+| slskd                | Reachable and signed in to Soulseek                                     |
+| Song folders         | slskd's downloads readable, the singles folder writable                 |
+| Singles in Navidrome | Navidrome lists the songs Needle fetched                                |
+| Song lookups         | MusicBrainz and Deezer answer                                           |
+| ListenBrainz         | Your connection, and whether Navidrome sent a listen in the last 7 days |
+| Spotify              | Keys set, and the redirect URI to register                              |
+| YouTube Music        | The configured client and pinned metadata runtime                       |
+| YouTube playback     | The Python bridge, pinned resolver and Node challenge solver            |
 
 Common problems:
 

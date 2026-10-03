@@ -19,10 +19,14 @@ export default async function globalSetup() {
   const q = "u=admin&p=needle-test&c=e2e&v=1.16.1&f=json";
   await fetch(`http://127.0.0.1:14533/rest/startScan.view?${q}&fullScan=true`);
   for (let i = 0; i < 60; i++) {
-    const r = (await (await fetch(`http://127.0.0.1:14533/rest/getScanStatus.view?${q}`)).json()) as { "subsonic-response": { scanStatus: { scanning: boolean; count: number } } };
+    const r = (await (await fetch(`http://127.0.0.1:14533/rest/getScanStatus.view?${q}`)).json()) as {
+      "subsonic-response": { scanStatus: { scanning: boolean; count: number } };
+    };
     const s = r["subsonic-response"].scanStatus;
     if (!s.scanning && s.count > 0) break;
     await new Promise((res) => setTimeout(res, 1000));
   }
-  run("node", ["--disable-warning=ExperimentalWarning", "e2e/fixtures/seed.ts"], { NEEDLE_DATA_DIR: join(root, "e2e/.data") });
+  run("node", ["--disable-warning=ExperimentalWarning", "e2e/fixtures/seed.ts"], {
+    NEEDLE_DATA_DIR: join(root, "e2e/.data"),
+  });
 }

@@ -26,7 +26,11 @@ export function AvatarFace({ px }: { px: number }) {
   const { data: profile } = useMe();
   const { data: me } = useSpotifyMe();
   const photo = profile?.photo ?? image(me?.images, px * 2);
-  return photo ? <img src={photo} alt="" draggable={false} /> : <>{(me?.display_name ?? user).slice(0, 1).toUpperCase()}</>;
+  return photo ? (
+    <img src={photo} alt="" draggable={false} />
+  ) : (
+    <>{(me?.display_name ?? user).slice(0, 1).toUpperCase()}</>
+  );
 }
 
 export function AccountMenu({ size = 32 }: { size?: number }) {
@@ -40,7 +44,12 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
   return (
     <DM.Root modal={false}>
       <DM.Trigger asChild>
-        <button type="button" className="avatar" style={{ width: size, height: size }} aria-label={update ? `Account, signed in as ${user}, update ready` : `Account, signed in as ${user}`}>
+        <button
+          type="button"
+          className="avatar"
+          style={{ width: size, height: size }}
+          aria-label={update ? `Account, signed in as ${user}, update ready` : `Account, signed in as ${user}`}
+        >
           <AvatarFace px={size} />
           {update ? <span className="update-dot" aria-hidden="true" /> : null}
         </button>
@@ -52,7 +61,9 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
             <>
               <DM.Item className="menu-item update-item" onSelect={update}>
                 <Icon name="refresh" size={18} />
-                <span className="menu-label">Update Needle<small>A new version is ready. Reloads the page.</small></span>
+                <span className="menu-label">
+                  Update Needle<small>A new version is ready. Reloads the page.</small>
+                </span>
               </DM.Item>
               <DM.Separator className="menu-sep" />
             </>
@@ -99,7 +110,9 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
 const SEARCH_PROXY = "search-focus-proxy";
 
 export function SearchFocusProxy() {
-  return <input id={SEARCH_PROXY} className="search-proxy" type="text" tabIndex={-1} aria-hidden="true" autoComplete="off" />;
+  return (
+    <input id={SEARCH_PROXY} className="search-proxy" type="text" tabIndex={-1} aria-hidden="true" autoComplete="off" />
+  );
 }
 
 export function useOpenSearch() {
@@ -112,7 +125,16 @@ export function useOpenSearch() {
 
 function OpenSearchField() {
   const openSearch = useOpenSearch();
-  return <SearchField variant="top" value="" onChange={openSearch} onFocusChange={(focused) => focused && openSearch()} label="Search" placeholder="What do you want to listen to?" />;
+  return (
+    <SearchField
+      variant="top"
+      value=""
+      onChange={openSearch}
+      onFocusChange={(focused) => focused && openSearch()}
+      label="Search"
+      placeholder="What do you want to listen to?"
+    />
+  );
 }
 
 export function TopBar({ children, extra }: { children?: ReactNode; extra?: ReactNode }) {
@@ -126,10 +148,22 @@ export function TopBar({ children, extra }: { children?: ReactNode; extra?: Reac
     <header ref={bar} className="topbar">
       <div className="top-left">
         <div className="hist">
-          <button type="button" className="circle" aria-label="Go back" disabled={idx === 0} onClick={() => void navigate(-1)}>
+          <button
+            type="button"
+            className="circle"
+            aria-label="Go back"
+            disabled={idx === 0}
+            onClick={() => void navigate(-1)}
+          >
             <Icon name="back" />
           </button>
-          <button type="button" className="circle" aria-label="Go forward" disabled={idx >= maxIdx} onClick={() => void navigate(1)}>
+          <button
+            type="button"
+            className="circle"
+            aria-label="Go forward"
+            disabled={idx >= maxIdx}
+            onClick={() => void navigate(1)}
+          >
             <Icon name="forward" />
           </button>
         </div>

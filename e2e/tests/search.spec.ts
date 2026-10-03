@@ -102,7 +102,10 @@ test("offers albums you don't have and fetches them through Lidarr", async ({ pa
 
 test("fetches a single song from Soulseek and follows it on the Requests page", async ({ page }) => {
   await signIn(page, "/search?q=undertow");
-  await page.getByRole("group", { name: "Filter results" }).getByRole("button", { name: "Get music", exact: true }).click();
+  await page
+    .getByRole("group", { name: "Filter results" })
+    .getByRole("button", { name: "Get music", exact: true })
+    .click();
   const card = page.locator(".get-card", { hasText: "Undertow" });
   await expect(card).toContainText("Glass Harbor, Tidal, 3:32");
   await card.getByRole("button", { name: "Get song" }).click();
@@ -114,7 +117,6 @@ test("fetches a single song from Soulseek and follows it on the Requests page", 
   await row.getByRole("button", { name: "Remove Undertow from this list" }).click();
   await expect(row).toHaveCount(0);
 });
-
 
 test("desktop search keeps focus after committing and records the query", async ({ page }) => {
   await signIn(page, "/search");

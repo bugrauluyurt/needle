@@ -12,9 +12,19 @@ export function useSongLikes() {
   const save = useToggleSpotifySave();
   const youtubeMusicSaved = useYouTubeMusicSaved();
   const youtubeMusicSave = useToggleYouTubeMusicSave();
-  const isLiked = (song: Song) => songSource(song) === "youtubeMusic" ? youtubeMusicSaved.has(song.id) : songSource(song) === "spotify" ? saved.has(song.id) : starred.songs.has(song.id);
+  const isLiked = (song: Song) =>
+    songSource(song) === "youtubeMusic"
+      ? youtubeMusicSaved.has(song.id)
+      : songSource(song) === "spotify"
+        ? saved.has(song.id)
+        : starred.songs.has(song.id);
   const setLiked = useCallback(
-    (song: Song, on: boolean) => songSource(song) === "youtubeMusic" ? youtubeMusicSave.mutate({ song, on }) : songSource(song) === "spotify" ? save.mutate({ song, on }) : star.mutate({ kind: "song", item: song, on }),
+    (song: Song, on: boolean) =>
+      songSource(song) === "youtubeMusic"
+        ? youtubeMusicSave.mutate({ song, on })
+        : songSource(song) === "spotify"
+          ? save.mutate({ song, on })
+          : star.mutate({ kind: "song", item: song, on }),
     [save, star, youtubeMusicSave],
   );
   return { isLiked, setLiked };

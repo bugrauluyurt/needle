@@ -11,12 +11,25 @@ import { RecordArt } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 import { RequestState } from "./RequestState.tsx";
 
-export function RemoteCover({ url, round = false, record }: { url: string | null; round?: boolean; record?: string | undefined }) {
+export function RemoteCover({
+  url,
+  round = false,
+  record,
+}: {
+  url: string | null;
+  round?: boolean;
+  record?: string | undefined;
+}) {
   const [broken, setBroken] = useState(false);
-  const fallback = record === undefined ? <Icon name={round ? "user" : "album"} size={28} /> : <RecordArt seed={record} />;
+  const fallback =
+    record === undefined ? <Icon name={round ? "user" : "album"} size={28} /> : <RecordArt seed={record} />;
   return (
     <div className={round ? "art round get-art" : "art get-art"}>
-      {url && !broken ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} /> : <span className="art-fallback">{fallback}</span>}
+      {url && !broken ? (
+        <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+      ) : (
+        <span className="art-fallback">{fallback}</span>
+      )}
     </div>
   );
 }
@@ -34,7 +47,15 @@ export function ArtistSearchCard({ artist }: { artist: LidarrArtist }) {
   );
 }
 
-export function GetSongCard({ song, request, canGet = true }: { song: SongCandidate; request?: RequestItem | undefined; canGet?: boolean }) {
+export function GetSongCard({
+  song,
+  request,
+  canGet = true,
+}: {
+  song: SongCandidate;
+  request?: RequestItem | undefined;
+  canGet?: boolean;
+}) {
   const getSong = useGetSong();
   const [busy, setBusy] = useState(false);
   const idle = !request || request.state === "failed";
@@ -43,13 +64,28 @@ export function GetSongCard({ song, request, canGet = true }: { song: SongCandid
       <RemoteCover url={song.coverUrl} />
       <div className="get-text">
         <div className="t">{song.title}</div>
-        <div className="s">{[song.artist, song.album, song.duration ? clock(song.duration) : null].filter(Boolean).join(", ")}</div>
+        <div className="s">
+          {[song.artist, song.album, song.duration ? clock(song.duration) : null].filter(Boolean).join(", ")}
+        </div>
         {idle ? (
           <>
-            {request ? <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} /> : null}
-            {canGet ? <button type="button" className="btn light sm" disabled={busy} onClick={() => { setBusy(true); void getSong(song).finally(() => setBusy(false)); }}>
-              <Icon name="download" size={15} />{busy ? "Starting…" : request ? "Try again" : "Get song"}
-            </button> : null}
+            {request ? (
+              <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} />
+            ) : null}
+            {canGet ? (
+              <button
+                type="button"
+                className="btn light sm"
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void getSong(song).finally(() => setBusy(false));
+                }}
+              >
+                <Icon name="download" size={15} />
+                {busy ? "Starting…" : request ? "Try again" : "Get song"}
+              </button>
+            ) : null}
           </>
         ) : (
           <RequestState kind="song" state={request.state} progress={request.progress} detail={request.detail} />
@@ -81,10 +117,13 @@ export function GetCard({ album, request }: { album: LidarrAlbum; request?: Requ
       <RemoteCover url={album.coverUrl} record={album.foreignAlbumId} />
       <div className="get-text">
         <div className="t">{album.title}</div>
-        <div className="s">{[album.artist, album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(", ")}</div>
+        <div className="s">
+          {[album.artist, album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(", ")}
+        </div>
         {state === "missing" || (state === "wanted" && !request) ? (
           <button type="button" className="btn light sm" disabled={busy} onClick={() => void get()}>
-            <Icon name="download" size={15} />{busy ? "Asking Lidarr…" : "Get album"}
+            <Icon name="download" size={15} />
+            {busy ? "Asking Lidarr…" : "Get album"}
           </button>
         ) : (
           <RequestState state={state} progress={progress} />

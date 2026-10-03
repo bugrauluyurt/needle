@@ -1,0 +1,13 @@
+**/dist
+**/node_modules
+**/.venv
+e2e/.data
+e2e/.library
+e2e/.navidrome
+e2e/.singles
+e2e/.soulseek
+playwright-report
+test-results
+pnpm-lock.yaml
+CHANGELOG.md
+docs/media/hero.html

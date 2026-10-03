@@ -19,22 +19,37 @@ function RequestRow({ r }: { r: RequestItem }) {
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries({ queryKey: keys.requests });
   const mine = r.user === undefined;
-  const retry = () => void api.retryRequest(r.id).then(refresh, (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t try again"));
+  const retry = () =>
+    void api
+      .retryRequest(r.id)
+      .then(refresh, (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t try again"));
   return (
     <li className="req-row">
       <RemoteCover url={r.coverUrl} record={r.kind === "album" ? r.ref : undefined} />
       <div className="req-text">
         <div className="t">{r.title}</div>
-        <div className="s">{r.kind === "album" ? "Album" : "Song"}, {r.artist}, {mine ? "" : `asked by ${r.user ?? ""} `}{ago(new Date(r.created).toISOString())}</div>
+        <div className="s">
+          {r.kind === "album" ? "Album" : "Song"}, {r.artist}, {mine ? "" : `asked by ${r.user ?? ""} `}
+          {ago(new Date(r.created).toISOString())}
+        </div>
         <RequestState kind={r.kind} state={r.state} progress={r.progress} detail={r.detail} />
       </div>
       <div className="req-acts">
         {r.state === "available" ? (
-          <Link className="btn ghost sm" to={`/search?q=${encodeURIComponent(`${r.artist} ${r.title}`)}`}>Open</Link>
+          <Link className="btn ghost sm" to={`/search?q=${encodeURIComponent(`${r.artist} ${r.title}`)}`}>
+            Open
+          </Link>
         ) : mine && RETRY.has(r.state) ? (
-          <button type="button" className="btn ghost sm" onClick={retry}>Try again</button>
+          <button type="button" className="btn ghost sm" onClick={retry}>
+            Try again
+          </button>
         ) : null}
-        <button type="button" className="icon-btn" aria-label={`Remove ${r.title} from this list`} onClick={() => void api.removeRequest(r.id).then(refresh)}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={`Remove ${r.title} from this list`}
+          onClick={() => void api.removeRequest(r.id).then(refresh)}
+        >
           <Icon name="close" size={18} />
         </button>
       </div>
@@ -64,8 +79,17 @@ function DownloadRow({ d }: { d: DownloadItem }) {
         <RequestState state={d.state} progress={d.progress} detail={d.detail} />
       </div>
       <div className="req-acts">
-        {d.state === "failed" ? <button type="button" className="btn ghost sm" onClick={() => remove(true)}>Find another copy</button> : null}
-        <button type="button" className="icon-btn" aria-label={`Remove ${d.title} from downloads`} onClick={() => remove(false)}>
+        {d.state === "failed" ? (
+          <button type="button" className="btn ghost sm" onClick={() => remove(true)}>
+            Find another copy
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={`Remove ${d.title} from downloads`}
+          onClick={() => remove(false)}
+        >
           <Icon name="close" size={18} />
         </button>
       </div>
@@ -82,8 +106,12 @@ function DownloadingNow() {
       <h2>Downloading now</h2>
       {downloads.length || songs.length ? (
         <ul className="req-list">
-          {downloads.map((d) => <DownloadRow key={`d${d.id}`} d={d} />)}
-          {songs.map((r) => <RequestRow key={`s${r.id}`} r={r} />)}
+          {downloads.map((d) => (
+            <DownloadRow key={`d${d.id}`} d={d} />
+          ))}
+          {songs.map((r) => (
+            <RequestRow key={`s${r.id}`} r={r} />
+          ))}
         </ul>
       ) : (
         <p className="muted">Nothing is downloading right now.</p>
@@ -98,7 +126,11 @@ function EveryonesRequests() {
   return (
     <section className="req-section" aria-label="Everyone's requests">
       <h2 className="req-heading">Everyone’s requests</h2>
-      <ul className="req-list">{data.map((r) => <RequestRow key={r.id} r={r} />)}</ul>
+      <ul className="req-list">
+        {data.map((r) => (
+          <RequestRow key={r.id} r={r} />
+        ))}
+      </ul>
     </section>
   );
 }
@@ -113,11 +145,27 @@ export default function RequestsPage() {
       {mobile ? <MobileHeader title="Requests" /> : <TopBar />}
       <div className="pad requests-page">
         {!mobile ? <h1 className="hello">Requests</h1> : null}
-        <p className="muted req-intro">{admin ? "Everything Lidarr is downloading, and the albums and songs everyone asked for." : "The albums and songs you asked for."} Progress updates by itself.</p>
+        <p className="muted req-intro">
+          {admin
+            ? "Everything Lidarr is downloading, and the albums and songs everyone asked for."
+            : "The albums and songs you asked for."}{" "}
+          Progress updates by itself.
+        </p>
         {admin ? <DownloadingNow /> : null}
         <h2 className="req-heading">Your requests</h2>
-        {isLoading ? <p className="muted source-note"><span className="spin" />Loading your requests…</p> : null}
-        {data?.length ? <ul className="req-list">{data.map((r) => <RequestRow key={r.id} r={r} />)}</ul> : null}
+        {isLoading ? (
+          <p className="muted source-note">
+            <span className="spin" />
+            Loading your requests…
+          </p>
+        ) : null}
+        {data?.length ? (
+          <ul className="req-list">
+            {data.map((r) => (
+              <RequestRow key={r.id} r={r} />
+            ))}
+          </ul>
+        ) : null}
         {data && !data.length ? (
           <div className="empty-inline">
             <h2>Nothing requested yet</h2>

@@ -5,8 +5,10 @@ const touchMac = typeof navigator !== "undefined" && /Macintosh/.test(ua) && nav
 
 export const isIOS = /iPhone|iPad|iPod/.test(ua) || touchMac;
 export const isAndroid = /Android/.test(ua);
-export const isStandalone = typeof window !== "undefined"
-  && (window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+export const isStandalone =
+  typeof window !== "undefined" &&
+  (window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true);
 
 export function deviceKind(): DeviceKind {
   if (/iPad/.test(ua) || touchMac || (isAndroid && !/Mobile/.test(ua))) return "tablet";
@@ -18,7 +20,15 @@ export function defaultDeviceName(): string {
   if (/iPhone/.test(ua)) return "iPhone";
   if (/iPad/.test(ua) || touchMac) return "iPad";
   if (isAndroid) return /Mobile/.test(ua) ? "Android phone" : "Android tablet";
-  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /Firefox\//.test(ua)
+      ? "Firefox"
+      : /Chrome\//.test(ua)
+        ? "Chrome"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Browser";
   const os = /Mac OS X/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";
   return os ? `${browser} on ${os}` : browser;
 }

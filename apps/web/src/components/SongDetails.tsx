@@ -42,12 +42,14 @@ export default function SongDetailsDialog() {
                 </Dialog.Close>
               </div>
               <dl className="kv">
-                {rows.filter(([, v]) => v).map(([k, v]) => (
-                  <div key={k}>
-                    <dt>{k}</dt>
-                    <dd>{v}</dd>
-                  </div>
-                ))}
+                {rows
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k}>
+                      <dt>{k}</dt>
+                      <dd>{v}</dd>
+                    </div>
+                  ))}
               </dl>
             </>
           ) : null}

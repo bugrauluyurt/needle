@@ -14,7 +14,9 @@ export function YouTubeMusicPlaybackError({ song }: { song: Song | null }) {
       <div>
         <b>Playback stopped</b>
         <p>{playbackError}</p>
-        <a className="show-all" href={youtubeMusicLink("song", song.id)} target="_blank" rel="noopener noreferrer">Open in YouTube Music</a>
+        <a className="show-all" href={youtubeMusicLink("song", song.id)} target="_blank" rel="noopener noreferrer">
+          Open in YouTube Music
+        </a>
       </div>
     </div>
   );

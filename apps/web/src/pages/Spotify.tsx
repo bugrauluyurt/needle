@@ -23,7 +23,21 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { useCapabilities } from "../queries/hooks.ts";
-import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyArtist, useSpotifyArtistAlbums, useSpotifyArtistSongs, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists, useToggleSpotifyFollow } from "../queries/spotify.ts";
+import {
+  spKeys,
+  useSpotifyAlbum,
+  useSpotifyAlbums,
+  useSpotifyArtist,
+  useSpotifyArtistAlbums,
+  useSpotifyArtistSongs,
+  useSpotifyFollowed,
+  useSpotifyLiked,
+  useSpotifyOn,
+  useSpotifyPlaylist,
+  useSpotifyPlaylistEdits,
+  useSpotifyPlaylists,
+  useToggleSpotifyFollow,
+} from "../queries/spotify.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "../state/ui.ts";
 
@@ -31,7 +45,13 @@ const duration = (songs: Song[]) => songs.reduce((n, s) => n + (s.duration ?? 0)
 
 function OpenInSpotify({ kind, id }: { kind: "album" | "artist" | "playlist"; id: string }) {
   return (
-    <a className="icon-btn big" href={spotifyLink(kind, id)} target="_blank" rel="noopener noreferrer" aria-label="Open in Spotify">
+    <a
+      className="icon-btn big"
+      href={spotifyLink(kind, id)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open in Spotify"
+    >
       <Icon name="link" size={22} />
     </a>
   );
@@ -46,7 +66,9 @@ function NotConnected() {
           <h1>Connect Spotify first</h1>
           <p>Open Settings and connect your Spotify account to see your Spotify library here.</p>
           <div className="acts">
-            <Link to="/settings" className="btn primary">Go to Settings</Link>
+            <Link to="/settings" className="btn primary">
+              Go to Settings
+            </Link>
           </div>
         </div>
       </div>
@@ -63,10 +85,19 @@ function SpotifyError({ what, retry }: { what: string; retry: () => void }) {
       <div className="empty">
         <div className="empty-in">
           <h1>{blocked ? "Spotify requests are paused" : `Couldn’t load this ${what} from Spotify`}</h1>
-          <p>{blocked ? "This item has not been loaded yet. It will be requested when the cooldown ends." : `Spotify didn’t answer, or this ${what} isn’t available to apps. Try again, or reconnect Spotify in Settings.`}</p>
-          {!blocked ? <div className="acts">
-            <button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button>
-          </div> : null}
+          <p>
+            {blocked
+              ? "This item has not been loaded yet. It will be requested when the cooldown ends."
+              : `Spotify didn’t answer, or this ${what} isn’t available to apps. Try again, or reconnect Spotify in Settings.`}
+          </p>
+          {!blocked ? (
+            <div className="acts">
+              <button type="button" className="btn primary" onClick={retry}>
+                <Icon name="refresh" size={16} />
+                Try again
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </>
@@ -86,12 +117,40 @@ export function SpotifyLikedPage() {
   const context: PlayContext = { kind: "liked", id: "sp:liked", name: "Liked on Spotify" };
   return (
     <div className="tinted">
-      <Hero art={<LikedArt className="sp-liked" />} kind="Spotify" title="Liked on Spotify" meta={<span>{plural(songs.length, "song")}</span>} />
-      <ActBar end={<><SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" /><CollectionTools sorts={LIKED_SORTS} order={order} onOrder={setOrder} /></>}>
-        <PlayContextButton contextId="sp:liked" label="Liked on Spotify" onPlay={() => player.playSongs(shown, 0, context)} />
-        <ShuffleButton label="Liked on Spotify" onShuffle={() => player.playSongs(shown, 0, context, { shuffle: true })} />
+      <Hero
+        art={<LikedArt className="sp-liked" />}
+        kind="Spotify"
+        title="Liked on Spotify"
+        meta={<span>{plural(songs.length, "song")}</span>}
+      />
+      <ActBar
+        end={
+          <>
+            <SearchField variant="inline" value={filter} onChange={setFilter} label="Find in liked songs" />
+            <CollectionTools sorts={LIKED_SORTS} order={order} onOrder={setOrder} />
+          </>
+        }
+      >
+        <PlayContextButton
+          contextId="sp:liked"
+          label="Liked on Spotify"
+          onPlay={() => player.playSongs(shown, 0, context)}
+        />
+        <ShuffleButton
+          label="Liked on Spotify"
+          onShuffle={() => player.playSongs(shown, 0, context, { shuffle: true })}
+        />
       </ActBar>
-      <TrackList songs={shown} context={context} art album column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }} order={order} onOrder={setOrder} fallback={RECENT_FIRST} />
+      <TrackList
+        songs={shown}
+        context={context}
+        art
+        album
+        column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }}
+        order={order}
+        onOrder={setOrder}
+        fallback={RECENT_FIRST}
+      />
     </div>
   );
 }
@@ -125,16 +184,41 @@ export function SpotifyPlaylistPage() {
         meta={
           <>
             <b>{meta.owner.display_name ?? meta.owner.id}</b>
-            <span>{plural(total, "song")}{songs?.length ? `, ${longDuration(duration(songs))}` : ""}</span>
+            <span>
+              {plural(total, "song")}
+              {songs?.length ? `, ${longDuration(duration(songs))}` : ""}
+            </span>
           </>
         }
       />
       {songs ? (
-        <ActBar end={songs.length ? <><SearchField variant="inline" collapsible value={filter} onChange={setFilter} label="Find in playlist" /><CollectionTools sorts={SONG_SORTS} order={order} onOrder={setOrder} /></> : null}>
+        <ActBar
+          end={
+            songs.length ? (
+              <>
+                <SearchField
+                  variant="inline"
+                  collapsible
+                  value={filter}
+                  onChange={setFilter}
+                  label="Find in playlist"
+                />
+                <CollectionTools sorts={SONG_SORTS} order={order} onOrder={setOrder} />
+              </>
+            ) : null
+          }
+        >
           {songs.length ? (
             <>
-              <PlayContextButton contextId={context.id ?? ""} label={meta.name} onPlay={() => player.playSongs(songs, 0, context)} />
-              <ShuffleButton label={meta.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
+              <PlayContextButton
+                contextId={context.id ?? ""}
+                label={meta.name}
+                onPlay={() => player.playSongs(songs, 0, context)}
+              />
+              <ShuffleButton
+                label={meta.name}
+                onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })}
+              />
             </>
           ) : null}
           <OpenInSpotify kind="playlist" id={id} />
@@ -143,8 +227,14 @@ export function SpotifyPlaylistPage() {
       {songs === null ? (
         <div className="pad sp-note">
           <h2>Spotify keeps this playlist’s songs to itself</h2>
-          <p className="muted">Spotify only lets personal apps read playlists you made or collaborate on. Open it in Spotify, like the songs you want, and they’ll show up in Liked on Spotify here.</p>
-          <a className="btn light" href={spotifyLink("playlist", id)} target="_blank" rel="noopener noreferrer"><Icon name="link" size={16} />Open in Spotify</a>
+          <p className="muted">
+            Spotify only lets personal apps read playlists you made or collaborate on. Open it in Spotify, like the
+            songs you want, and they’ll show up in Liked on Spotify here.
+          </p>
+          <a className="btn light" href={spotifyLink("playlist", id)} target="_blank" rel="noopener noreferrer">
+            <Icon name="link" size={16} />
+            Open in Spotify
+          </a>
         </div>
       ) : songs.length && shown ? (
         <TrackList
@@ -155,10 +245,14 @@ export function SpotifyPlaylistPage() {
           column={{ label: "Added", value: (s) => ago(s.created), sort: "added" }}
           order={order}
           onOrder={setOrder}
-          {...(editable ? {
-            onReorder: (from: number, to: number) => void edits.reorder(id, from, to),
-            menuExtra: (s: Song) => [{ label: "Remove from this playlist", icon: "trash" as const, run: () => void edits.remove(id, s) }],
-          } : {})}
+          {...(editable
+            ? {
+                onReorder: (from: number, to: number) => void edits.reorder(id, from, to),
+                menuExtra: (s: Song) => [
+                  { label: "Remove from this playlist", icon: "trash" as const, run: () => void edits.remove(id, s) },
+                ],
+              }
+            : {})}
         />
       ) : (
         <div className="pad empty-inline">
@@ -182,7 +276,10 @@ export function SpotifyAlbumPage() {
   const [busy, setBusy] = useState(false);
   const [songFilter, setSongFilter] = useState("");
   const [songOrder, setSongOrder] = useState<SongOrder>(AS_GIVEN);
-  const visibleSongs = useMemo(() => shownSongs(data?.songs ?? [], songOrder, songFilter), [data?.songs, songOrder, songFilter]);
+  const visibleSongs = useMemo(
+    () => shownSongs(data?.songs ?? [], songOrder, songFilter),
+    [data?.songs, songOrder, songFilter],
+  );
   if (!on) return <NotConnected />;
   if (isLoading) return <PageSkeleton />;
   if (!data) return <SpotifyError what="album" retry={() => void refetch()} />;
@@ -203,7 +300,9 @@ export function SpotifyAlbumPage() {
   const getAlbum = async () => {
     setBusy(true);
     try {
-      const { albums: [hit] } = await api.lidarrSearch(`${album.artists?.[0]?.name ?? ""} ${album.name}`);
+      const {
+        albums: [hit],
+      } = await api.lidarrSearch(`${album.artists?.[0]?.name ?? ""} ${album.name}`);
       if (!hit) toast("Lidarr couldn’t find this album");
       else {
         await api.lidarrGet(hit.foreignAlbumId);
@@ -223,21 +322,42 @@ export function SpotifyAlbumPage() {
         title={album.name}
         meta={
           <>
-            {(album.artists ?? []).map((a) => <Link key={a.id} to={artistPath(spId(a.id))} className="meta-artist">{a.name}</Link>)}
+            {(album.artists ?? []).map((a) => (
+              <Link key={a.id} to={artistPath(spId(a.id))} className="meta-artist">
+                {a.name}
+              </Link>
+            ))}
             {year ? <span>{year}</span> : null}
-            <span>{plural(songs.length, "song")}, {longDuration(duration(songs))}</span>
+            <span>
+              {plural(songs.length, "song")}, {longDuration(duration(songs))}
+            </span>
           </>
         }
       />
-      <ActBar end={<SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in album" />}>
-        <PlayContextButton contextId={context.id ?? ""} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
+      <ActBar
+        end={
+          <SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in album" />
+        }
+      >
+        <PlayContextButton
+          contextId={context.id ?? ""}
+          label={album.name}
+          onPlay={() => player.playSongs(songs, 0, context)}
+        />
         <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
-        <button type="button" className="icon-btn big" aria-pressed={isSaved} aria-label={isSaved ? "Remove from your Spotify library" : "Save to your Spotify library"} onClick={() => void toggleSave()}>
+        <button
+          type="button"
+          className="icon-btn big"
+          aria-pressed={isSaved}
+          aria-label={isSaved ? "Remove from your Spotify library" : "Save to your Spotify library"}
+          onClick={() => void toggleSave()}
+        >
           <Icon name={isSaved ? "heartFill" : "heart"} size={28} />
         </button>
         {caps.data?.lidarr ? (
           <button type="button" className="btn ghost sm" disabled={busy} onClick={() => void getAlbum()}>
-            <Icon name="download" size={15} />{busy ? "Asking Lidarr…" : "Get album"}
+            <Icon name="download" size={15} />
+            {busy ? "Asking Lidarr…" : "Get album"}
           </button>
         ) : null}
         <OpenInSpotify kind="album" id={album.id} />
@@ -255,7 +375,11 @@ export function SpotifyAlbumPage() {
         }}
       />
       <div className="pad">
-        {album.label || album.copyrights?.[0] ? <p className="album-foot muted">{[year, album.label, album.copyrights?.[0]?.text].filter(Boolean).join(". ")}</p> : null}
+        {album.label || album.copyrights?.[0] ? (
+          <p className="album-foot muted">
+            {[year, album.label, album.copyrights?.[0]?.text].filter(Boolean).join(". ")}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -265,7 +389,8 @@ export function SpotifyArtistPage() {
   const { id = "" } = useParams();
   const [searchParams] = useSearchParams();
   const artistSection = searchParams.get("section");
-  const section = artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
+  const section =
+    artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
   const [songFilter, setSongFilter] = useState("");
   const on = useSpotifyOn();
   const blocked = useSpotifyStatus((s) => s.blocked);
@@ -274,10 +399,19 @@ export function SpotifyArtistPage() {
   const artistSongs = useSpotifyArtistSongs(data?.artist.id ?? "", data?.artist.name ?? "");
   const artistAlbums = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "album");
   const artistSingles = useSpotifyArtistAlbums(data?.artist.id ?? "", undefined, "single");
-  const songs = useMemo(() => uniqueSpotifyItems(artistSongs.data?.pages.flatMap((songPage) => songPage.items) ?? []), [artistSongs.data]);
+  const songs = useMemo(
+    () => uniqueSpotifyItems(artistSongs.data?.pages.flatMap((songPage) => songPage.items) ?? []),
+    [artistSongs.data],
+  );
   const visibleSongs = useMemo(() => shownSongs(songs, AS_GIVEN, songFilter), [songs, songFilter]);
-  const fullAlbums = useMemo(() => uniqueSpotifyItems(artistAlbums.data?.pages.flatMap((albumPage) => albumPage.items) ?? []), [artistAlbums.data]);
-  const singles = useMemo(() => uniqueSpotifyItems(artistSingles.data?.pages.flatMap((albumPage) => albumPage.items) ?? []), [artistSingles.data]);
+  const fullAlbums = useMemo(
+    () => uniqueSpotifyItems(artistAlbums.data?.pages.flatMap((albumPage) => albumPage.items) ?? []),
+    [artistAlbums.data],
+  );
+  const singles = useMemo(
+    () => uniqueSpotifyItems(artistSingles.data?.pages.flatMap((albumPage) => albumPage.items) ?? []),
+    [artistSingles.data],
+  );
   const { data: followed } = useSpotifyFollowed();
   const follow = useToggleSpotifyFollow();
   const tone = useTone(image(data?.artist.images, 64));
@@ -304,27 +438,53 @@ export function SpotifyArtistPage() {
     <div className={section === "songs" ? "artist-page artist-songs-page" : "artist-page"}>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
-        <div className="bg"><Art images={artist.images} px={900} sizes="100vw" eager fallback="artist" /></div>
+        <div className="bg">
+          <Art images={artist.images} px={900} sizes="100vw" eager fallback="artist" />
+        </div>
         <div className="a-hero-text">
-          <div className="kind"><SpotifyMark /> Artist</div>
+          <div className="kind">
+            <SpotifyMark /> Artist
+          </div>
           <h1 style={{ "--title": `${artist.name.length > 14 ? 76 : 112}px` } as React.CSSProperties}>{artist.name}</h1>
-          <p>{artist.followers ? `${count(artist.followers.total)} followers on Spotify. ` : ""}{releaseTotal ? `${plural(releaseTotal, "release")}.` : ""}</p>
+          <p>
+            {artist.followers ? `${count(artist.followers.total)} followers on Spotify. ` : ""}
+            {releaseTotal ? `${plural(releaseTotal, "release")}.` : ""}
+          </p>
         </div>
       </div>
       <ActBar>
         {songs.length || fullAlbums.length || singles.length ? (
           <>
-            <PlayContextButton contextId={spId(artist.id)} label={artist.name} disabled={!songs.length} onPlay={() => player.playSongs(songs, 0, context)} />
-            <ShuffleButton label={artist.name} disabled={!songs.length} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
+            <PlayContextButton
+              contextId={spId(artist.id)}
+              label={artist.name}
+              disabled={!songs.length}
+              onPlay={() => player.playSongs(songs, 0, context)}
+            />
+            <ShuffleButton
+              label={artist.name}
+              disabled={!songs.length}
+              onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })}
+            />
           </>
         ) : null}
-        <button type="button" className="btn ghost sm" aria-pressed={following} onClick={() => follow.mutate({ artist, on: !following })}>
+        <button
+          type="button"
+          className="btn ghost sm"
+          aria-pressed={following}
+          onClick={() => follow.mutate({ artist, on: !following })}
+        >
           {following ? "Following" : "Follow"}
         </button>
         <OpenInSpotify kind="artist" id={artist.id} />
       </ActBar>
       <div className="pad">
-        {section ? <Link className="show-all artist-back" to={sectionHref(null)}><Icon name="back" size={16} />Back to artist</Link> : null}
+        {section ? (
+          <Link className="show-all artist-back" to={sectionHref(null)}>
+            <Icon name="back" size={16} />
+            Back to artist
+          </Link>
+        ) : null}
         {!section || section === "songs" ? (
           <section>
             <RowHeader
@@ -332,27 +492,120 @@ export function SpotifyArtistPage() {
               subtitle={section ? "Spotify relevance. Search the songs loaded here." : "Spotify relevance"}
               action={
                 <div className="collection-actions">
-                  <SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in artist songs" />
-                  {!section && (songs.length > 10 || artistSongs.hasNextPage) ? <Link className="show-all" to={sectionHref("songs")}>Show all</Link> : null}
+                  <SearchField
+                    variant="inline"
+                    collapsible
+                    value={songFilter}
+                    onChange={setSongFilter}
+                    label="Find in artist songs"
+                  />
+                  {!section && (songs.length > 10 || artistSongs.hasNextPage) ? (
+                    <Link className="show-all" to={sectionHref("songs")}>
+                      Show all
+                    </Link>
+                  ) : null}
                 </div>
               }
             />
-            {blocked && !songs.length ? <p className="muted">Songs will load after Spotify’s cooldown.</p> : artistSongs.isLoading ? <p className="muted" role="status">Loading songs…</p> : artistSongs.isError && !songs.length ? (
+            {blocked && !songs.length ? (
+              <p className="muted">Songs will load after Spotify’s cooldown.</p>
+            ) : artistSongs.isLoading ? (
+              <p className="muted" role="status">
+                Loading songs…
+              </p>
+            ) : artistSongs.isError && !songs.length ? (
               <div className="empty-inline">
                 <p className="muted">Couldn’t load this artist’s songs from Spotify.</p>
-                <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistSongs.refetch()}>Try again</button>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  disabled={blocked}
+                  onClick={() => void artistSongs.refetch()}
+                >
+                  Try again
+                </button>
               </div>
             ) : (
-              <TrackList songs={visibleSongs} context={context} art album header={section === "songs"} {...(!section ? { limit: 10 } : {})} column={{ label: "Release date", value: releaseDateLabel }} canSort={false} />
+              <TrackList
+                songs={visibleSongs}
+                context={context}
+                art
+                album
+                header={section === "songs"}
+                {...(!section ? { limit: 10 } : {})}
+                column={{ label: "Release date", value: releaseDateLabel }}
+                canSort={false}
+              />
             )}
-            {section === "songs" && artistSongs.hasNextPage ? <button type="button" className="btn ghost sm" disabled={blocked || artistSongs.isFetchingNextPage} onClick={() => void artistSongs.fetchNextPage()}>{artistSongs.isFetchingNextPage ? "Loading…" : artistSongs.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
+            {section === "songs" && artistSongs.hasNextPage ? (
+              <button
+                type="button"
+                className="btn ghost sm"
+                disabled={blocked || artistSongs.isFetchingNextPage}
+                onClick={() => void artistSongs.fetchNextPage()}
+              >
+                {artistSongs.isFetchingNextPage
+                  ? "Loading…"
+                  : artistSongs.isFetchNextPageError
+                    ? "Try loading more again"
+                    : "Load more"}
+              </button>
+            ) : null}
           </section>
         ) : null}
-        {!section || section === "albums" ? <Collection id="spotify-artist-albums" title="Albums" items={fullAlbums.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty={blocked ? "Albums will load after Spotify’s cooldown." : "No albums here."} {...(artistAlbums.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("albums") } : { subtitle: "Search the albums loaded here." })} /> : null}
-        {!section || section === "singles" ? <Collection id="spotify-artist-singles" title="Singles and EPs" items={singles.map((album) => spotifyAlbumItem(album, releaseYear(album)))} sorts={RELEASE_SORTS} empty={blocked ? "Releases will load after Spotify’s cooldown." : "No singles or EPs here."} {...(artistSingles.isLoading ? { loading: <CardSkeletons n={6} /> } : {})} {...(!section ? { preview: 6, to: sectionHref("singles") } : { subtitle: "Search the releases loaded here." })} /> : null}
-        {(section === "albums" || section === "singles") && releaseQuery.hasNextPage ? <button type="button" className="btn ghost sm" disabled={blocked || releaseQuery.isFetchingNextPage} onClick={() => void releaseQuery.fetchNextPage()}>{releaseQuery.isFetchingNextPage ? "Loading…" : releaseQuery.isFetchNextPageError ? "Try loading more again" : "Load more"}</button> : null}
-        {(!section || section === "albums") && artistAlbums.isError && !fullAlbums.length ? <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistAlbums.refetch()}>Try loading albums again</button> : null}
-        {(!section || section === "singles") && artistSingles.isError && !singles.length ? <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistSingles.refetch()}>Try loading singles and EPs again</button> : null}
+        {!section || section === "albums" ? (
+          <Collection
+            id="spotify-artist-albums"
+            title="Albums"
+            items={fullAlbums.map((album) => spotifyAlbumItem(album, releaseYear(album)))}
+            sorts={RELEASE_SORTS}
+            empty={blocked ? "Albums will load after Spotify’s cooldown." : "No albums here."}
+            {...(artistAlbums.isLoading ? { loading: <CardSkeletons n={6} /> } : {})}
+            {...(!section ? { preview: 6, to: sectionHref("albums") } : { subtitle: "Search the albums loaded here." })}
+          />
+        ) : null}
+        {!section || section === "singles" ? (
+          <Collection
+            id="spotify-artist-singles"
+            title="Singles and EPs"
+            items={singles.map((album) => spotifyAlbumItem(album, releaseYear(album)))}
+            sorts={RELEASE_SORTS}
+            empty={blocked ? "Releases will load after Spotify’s cooldown." : "No singles or EPs here."}
+            {...(artistSingles.isLoading ? { loading: <CardSkeletons n={6} /> } : {})}
+            {...(!section
+              ? { preview: 6, to: sectionHref("singles") }
+              : { subtitle: "Search the releases loaded here." })}
+          />
+        ) : null}
+        {(section === "albums" || section === "singles") && releaseQuery.hasNextPage ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            disabled={blocked || releaseQuery.isFetchingNextPage}
+            onClick={() => void releaseQuery.fetchNextPage()}
+          >
+            {releaseQuery.isFetchingNextPage
+              ? "Loading…"
+              : releaseQuery.isFetchNextPageError
+                ? "Try loading more again"
+                : "Load more"}
+          </button>
+        ) : null}
+        {(!section || section === "albums") && artistAlbums.isError && !fullAlbums.length ? (
+          <button type="button" className="btn ghost sm" disabled={blocked} onClick={() => void artistAlbums.refetch()}>
+            Try loading albums again
+          </button>
+        ) : null}
+        {(!section || section === "singles") && artistSingles.isError && !singles.length ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            disabled={blocked}
+            onClick={() => void artistSingles.refetch()}
+          >
+            Try loading singles and EPs again
+          </button>
+        ) : null}
       </div>
     </div>
   );

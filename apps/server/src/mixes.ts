@@ -49,7 +49,10 @@ function topBy<T>(items: T[], key: (t: T) => string | undefined, n: number): str
     const k = key(it);
     if (k) counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k]) => k);
 }
 
 export function buildMix(name: string, songs: Song[], seed: string): Mix | null {
@@ -86,13 +89,23 @@ export class Mixes {
 
     const played = this.log.topGenres(auth.user, now.getTime() - LOOKBACK, MIX_COUNT);
     const { genres } = await this.navidrome.call<{ genres: { genre?: Genre[] } }>(auth, "getGenres");
-    const library = (genres.genre ?? []).filter((g) => g.songCount >= MIN_SONGS).sort((a, b) => b.songCount - a.songCount).map((g) => g.value);
+    const library = (genres.genre ?? [])
+      .filter((g) => g.songCount >= MIN_SONGS)
+      .sort((a, b) => b.songCount - a.songCount)
+      .map((g) => g.value);
     const chosen = [...new Set([...played, ...library])].slice(0, MIX_COUNT);
 
-    const mixes = (await Promise.all(chosen.map(async (genre) => {
-      const r = await this.navidrome.call<{ songsByGenre: { song?: Song[] } }>(auth, "getSongsByGenre", { genre, count: 500 });
-      return buildMix(genre, r.songsByGenre.song ?? [], `${auth.user}:${day}:${genre}`);
-    }))).filter((m): m is Mix => m !== null);
+    const mixes = (
+      await Promise.all(
+        chosen.map(async (genre) => {
+          const r = await this.navidrome.call<{ songsByGenre: { song?: Song[] } }>(auth, "getSongsByGenre", {
+            genre,
+            count: 500,
+          });
+          return buildMix(genre, r.songsByGenre.song ?? [], `${auth.user}:${day}:${genre}`);
+        }),
+      )
+    ).filter((m): m is Mix => m !== null);
     for (const decade of DECADES) {
       if (mixes.length >= MIX_COUNT) break;
       const mix = await this.decadeMix(auth, decade, day);
@@ -105,11 +118,20 @@ export class Mixes {
 
   private async decadeMix(auth: Auth, decade: number, day: string): Promise<Mix | null> {
     const r = await this.navidrome.call<{ albumList2: { album?: Album[] } }>(auth, "getAlbumList2", {
-      type: "byYear", fromYear: decade, toYear: decade + 9, size: 100,
+      type: "byYear",
+      fromYear: decade,
+      toYear: decade + 9,
+      size: 100,
     });
     const albums = seededShuffle(r.albumList2.album ?? [], `${auth.user}:${day}:${decade}`).slice(0, ALBUMS_PER_DECADE);
     if (albums.reduce((n, a) => n + a.songCount, 0) < MIN_SONGS) return null;
-    const full = await Promise.all(albums.map((a) => this.navidrome.call<{ album: AlbumWithSongs }>(auth, "getAlbum", { id: a.id })));
-    return buildMix(`The ${decade}s`, full.flatMap((f) => f.album.song ?? []), `${auth.user}:${day}:${decade}`);
+    const full = await Promise.all(
+      albums.map((a) => this.navidrome.call<{ album: AlbumWithSongs }>(auth, "getAlbum", { id: a.id })),
+    );
+    return buildMix(
+      `The ${decade}s`,
+      full.flatMap((f) => f.album.song ?? []),
+      `${auth.user}:${day}:${decade}`,
+    );
   }
 }

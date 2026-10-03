@@ -12,9 +12,32 @@ export const SPOTIFY_SEARCH_MAX_OFFSET = 1000;
 
 export type SpImage = RemoteImage;
 export type SpArtistRef = { id: string; name: string };
-export type SpAlbumRef = { id: string; name: string; images: SpImage[]; release_date?: string; artists?: SpArtistRef[]; album_type?: string; total_tracks?: number; uri?: string };
-export type SpTrack = { id: string; uri: string; name: string; duration_ms: number; artists: SpArtistRef[]; album?: SpAlbumRef; track_number?: number; disc_number?: number; is_local?: boolean };
-export type SpAlbum = SpAlbumRef & { tracks: { items: SpTrack[]; next: string | null; total: number }; label?: string; copyrights?: { text: string }[] };
+export type SpAlbumRef = {
+  id: string;
+  name: string;
+  images: SpImage[];
+  release_date?: string;
+  artists?: SpArtistRef[];
+  album_type?: string;
+  total_tracks?: number;
+  uri?: string;
+};
+export type SpTrack = {
+  id: string;
+  uri: string;
+  name: string;
+  duration_ms: number;
+  artists: SpArtistRef[];
+  album?: SpAlbumRef;
+  track_number?: number;
+  disc_number?: number;
+  is_local?: boolean;
+};
+export type SpAlbum = SpAlbumRef & {
+  tracks: { items: SpTrack[]; next: string | null; total: number };
+  label?: string;
+  copyrights?: { text: string }[];
+};
 export type SpArtist = { id: string; name: string; images: SpImage[]; followers?: { total: number } };
 export type SpPlaylist = {
   id: string;
@@ -44,7 +67,12 @@ export type SpotifySearchData = {
 type PlaylistItem = { added_at?: string; item?: SpTrack | null; track?: SpTrack | null };
 type SavedTrack = { added_at: string; track: SpTrack };
 type SavedAlbum = { added_at: string; album: SpAlbum };
-type SearchResult = { tracks?: Paged<SpTrack>; albums?: Paged<SpAlbumRef>; artists?: Paged<SpArtist>; playlists?: Paged<SpPlaylist | null> };
+type SearchResult = {
+  tracks?: Paged<SpTrack>;
+  albums?: Paged<SpAlbumRef>;
+  artists?: Paged<SpArtist>;
+  playlists?: Paged<SpPlaylist | null>;
+};
 
 export class SpotifyApiError extends Error {
   readonly status: number;
@@ -79,16 +107,19 @@ function blockUntil(until: number) {
   const ms = until - Date.now();
   if (!Number.isFinite(ms) || ms <= 0) return;
   useSpotifyStatus.setState({ blocked: true, until });
-  unblock = setTimeout(() => {
-    if (useSpotifyStatus.getState().until !== until) return;
-    if (Date.now() < until) return blockUntil(until);
-    useSpotifyStatus.setState({ blocked: false, until: 0 });
-    try {
-      localStorage.removeItem(BLOCK_KEY);
-    } catch {
-      return;
-    }
-  }, Math.min(ms, 2_147_483_647));
+  unblock = setTimeout(
+    () => {
+      if (useSpotifyStatus.getState().until !== until) return;
+      if (Date.now() < until) return blockUntil(until);
+      useSpotifyStatus.setState({ blocked: false, until: 0 });
+      try {
+        localStorage.removeItem(BLOCK_KEY);
+      } catch {
+        return;
+      }
+    },
+    Math.min(ms, 2_147_483_647),
+  );
 }
 
 function block(ms: number) {
@@ -140,7 +171,11 @@ async function req<T>(path: string, init: RequestInit = {}, retry = true): Promi
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-async function pages<T>(first: string, limit = MAX_ITEMS, unwrap: (body: unknown) => Paged<T> = (body) => body as Paged<T>): Promise<T[]> {
+async function pages<T>(
+  first: string,
+  limit = MAX_ITEMS,
+  unwrap: (body: unknown) => Paged<T> = (body) => body as Paged<T>,
+): Promise<T[]> {
   const out: T[] = [];
   let next: string | null = first;
   while (next && out.length < limit) {
@@ -193,7 +228,8 @@ export function toSong(t: SpTrack, album?: SpAlbumRef, extra: Partial<Song> = {}
   };
 }
 
-const playable = (t: SpTrack | null | undefined): t is SpTrack => Boolean(t?.id && t.uri.startsWith("spotify:track:") && !t.is_local);
+const playable = (t: SpTrack | null | undefined): t is SpTrack =>
+  Boolean(t?.id && t.uri.startsWith("spotify:track:") && !t.is_local);
 
 export function uniqueSpotifyItems<T extends { id: string }>(items: T[]): T[] {
   const itemIds = new Set<string>();
@@ -222,7 +258,9 @@ export function spotifySearchResults(searchResult: SearchResult, offset = 0): Sp
     songs: (searchResult.tracks?.items ?? []).filter((track) => track.id).map((track) => toSong(track)),
     albums: searchResult.albums?.items ?? [],
     artists: searchResult.artists?.items ?? [],
-    playlists: (searchResult.playlists?.items ?? []).filter((playlist): playlist is SpPlaylist => Boolean(playlist?.id)),
+    playlists: (searchResult.playlists?.items ?? []).filter((playlist): playlist is SpPlaylist =>
+      Boolean(playlist?.id),
+    ),
     pagination: {
       ...(searchResult.tracks ? { songs: searchPagination(searchResult.tracks, offset) } : {}),
       ...(searchResult.albums ? { albums: searchPagination(searchResult.albums, offset) } : {}),
@@ -242,44 +280,87 @@ export const sp = {
       return playable(t) ? [toSong(t, undefined, i.added_at ? { created: i.added_at } : {})] : [];
     }),
   liked: async (): Promise<Song[]> =>
-    (await pages<SavedTrack>(`/me/tracks?limit=${PAGE}`)).filter((s) => playable(s.track)).map((s) => toSong(s.track, undefined, { starred: s.added_at })),
-  albums: async (): Promise<(SpAlbum & { added_at: string })[]> => (await pages<SavedAlbum>(`/me/albums?limit=${PAGE}`)).map((s) => ({ ...s.album, added_at: s.added_at })),
+    (await pages<SavedTrack>(`/me/tracks?limit=${PAGE}`))
+      .filter((s) => playable(s.track))
+      .map((s) => toSong(s.track, undefined, { starred: s.added_at })),
+  albums: async (): Promise<(SpAlbum & { added_at: string })[]> =>
+    (await pages<SavedAlbum>(`/me/albums?limit=${PAGE}`)).map((s) => ({ ...s.album, added_at: s.added_at })),
   album: async (id: string): Promise<SpAlbum> => {
     const album = await req<SpAlbum>(`/albums/${id}`);
     const rest = album.tracks.next ? await pages<SpTrack>(album.tracks.next) : [];
     return { ...album, tracks: { ...album.tracks, items: [...album.tracks.items, ...rest], next: null } };
   },
   artist: (id: string, signal?: AbortSignal) => req<SpArtist>(`/artists/${id}`, signal ? { signal } : {}),
-  artistAlbumsPage: async (id: string, { offset = 0, category, signal }: { offset?: number; category?: "album" | "single"; signal?: AbortSignal } = {}): Promise<SpPage<SpAlbumRef>> => {
-    const albumPage = await req<Paged<SpAlbumRef>>(`/artists/${id}/albums?${new URLSearchParams({ include_groups: category ?? "album,single", limit: String(ARTIST_ALBUMS_PAGE), offset: String(offset) }).toString()}`, signal ? { signal } : {});
+  artistAlbumsPage: async (
+    id: string,
+    { offset = 0, category, signal }: { offset?: number; category?: "album" | "single"; signal?: AbortSignal } = {},
+  ): Promise<SpPage<SpAlbumRef>> => {
+    const albumPage = await req<Paged<SpAlbumRef>>(
+      `/artists/${id}/albums?${new URLSearchParams({ include_groups: category ?? "album,single", limit: String(ARTIST_ALBUMS_PAGE), offset: String(offset) }).toString()}`,
+      signal ? { signal } : {},
+    );
 
     return { ...albumPage, offset: albumPage.offset ?? offset, limit: albumPage.limit ?? ARTIST_ALBUMS_PAGE };
   },
-  artistSongs: async (id: string, artistName: string, { offset = 0, signal }: { offset?: number; signal?: AbortSignal } = {}): Promise<SpPage<Song>> => {
-    const searchResult = await sp.search(`artist:"${artistName.replace(/["\\]/g, " ")}"`, signal, { type: "track", offset });
+  artistSongs: async (
+    id: string,
+    artistName: string,
+    { offset = 0, signal }: { offset?: number; signal?: AbortSignal } = {},
+  ): Promise<SpPage<Song>> => {
+    const searchResult = await sp.search(`artist:"${artistName.replace(/["\\]/g, " ")}"`, signal, {
+      type: "track",
+      offset,
+    });
     const trackPage = searchResult.tracks;
 
     return {
       ...(trackPage ? searchPagination(trackPage, offset) : { next: null, total: 0, offset, limit: SEARCH_PAGE }),
-      items: (trackPage?.items ?? []).filter((track) => track.id && track.artists.some((artist) => artist.id === id)).map((track) => toSong(track)),
+      items: (trackPage?.items ?? [])
+        .filter((track) => track.id && track.artists.some((artist) => artist.id === id))
+        .map((track) => toSong(track)),
     };
   },
-  followed: () => pages<SpArtist>(`/me/following?type=artist&limit=${PAGE}`, MAX_ITEMS, (body) => (body as { artists: Paged<SpArtist> }).artists),
+  followed: () =>
+    pages<SpArtist>(
+      `/me/following?type=artist&limit=${PAGE}`,
+      MAX_ITEMS,
+      (body) => (body as { artists: Paged<SpArtist> }).artists,
+    ),
   findArtist: (name: string) =>
-    req<{ artists: Paged<SpArtist> }>(`/search?${new URLSearchParams({ q: name, type: "artist", limit: "5" }).toString()}`).then((r) => r.artists.items),
+    req<{ artists: Paged<SpArtist> }>(
+      `/search?${new URLSearchParams({ q: name, type: "artist", limit: "5" }).toString()}`,
+    ).then((r) => r.artists.items),
   search: (q: string, signal?: AbortSignal, { type, offset = 0 }: { type?: SpotifySearchType; offset?: number } = {}) =>
-    req<SearchResult>(`/search?${new URLSearchParams({ q, type: type ?? "track,album,artist,playlist", limit: String(SEARCH_PAGE), offset: String(offset) }).toString()}`, signal ? { signal } : {}),
-  saved: (uris: string[]) => req<boolean[]>(`/me/library/contains?${new URLSearchParams({ uris: uris.join(",") }).toString()}`),
-  save: (uris: string[]) => req<void>(`/me/library?${new URLSearchParams({ uris: uris.join(",") }).toString()}`, { method: "PUT" }),
-  unsave: (uris: string[]) => req<void>(`/me/library?${new URLSearchParams({ uris: uris.join(",") }).toString()}`, { method: "DELETE" }),
-  createPlaylist: (name: string) => req<SpPlaylist>("/me/playlists", { method: "POST", body: JSON.stringify({ name, public: false }) }),
-  addToPlaylist: (id: string, uris: string[]) => req<{ snapshot_id: string }>(`/playlists/${id}/items`, { method: "POST", body: JSON.stringify({ uris }) }),
+    req<SearchResult>(
+      `/search?${new URLSearchParams({ q, type: type ?? "track,album,artist,playlist", limit: String(SEARCH_PAGE), offset: String(offset) }).toString()}`,
+      signal ? { signal } : {},
+    ),
+  saved: (uris: string[]) =>
+    req<boolean[]>(`/me/library/contains?${new URLSearchParams({ uris: uris.join(",") }).toString()}`),
+  save: (uris: string[]) =>
+    req<void>(`/me/library?${new URLSearchParams({ uris: uris.join(",") }).toString()}`, { method: "PUT" }),
+  unsave: (uris: string[]) =>
+    req<void>(`/me/library?${new URLSearchParams({ uris: uris.join(",") }).toString()}`, { method: "DELETE" }),
+  createPlaylist: (name: string) =>
+    req<SpPlaylist>("/me/playlists", { method: "POST", body: JSON.stringify({ name, public: false }) }),
+  addToPlaylist: (id: string, uris: string[]) =>
+    req<{ snapshot_id: string }>(`/playlists/${id}/items`, { method: "POST", body: JSON.stringify({ uris }) }),
   removeFromPlaylist: (id: string, uris: string[]) =>
-    req<{ snapshot_id: string }>(`/playlists/${id}/items`, { method: "DELETE", body: JSON.stringify({ items: uris.map((uri) => ({ uri })) }) }),
+    req<{ snapshot_id: string }>(`/playlists/${id}/items`, {
+      method: "DELETE",
+      body: JSON.stringify({ items: uris.map((uri) => ({ uri })) }),
+    }),
   reorderPlaylist: (id: string, from: number, to: number) =>
-    req<{ snapshot_id: string }>(`/playlists/${id}/items`, { method: "PUT", body: JSON.stringify({ range_start: from, insert_before: to > from ? to + 1 : to }) }),
+    req<{ snapshot_id: string }>(`/playlists/${id}/items`, {
+      method: "PUT",
+      body: JSON.stringify({ range_start: from, insert_before: to > from ? to + 1 : to }),
+    }),
   play: (deviceId: string, uris: string[], positionMs = 0) =>
-    req<void>(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, { method: "PUT", body: JSON.stringify({ uris, position_ms: Math.round(positionMs) }) }),
+    req<void>(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+      method: "PUT",
+      body: JSON.stringify({ uris, position_ms: Math.round(positionMs) }),
+    }),
 };
 
-export const spotifyLink = (kind: "album" | "artist" | "playlist" | "track", id: string) => `https://open.spotify.com/${kind}/${rawId(id)}`;
+export const spotifyLink = (kind: "album" | "artist" | "playlist" | "track", id: string) =>
+  `https://open.spotify.com/${kind}/${rawId(id)}`;

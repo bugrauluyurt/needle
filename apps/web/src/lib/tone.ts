@@ -26,7 +26,9 @@ function hslToHex(h: number, s: number, l: number): string {
   const f = (n: number) => {
     const k = (n + h / 30) % 12;
     const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-    return Math.round(c * 255).toString(16).padStart(2, "0");
+    return Math.round(c * 255)
+      .toString(16)
+      .padStart(2, "0");
   };
   return `#${f(0)}${f(8)}${f(4)}`;
 }
@@ -47,7 +49,8 @@ export function toneFromPixels(data: Uint8ClampedArray): string {
     buckets.set(bucket, { w: b.w + weight, h: b.h + h * weight, s: b.s + s * weight, l: b.l + l * weight });
   }
   const best = [...buckets.values()].sort((a, b) => b.w - a.w)[0];
-  if (!best || best.w < 0.6) return hslToHex(260, 0.12, grey.w ? Math.min(0.32, Math.max(0.2, grey.l / grey.w * 0.5)) : 0.26);
+  if (!best || best.w < 0.6)
+    return hslToHex(260, 0.12, grey.w ? Math.min(0.32, Math.max(0.2, (grey.l / grey.w) * 0.5)) : 0.26);
   const h = best.h / best.w;
   const s = Math.min(0.62, Math.max(0.28, best.s / best.w));
   const l = Math.min(0.4, Math.max(0.26, (best.l / best.w) * 0.72));

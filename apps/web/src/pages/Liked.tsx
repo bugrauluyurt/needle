@@ -25,13 +25,27 @@ export default function LikedPage() {
   const [filter, setFilter] = useState("");
   const [order, setOrder] = useState<SongOrder>(RECENT_FIRST);
   usePageTone("#6B2A5A");
-  const songs = useMemo(() => [...(data?.song ?? [])].sort((a, b) => (b.starred ?? "").localeCompare(a.starred ?? "")), [data]);
+  const songs = useMemo(
+    () => [...(data?.song ?? [])].sort((a, b) => (b.starred ?? "").localeCompare(a.starred ?? "")),
+    [data],
+  );
   const genres = useMemo(() => {
     const counts = new Map<string, number>();
     for (const s of songs) if (s.genre) counts.set(s.genre, (counts.get(s.genre) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([g]) => g);
   }, [songs]);
-  const shown = useMemo(() => shownSongs(songs.filter((s) => !genre || s.genre === genre), order, filter), [songs, genre, order, filter]);
+  const shown = useMemo(
+    () =>
+      shownSongs(
+        songs.filter((s) => !genre || s.genre === genre),
+        order,
+        filter,
+      ),
+    [songs, genre, order, filter],
+  );
 
   if (isLoading) return <PageSkeleton />;
 
@@ -43,9 +57,17 @@ export default function LikedPage() {
         title="Liked songs"
         meta={
           <>
-            <b><span className="avatar tiny">{user.slice(0, 1).toUpperCase()}</span>{user}</b>
+            <b>
+              <span className="avatar tiny">{user.slice(0, 1).toUpperCase()}</span>
+              {user}
+            </b>
             <span>{plural(songs.length, "song")}</span>
-            {downloaded ? <span className="meta-dl"><Icon name="downloaded" size={15} />Kept on this device</span> : null}
+            {downloaded ? (
+              <span className="meta-dl">
+                <Icon name="downloaded" size={15} />
+                Kept on this device
+              </span>
+            ) : null}
           </>
         }
       />
@@ -59,18 +81,40 @@ export default function LikedPage() {
       >
         <PlayContextButton contextId="liked" label="Liked songs" onPlay={() => player.playSongs(shown, 0, CONTEXT)} />
         <ShuffleButton label="Liked songs" onShuffle={() => player.playSongs(shown, 0, CONTEXT, { shuffle: true })} />
-        <DownloadButton target={{ id: "liked", kind: "liked", name: "Liked songs", subtitle: "Playlist" }} songs={songs} />
+        <DownloadButton
+          target={{ id: "liked", kind: "liked", name: "Liked songs", subtitle: "Playlist" }}
+          songs={songs}
+        />
       </ActBar>
       {genres.length > 1 ? (
         <div className="chips page-chips" role="group" aria-label="Filter by genre">
-          <button type="button" className="pill" aria-pressed={!genre} onClick={() => setGenre(null)}>All</button>
+          <button type="button" className="pill" aria-pressed={!genre} onClick={() => setGenre(null)}>
+            All
+          </button>
           {genres.map((g) => (
-            <button key={g} type="button" className="pill" aria-pressed={genre === g} onClick={() => setGenre(genre === g ? null : g)}>{g}</button>
+            <button
+              key={g}
+              type="button"
+              className="pill"
+              aria-pressed={genre === g}
+              onClick={() => setGenre(genre === g ? null : g)}
+            >
+              {g}
+            </button>
           ))}
         </div>
       ) : null}
       {songs.length ? (
-        <TrackList songs={shown} context={CONTEXT} art album column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }} order={order} onOrder={setOrder} fallback={RECENT_FIRST} />
+        <TrackList
+          songs={shown}
+          context={CONTEXT}
+          art
+          album
+          column={{ label: "Date added", value: (s) => ago(s.starred), sort: "added" }}
+          order={order}
+          onOrder={setOrder}
+          fallback={RECENT_FIRST}
+        />
       ) : (
         <div className="pad empty-inline">
           <h2>Songs you like appear here</h2>

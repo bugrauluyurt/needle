@@ -1,8 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 14536;
-const chromium = { executablePath: process.env.CHROMIUM ?? "/usr/bin/chromium", args: ["--autoplay-policy=no-user-gesture-required"] };
-const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+const chromium = {
+  executablePath: process.env.CHROMIUM ?? "/usr/bin/chromium",
+  args: ["--autoplay-policy=no-user-gesture-required"],
+};
+const iphone =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 
 export default defineConfig({
   testDir: "e2e/tests",
@@ -20,9 +24,28 @@ export default defineConfig({
     launchOptions: chromium,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, launchOptions: chromium }, testIgnore: /(mobile|tablet)\.spec/ },
-    { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 900, height: 1180 }, launchOptions: chromium }, testMatch: /tablet\.spec/ },
-    { name: "mobile", use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: iphone, launchOptions: chromium }, testMatch: /mobile\.spec/ },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, launchOptions: chromium },
+      testIgnore: /(mobile|tablet)\.spec/,
+    },
+    {
+      name: "tablet",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 900, height: 1180 }, launchOptions: chromium },
+      testMatch: /tablet\.spec/,
+    },
+    {
+      name: "mobile",
+      use: {
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+        userAgent: iphone,
+        launchOptions: chromium,
+      },
+      testMatch: /mobile\.spec/,
+    },
   ],
   webServer: [
     {

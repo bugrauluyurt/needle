@@ -1,7 +1,17 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { artSrcSet } from "../src/components/Art.tsx";
-import { ago, clock, formatLabel, hours, longDuration, paragraphs, plainBio, plural, releaseKind } from "../src/lib/format.ts";
+import {
+  ago,
+  clock,
+  formatLabel,
+  hours,
+  longDuration,
+  paragraphs,
+  plainBio,
+  plural,
+  releaseKind,
+} from "../src/lib/format.ts";
 import { lineAt, pickLyrics } from "../src/lib/lyrics.ts";
 import { md5 } from "../src/lib/md5.ts";
 import { toneFromPixels } from "../src/lib/tone.ts";
@@ -85,12 +95,19 @@ describe("artist bio", () => {
   });
 
   it("groups sentences into paragraphs", () => {
-    expect(paragraphs("One. Two! Three? Four. Five 2.0 rocks. “Six” said.")).toEqual(["One. Two! Three?", "Four. Five 2.0 rocks. “Six” said."]);
+    expect(paragraphs("One. Two! Three? Four. Five 2.0 rocks. “Six” said.")).toEqual([
+      "One. Two! Three?",
+      "Four. Five 2.0 rocks. “Six” said.",
+    ]);
   });
 });
 
 describe("lyrics", () => {
-  const lines = [{ start: 2000, value: "a" }, { start: 7000, value: "b" }, { start: 12000, value: "c" }];
+  const lines = [
+    { start: 2000, value: "a" },
+    { start: 7000, value: "b" },
+    { start: 12000, value: "c" },
+  ];
 
   it("finds the line being sung", () => {
     expect(lineAt(lines, 0)).toBe(-1);
@@ -143,8 +160,28 @@ describe("ReplayGain", () => {
 });
 
 describe("spotify", () => {
-  const album = { id: "al1", name: "Discovery", release_date: "2001-03-12", images: [{ url: "big", width: 640 }, { url: "small", width: 64 }, { url: "mid", width: 300 }] };
-  const track = { id: "t1", uri: "spotify:track:t1", name: "One More Time", duration_ms: 320_357, artists: [{ id: "ar1", name: "Daft Punk" }, { id: "ar2", name: "Romanthony" }], track_number: 1, disc_number: 1 };
+  const album = {
+    id: "al1",
+    name: "Discovery",
+    release_date: "2001-03-12",
+    images: [
+      { url: "big", width: 640 },
+      { url: "small", width: 64 },
+      { url: "mid", width: 300 },
+    ],
+  };
+  const track = {
+    id: "t1",
+    uri: "spotify:track:t1",
+    name: "One More Time",
+    duration_ms: 320_357,
+    artists: [
+      { id: "ar1", name: "Daft Punk" },
+      { id: "ar2", name: "Romanthony" },
+    ],
+    track_number: 1,
+    disc_number: 1,
+  };
 
   it("picks the smallest image that is big enough", () => {
     expect(image(album.images, 50)).toBe("small");
@@ -160,7 +197,10 @@ describe("spotify", () => {
       artist: "Daft Punk, Romanthony",
       displayArtist: "Daft Punk, Romanthony",
       artistId: "sp:ar1",
-      artists: [{ id: "sp:ar1", name: "Daft Punk" }, { id: "sp:ar2", name: "Romanthony" }],
+      artists: [
+        { id: "sp:ar1", name: "Daft Punk" },
+        { id: "sp:ar2", name: "Romanthony" },
+      ],
       album: "Discovery",
       albumId: "sp:al1",
       coverArt: "big",
@@ -215,11 +255,13 @@ describe("responsive artwork", () => {
       return { size: coverParams.get("size"), width: coverWidth, version: coverParams.get("changed") };
     });
 
-    expect(coverCandidates).toEqual([64, 128, 256, 384, 600, 900].map((coverSize) => ({
-      size: String(coverSize),
-      width: `${coverSize}w`,
-      version: "changed-1",
-    })));
+    expect(coverCandidates).toEqual(
+      [64, 128, 256, 384, 600, 900].map((coverSize) => ({
+        size: String(coverSize),
+        width: `${coverSize}w`,
+        version: "changed-1",
+      })),
+    );
   });
 
   it("sorts Spotify image candidates and removes invalid and duplicate widths", () => {
@@ -235,7 +277,9 @@ describe("responsive artwork", () => {
       ],
     })?.split(", ");
 
-    expect(spotifyCandidates?.map((spotifyCandidate) => Number(spotifyCandidate.split(" ").at(-1)?.replace("w", "")))).toEqual([64, 300, 600]);
+    expect(
+      spotifyCandidates?.map((spotifyCandidate) => Number(spotifyCandidate.split(" ").at(-1)?.replace("w", ""))),
+    ).toEqual([64, 300, 600]);
     expect(spotifyCandidates?.filter((spotifyCandidate) => spotifyCandidate.endsWith(" 300w"))).toHaveLength(1);
     expect(spotifyCandidates?.join(" ")).not.toMatch(/missing|zero|invalid/);
   });
@@ -243,7 +287,11 @@ describe("responsive artwork", () => {
   it("leaves direct URLs and incomplete Spotify metadata on their fallback source", () => {
     expect(artSrcSet({ id: "https://images.example/artist.jpg" })).toBeUndefined();
     expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }] })).toBeUndefined();
-    expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-a" }, { url: "https://i.scdn.co/image/artist-b", width: null }] })).toBeUndefined();
+    expect(
+      artSrcSet({
+        images: [{ url: "https://i.scdn.co/image/artist-a" }, { url: "https://i.scdn.co/image/artist-b", width: null }],
+      }),
+    ).toBeUndefined();
   });
 });
 
@@ -251,11 +299,17 @@ describe("browser connection checks", () => {
   it("warns without HTTPS and when PUBLIC_URL differs from the page", () => {
     const [https, address] = browserChecks("https://music.example.com", "http://192.168.1.5:4535", false);
     expect(https?.state).toBe("warn");
-    expect(address).toMatchObject({ state: "warn", detail: "PUBLIC_URL is https://music.example.com, but this page is http://192.168.1.5:4535" });
+    expect(address).toMatchObject({
+      state: "warn",
+      detail: "PUBLIC_URL is https://music.example.com, but this page is http://192.168.1.5:4535",
+    });
   });
 
   it("is happy on the public HTTPS address, and off without PUBLIC_URL", () => {
-    expect(browserChecks("https://music.example.com", "https://music.example.com", true).map((c) => c.state)).toEqual(["ok", "ok"]);
+    expect(browserChecks("https://music.example.com", "https://music.example.com", true).map((c) => c.state)).toEqual([
+      "ok",
+      "ok",
+    ]);
     expect(browserChecks(null, "https://music.example.com", true)[1]?.state).toBe("off");
   });
 });
@@ -290,8 +344,18 @@ describe("sort order", () => {
 });
 
 describe("shownSongs", () => {
-  const song = (id: string, title: string, duration: number, playCount: number, starred: string): Song => ({ id, title, duration, playCount, starred });
-  const songs = [song("1", "Bravo", 200, 3, "2026-01-02"), song("2", "alpha", 100, 9, "2026-01-03"), song("3", "Charlie", 300, 1, "2026-01-01")];
+  const song = (id: string, title: string, duration: number, playCount: number, starred: string): Song => ({
+    id,
+    title,
+    duration,
+    playCount,
+    starred,
+  });
+  const songs = [
+    song("1", "Bravo", 200, 3, "2026-01-02"),
+    song("2", "alpha", 100, 9, "2026-01-03"),
+    song("3", "Charlie", 300, 1, "2026-01-01"),
+  ];
   const ids = (list: Song[]) => list.map((s) => s.id);
 
   it("keeps the given order for custom, whatever the direction", () => {
@@ -321,8 +385,18 @@ describe("shownSongs", () => {
       { id: "autumn", title: "Autumn release", releaseDate: "2024-10-01" },
     ];
 
-    expect(shownSongs(releasedSongs, { key: "year", desc: true }, "").map((releasedSong) => releasedSong.id)).toEqual(["autumn", "spring", "year", "unknown"]);
-    expect(shownSongs(releasedSongs, { key: "year", desc: false }, "").map((releasedSong) => releasedSong.id)).toEqual(["year", "spring", "autumn", "unknown"]);
+    expect(shownSongs(releasedSongs, { key: "year", desc: true }, "").map((releasedSong) => releasedSong.id)).toEqual([
+      "autumn",
+      "spring",
+      "year",
+      "unknown",
+    ]);
+    expect(shownSongs(releasedSongs, { key: "year", desc: false }, "").map((releasedSong) => releasedSong.id)).toEqual([
+      "year",
+      "spring",
+      "autumn",
+      "unknown",
+    ]);
     expect(releasedSongs[0]?.id).toBe("unknown");
   });
 });

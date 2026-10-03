@@ -81,12 +81,12 @@ e2e/            Playwright: test Navidrome (docker), mock Lidarr, mock slskd + M
  people.allowed(user, admin, "spotify")  admins unless switched off; others when switched on
 ```
 
-| Needs | Routes |
-|---|---|
+| Needs         | Routes                                                                                                                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Request music | `GET /api/lidarr/search`, `/albums`, `/artists`, `POST /api/lidarr/albums/:id`, `/api/songs*`, `POST /api/requests/:id/retry`, `POST /api/spotify/missing`, `POST /api/listenbrainz/playlists/:mbid/missing` |
-| Spotify | `/api/spotify/*` (except the sign-in callback) |
-| Admin | `GET`/`DELETE /api/lidarr/downloads[/:id]`, `GET /api/status`, `GET`/`PUT /api/people[/:user]`, `GET /api/requests?everyone=1`, removing anyone's request |
-| Signed in | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests, the rest of `/api/listenbrainz*` (each person's own connection) |
+| Spotify       | `/api/spotify/*` (except the sign-in callback)                                                                                                                                                               |
+| Admin         | `GET`/`DELETE /api/lidarr/downloads[/:id]`, `GET /api/status`, `GET`/`PUT /api/people[/:user]`, `GET /api/requests?everyone=1`, removing anyone's request                                                    |
+| Signed in     | everything else: stats, plays, search, `/api/library/songs`, browse, mixes, photos, own requests, the rest of `/api/listenbrainz*` (each person's own connection)                                            |
 
 `/api/capabilities` tells the app what this person may do: `admin`, `lidarr` and `songs`
 (may request), and Spotify (configured and allowed, connected, allowed to play, needs
@@ -95,12 +95,12 @@ anyway (403).
 
 ## Where data lives
 
-| Where | What |
-|---|---|
-| `needle.db` (server, `DATA_DIR`) | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress), `listenbrainz` (each person's ListenBrainz token and user name, whether Needle linked it in Navidrome; never a password) |
-| Navidrome | The library, users, playlists, likes, the play queue each device syncs |
-| Browser localStorage | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil` |
-| Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art |
+| Where                             | What                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `needle.db` (server, `DATA_DIR`)  | `plays` (stats, mixes), `requests` (albums and songs asked for), `profiles` (account photos), `seen` (who has opened Needle, admin or not, when), `permissions` (who may request music or use Spotify, set in Settings → People), `spotify_tokens` (+ scope, on/off switch), `oauth_states` (Spotify sign-in in progress), `listenbrainz` (each person's ListenBrainz token and user name, whether Needle linked it in Navidrome; never a password) |
+| Navidrome                         | The library, users, playlists, likes, the play queue each device syncs                                                                                                                                                                                                                                                                                                                                                                              |
+| Browser localStorage              | `needle.session` (Subsonic token, device name), `needle.settings`, `needle.ui` (panels, library filter, per-section sort/view), `needle.player` (queue), `needle.recentSearches`, `needle.sp.<user>.*` (Spotify library cache), `needle.spotifyBlockedUntil`                                                                                                                                                                                        |
+| Browser Cache Storage + IndexedDB | Offline downloads; service-worker caches for the app shell and cover art                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## Search and browse
 

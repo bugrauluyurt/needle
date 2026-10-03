@@ -27,7 +27,9 @@ export function InstallHint({ inline = false }: { inline?: boolean }) {
       <h3>Put Needle on your home screen</h3>
       <p>It opens full screen like an app, keeps playing when the phone locks, and keeps your downloads.</p>
       <ol>
-        <li>Tap <Icon name="share" size={18} /> Share in Safari’s toolbar</li>
+        <li>
+          Tap <Icon name="share" size={18} /> Share in Safari’s toolbar
+        </li>
         <li>Choose Add to Home Screen</li>
         <li>Tap Add</li>
       </ol>
@@ -40,7 +42,9 @@ export function InstallHint({ inline = false }: { inline?: boolean }) {
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Put Needle on your home screen">
         <div className="grab" />
         {body}
-        <button type="button" className="btn light" onClick={close}>Got it</button>
+        <button type="button" className="btn light" onClick={close}>
+          Got it
+        </button>
       </div>
     </>
   );

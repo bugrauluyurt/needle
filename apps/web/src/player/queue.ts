@@ -10,7 +10,11 @@ export type QueueState = {
 };
 
 let uidCounter = 0;
-export const makeItem = (song: Song, fromUser = false): QueueItem => ({ uid: `q${Date.now().toString(36)}${(uidCounter++).toString(36)}`, song, ...(fromUser ? { fromUser } : {}) });
+export const makeItem = (song: Song, fromUser = false): QueueItem => ({
+  uid: `q${Date.now().toString(36)}${(uidCounter++).toString(36)}`,
+  song,
+  ...(fromUser ? { fromUser } : {}),
+});
 
 export function shuffleArray<T>(arr: T[], random = Math.random): T[] {
   const out = arr.slice();
@@ -26,7 +30,10 @@ export function start(songs: Song[], startIndex: number, shuffle: boolean, rando
   if (!shuffle) return { items, index: Math.max(0, Math.min(startIndex, items.length - 1)), original: null };
   const first = items[startIndex] ?? items[0];
   if (!first) return { items: [], index: -1, original: null };
-  const rest = shuffleArray(items.filter((i) => i !== first), random);
+  const rest = shuffleArray(
+    items.filter((i) => i !== first),
+    random,
+  );
   return { items: [first, ...rest], index: 0, original: items };
 }
 
@@ -58,7 +65,12 @@ export function remove(q: QueueState, uid: string): QueueState {
   const i = q.items.findIndex((it) => it.uid === uid);
   if (i < 0 || i === q.index) return q;
   const items = q.items.filter((it) => it.uid !== uid);
-  return { ...q, items, index: i < q.index ? q.index - 1 : q.index, original: q.original?.filter((it) => it.uid !== uid) ?? null };
+  return {
+    ...q,
+    items,
+    index: i < q.index ? q.index - 1 : q.index,
+    original: q.original?.filter((it) => it.uid !== uid) ?? null,
+  };
 }
 
 export function move(q: QueueState, uid: string, toIndex: number): QueueState {
@@ -83,8 +95,15 @@ export function setShuffle(q: QueueState, on: boolean, random = Math.random): Qu
   if (on) {
     const upcoming = q.items.slice(q.index + 1);
     const user = upcoming.filter((it) => it.fromUser);
-    const context = shuffleArray(upcoming.filter((it) => !it.fromUser), random);
-    return { items: [...q.items.slice(0, q.index + 1), ...user, ...context], index: q.index, original: q.original ?? q.items };
+    const context = shuffleArray(
+      upcoming.filter((it) => !it.fromUser),
+      random,
+    );
+    return {
+      items: [...q.items.slice(0, q.index + 1), ...user, ...context],
+      index: q.index,
+      original: q.original ?? q.items,
+    };
   }
   const original = q.original ?? q.items;
   const pos = original.findIndex((it) => it.uid === current.uid);

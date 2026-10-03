@@ -18,7 +18,17 @@ type Props = {
   actions?: ReactNode;
 };
 
-export function SearchHeader({ title, label, placeholder, value, onChange, onCommit, busy = false, autoFocus = false, actions }: Props) {
+export function SearchHeader({
+  title,
+  label,
+  placeholder,
+  value,
+  onChange,
+  onCommit,
+  busy = false,
+  autoFocus = false,
+  actions,
+}: Props) {
   const mobile = useIsMobile();
   const [focused, setFocused] = useState(false);
   const [params] = useSearchParams();
@@ -45,7 +55,16 @@ export function SearchHeader({ title, label, placeholder, value, onChange, onCom
       <div className="psearch-wrap">
         <div className={focused ? "psearch-row focused" : "psearch-row"}>
           {field}
-          <button type="button" className="psearch-cancel" tabIndex={focused ? 0 : -1} onPointerDown={(e) => e.preventDefault()} onClick={() => { onChange(""); (document.activeElement as HTMLElement | null)?.blur(); }}>
+          <button
+            type="button"
+            className="psearch-cancel"
+            tabIndex={focused ? 0 : -1}
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => {
+              onChange("");
+              (document.activeElement as HTMLElement | null)?.blur();
+            }}
+          >
             Cancel
           </button>
         </div>

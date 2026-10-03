@@ -7,9 +7,25 @@ import type { CollectionItem, CollectionOrder, ShowFilter, SortOption } from "..
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
 import { useAllAlbums, useArtists, useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
-import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
-import { useYouTubeMusicAlbums, useYouTubeMusicArtists, useYouTubeMusicLiked, useYouTubeMusicOn, useYouTubeMusicPlaylists } from "../queries/youtube-music.ts";
-import { youtubeMusicAlbumItem, youtubeMusicArtistItem, youtubeMusicPlaylistItem } from "../components/YouTubeMusicCards.tsx";
+import {
+  useSpotifyAlbums,
+  useSpotifyFollowed,
+  useSpotifyLiked,
+  useSpotifyOn,
+  useSpotifyPlaylists,
+} from "../queries/spotify.ts";
+import {
+  useYouTubeMusicAlbums,
+  useYouTubeMusicArtists,
+  useYouTubeMusicLiked,
+  useYouTubeMusicOn,
+  useYouTubeMusicPlaylists,
+} from "../queries/youtube-music.ts";
+import {
+  youtubeMusicAlbumItem,
+  youtubeMusicArtistItem,
+  youtubeMusicPlaylistItem,
+} from "../components/YouTubeMusicCards.tsx";
 import { matchesTerms, queryTerms } from "@needle/shared";
 import { spId } from "../lib/spotify.ts";
 import { plural } from "../lib/format.ts";
@@ -24,11 +40,21 @@ export type LibraryEntry = CollectionItem & {
   added: string;
 };
 
-const ORIGINS: [LibraryOrigin, string][] = [["all", "All"], ["server", "Your music"], ["spotify", "Spotify"], ["youtubeMusic", "YouTube Music"]];
+const ORIGINS: [LibraryOrigin, string][] = [
+  ["all", "All"],
+  ["server", "Your music"],
+  ["spotify", "Spotify"],
+  ["youtubeMusic", "YouTube Music"],
+];
 
-export const LIBRARY_SORTS: SortOption[] = [["default", "Recents"], ["title", SORT_LABELS.title], ["by", "Creator"]];
+export const LIBRARY_SORTS: SortOption[] = [
+  ["default", "Recents"],
+  ["title", SORT_LABELS.title],
+  ["by", "Creator"],
+];
 
-export const useLibrarySort = (fallback: CollectionView = "list") => useCollectionView("library", LIBRARY_SORTS, fallback);
+export const useLibrarySort = (fallback: CollectionView = "list") =>
+  useCollectionView("library", LIBRARY_SORTS, fallback);
 
 export function useLibraryOrigin(): { origin: LibraryOrigin; show: ShowFilter<LibraryOrigin> | undefined } {
   const picked = useUi((s) => s.libraryOrigin);
@@ -37,13 +63,27 @@ export function useLibraryOrigin(): { origin: LibraryOrigin; show: ShowFilter<Li
 
   if (!spotifyOn && !youtubeMusicOn) return { origin: "server", show: undefined };
 
-  const options = ORIGINS.filter(([origin]) => origin !== "spotify" && origin !== "youtubeMusic" || origin === "spotify" && spotifyOn || origin === "youtubeMusic" && youtubeMusicOn);
+  const options = ORIGINS.filter(
+    ([origin]) =>
+      (origin !== "spotify" && origin !== "youtubeMusic") ||
+      (origin === "spotify" && spotifyOn) ||
+      (origin === "youtubeMusic" && youtubeMusicOn),
+  );
   const origin = options.some(([availableOrigin]) => availableOrigin === picked) ? picked : "all";
 
-  return { origin, show: { value: origin, options, onChange: (nextOrigin) => useUi.setState({ libraryOrigin: nextOrigin }) } };
+  return {
+    origin,
+    show: { value: origin, options, onChange: (nextOrigin) => useUi.setState({ libraryOrigin: nextOrigin }) },
+  };
 }
 
-export function useLibraryEntries(filter: LibraryFilter, query: string, order: CollectionOrder, origin: LibraryOrigin, youtubeMusicLimit = 100): LibraryEntry[] {
+export function useLibraryEntries(
+  filter: LibraryFilter,
+  query: string,
+  order: CollectionOrder,
+  origin: LibraryOrigin,
+  youtubeMusicLimit = 100,
+): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
   const { data: albums = [] } = useAllAlbums();
@@ -61,38 +101,184 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
   return useMemo(() => {
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
-      { key: "liked", to: "/liked", art: () => <LikedArt />, title: "Liked songs", subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`, kind: "playlists", contextId: "liked", downloaded: down.has("liked"), added: "9999", pinned: true },
-      ...(starred?.artist?.length ? [{ key: "liked-artists", to: "/artists/liked", art: () => <LikedArt className="artists" />, title: "Liked artists", subtitle: `Artists, ${plural(starred.artist.length, "artist")}`, kind: "artists", contextId: "liked-artists", downloaded: false, added: "9996", pinned: true } satisfies LibraryEntry] : []),
-      ...(starred?.album?.length ? [{ key: "liked-albums", to: "/albums/starred", art: () => <LikedArt className="albums" />, title: "Liked albums", subtitle: `Albums, ${plural(starred.album.length, "album")}`, kind: "albums", contextId: "liked-albums", downloaded: false, added: "9997", pinned: true } satisfies LibraryEntry] : []),
-      ...(spLiked ? [{ key: "sp-liked", to: "/spotify/liked", art: () => <LikedArt className="sp-liked" />, title: "Liked on Spotify", subtitle: `Spotify, ${plural(spLiked.length, "song")}`, kind: "playlists", spotify: true, source: "spotify", contextId: "sp:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
+      {
+        key: "liked",
+        to: "/liked",
+        art: () => <LikedArt />,
+        title: "Liked songs",
+        subtitle: `Playlist, ${plural(starred?.song?.length ?? 0, "song")}`,
+        kind: "playlists",
+        contextId: "liked",
+        downloaded: down.has("liked"),
+        added: "9999",
+        pinned: true,
+      },
+      ...(starred?.artist?.length
+        ? [
+            {
+              key: "liked-artists",
+              to: "/artists/liked",
+              art: () => <LikedArt className="artists" />,
+              title: "Liked artists",
+              subtitle: `Artists, ${plural(starred.artist.length, "artist")}`,
+              kind: "artists",
+              contextId: "liked-artists",
+              downloaded: false,
+              added: "9996",
+              pinned: true,
+            } satisfies LibraryEntry,
+          ]
+        : []),
+      ...(starred?.album?.length
+        ? [
+            {
+              key: "liked-albums",
+              to: "/albums/starred",
+              art: () => <LikedArt className="albums" />,
+              title: "Liked albums",
+              subtitle: `Albums, ${plural(starred.album.length, "album")}`,
+              kind: "albums",
+              contextId: "liked-albums",
+              downloaded: false,
+              added: "9997",
+              pinned: true,
+            } satisfies LibraryEntry,
+          ]
+        : []),
+      ...(spLiked
+        ? [
+            {
+              key: "sp-liked",
+              to: "/spotify/liked",
+              art: () => <LikedArt className="sp-liked" />,
+              title: "Liked on Spotify",
+              subtitle: `Spotify, ${plural(spLiked.length, "song")}`,
+              kind: "playlists",
+              spotify: true,
+              source: "spotify",
+              contextId: "sp:liked",
+              downloaded: false,
+              added: "9998",
+              pinned: true,
+            } satisfies LibraryEntry,
+          ]
+        : []),
       ...playlists.map((p): LibraryEntry => ({
-        key: `pl-${p.id}`, to: `/playlist/${p.id}`, art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />, title: p.name,
-        subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""), by: p.owner ?? "", kind: "playlists", contextId: p.id, downloaded: down.has(p.id), added: p.changed ?? p.created ?? "",
+        key: `pl-${p.id}`,
+        to: `/playlist/${p.id}`,
+        art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />,
+        title: p.name,
+        subtitle: `Playlist, ${p.owner ?? ""}`.replace(/, $/, ""),
+        by: p.owner ?? "",
+        kind: "playlists",
+        contextId: p.id,
+        downloaded: down.has(p.id),
+        added: p.changed ?? p.created ?? "",
       })),
       ...albums.map((a): LibraryEntry => ({
-        key: `al-${a.id}`, to: `/album/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} />, title: a.name,
-        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`, by: a.displayArtist ?? a.artist ?? "", kind: "albums", contextId: a.id, downloaded: down.has(a.id), added: a.created ?? "",
+        key: `al-${a.id}`,
+        to: `/album/${a.id}`,
+        art: (px) => <Art id={a.coverArt} px={px} />,
+        title: a.name,
+        subtitle: `Album, ${a.displayArtist ?? a.artist ?? ""}`,
+        by: a.displayArtist ?? a.artist ?? "",
+        kind: "albums",
+        contextId: a.id,
+        downloaded: down.has(a.id),
+        added: a.created ?? "",
       })),
       ...artists.map((a): LibraryEntry => ({
-        key: `ar-${a.id}`, to: `/artist/${a.id}`, art: (px) => <Art id={a.coverArt} px={px} round fallback="artist" />, title: a.name,
-        subtitle: "Artist", by: a.name, kind: "artists", contextId: a.id, downloaded: false, added: "",
+        key: `ar-${a.id}`,
+        to: `/artist/${a.id}`,
+        art: (px) => <Art id={a.coverArt} px={px} round fallback="artist" />,
+        title: a.name,
+        subtitle: "Artist",
+        by: a.name,
+        kind: "artists",
+        contextId: a.id,
+        downloaded: false,
+        added: "",
       })),
       ...spPlaylists.map((p): LibraryEntry => ({
-        key: `sp-pl-${p.id}`, to: `/spotify/playlist/${p.id}`, art: (px) => <Art images={p.images} px={px} />, title: p.name,
-        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`, by: p.owner.display_name ?? p.owner.id, kind: "playlists", spotify: true, source: "spotify", contextId: spId(p.id), downloaded: false, added: "",
+        key: `sp-pl-${p.id}`,
+        to: `/spotify/playlist/${p.id}`,
+        art: (px) => <Art images={p.images} px={px} />,
+        title: p.name,
+        subtitle: `Spotify playlist, ${p.owner.display_name ?? p.owner.id}`,
+        by: p.owner.display_name ?? p.owner.id,
+        kind: "playlists",
+        spotify: true,
+        source: "spotify",
+        contextId: spId(p.id),
+        downloaded: false,
+        added: "",
       })),
       ...spAlbums.map((a): LibraryEntry => ({
-        key: `sp-al-${a.id}`, to: `/spotify/album/${a.id}`, art: (px) => <Art images={a.images} px={px} />, title: a.name,
-        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`, by: a.artists?.[0]?.name ?? "", kind: "albums", spotify: true, source: "spotify", contextId: spId(a.id), downloaded: false, added: a.added_at ?? "",
+        key: `sp-al-${a.id}`,
+        to: `/spotify/album/${a.id}`,
+        art: (px) => <Art images={a.images} px={px} />,
+        title: a.name,
+        subtitle: `Spotify album, ${a.artists?.map((x) => x.name).join(", ") ?? ""}`,
+        by: a.artists?.[0]?.name ?? "",
+        kind: "albums",
+        spotify: true,
+        source: "spotify",
+        contextId: spId(a.id),
+        downloaded: false,
+        added: a.added_at ?? "",
       })),
       ...spArtists.map((a): LibraryEntry => ({
-        key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: (px) => <Art images={a.images} px={px} round fallback="artist" />, title: a.name,
-        subtitle: "Artist you follow on Spotify", by: a.name, kind: "artists", spotify: true, source: "spotify", contextId: spId(a.id), downloaded: false, added: "",
+        key: `sp-ar-${a.id}`,
+        to: `/spotify/artist/${a.id}`,
+        art: (px) => <Art images={a.images} px={px} round fallback="artist" />,
+        title: a.name,
+        subtitle: "Artist you follow on Spotify",
+        by: a.name,
+        kind: "artists",
+        spotify: true,
+        source: "spotify",
+        contextId: spId(a.id),
+        downloaded: false,
+        added: "",
       })),
-      ...(youtubeLiked ? [{ key: "ytm-liked", to: "/youtube-music/liked", art: () => <LikedArt className="yt-liked" />, title: "Liked on YouTube Music", subtitle: `YouTube Music, ${plural(youtubeLiked.length, "song")}`, kind: "playlists", source: "youtubeMusic", contextId: "ytm:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
-      ...youtubePlaylists.map((playlist): LibraryEntry => ({ ...youtubeMusicPlaylistItem(playlist), kind: "playlists", contextId: playlist.id, downloaded: false, added: "" })),
-      ...youtubeAlbums.map((album): LibraryEntry => ({ ...youtubeMusicAlbumItem(album), kind: "albums", contextId: album.id, downloaded: false, added: "" })),
-      ...youtubeArtists.map((artist): LibraryEntry => ({ ...youtubeMusicArtistItem(artist), kind: "artists", contextId: artist.id, downloaded: false, added: "" })),
+      ...(youtubeLiked
+        ? [
+            {
+              key: "ytm-liked",
+              to: "/youtube-music/liked",
+              art: () => <LikedArt className="yt-liked" />,
+              title: "Liked on YouTube Music",
+              subtitle: `YouTube Music, ${plural(youtubeLiked.length, "song")}`,
+              kind: "playlists",
+              source: "youtubeMusic",
+              contextId: "ytm:liked",
+              downloaded: false,
+              added: "9998",
+              pinned: true,
+            } satisfies LibraryEntry,
+          ]
+        : []),
+      ...youtubePlaylists.map((playlist): LibraryEntry => ({
+        ...youtubeMusicPlaylistItem(playlist),
+        kind: "playlists",
+        contextId: playlist.id,
+        downloaded: false,
+        added: "",
+      })),
+      ...youtubeAlbums.map((album): LibraryEntry => ({
+        ...youtubeMusicAlbumItem(album),
+        kind: "albums",
+        contextId: album.id,
+        downloaded: false,
+        added: "",
+      })),
+      ...youtubeArtists.map((artist): LibraryEntry => ({
+        ...youtubeMusicArtistItem(artist),
+        kind: "artists",
+        contextId: artist.id,
+        downloaded: false,
+        added: "",
+      })),
     ];
     const terms = queryTerms(query);
     const matches = (e: LibraryEntry) => {
@@ -107,10 +293,34 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
     return sortItems(shown, order);
-  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, youtubeLiked, youtubePlaylists, youtubeAlbums, youtubeArtists, spotifyOn, filter, query, order, origin]);
+  }, [
+    playlists,
+    starred,
+    albums,
+    artists,
+    collections,
+    spLiked,
+    spPlaylists,
+    spAlbums,
+    spArtists,
+    youtubeLiked,
+    youtubePlaylists,
+    youtubeAlbums,
+    youtubeArtists,
+    spotifyOn,
+    filter,
+    query,
+    order,
+    origin,
+  ]);
 }
 
-const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["downloaded", "On this device"]];
+const FILTERS: [Exclude<LibraryFilter, null>, string][] = [
+  ["playlists", "Playlists"],
+  ["albums", "Albums"],
+  ["artists", "Artists"],
+  ["downloaded", "On this device"],
+];
 
 export function LibraryChips() {
   const libraryFilter = useUi((uiState) => uiState.libraryFilter);
@@ -126,7 +336,9 @@ export function LibraryChips() {
     if (!libraryFilterScrollerElement) return;
 
     const hasPreviousLibraryFilters = libraryFilterScrollerElement.scrollLeft > 1;
-    const hasMoreLibraryFilters = libraryFilterScrollerElement.scrollLeft + libraryFilterScrollerElement.clientWidth < libraryFilterScrollerElement.scrollWidth - 1;
+    const hasMoreLibraryFilters =
+      libraryFilterScrollerElement.scrollLeft + libraryFilterScrollerElement.clientWidth <
+      libraryFilterScrollerElement.scrollWidth - 1;
 
     setCanShowPreviousLibraryFilters(hasPreviousLibraryFilters);
     setCanShowMoreLibraryFilters(hasMoreLibraryFilters);
@@ -164,7 +376,10 @@ export function LibraryChips() {
     if (!libraryFilterScrollerElement) return;
 
     pendingLibraryFilterFocus.current = libraryFilterScrollDirection < 0 ? "more" : "previous";
-    libraryFilterScrollerElement.scrollBy({ left: libraryFilterScrollDirection * libraryFilterScrollerElement.clientWidth, behavior: "smooth" });
+    libraryFilterScrollerElement.scrollBy({
+      left: libraryFilterScrollDirection * libraryFilterScrollerElement.clientWidth,
+      behavior: "smooth",
+    });
   };
 
   const activeLibraryFilter = FILTERS.find(([filterId]) => filterId === libraryFilter);
@@ -173,27 +388,63 @@ export function LibraryChips() {
     <div className="library-chips">
       {activeLibraryFilter ? (
         <div className="chips selected" role="group" aria-label="Filter your library">
-          <button type="button" className="icon-btn library-filter-clear" aria-label="Clear library filter" onClick={() => useUi.setState({ libraryFilter: null })}>
+          <button
+            type="button"
+            className="icon-btn library-filter-clear"
+            aria-label="Clear library filter"
+            onClick={() => useUi.setState({ libraryFilter: null })}
+          >
             <Icon name="close" size={18} />
           </button>
-          <button type="button" className="pill" aria-pressed="true" onClick={() => useUi.setState({ libraryFilter: null })}>{activeLibraryFilter[1]}</button>
+          <button
+            type="button"
+            className="pill"
+            aria-pressed="true"
+            onClick={() => useUi.setState({ libraryFilter: null })}
+          >
+            {activeLibraryFilter[1]}
+          </button>
         </div>
       ) : (
         <>
-          <div ref={libraryFilterScroller} className="chips" role="group" aria-label="Filter your library" onScroll={updateLibraryFilterScrollControls}>
+          <div
+            ref={libraryFilterScroller}
+            className="chips"
+            role="group"
+            aria-label="Filter your library"
+            onScroll={updateLibraryFilterScrollControls}
+          >
             {FILTERS.map(([filterId, filterLabel]) => (
-              <button key={filterId} type="button" className="pill" aria-pressed="false" onClick={() => useUi.setState({ libraryFilter: filterId })}>
+              <button
+                key={filterId}
+                type="button"
+                className="pill"
+                aria-pressed="false"
+                onClick={() => useUi.setState({ libraryFilter: filterId })}
+              >
                 {filterLabel}
               </button>
             ))}
           </div>
           {canShowPreviousLibraryFilters ? (
-            <button ref={previousLibraryFiltersButton} type="button" className="icon-btn library-chip-nav previous" aria-label="Show previous library filters" onClick={() => scrollLibraryFilters(-1)}>
+            <button
+              ref={previousLibraryFiltersButton}
+              type="button"
+              className="icon-btn library-chip-nav previous"
+              aria-label="Show previous library filters"
+              onClick={() => scrollLibraryFilters(-1)}
+            >
               <Icon name="back" size={20} />
             </button>
           ) : null}
           {canShowMoreLibraryFilters ? (
-            <button ref={moreLibraryFiltersButton} type="button" className="icon-btn library-chip-nav next" aria-label="Show more library filters" onClick={() => scrollLibraryFilters(1)}>
+            <button
+              ref={moreLibraryFiltersButton}
+              type="button"
+              className="icon-btn library-chip-nav next"
+              aria-label="Show more library filters"
+              onClick={() => scrollLibraryFilters(1)}
+            >
               <Icon name="forward" size={20} />
             </button>
           ) : null}
@@ -219,12 +470,21 @@ export function useNewPlaylist() {
   const create = useCreatePlaylist();
   const navigate = useNavigate();
   const count = usePlaylists().data?.length ?? 0;
-  return () => create.mutate({ name: `My playlist #${count + 1}` }, { onSuccess: (p) => void navigate(`/playlist/${p.id}?edit=1`) });
+  return () =>
+    create.mutate(
+      { name: `My playlist #${count + 1}` },
+      { onSuccess: (p) => void navigate(`/playlist/${p.id}?edit=1`) },
+    );
 }
 
 function Nav({ to, icon, label }: { to: string; icon: IconName; label: string }) {
   return (
-    <NavLink to={to} end={to === "/"} aria-label={label} className={({ isActive }) => (isActive ? "nav-btn on" : "nav-btn")}>
+    <NavLink
+      to={to}
+      end={to === "/"}
+      aria-label={label}
+      className={({ isActive }) => (isActive ? "nav-btn on" : "nav-btn")}
+    >
       <Icon name={icon} size={22} />
       <span>{label}</span>
     </NavLink>
@@ -257,7 +517,12 @@ export function Sidebar() {
             <span>Your library</span>
           </Link>
           <div className="lib-head-acts">
-            <button type="button" className="icon-btn" aria-label="Search in your library" onClick={() => void navigate("/library?find=1")}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Search in your library"
+              onClick={() => void navigate("/library?find=1")}
+            >
               <Icon name="search" size={19} />
             </button>
             <button type="button" className="icon-btn" aria-label="Create playlist" onClick={newPlaylist}>

@@ -33,7 +33,11 @@ export function Toasts() {
       {toasts.map((t) => (
         <div key={t.id} className="toast">
           {t.message}
-          {t.action ? <button type="button" onClick={t.action.run}>{t.action.label}</button> : null}
+          {t.action ? (
+            <button type="button" onClick={t.action.run}>
+              {t.action.label}
+            </button>
+          ) : null}
         </div>
       ))}
     </div>

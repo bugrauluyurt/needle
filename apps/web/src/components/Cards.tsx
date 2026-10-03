@@ -32,12 +32,20 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
   return (
     <article className="card">
       <Link to={to} className="card-link">
-        <div className="card-art">{art}{source !== null ? <SourceMark source={source} className="card-src" /> : null}</div>
+        <div className="card-art">
+          {art}
+          {source !== null ? <SourceMark source={source} className="card-src" /> : null}
+        </div>
         <div className="t">{title}</div>
         {subtitle ? <div className="s">{subtitle}</div> : null}
       </Link>
       {onPlay ? (
-        <button type="button" className={current ? "hover-play on" : "hover-play"} aria-label={playing ? `Pause ${title}` : playLabel ?? `Play ${title}`} onClick={current ? player.toggle : onPlay}>
+        <button
+          type="button"
+          className={current ? "hover-play on" : "hover-play"}
+          aria-label={playing ? `Pause ${title}` : (playLabel ?? `Play ${title}`)}
+          onClick={current ? player.toggle : onPlay}
+        >
           <Icon name={playing ? "pause" : "play"} size={18} />
         </button>
       ) : null}
@@ -56,9 +64,16 @@ export async function playArtist(artist: Pick<Artist, "id" | "name">, { shuffle 
   if (musicSource(artist.id) !== "library") return;
 
   const librarySongs = await api.librarySongs();
-  const artistSongs = librarySongs.filter((song) => song.artistId === artist.id || song.artists?.some((songArtist) => songArtist.id === artist.id));
+  const artistSongs = librarySongs.filter(
+    (song) => song.artistId === artist.id || song.artists?.some((songArtist) => songArtist.id === artist.id),
+  );
 
-  player.playSongs(shownSongs(artistSongs, { key: "plays", desc: true }, ""), 0, { kind: "artist", id: artist.id, name: artist.name }, { shuffle });
+  player.playSongs(
+    shownSongs(artistSongs, { key: "plays", desc: true }, ""),
+    0,
+    { kind: "artist", id: artist.id, name: artist.name },
+    { shuffle },
+  );
 }
 
 export function albumItem(album: Album, subtitle?: string): CollectionItem {
@@ -98,31 +113,71 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
 const CARD_ART = 180;
 
 export function ItemCard({ item }: { item: CollectionItem }) {
-  return <Card to={item.to} art={item.art(CARD_ART)} title={item.title} subtitle={item.subtitle} {...(item.onPlay ? { onPlay: item.onPlay } : {})} {...(item.contextId ? { playingId: item.contextId } : {})} {...(item.source ? { source: item.source } : {})} />;
+  return (
+    <Card
+      to={item.to}
+      art={item.art(CARD_ART)}
+      title={item.title}
+      subtitle={item.subtitle}
+      {...(item.onPlay ? { onPlay: item.onPlay } : {})}
+      {...(item.contextId ? { playingId: item.contextId } : {})}
+      {...(item.source ? { source: item.source } : {})}
+    />
+  );
 }
 
-export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => <ItemCard item={albumItem(album, subtitle)} />;
+export const AlbumCard = ({ album, subtitle }: { album: Album; subtitle?: string }) => (
+  <ItemCard item={albumItem(album, subtitle)} />
+);
 
 export function ArtistCard({ artist, subtitle }: { artist: Artist; subtitle?: string }) {
-  const artistCover = useArtistImage(artist.coverArt ? undefined : artist.id, artist.coverArt ? undefined : artist.name);
+  const artistCover = useArtistImage(
+    artist.coverArt ? undefined : artist.id,
+    artist.coverArt ? undefined : artist.name,
+  );
 
   return <ItemCard item={artistItem({ ...artist, ...(artistCover ? { coverArt: artistCover } : {}) }, subtitle)} />;
 }
 
-export function RowHeader({ title, subtitle, to, action }: { title: string; subtitle?: string; to?: string; action?: ReactNode }) {
+export function RowHeader({
+  title,
+  subtitle,
+  to,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  to?: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="row-h">
       <div>
         <h2>{to ? <Link to={to}>{title}</Link> : title}</h2>
         {subtitle ? <p className="sub">{subtitle}</p> : null}
       </div>
-      {action ?? (to ? <Link to={to} className="show-all">Show all</Link> : null)}
+      {action ??
+        (to ? (
+          <Link to={to} className="show-all">
+            Show all
+          </Link>
+        ) : null)}
     </div>
   );
 }
 
-export function CardRow({ children, grid = false, dense = false }: { children: ReactNode; grid?: boolean; dense?: boolean }) {
-  return <div className={["cards", grid ? "grid" : "", dense ? "dense" : ""].filter(Boolean).join(" ")}>{children}</div>;
+export function CardRow({
+  children,
+  grid = false,
+  dense = false,
+}: {
+  children: ReactNode;
+  grid?: boolean;
+  dense?: boolean;
+}) {
+  return (
+    <div className={["cards", grid ? "grid" : "", dense ? "dense" : ""].filter(Boolean).join(" ")}>{children}</div>
+  );
 }
 
 export function CardSkeletons({ n = 6, round = false }: { n?: number; round?: boolean }) {

@@ -243,7 +243,9 @@ img {
   place-items: center;
   flex: none;
   box-shadow: 0 8px 24px -8px rgba(246, 178, 60, 0.55);
-  transition: transform 0.15s, background 0.15s;
+  transition:
+    transform 0.15s,
+    background 0.15s;
 }
 
 .bigplay:hover {
@@ -263,7 +265,9 @@ img {
   border-radius: 50%;
   color: var(--sleeve);
   flex: none;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .icon-btn:hover {
@@ -295,7 +299,10 @@ img {
   justify-content: center;
   gap: 8px;
   white-space: nowrap;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 
 .btn:active {
@@ -359,7 +366,9 @@ img {
   height: 18px;
   border-radius: 50%;
   background: var(--label);
-  transition: transform 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    background 0.2s;
 }
 
 .toggle[aria-checked="true"] {

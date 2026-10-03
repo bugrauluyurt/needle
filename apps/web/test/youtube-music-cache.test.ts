@@ -3,14 +3,23 @@ import type { QueryClient } from "@tanstack/react-query";
 import type * as QueryModule from "@tanstack/react-query";
 import type { Song, YouTubeMusicArtist, YouTubeMusicArtistDetail, YouTubeMusicPage } from "@needle/shared";
 import { queryClient } from "../src/queries/client.ts";
-import { clearYouTubeMusicCache, useToggleYouTubeMusicFollow, useToggleYouTubeMusicSave, ytmKeys } from "../src/queries/youtube-music.ts";
+import {
+  clearYouTubeMusicCache,
+  useToggleYouTubeMusicFollow,
+  useToggleYouTubeMusicSave,
+  ytmKeys,
+} from "../src/queries/youtube-music.ts";
 import { ApiError } from "../src/lib/api.ts";
 import { ytm } from "../src/lib/youtube-music.ts";
 
-const mutationHarness = vi.hoisted((): { options: unknown; client: QueryClient | null; user: string } => ({ options: null, client: null, user: "listener-a" }));
+const mutationHarness = vi.hoisted((): { options: unknown; client: QueryClient | null; user: string } => ({
+  options: null,
+  client: null,
+  user: "listener-a",
+}));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...await importOriginal<typeof QueryModule>(),
+  ...(await importOriginal<typeof QueryModule>()),
   useQueryClient: () => mutationHarness.client,
   useMutation: (options: unknown) => {
     mutationHarness.options = options;
@@ -19,7 +28,9 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
   },
 }));
 
-vi.mock("../src/state/session.ts", () => ({ useSession: { getState: () => ({ credentials: { user: mutationHarness.user } }) } }));
+vi.mock("../src/state/session.ts", () => ({
+  useSession: { getState: () => ({ credentials: { user: mutationHarness.user } }) },
+}));
 vi.mock("../src/state/ui.ts", () => ({ toast: vi.fn() }));
 
 type RollbackContext<T> = {
@@ -38,7 +49,12 @@ type LibraryMutationCallbacks<T> = {
 
 const firstAccountSong: Song = { id: "ytm:video000001", title: "Account A song", source: "youtubeMusic" };
 const secondAccountSong: Song = { id: "ytm:video000002", title: "Account B song", source: "youtubeMusic" };
-const songPage = (songs: Song[]): YouTubeMusicPage<Song> => ({ items: songs, total: songs.length, hasMore: false, limit: 100 });
+const songPage = (songs: Song[]): YouTubeMusicPage<Song> => ({
+  items: songs,
+  total: songs.length,
+  hasMore: false,
+  limit: 100,
+});
 
 beforeEach(() => {
   mutationHarness.client = queryClient;
@@ -92,8 +108,12 @@ it("does not restore a signed-out Navidrome user's library", async () => {
 it("does not send an old mutation when reconnect happens during query cancellation", async () => {
   let releaseCancellation: () => void = () => undefined;
   let cancellationStarted: () => void = () => undefined;
-  const cancellationPending = new Promise<void>((resolve) => { releaseCancellation = resolve; });
-  const cancellationEntered = new Promise<void>((resolve) => { cancellationStarted = resolve; });
+  const cancellationPending = new Promise<void>((resolve) => {
+    releaseCancellation = resolve;
+  });
+  const cancellationEntered = new Promise<void>((resolve) => {
+    cancellationStarted = resolve;
+  });
   const providerWrite = vi.spyOn(ytm, "like").mockResolvedValue();
 
   vi.spyOn(queryClient, "cancelQueries").mockImplementationOnce(async () => {
@@ -138,7 +158,15 @@ it("restores a failed mutation when the account remains the same", async () => {
 
 it("updates and restores authoritative artist membership beyond the loaded library page", async () => {
   const artist: YouTubeMusicArtist = { id: "ytm:UC_artist101", name: "Artist 101", images: [], subscribed: true };
-  const artistDetail: YouTubeMusicArtistDetail = { artist, songs: [], albums: [], singles: [], hasMoreSongs: false, hasMoreAlbums: false, hasMoreSingles: false };
+  const artistDetail: YouTubeMusicArtistDetail = {
+    artist,
+    songs: [],
+    albums: [],
+    singles: [],
+    hasMoreSongs: false,
+    hasMoreAlbums: false,
+    hasMoreSingles: false,
+  };
   const artistDetailKey = ytmKeys.artist(artist.id);
 
   queryClient.setQueryData(artistDetailKey, artistDetail);

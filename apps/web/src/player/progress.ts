@@ -19,12 +19,17 @@ export const progress = {
   subscribe,
   set(next: Partial<Progress>) {
     const merged = { ...state, ...next };
-    if (merged.position === state.position && merged.duration === state.duration && merged.buffered === state.buffered) return;
+    if (merged.position === state.position && merged.duration === state.duration && merged.buffered === state.buffered)
+      return;
     state = merged;
     for (const l of listeners) l();
   },
 };
 
 export function useProgress<T>(select: (p: Progress) => T): T {
-  return useSyncExternalStore(subscribe, () => select(getState()), () => select(getState()));
+  return useSyncExternalStore(
+    subscribe,
+    () => select(getState()),
+    () => select(getState()),
+  );
 }

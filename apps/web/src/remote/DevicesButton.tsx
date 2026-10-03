@@ -19,30 +19,57 @@ function RemoteDevice({ d, canSend, active }: { d: Device; canSend: boolean; act
         <Icon name={kindIcon(d.kind)} size={20} />
         <div className="dev-text">
           <b>{d.name}</b>
-          <span className="ellipsis">{s ? `${s.playing ? "Playing" : "Paused"}: ${s.title}, ${s.artist}` : "Not playing"}</span>
+          <span className="ellipsis">
+            {s ? `${s.playing ? "Playing" : "Paused"}: ${s.title}, ${s.artist}` : "Not playing"}
+          </span>
         </div>
         {active && s ? <Eq paused={!s.playing} /> : null}
       </div>
       <div className="dev-actions">
         {s ? (
           <>
-            <button type="button" className="icon-btn" aria-label={`Previous on ${d.name}`} onClick={() => command(d.id, { action: "previous" })}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`Previous on ${d.name}`}
+              onClick={() => command(d.id, { action: "previous" })}
+            >
               <Icon name="prev" size={16} />
             </button>
-            <button type="button" className="icon-btn" aria-label={`${s.playing ? "Pause" : "Play"} on ${d.name}`} onClick={() => command(d.id, { action: s.playing ? "pause" : "play" })}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`${s.playing ? "Pause" : "Play"} on ${d.name}`}
+              onClick={() => command(d.id, { action: s.playing ? "pause" : "play" })}
+            >
               <Icon name={s.playing ? "pause" : "play"} size={16} />
             </button>
-            <button type="button" className="icon-btn" aria-label={`Next on ${d.name}`} onClick={() => command(d.id, { action: "next" })}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`Next on ${d.name}`}
+              onClick={() => command(d.id, { action: "next" })}
+            >
               <Icon name="next" size={16} />
             </button>
           </>
         ) : null}
       </div>
       <div className="dev-transfer">
-        {s ? <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>Continue on this device</button> : null}
+        {s ? (
+          <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>
+            Continue on this device
+          </button>
+        ) : null}
         {canSend ? (
-          <button type="button" className="btn light sm" aria-label={`Move playback to ${d.name}`} onClick={() => transferTo(d.id)}>
-            <Icon name="devices" size={15} />Move playback
+          <button
+            type="button"
+            className="btn light sm"
+            aria-label={`Move playback to ${d.name}`}
+            onClick={() => transferTo(d.id)}
+          >
+            <Icon name="devices" size={15} />
+            Move playback
           </button>
         ) : null}
       </div>
@@ -89,7 +116,9 @@ export function DevicesPanel() {
         </>
       ) : (
         <p className="dev-empty">
-          {connected ? "Open Needle on another device signed in as you, and it shows up here." : "Connecting to the Needle server…"}
+          {connected
+            ? "Open Needle on another device signed in as you, and it shows up here."
+            : "Connecting to the Needle server…"}
         </p>
       )}
     </div>

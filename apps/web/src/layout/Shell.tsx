@@ -160,7 +160,12 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
   return (
     <ToneContext.Provider value={setTone}>
       <ScrollContext.Provider value={ref}>
-        <main ref={ref} className={mobile ? "pmain scroll-thin" : "main scroll-thin"} style={{ "--tone": tone } as React.CSSProperties} id="main">
+        <main
+          ref={ref}
+          className={mobile ? "pmain scroll-thin" : "main scroll-thin"}
+          style={{ "--tone": tone } as React.CSSProperties}
+          id="main"
+        >
           <SpotifyNotice />
           {children}
         </main>
@@ -233,7 +238,9 @@ export function Shell() {
   const showRight = Boolean(panel) && wide && hasSong;
   return (
     <div className={`app ${showRight ? "" : "solo"}`}>
-      <a href="#main" className="skip">Skip to content</a>
+      <a href="#main" className="skip">
+        Skip to content
+      </a>
       <Sidebar />
       <Main mobile={false}>
         <Outlet />
@@ -243,8 +250,16 @@ export function Shell() {
       <PlayerBar />
       <TrackMenuHost mobile={mobile} />
       <Tooltips />
-      {fullScreen ? <Suspense fallback={null}><FullScreenPlayer /></Suspense> : null}
-      {shortcuts ? <Suspense fallback={null}><ShortcutsDialog /></Suspense> : null}
+      {fullScreen ? (
+        <Suspense fallback={null}>
+          <FullScreenPlayer />
+        </Suspense>
+      ) : null}
+      {shortcuts ? (
+        <Suspense fallback={null}>
+          <ShortcutsDialog />
+        </Suspense>
+      ) : null}
       <Toasts />
     </div>
   );

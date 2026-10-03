@@ -18,7 +18,10 @@ export default function MixPage() {
   const mix = data?.find((m) => m.id === id);
   const [songFilter, setSongFilter] = useState("");
   const [songOrder, setSongOrder] = useState<SongOrder>(AS_GIVEN);
-  const visibleSongs = useMemo(() => shownSongs(mix?.songs ?? [], songOrder, songFilter), [mix?.songs, songOrder, songFilter]);
+  const visibleSongs = useMemo(
+    () => shownSongs(mix?.songs ?? [], songOrder, songFilter),
+    [mix?.songs, songOrder, songFilter],
+  );
   usePageTone(mix?.palette[0] ?? null);
   if (isLoading) return <PageSkeleton />;
   if (!mix) return <NotFoundState what="mix" />;
@@ -31,9 +34,24 @@ export default function MixPage() {
         kind="Mix"
         title={mix.name}
         description={`${mix.description} and more. Made from your library, new every morning.`}
-        meta={<span>{plural(mix.songs.length, "song")}, {longDuration(duration)}</span>}
+        meta={
+          <span>
+            {plural(mix.songs.length, "song")}, {longDuration(duration)}
+          </span>
+        }
       />
-      <ActBar end={<><SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in mix" /><CollectionTools sorts={[["custom", "Mix order"], ...LIBRARY_SONG_SORTS]} order={songOrder} onOrder={setSongOrder} /></>}>
+      <ActBar
+        end={
+          <>
+            <SearchField variant="inline" collapsible value={songFilter} onChange={setSongFilter} label="Find in mix" />
+            <CollectionTools
+              sorts={[["custom", "Mix order"], ...LIBRARY_SONG_SORTS]}
+              order={songOrder}
+              onOrder={setSongOrder}
+            />
+          </>
+        }
+      >
         <PlayContextButton contextId={mix.id} label={mix.name} onPlay={() => playMix(mix)} />
         <ShuffleButton label={mix.name} onShuffle={() => playMix(mix, true)} />
         <TrackMoreButton songs={mix.songs} className="icon-btn big" size={26} label={`More options for ${mix.name}`} />

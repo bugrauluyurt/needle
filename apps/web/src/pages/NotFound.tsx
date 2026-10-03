@@ -12,7 +12,9 @@ export default function NotFound() {
           <h1>There’s nothing at this address</h1>
           <p>The link may be old, or the page moved.</p>
           <div className="acts">
-            <Link to="/" className="btn primary">Go home</Link>
+            <Link to="/" className="btn primary">
+              Go home
+            </Link>
           </div>
         </div>
       </div>

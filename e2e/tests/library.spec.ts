@@ -10,13 +10,19 @@ test("likes a song and finds it in Liked songs", async ({ page }) => {
   await row.getByRole("button", { name: "Add Lighthouse Keeper to liked songs" }).click();
   await expect(row.getByRole("button", { name: "Remove Lighthouse Keeper from liked songs" })).toBeVisible();
 
-  await page.getByRole("link", { name: /Liked songs/ }).first().click();
+  await page
+    .getByRole("link", { name: /Liked songs/ })
+    .first()
+    .click();
   await expect(page.getByRole("heading", { level: 1, name: "Liked songs" })).toBeVisible();
   await expect(page.locator(".tr", { hasText: "Lighthouse Keeper" })).toBeVisible();
   await page.getByRole("searchbox", { name: "Find in liked songs" }).fill("lighthouse");
   await expect(page.locator(".tr")).toHaveCount(1);
 
-  await page.locator(".tr", { hasText: "Lighthouse Keeper" }).getByRole("button", { name: "Remove Lighthouse Keeper from liked songs" }).click();
+  await page
+    .locator(".tr", { hasText: "Lighthouse Keeper" })
+    .getByRole("button", { name: "Remove Lighthouse Keeper from liked songs" })
+    .click();
   await expect(page.locator(".tr")).toHaveCount(0);
 });
 
@@ -45,17 +51,25 @@ test("navigates overflowing library filters and collapses the selected filter", 
   const albumsFilter = libraryFilters.getByRole("button", { name: "Albums", exact: true });
   const onDeviceFilter = libraryFilters.getByRole("button", { name: "On this device", exact: true });
   const showMoreFilters = libraryFilters.getByRole("button", { name: "Show more library filters", exact: true });
-  const showPreviousFilters = libraryFilters.getByRole("button", { name: "Show previous library filters", exact: true });
-  const onDeviceIsFullyVisible = () => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => {
-    const libraryFilterScrollerRect = libraryFilterScrollerElement.getBoundingClientRect();
-    const onDeviceElement = [...libraryFilterScrollerElement.querySelectorAll("button")].find((filterButton) => filterButton.textContent === "On this device");
-
-    if (!onDeviceElement) return false;
-
-    const onDeviceRect = onDeviceElement.getBoundingClientRect();
-
-    return onDeviceRect.left >= libraryFilterScrollerRect.left && onDeviceRect.right <= libraryFilterScrollerRect.right;
+  const showPreviousFilters = libraryFilters.getByRole("button", {
+    name: "Show previous library filters",
+    exact: true,
   });
+  const onDeviceIsFullyVisible = () =>
+    libraryFilterScroller.evaluate((libraryFilterScrollerElement) => {
+      const libraryFilterScrollerRect = libraryFilterScrollerElement.getBoundingClientRect();
+      const onDeviceElement = [...libraryFilterScrollerElement.querySelectorAll("button")].find(
+        (filterButton) => filterButton.textContent === "On this device",
+      );
+
+      if (!onDeviceElement) return false;
+
+      const onDeviceRect = onDeviceElement.getBoundingClientRect();
+
+      return (
+        onDeviceRect.left >= libraryFilterScrollerRect.left && onDeviceRect.right <= libraryFilterScrollerRect.right
+      );
+    });
 
   await expect(showMoreFilters).toBeVisible();
   await expect(showPreviousFilters).toBeHidden();
@@ -63,14 +77,22 @@ test("navigates overflowing library filters and collapses the selected filter", 
 
   await showMoreFilters.focus();
   await page.keyboard.press("Enter");
-  await expect.poll(() => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft)).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft),
+    )
+    .toBeGreaterThan(0);
   await expect.poll(onDeviceIsFullyVisible).toBe(true);
   await expect(showPreviousFilters).toBeVisible();
   await expect(showMoreFilters).toBeHidden();
   await expect(showPreviousFilters).toBeFocused();
 
   await page.keyboard.press("Space");
-  await expect.poll(() => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft)).toBe(0);
+  await expect
+    .poll(() =>
+      libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft),
+    )
+    .toBe(0);
   await expect(showPreviousFilters).toBeHidden();
   await expect(showMoreFilters).toBeVisible();
   await expect(showMoreFilters).toBeFocused();
@@ -102,7 +124,10 @@ test("creates, fills, renames, reorders and deletes a playlist", async ({ page }
   await expect(page.getByRole("heading", { level: 1, name: "Test drive" })).toBeVisible();
   await expect(page.getByText("Made by the end-to-end tests")).toBeVisible();
 
-  for (const [album, song] of [["Night Transit", "Overpass"], ["Night Transit", "Arrivals"]] as const) {
+  for (const [album, song] of [
+    ["Night Transit", "Overpass"],
+    ["Night Transit", "Arrivals"],
+  ] as const) {
     await openAlbum(page, album);
     await page.locator(".tr", { hasText: song }).click({ button: "right" });
     await page.getByRole("menuitem", { name: "Add to playlist" }).hover();
@@ -169,11 +194,15 @@ test("sorts a song table from its column titles, both ways", async ({ page }) =>
 test("finds an album song without changing its disc number or playback position", async ({ page }) => {
   await page.route("**/rest/getAlbum.view", async (route) => {
     const albumResponse = await route.fetch();
-    const albumEnvelope = await albumResponse.json() as SubsonicEnvelope<{ album: AlbumWithSongs }>;
+    const albumEnvelope = (await albumResponse.json()) as SubsonicEnvelope<{ album: AlbumWithSongs }>;
     const album = albumEnvelope["subsonic-response"].album;
 
     if (album.name === "Salt & Signal") {
-      album.song = album.song?.map((song, songIndex) => ({ ...song, discNumber: songIndex < 2 ? 1 : 2, track: songIndex < 2 ? songIndex + 1 : songIndex - 1 }));
+      album.song = album.song?.map((song, songIndex) => ({
+        ...song,
+        discNumber: songIndex < 2 ? 1 : 2,
+        track: songIndex < 2 ? songIndex + 1 : songIndex - 1,
+      }));
     }
 
     await route.fulfill({ response: albumResponse, json: albumEnvelope });
@@ -203,11 +232,13 @@ test("reveals the full title when a song name is clipped", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.route("**/rest/getAlbum.view", async (route) => {
     const albumResponse = await route.fetch();
-    const albumEnvelope = await albumResponse.json() as SubsonicEnvelope<{ album: AlbumWithSongs }>;
+    const albumEnvelope = (await albumResponse.json()) as SubsonicEnvelope<{ album: AlbumWithSongs }>;
     const album = albumEnvelope["subsonic-response"].album;
 
     if (album.name === "Salt & Signal") {
-      album.song = album.song?.map((song) => song.title === "Lighthouse Keeper" ? { ...song, title: longSongTitle } : song);
+      album.song = album.song?.map((song) =>
+        song.title === "Lighthouse Keeper" ? { ...song, title: longSongTitle } : song,
+      );
     }
 
     await route.fulfill({ response: albumResponse, json: albumEnvelope });
@@ -260,7 +291,9 @@ test("jumps back to the playing song in a long list", async ({ page }) => {
 
   await main.evaluate((el) => el.scrollTo(0, 0));
   await expect(pill).toBeVisible();
-  await bar(page).getByRole("button", { name: `Show ${title} in the list` }).click();
+  await bar(page)
+    .getByRole("button", { name: `Show ${title} in the list` })
+    .click();
   await expect(playing).toBeInViewport();
   await expect(pill).toBeHidden();
 });

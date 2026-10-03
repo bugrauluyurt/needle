@@ -38,7 +38,10 @@ test("connects ListenBrainz, opens its weekly playlist, fetches the missing song
   await expect(undertow).toContainText("In your library", { timeout: 20_000 });
 
   await page.getByRole("button", { name: "Save as playlist" }).click();
-  await page.locator(".toast", { hasText: "Saved 4 songs as a playlist" }).getByRole("button", { name: "Open" }).click();
+  await page
+    .locator(".toast", { hasText: "Saved 4 songs as a playlist" })
+    .getByRole("button", { name: "Open" })
+    .click();
   await expect(page.getByRole("heading", { level: 1, name: /Weekly Exploration/ })).toBeVisible();
   await expect(page.locator(".tr")).toHaveCount(4);
 

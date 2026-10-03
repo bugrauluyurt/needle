@@ -79,7 +79,9 @@ test("shows the device that took over and controls it from here", async ({ brows
   await desk.locator(".remote-strip").click();
   await expect(desk.locator(".dev.this")).toBeVisible();
   await expect(desk.locator(".dev.this").getByRole("img", { name: "Playing" })).toHaveCount(0);
-  await expect(desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("img", { name: "Playing" })).toBeVisible();
+  await expect(
+    desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("img", { name: "Playing" }),
+  ).toBeVisible();
   await desk.keyboard.press("Escape");
 
   await bar(desk).getByRole("button", { name: "Pause", exact: true }).click();
@@ -100,7 +102,10 @@ test("shows the device that took over and controls it from here", async ({ brows
   await desk.waitForTimeout(16_000);
   await expect(desk.locator(".remote-strip")).toBeVisible();
   await desk.locator(".remote-strip").click();
-  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Continue on this device" }).click();
+  await desk
+    .locator(".dev", { hasText: "Kitchen speaker" })
+    .getByRole("button", { name: "Continue on this device" })
+    .click();
   await expect(desk.locator(".remote-strip")).toHaveCount(0);
   await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
   await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible();
@@ -116,7 +121,10 @@ test("shows the device that took over and controls it from here", async ({ brows
     while (Date.now() < until);
   });
   await desk.locator(".remote-strip").click();
-  await desk.locator(".dev", { hasText: "Kitchen speaker" }).getByRole("button", { name: "Continue on this device" }).click();
+  await desk
+    .locator(".dev", { hasText: "Kitchen speaker" })
+    .getByRole("button", { name: "Continue on this device" })
+    .click();
   await expect(bar(desk).getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 4_000 });
   await expect(bar(desk).locator(".np-t")).toHaveText("Blue Minutes");
   await busy;

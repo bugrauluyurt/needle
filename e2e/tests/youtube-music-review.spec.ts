@@ -38,14 +38,18 @@ test("uses authoritative membership for artists and albums beyond the first hund
 
   await expect(page.getByRole("button", { name: "Remove from your YouTube Music library", exact: true })).toBeEnabled();
 
-  expect(mock.requests.filter((request) => request.path === "/albums").some((request) => request.limit === 3000)).toBe(true);
+  expect(mock.requests.filter((request) => request.path === "/albums").some((request) => request.limit === 3000)).toBe(
+    true,
+  );
 });
 
 test("does not claim unknown album membership when the library exceeds its limit", async ({ page }) => {
   await mockYouTubeMusic(page, { libraryCount: 3001 });
   await signIn(page, "/youtube-music/album/MPRE_album");
 
-  await expect(page.getByRole("button", { name: "YouTube Music saved status unavailable", exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "YouTube Music saved status unavailable", exact: true }),
+  ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Save to your YouTube Music library", exact: true })).toHaveCount(0);
 });
 
@@ -53,17 +57,25 @@ test("shows a provider error in Library while local albums remain usable", async
   await mockYouTubeMusic(page, { libraryFailure: 502 });
   await signIn(page, "/library");
 
-  await expect(page.locator("#main .yt-notice").getByText("YouTube Music didn’t answer", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("#main .yt-notice").getByText("YouTube Music didn’t answer", { exact: true }),
+  ).toBeVisible();
   await expect(page.locator("#main .yt-notice").getByRole("button", { name: "Try again", exact: true })).toBeVisible();
   await expect(page.locator("#main .card", { hasText: "Night Transit" })).toBeVisible();
 });
 
 test("preserves alternate official Google verification addresses", async ({ page }) => {
-  await mockYouTubeMusic(page, { connected: false, verificationUrl: "https://accounts.google.com/device-verification" });
+  await mockYouTubeMusic(page, {
+    connected: false,
+    verificationUrl: "https://accounts.google.com/device-verification",
+  });
   await signIn(page, "/settings");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
 
-  await expect(page.getByRole("link", { name: "Open Google", exact: true })).toHaveAttribute("href", "https://accounts.google.com/device-verification");
+  await expect(page.getByRole("link", { name: "Open Google", exact: true })).toHaveAttribute(
+    "href",
+    "https://accounts.google.com/device-verification",
+  );
 });
 
 test("rejects an external Google verification address", async ({ page }) => {

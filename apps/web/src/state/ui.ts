@@ -39,11 +39,20 @@ export const useUi = create<UiState>()(
     {
       name: "needle.ui",
       version: 2,
-      partialize: (s): Persisted => ({ rightPanel: s.rightPanel, libraryFilter: s.libraryFilter, libraryOrigin: s.libraryOrigin, collections: s.collections }),
+      partialize: (s): Persisted => ({
+        rightPanel: s.rightPanel,
+        libraryFilter: s.libraryFilter,
+        libraryOrigin: s.libraryOrigin,
+        collections: s.collections,
+      }),
       migrate: (saved, version) => {
         const s = saved as Omit<Persisted, "libraryFilter"> & { libraryFilter: LibraryFilter | "spotify" };
         const spotify = version < 2 && s.libraryFilter === "spotify";
-        return { ...s, libraryFilter: s.libraryFilter === "spotify" ? null : s.libraryFilter, libraryOrigin: spotify ? "spotify" : (s.libraryOrigin ?? "all") };
+        return {
+          ...s,
+          libraryFilter: s.libraryFilter === "spotify" ? null : s.libraryFilter,
+          libraryOrigin: spotify ? "spotify" : (s.libraryOrigin ?? "all"),
+        };
       },
     },
   ),

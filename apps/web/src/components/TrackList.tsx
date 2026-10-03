@@ -24,7 +24,12 @@ import { AS_GIVEN, shownSongs } from "../lib/songs.ts";
 import type { SongOrder, SongSort } from "../lib/songs.ts";
 import { SortArrow } from "./Collection.tsx";
 
-export type TrackColumn = { label: string; value: (song: Song, index: number) => string; width?: string; sort?: SongSort };
+export type TrackColumn = {
+  label: string;
+  value: (song: Song, index: number) => string;
+  width?: string;
+  sort?: SongSort;
+};
 
 type TrackListProps = {
   songs: Song[];
@@ -55,7 +60,8 @@ type Side = "up" | "down";
 
 let locateHandled = 0;
 
-const scrollBehavior = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
 type RowProps = {
   song: Song;
@@ -131,11 +137,16 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
         pointer.current = e.pointerType;
         if (e.pointerType !== "touch") return;
         const { clientX: x, clientY: y } = e;
-        press.current = { x, y, fired: false, timer: window.setTimeout(() => {
-          if (press.current) press.current.fired = true;
-          navigator.vibrate?.(10);
-          menu(x, y);
-        }, 550) };
+        press.current = {
+          x,
+          y,
+          fired: false,
+          timer: window.setTimeout(() => {
+            if (press.current) press.current.fired = true;
+            navigator.vibrate?.(10);
+            menu(x, y);
+          }, 550),
+        };
       }}
       onPointerMove={(e) => {
         const s = press.current;
@@ -154,7 +165,19 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
     >
       <span className="n" role="cell">
         {p.playing && !p.elsewhere ? <Eq paused={p.paused} /> : <span className="num">{p.number}</span>}
-        <button type="button" className="row-play" disabled={p.song.isAvailable === false} aria-label={p.song.isAvailable === false ? `${p.song.title} is unavailable` : p.playing && !p.paused ? `Pause ${p.song.title}` : `Play ${p.song.title}`} onClick={() => (p.playing ? player.toggle() : p.onPlay(p.index))}>
+        <button
+          type="button"
+          className="row-play"
+          disabled={p.song.isAvailable === false}
+          aria-label={
+            p.song.isAvailable === false
+              ? `${p.song.title} is unavailable`
+              : p.playing && !p.paused
+                ? `Pause ${p.song.title}`
+                : `Play ${p.song.title}`
+          }
+          onClick={() => (p.playing ? player.toggle() : p.onPlay(p.index))}
+        >
           <Icon name={p.playing && !p.paused ? "pause" : "play"} size={14} />
         </button>
       </span>
@@ -163,7 +186,11 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
         <div>
           <div className="name">{p.song.title}</div>
           <div className="by">
-            {p.downloaded ? <span className="dlmark" title="Downloaded"><Icon name="downloaded" size={13} /></span> : null}
+            {p.downloaded ? (
+              <span className="dlmark" title="Downloaded">
+                <Icon name="downloaded" size={13} />
+              </span>
+            ) : null}
             <SourceMark source={songSource(p.song)} compact />
             {p.song.artistId ? <Link to={artistPath(p.song.artistId)}>{artistName(p.song)}</Link> : artistName(p.song)}
             {p.song.isAvailable === false ? <span>Unavailable</span> : null}
@@ -175,7 +202,11 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           {p.song.albumId ? <Link to={albumPath(p.song.albumId)}>{p.song.album}</Link> : p.song.album}
         </span>
       ) : null}
-      {p.column ? <span className="col" role="cell">{p.column.value(p.song, p.index)}</span> : null}
+      {p.column ? (
+        <span className="col" role="cell">
+          {p.column.value(p.song, p.index)}
+        </span>
+      ) : null}
       <span className="d" role="cell">
         <button
           type="button"
@@ -187,26 +218,73 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           <Icon name={p.liked ? "heartFill" : "heart"} size={16} />
         </button>
         <span className="tabular">{clock(p.song.duration)}</span>
-        <TrackMoreButton songs={[p.song]} className="row-more" size={18} label={`More options for ${p.song.title}`} {...(p.extra ? { extra: p.extra } : {})} />
+        <TrackMoreButton
+          songs={[p.song]}
+          className="row-more"
+          size={18}
+          label={`More options for ${p.song.title}`}
+          {...(p.extra ? { extra: p.extra } : {})}
+        />
       </span>
     </div>
   );
 });
 
-function SortHeader({ label, sort, order, onSort, className, children, canSort = true }: { label: string; sort: SongSort; order: SongOrder; onSort: (sort: SongSort) => void; className?: string; children?: ReactNode; canSort?: boolean }) {
+function SortHeader({
+  label,
+  sort,
+  order,
+  onSort,
+  className,
+  children,
+  canSort = true,
+}: {
+  label: string;
+  sort: SongSort;
+  order: SongOrder;
+  onSort: (sort: SongSort) => void;
+  className?: string;
+  children?: ReactNode;
+  canSort?: boolean;
+}) {
   const active = order.key === sort;
   const state = active ? (order.desc ? "descending" : "ascending") : "none";
   return (
-    <span className={["sortable", active ? "on" : "", className ?? ""].filter(Boolean).join(" ")} role="columnheader" aria-sort={state}>
-      {canSort ? <button type="button" aria-label={`Sort by ${label.toLowerCase()}`} onClick={() => onSort(sort)} data-no-tip>
-        {children ?? label}
-        <SortArrow desc={active && order.desc} />
-      </button> : children ?? label}
+    <span
+      className={["sortable", active ? "on" : "", className ?? ""].filter(Boolean).join(" ")}
+      role="columnheader"
+      aria-sort={state}
+    >
+      {canSort ? (
+        <button type="button" aria-label={`Sort by ${label.toLowerCase()}`} onClick={() => onSort(sort)} data-no-tip>
+          {children ?? label}
+          <SortArrow desc={active && order.desc} />
+        </button>
+      ) : (
+        (children ?? label)
+      )}
     </span>
   );
 }
 
-export function TrackList({ songs, context, art = false, album = false, column, numbers = "index", header = true, onReorder, menuExtra, className, limit, onPlay, order, onOrder, fallback = AS_GIVEN, canSort = true }: TrackListProps) {
+export function TrackList({
+  songs,
+  context,
+  art = false,
+  album = false,
+  column,
+  numbers = "index",
+  header = true,
+  onReorder,
+  menuExtra,
+  className,
+  limit,
+  onPlay,
+  order,
+  onOrder,
+  fallback = AS_GIVEN,
+  canSort = true,
+}: TrackListProps) {
   const currentId = usePlayer((s) => s.items[s.index]?.song.id);
   const paused = usePlayer((s) => !s.playing);
   const elsewhere = Boolean(useActiveRemote());
@@ -215,18 +293,24 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   const [selected, setSelected] = useState<string | null>(null);
   const [own, setOwn] = useState(fallback);
   const current = order ?? own;
-  const sortBy = useCallback((sort: SongSort) => (onOrder ?? setOwn)(nextOrder(current, sort, fallback)), [onOrder, current, fallback]);
+  const sortBy = useCallback(
+    (sort: SongSort) => (onOrder ?? setOwn)(nextOrder(current, sort, fallback)),
+    [onOrder, current, fallback],
+  );
   const list = useMemo(() => (order ? songs : shownSongs(songs, own, "")), [order, songs, own]);
   const dragFrom = useRef<number | null>(null);
   const shown = limit ? list.slice(0, limit) : list;
 
   const resorted = !order && own !== fallback;
-  const play = useCallback((songIndex: number) => {
-    if (list[songIndex]?.isAvailable === false) return;
+  const play = useCallback(
+    (songIndex: number) => {
+      if (list[songIndex]?.isAvailable === false) return;
 
-    if (onPlay && !resorted) onPlay(songIndex);
-    else player.playSongs(list, songIndex, context);
-  }, [list, context, onPlay, resorted]);
+      if (onPlay && !resorted) onPlay(songIndex);
+      else player.playSongs(list, songIndex, context);
+    },
+    [list, context, onPlay, resorted],
+  );
   const select = useCallback((i: number) => setSelected(list[i]?.id ?? null), [list]);
   const like = likes.setLiked;
 
@@ -268,10 +352,16 @@ export function TrackList({ songs, context, art = false, album = false, column, 
     const root = scroller?.current;
     const target = !virtual && at >= 0 ? listRef.current?.children[at] : undefined;
     if (!root || !target) return;
-    const io = new IntersectionObserver((entries) => {
-      const e = entries.at(-1);
-      if (e) setIoSide(e.intersectionRatio >= 0.5 ? null : e.boundingClientRect.top < (e.rootBounds?.top ?? 0) ? "up" : "down");
-    }, { root, rootMargin: `-${chrome.top}px 0px -${chrome.bottom}px 0px`, threshold: [0, 0.5, 1] });
+    const io = new IntersectionObserver(
+      (entries) => {
+        const e = entries.at(-1);
+        if (e)
+          setIoSide(
+            e.intersectionRatio >= 0.5 ? null : e.boundingClientRect.top < (e.rootBounds?.top ?? 0) ? "up" : "down",
+          );
+      },
+      { root, rootMargin: `-${chrome.top}px 0px -${chrome.bottom}px 0px`, threshold: [0, 0.5, 1] },
+    );
     io.observe(target);
     return () => io.disconnect();
   }, [scroller, virtual, at, chrome]);
@@ -357,7 +447,9 @@ export function TrackList({ songs, context, art = false, album = false, column, 
     />
   );
 
-  const cols = ["tracks", art ? "with-art" : "", album ? "with-album" : "", column ? "with-col" : "", className ?? ""].filter(Boolean).join(" ");
+  const cols = ["tracks", art ? "with-art" : "", album ? "with-album" : "", column ? "with-col" : "", className ?? ""]
+    .filter(Boolean)
+    .join(" ");
   const playingSong = at >= 0 ? shown[at] : undefined;
   return (
     <div className={cols} style={column?.width ? ({ "--col": column.width } as CSSProperties) : undefined}>
@@ -365,21 +457,65 @@ export function TrackList({ songs, context, art = false, album = false, column, 
         {header ? (
           <div className="th" role="row">
             <span className="r" role="columnheader">
-              <button type="button" className="th-reset" aria-label="Original order" disabled={!canSort || (current.key === fallback.key && current.desc === fallback.desc)} onClick={() => (onOrder ?? setOwn)(fallback)} data-no-tip>#</button>
+              <button
+                type="button"
+                className="th-reset"
+                aria-label="Original order"
+                disabled={!canSort || (current.key === fallback.key && current.desc === fallback.desc)}
+                onClick={() => (onOrder ?? setOwn)(fallback)}
+                data-no-tip
+              >
+                #
+              </button>
             </span>
             <SortHeader label="Title" sort="title" order={current} onSort={sortBy} canSort={canSort} />
             {album ? <SortHeader label="Album" sort="album" order={current} onSort={sortBy} canSort={canSort} /> : null}
-            {column ? (column.sort ? <SortHeader label={column.label} sort={column.sort} order={current} onSort={sortBy} className="col" canSort={canSort} /> : <span className="col" role="columnheader">{column.label}</span>) : null}
-            <SortHeader label="Duration" sort="duration" order={current} onSort={sortBy} className="r" canSort={canSort}>
+            {column ? (
+              column.sort ? (
+                <SortHeader
+                  label={column.label}
+                  sort={column.sort}
+                  order={current}
+                  onSort={sortBy}
+                  className="col"
+                  canSort={canSort}
+                />
+              ) : (
+                <span className="col" role="columnheader">
+                  {column.label}
+                </span>
+              )
+            ) : null}
+            <SortHeader
+              label="Duration"
+              sort="duration"
+              order={current}
+              onSort={sortBy}
+              className="r"
+              canSort={canSort}
+            >
               <Icon name="clock" size={16} />
             </SortHeader>
           </div>
         ) : null}
-        <div ref={listRef} className="tbody" role="rowgroup" style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}>
+        <div
+          ref={listRef}
+          className="tbody"
+          role="rowgroup"
+          style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}
+        >
           {virtual
             ? v.getVirtualItems().map((item) => {
                 const song = shown[item.index];
-                return song ? row(song, item.index, { position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${item.start - v.options.scrollMargin}px)` }) : null;
+                return song
+                  ? row(song, item.index, {
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      transform: `translateY(${item.start - v.options.scrollMargin}px)`,
+                    })
+                  : null;
               })
             : shown.map((s, i) => row(s, i))}
         </div>

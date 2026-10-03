@@ -17,7 +17,19 @@ export function titleSize(title: string): number {
   return 38;
 }
 
-export function Hero({ art, kind, title, description, meta }: { art: ReactNode; kind: string; title: string; description?: string | undefined; meta: ReactNode }) {
+export function Hero({
+  art,
+  kind,
+  title,
+  description,
+  meta,
+}: {
+  art: ReactNode;
+  kind: string;
+  title: string;
+  description?: string | undefined;
+  meta: ReactNode;
+}) {
   const mobile = useIsMobile();
   return (
     <>
@@ -35,20 +47,50 @@ export function Hero({ art, kind, title, description, meta }: { art: ReactNode; 
   );
 }
 
-export function PlayContextButton({ contextId, onPlay, label, disabled = false }: { contextId: string; onPlay: () => void; label: string; disabled?: boolean }) {
+export function PlayContextButton({
+  contextId,
+  onPlay,
+  label,
+  disabled = false,
+}: {
+  contextId: string;
+  onPlay: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
   const active = usePlayer((s) => s.context?.id === contextId);
   const playing = usePlayer((s) => s.playing);
   const on = active && playing;
   return (
-    <button type="button" className="bigplay" disabled={disabled} aria-label={on ? `Pause ${label}` : `Play ${label}`} onClick={() => (active ? player.toggle() : onPlay())}>
+    <button
+      type="button"
+      className="bigplay"
+      disabled={disabled}
+      aria-label={on ? `Pause ${label}` : `Play ${label}`}
+      onClick={() => (active ? player.toggle() : onPlay())}
+    >
       <Icon name={on ? "pause" : "play"} size={22} />
     </button>
   );
 }
 
-export function ShuffleButton({ onShuffle, label, disabled = false }: { onShuffle: () => void; label: string; disabled?: boolean }) {
+export function ShuffleButton({
+  onShuffle,
+  label,
+  disabled = false,
+}: {
+  onShuffle: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
   return (
-    <button type="button" className="icon-btn big" disabled={disabled} aria-label={`Shuffle ${label}`} onClick={onShuffle}>
+    <button
+      type="button"
+      className="icon-btn big"
+      disabled={disabled}
+      aria-label={`Shuffle ${label}`}
+      onClick={onShuffle}
+    >
       <Icon name="shuffle" size={26} />
     </button>
   );
@@ -78,11 +120,25 @@ export function PageSkeleton() {
   );
 }
 
-export function NotFoundState({ what, error, retry, name }: { what: string; error?: unknown; retry?: () => void; name?: string | undefined }) {
+export function NotFoundState({
+  what,
+  error,
+  retry,
+  name,
+}: {
+  what: string;
+  error?: unknown;
+  retry?: () => void;
+  name?: string | undefined;
+}) {
   const mobile = useIsMobile();
   const navigate = useNavigate();
   const missing = !error || (error instanceof SubsonicError && error.code === 70);
-  const back = <button type="button" className="btn ghost" onClick={() => void navigate(-1)}>Go back</button>;
+  const back = (
+    <button type="button" className="btn ghost" onClick={() => void navigate(-1)}>
+      Go back
+    </button>
+  );
   return (
     <>
       {mobile ? <MobileBack /> : <TopBar />}
@@ -92,14 +148,28 @@ export function NotFoundState({ what, error, retry, name }: { what: string; erro
             <>
               <h1>Couldn’t reach your music</h1>
               <p>Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it.</p>
-              {retry ? <div className="acts"><button type="button" className="btn primary" onClick={retry}><Icon name="refresh" size={16} />Try again</button></div> : null}
+              {retry ? (
+                <div className="acts">
+                  <button type="button" className="btn primary" onClick={retry}>
+                    <Icon name="refresh" size={16} />
+                    Try again
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : name ? (
             <>
               <h1>{name} isn’t in your library</h1>
               <p>None of their music is in your library. Search for them to find their albums and songs.</p>
               <div className="acts">
-                <button type="button" className="btn primary" onClick={() => void navigate(`/search?q=${encodeURIComponent(name)}`)}><Icon name="search" size={16} />Search for {name}</button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void navigate(`/search?q=${encodeURIComponent(name)}`)}
+                >
+                  <Icon name="search" size={16} />
+                  Search for {name}
+                </button>
                 {back}
               </div>
             </>

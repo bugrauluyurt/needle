@@ -11,13 +11,18 @@ export class Profiles {
   }
 
   photo(user: string): string | null {
-    const row = this.db.prepare("SELECT photo, type FROM profiles WHERE user = ?").get(user) as { photo: Uint8Array; type: string } | undefined;
+    const row = this.db.prepare("SELECT photo, type FROM profiles WHERE user = ?").get(user) as
+      { photo: Uint8Array; type: string } | undefined;
     return row ? `data:${row.type};base64,${Buffer.from(row.photo).toString("base64")}` : null;
   }
 
   setPhoto(user: string, photo: Uint8Array, type: string) {
-    this.db.prepare(`INSERT INTO profiles (user, photo, type, updated_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(user) DO UPDATE SET photo = excluded.photo, type = excluded.type, updated_at = excluded.updated_at`).run(user, photo, type, Date.now());
+    this.db
+      .prepare(
+        `INSERT INTO profiles (user, photo, type, updated_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(user) DO UPDATE SET photo = excluded.photo, type = excluded.type, updated_at = excluded.updated_at`,
+      )
+      .run(user, photo, type, Date.now());
   }
 
   removePhoto(user: string) {

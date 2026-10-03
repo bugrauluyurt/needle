@@ -28,11 +28,13 @@ export function EmptyLibrary({ compact = false }: { compact?: boolean }) {
       setScanning(false);
     }
   };
-  const text = "Navidrome hasn’t found any songs in your music folder. Search for an album to fetch it through Lidarr, or scan again if you’ve just added files.";
+  const text =
+    "Navidrome hasn’t found any songs in your music folder. Search for an album to fetch it through Lidarr, or scan again if you’ve just added files.";
   const acts = (
     <div className="acts">
       <button type="button" className="btn primary" onClick={() => void navigate("/search")}>
-        <Icon name="search" size={16} />Find music to add
+        <Icon name="search" size={16} />
+        Find music to add
       </button>
       <button type="button" className="btn ghost" disabled={scanning} onClick={() => void scan()}>
         {scanning ? <span className="spin" /> : <Icon name="refresh" size={16} />}
@@ -54,7 +56,9 @@ export function EmptyLibrary({ compact = false }: { compact?: boolean }) {
       <div className="empty-in">
         <div className="stack" aria-hidden="true">
           <div className="slot s1" />
-          <div className="slot s2"><Icon name="plus" size={30} /></div>
+          <div className="slot s2">
+            <Icon name="plus" size={30} />
+          </div>
           <div className="slot s3" />
         </div>
         <h1>No music yet</h1>
