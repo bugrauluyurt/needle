@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { artSrcSet } from "../src/components/Art.tsx";
 import { ago, clock, formatLabel, hours, longDuration, paragraphs, plainBio, plural, releaseKind } from "../src/lib/format.ts";
 import { lineAt, pickLyrics } from "../src/lib/lyrics.ts";
 import { md5 } from "../src/lib/md5.ts";
@@ -10,6 +11,7 @@ import { browserChecks } from "../src/lib/connections.ts";
 import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
 import { naturalOrder, nextOrder, pickOrder } from "../src/lib/order.ts";
 import { shownSongs } from "../src/lib/songs.ts";
+import { useSession } from "../src/state/session.ts";
 import type { Song } from "@needle/shared";
 import { releaseDateString } from "@needle/shared";
 
@@ -189,6 +191,59 @@ describe("spotify", () => {
     expect(artistPath("sp:ar1")).toBe("/spotify/artist/ar1");
     expect(artistPath("nd2")).toBe("/artist/nd2");
     expect(spotifyLink("track", "sp:t1")).toBe("https://open.spotify.com/track/t1");
+  });
+});
+
+describe("responsive artwork", () => {
+  it("builds every local cover size with the matching width descriptor", () => {
+    const previousCredentials = useSession.getState().credentials;
+
+    useSession.setState({ credentials: { user: "listener", token: "token", salt: "salt" } });
+
+    let coverSources: string | undefined;
+
+    try {
+      coverSources = artSrcSet({ id: "cover-1", version: "changed-1" });
+    } finally {
+      useSession.setState({ credentials: previousCredentials });
+    }
+
+    const coverCandidates = coverSources?.split(", ").map((coverCandidate) => {
+      const [coverSource, coverWidth] = coverCandidate.split(" ");
+      const coverParams = new URL(coverSource ?? "", "https://needle.test").searchParams;
+
+      return { size: coverParams.get("size"), width: coverWidth, version: coverParams.get("changed") };
+    });
+
+    expect(coverCandidates).toEqual([64, 128, 256, 384, 600, 900].map((coverSize) => ({
+      size: String(coverSize),
+      width: `${coverSize}w`,
+      version: "changed-1",
+    })));
+  });
+
+  it("sorts Spotify image candidates and removes invalid and duplicate widths", () => {
+    const spotifyCandidates = artSrcSet({
+      images: [
+        { url: "https://i.scdn.co/image/artist-600", width: 600 },
+        { url: "https://i.scdn.co/image/artist-64", width: 64 },
+        { url: "https://i.scdn.co/image/artist-300", width: 300 },
+        { url: "https://i.scdn.co/image/artist-300-copy", width: 300 },
+        { url: "https://i.scdn.co/image/artist-missing" },
+        { url: "https://i.scdn.co/image/artist-zero", width: 0 },
+        { url: "https://i.scdn.co/image/artist-invalid", width: Number.NaN },
+      ],
+    })?.split(", ");
+
+    expect(spotifyCandidates?.map((spotifyCandidate) => Number(spotifyCandidate.split(" ").at(-1)?.replace("w", "")))).toEqual([64, 300, 600]);
+    expect(spotifyCandidates?.filter((spotifyCandidate) => spotifyCandidate.endsWith(" 300w"))).toHaveLength(1);
+    expect(spotifyCandidates?.join(" ")).not.toMatch(/missing|zero|invalid/);
+  });
+
+  it("leaves direct URLs and incomplete Spotify metadata on their fallback source", () => {
+    expect(artSrcSet({ id: "https://images.example/artist.jpg" })).toBeUndefined();
+    expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }] })).toBeUndefined();
+    expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-a" }, { url: "https://i.scdn.co/image/artist-b", width: null }] })).toBeUndefined();
   });
 });
 

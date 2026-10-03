@@ -304,7 +304,7 @@ export function SpotifyArtistPage() {
     <div className={section === "songs" ? "artist-page artist-songs-page" : "artist-page"}>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
-        <div className="bg"><Art images={artist.images} px={900} eager fallback="artist" /></div>
+        <div className="bg"><Art images={artist.images} px={900} sizes="100vw" eager fallback="artist" /></div>
         <div className="a-hero-text">
           <div className="kind"><SpotifyMark /> Artist</div>
           <h1 style={{ "--title": `${artist.name.length > 14 ? 76 : 112}px` } as React.CSSProperties}>{artist.name}</h1>

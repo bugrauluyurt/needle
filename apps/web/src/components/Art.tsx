@@ -19,12 +19,46 @@ type ArtProps = {
   images?: SpImage[] | null | undefined;
   version?: string | undefined;
   px: number;
+  sizes?: string;
   round?: boolean;
   className?: string;
   alt?: string;
   eager?: boolean;
   fallback?: "album" | "artist";
 };
+
+export function artSrcSet({ id: artId, images: artImages, version: artVersion }: Pick<ArtProps, "id" | "images" | "version">): string | undefined {
+  if (artImages) {
+    const seenImageWidths = new Set<number>();
+    const imageCandidates = artImages
+      .filter((artistImage): artistImage is SpImage & { width: number } => {
+        const imageWidth = artistImage.width;
+
+        if (typeof imageWidth !== "number" || !Number.isFinite(imageWidth) || imageWidth <= 0 || seenImageWidths.has(imageWidth)) return false;
+
+        seenImageWidths.add(imageWidth);
+
+        return true;
+      })
+      .sort((firstArtistImage, secondArtistImage) => firstArtistImage.width - secondArtistImage.width);
+
+    if (imageCandidates.length < 2) return undefined;
+
+    return imageCandidates.map((artistImage) => `${artistImage.url} ${artistImage.width}w`).join(", ");
+  }
+
+  if (!artId || /^https?:\/\//.test(artId)) return undefined;
+
+  const coverCandidates = STEPS
+    .map((imageWidth) => {
+      const coverSource = coverUrl(artId, imageWidth, artVersion);
+
+      return coverSource ? `${coverSource} ${imageWidth}w` : null;
+    })
+    .filter((coverCandidate): coverCandidate is string => Boolean(coverCandidate));
+
+  return coverCandidates.length > 1 ? coverCandidates.join(", ") : undefined;
+}
 
 export function RecordArt({ seed }: { seed: string }) {
   const [, label] = hashPalette(seed);
@@ -39,8 +73,9 @@ export function RecordArt({ seed }: { seed: string }) {
   );
 }
 
-function ArtImpl({ id, images, version, px, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
+function ArtImpl({ id, images, version, px, sizes, round = false, className, alt = "", eager = false, fallback = "album" }: ArtProps) {
   const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px), version);
+  const srcSet = sizes ? artSrcSet({ id, images, version }) : undefined;
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
   const cls = ["art", round ? "round" : "", state === "done" ? "loaded" : "", className ?? ""].filter(Boolean).join(" ");
   return (
@@ -49,6 +84,8 @@ function ArtImpl({ id, images, version, px, round = false, className, alt = "", 
         <img
           key={url}
           src={url}
+          srcSet={srcSet}
+          sizes={srcSet ? sizes : undefined}
           alt={alt}
           loading={eager ? "eager" : "lazy"}
           decoding="async"

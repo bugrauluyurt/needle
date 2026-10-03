@@ -1,0 +1,1 @@
+- Library filters are easier to reach, the sidebar stays aligned, and artist artwork loads at a size suited to the screen.

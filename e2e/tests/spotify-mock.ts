@@ -21,11 +21,13 @@ export type Mock = {
 type SpotifyMockOptions = {
   searchSongCount?: number;
   artistAlbumCount?: number;
+  artistImages?: { url: string; width?: number | null; height?: number | null }[];
   delayedSearch?: { query: string; offset: number; milliseconds: number };
 };
 
 export async function mockSpotify(page: Page, options: SpotifyMockOptions = {}): Promise<Mock> {
   const mock: Mock = { plays: [], saved: [], searches: [], artistReleaseRequests: [] };
+  const mockArtist = options.artistImages ? { ...artist, images: options.artistImages } : artist;
   const searchTracks = Array.from({ length: options.searchSongCount ?? 3 }, (_, trackIndex) => track(trackIndex + 1));
   const artistAlbums = Array.from({ length: options.artistAlbumCount ?? 1 }, (_, albumIndex) => ({
     ...albumRef,
@@ -113,7 +115,7 @@ export async function mockSpotify(page: Page, options: SpotifyMockOptions = {}):
       return json({
         tracks: searchPage(searchTracks, "track"),
         albums: searchPage([albumRef], "album"),
-        artists: searchPage([artist], "artist"),
+        artists: searchPage([mockArtist], "artist"),
         playlists: searchPage([followed], "playlist"),
       });
     }
@@ -127,8 +129,8 @@ export async function mockSpotify(page: Page, options: SpotifyMockOptions = {}):
       "/me/tracks": page1(tracks.map((t) => ({ added_at: "2026-09-20T10:00:00Z", track: t }))),
       "/me/albums": page1([{ added_at: "2026-09-10T10:00:00Z", album }]),
       "/albums/al1": album,
-      "/artists/ar1": artist,
-      "/me/following": { artists: page1([artist]) },
+      "/artists/ar1": mockArtist,
+      "/me/following": { artists: page1([mockArtist]) },
     };
     if (path in routes) return json(routes[path]);
     return route.fulfill({ status: 403, json: { error: { status: 403, message: "Forbidden" } } });
