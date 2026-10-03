@@ -38,5 +38,9 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: { ...reactHooks.configs.recommended.rules },
   },
+  {
+    files: ["**/*.d.ts"],
+    rules: { "@typescript-eslint/consistent-type-definitions": "off" },
+  },
   { files: ["**/*.{js,mjs}"], ...tseslint.configs.disableTypeChecked },
 );

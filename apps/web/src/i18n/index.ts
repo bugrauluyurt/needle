@@ -6,6 +6,7 @@ import type { TranslationKey } from "./locales/en.ts";
 import { turkish } from "./locales/tr.ts";
 
 type TranslationValues = Record<string, number | string>;
+type Translate = (key: TranslationKey, values?: TranslationValues) => string;
 
 const resources = {
   en: { translation: english },
@@ -13,12 +14,16 @@ const resources = {
 } as const;
 
 void i18next.use(initReactI18next).init({
+  defaultNS: "translation",
   fallbackLng: "en",
   initAsync: false,
   interpolation: { escapeValue: false },
+  keySeparator: false,
   lng: "en",
   resources,
 });
+
+const translateValue = i18next.t.bind(i18next) as Translate;
 
 function applyDocumentLanguage(language: Language) {
   if (typeof document === "undefined" || !document.documentElement) return;
@@ -31,17 +36,11 @@ function applyDocumentLanguage(language: Language) {
     ?.setAttribute("content", translate("app.description"));
   document
     .querySelector<HTMLLinkElement>("link[rel='manifest']")
-    ?.setAttribute(
-      "href",
-      language === "tr" ? "/manifest.tr.webmanifest" : "/manifest.webmanifest",
-    );
+    ?.setAttribute("href", language === "tr" ? "/manifest.tr.webmanifest" : "/manifest.webmanifest");
 }
 
-export function translate(
-  key: TranslationKey,
-  values?: TranslationValues,
-): string {
-  return i18next.t(key, values);
+export function translate(key: TranslationKey, values: TranslationValues = {}): string {
+  return translateValue(key, values);
 }
 
 export async function changeLanguage(language: Language): Promise<void> {
