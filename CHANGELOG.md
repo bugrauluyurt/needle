@@ -8,6 +8,18 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.9.0 - 2026-10-03
+
+### Added
+- YouTube Music can join your own music and Spotify in Home, Search and Your library.
+  Connect a separate account for each person, play songs in Needle, like songs, save
+  albums and follow artists. YouTube Music playlists are read-only and can be copied
+  into Navidrome using songs you already have. This integration is experimental and
+  has its own on/off switch; YouTube Music audio cannot be downloaded for offline use.
+
+### Fixed
+- Music-source icons have consistent spacing beside artist names in the player.
+
 ## 1.8.4 - 2026-10-03
 
 ### Fixed
