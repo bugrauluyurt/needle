@@ -8,6 +8,14 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.10.1 - 2026-10-03
+
+### Fixed
+- Prevent concurrent server startups from failing when SQLite removes a transient journal during permission hardening.
+
+### Security
+- Avoid excessive CPU use when library titles contain unusually long unmatched metadata delimiters.
+
 ## 1.10.0 - 2026-10-03
 
 ### Added
