@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
@@ -8,11 +8,25 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase, openDatabaseWithBackup } from "../src/db/database.ts";
 
-const { TEMPORARY_BACKUP_ID } = vi.hoisted(() => ({
+const { TEMPORARY_BACKUP_ID, temporaryBackupModes } = vi.hoisted(() => ({
   TEMPORARY_BACKUP_ID: "00000000-0000-4000-8000-000000000000",
+  temporaryBackupModes: [] as number[],
 }));
 
 vi.mock("node:crypto", () => ({ randomUUID: () => TEMPORARY_BACKUP_ID }));
+vi.mock("node:sqlite", async (importOriginal) => {
+  const sqlite = await importOriginal<{ backup: typeof backup; DatabaseSync: typeof DatabaseSync }>();
+
+  return {
+    ...sqlite,
+    backup: async (...backupArguments: Parameters<typeof sqlite.backup>) => {
+      const [, backupPath] = backupArguments;
+      if (backupPath.toString().includes(".tmp-")) temporaryBackupModes.push(statSync(backupPath).mode & 0o777);
+
+      return sqlite.backup(...backupArguments);
+    },
+  };
+});
 
 const LEGACY_SCHEMA = `
 CREATE TABLE plays (
@@ -138,21 +152,54 @@ function databaseIntegrity(databasePath: string): string {
   }
 }
 
+function fileMode(filePath: string): number {
+  return statSync(filePath).mode & 0o777;
+}
+
 afterEach(async () => {
+  temporaryBackupModes.length = 0;
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
 describe("database migrations", () => {
   it("creates the current schema and migration history for a fresh database", async () => {
     const directory = await temporaryDirectory();
+    await chmod(directory, 0o755);
     const database = await openDatabaseWithBackup(directory);
 
     expect(columnNames(database, "spotify_tokens")).toEqual(expect.arrayContaining(["scope", "enabled"]));
     expect(columnNames(database, "permissions")).toContain("can_youtube_music");
     expect(database.prepare("SELECT COUNT(*) AS count FROM needle_migrations").get()).toEqual({ count: 4 });
     expect(existsSync(join(directory, "needle.pre-migrations.db"))).toBe(false);
+    expect(fileMode(directory)).toBe(0o700);
+    expect(fileMode(join(directory, "needle.db"))).toBe(0o600);
+    expect(fileMode(join(directory, "needle.db-wal"))).toBe(0o600);
+    expect(fileMode(join(directory, "needle.db-shm"))).toBe(0o600);
 
     database.close();
+  });
+
+  it("restricts an existing database and data directory before opening them", async () => {
+    const directory = await temporaryDirectory();
+    const initialDatabase = await openDatabaseWithBackup(directory);
+
+    const databasePath = join(directory, "needle.db");
+    const writeAheadLogPath = `${databasePath}-wal`;
+    const sharedMemoryPath = `${databasePath}-shm`;
+    await chmod(directory, 0o755);
+    await chmod(databasePath, 0o666);
+    await chmod(writeAheadLogPath, 0o666);
+    await chmod(sharedMemoryPath, 0o666);
+
+    const database = openDatabase(directory);
+
+    expect(fileMode(directory)).toBe(0o700);
+    expect(fileMode(databasePath)).toBe(0o600);
+    expect(fileMode(writeAheadLogPath)).toBe(0o600);
+    expect(fileMode(sharedMemoryPath)).toBe(0o600);
+
+    database.close();
+    initialDatabase.close();
   });
 
   it("adopts an older database, preserves rows and creates one backup", async () => {
@@ -195,6 +242,9 @@ describe("database migrations", () => {
     });
     expect(columnNames(database, "permissions")).toContain("can_youtube_music");
     expect(existsSync(join(directory, "needle.pre-migrations.db"))).toBe(true);
+    expect(fileMode(join(directory, "needle.db"))).toBe(0o600);
+    expect(fileMode(join(directory, "needle.pre-migrations.db"))).toBe(0o600);
+    expect(temporaryBackupModes).toEqual([0o600]);
 
     database.close();
 
@@ -288,6 +338,7 @@ describe("database migrations", () => {
     const backupPath = join(directory, "needle.pre-migrations.db");
     await backup(legacy, backupPath);
     legacy.close();
+    await chmod(backupPath, 0o666);
 
     const backupModifiedAt = statSync(backupPath).mtimeMs;
     const database = await openDatabaseWithBackup(directory);
@@ -295,6 +346,55 @@ describe("database migrations", () => {
 
     expect(statSync(backupPath).mtimeMs).toBe(backupModifiedAt);
     expect(databaseIntegrity(backupPath)).toBe("ok");
+    expect(fileMode(backupPath)).toBe(0o600);
+  });
+
+  it("refuses a symbolic link as the active database without changing its target", async () => {
+    const directory = await temporaryDirectory();
+    const targetPath = join(directory, "target.db");
+    await writeFile(targetPath, "unchanged");
+    await symlink(targetPath, join(directory, "needle.db"));
+
+    await expect(openDatabaseWithBackup(directory)).rejects.toThrow(/symbolic link/);
+    expect(await readFile(targetPath, "utf8")).toBe("unchanged");
+  });
+
+  it("refuses a symbolic link as an active database sidecar", async () => {
+    const directory = await temporaryDirectory();
+    const targetPath = join(directory, "target-wal");
+    await writeFile(targetPath, "unchanged");
+    await symlink(targetPath, join(directory, "needle.db-wal"));
+
+    await expect(openDatabaseWithBackup(directory)).rejects.toThrow(/symbolic link/);
+    expect(await readFile(targetPath, "utf8")).toBe("unchanged");
+  });
+
+  it("refuses a symbolic link as the migration backup without changing its target", async () => {
+    const directory = await temporaryDirectory();
+    const legacy = createLegacyDatabase(directory);
+    legacy.close();
+
+    const targetPath = join(directory, "backup-target.db");
+    await writeFile(targetPath, "unchanged");
+    await symlink(targetPath, join(directory, "needle.pre-migrations.db"));
+
+    await expect(openDatabaseWithBackup(directory)).rejects.toThrow(/symbolic link/);
+    expect(await readFile(targetPath, "utf8")).toBe("unchanged");
+  });
+
+  it("refuses a symbolic link as the temporary migration backup without changing its target", async () => {
+    const directory = await temporaryDirectory();
+    const legacy = createLegacyDatabase(directory);
+    legacy.close();
+
+    const backupPath = join(directory, "needle.pre-migrations.db");
+    const temporaryBackupPath = `${backupPath}.tmp-${process.pid}-${TEMPORARY_BACKUP_ID}`;
+    const targetPath = join(directory, "temporary-backup-target.db");
+    await writeFile(targetPath, "unchanged");
+    await symlink(targetPath, temporaryBackupPath);
+
+    await expect(openDatabaseWithBackup(directory)).rejects.toThrow(/symbolic link/);
+    expect(await readFile(targetPath, "utf8")).toBe("unchanged");
   });
 
   it("uses no backup file for an in-memory database", () => {
@@ -340,6 +440,21 @@ describe("database migrations", () => {
     const legacy = createLegacyDatabase(directory);
     legacy.close();
 
+    const databaseModule = new URL("../src/db/database.ts", import.meta.url).href;
+    const script = `import { openDatabaseWithBackup } from ${JSON.stringify(databaseModule)};
+      const database = await openDatabaseWithBackup(${JSON.stringify(directory)});
+      database.close();`;
+    const command = ["--disable-warning=ExperimentalWarning", "--input-type=module", "--eval", script];
+
+    await Promise.all([execFileAsync(process.execPath, command), execFileAsync(process.execPath, command)]);
+
+    const database = openDatabase(directory);
+    expect(database.prepare("SELECT COUNT(*) AS count FROM needle_migrations").get()).toEqual({ count: 4 });
+    database.close();
+  });
+
+  it("serializes concurrent startup for a fresh database", async () => {
+    const directory = await temporaryDirectory();
     const databaseModule = new URL("../src/db/database.ts", import.meta.url).href;
     const script = `import { openDatabaseWithBackup } from ${JSON.stringify(databaseModule)};
       const database = await openDatabaseWithBackup(${JSON.stringify(directory)});
