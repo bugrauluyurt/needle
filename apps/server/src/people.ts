@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { Person } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 
 type Row = { can_request: number; can_spotify: number; can_youtube_music: number | null };
 type Known = { user: string; admin: number; last_seen: number | null };
@@ -11,7 +11,7 @@ export type PersonPatch = {
 };
 
 export class People {
-  constructor(db: DatabaseSync) {
+  constructor(db: Database) {
     this.db = db;
   }
 
@@ -72,5 +72,5 @@ export class People {
     };
   }
 
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
 }

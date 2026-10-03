@@ -3,11 +3,11 @@ import type { Server } from "node:http";
 import { WebSocketServer } from "ws";
 import { createApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
-import { openDatabase } from "./db.ts";
+import { openDatabaseWithBackup } from "./db.ts";
 import { authFromQuery } from "./navidrome.ts";
 
 const config = loadConfig();
-const db = openDatabase(config.dataDir);
+const db = await openDatabaseWithBackup(config.dataDir);
 const { app, hub, navidrome } = createApp(config, db);
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: "0.0.0.0" }, (info) => {

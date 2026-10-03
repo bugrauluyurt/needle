@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { RequestItem } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 
 export type RequestRow = {
   id: number;
@@ -38,9 +38,9 @@ export const toItem = (r: RequestRow): RequestItem => ({
 export const toItemFor = (r: RequestRow): RequestItem => ({ ...toItem(r), user: r.user });
 
 export class Requests {
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
 
-  constructor(db: DatabaseSync) {
+  constructor(db: Database) {
     this.db = db;
   }
 

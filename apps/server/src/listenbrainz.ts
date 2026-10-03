@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type {
   DiscoveryDetail,
   DiscoveryKind,
@@ -9,6 +8,7 @@ import type {
   Song,
 } from "@needle/shared";
 import { HOUR_MS } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import { NavidromeError } from "./navidrome.ts";
 import type { Requests } from "./requests.ts";
@@ -61,7 +61,7 @@ export type Parsed = Omit<DiscoveryPlaylist, "covers" | "coverArts" | "total" | 
   patch: string;
   tracks: Track[];
 };
-type Deps = { url: string; db: DatabaseSync; navidrome: Navidrome; library: LibrarySearch; requests: Requests };
+type Deps = { url: string; db: Database; navidrome: Navidrome; library: LibrarySearch; requests: Requests };
 
 export class ListenBrainzError extends Error {
   readonly status: 400 | 404 | 409 | 502;

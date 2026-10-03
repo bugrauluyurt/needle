@@ -1,6 +1,6 @@
-import type { DatabaseSync } from "node:sqlite";
 import { DAY_MS, QUARTER_DAYS } from "@needle/shared";
 import type { GenreShare, Period, PlayReport, RankedAlbum, RankedArtist, Stats } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 
 const TOP = 5;
 const GENRES = 5;
@@ -21,9 +21,9 @@ export function periodStart(period: Period, now = new Date()): { from: number; p
 }
 
 export class PlayLog {
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
 
-  constructor(db: DatabaseSync) {
+  constructor(db: Database) {
     this.db = db;
   }
 
