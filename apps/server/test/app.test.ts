@@ -180,10 +180,10 @@ describe("server", () => {
 
   it("turns away requests without valid Navidrome credentials", async () => {
     const response = await app.request("/api/stats");
-    const body = (await response.json()) as ApiErrorBody;
+    const unauthorizedErrorBody = (await response.json()) as ApiErrorBody;
 
     expect(response.status).toBe(401);
-    expect(body).toEqual({
+    expect(unauthorizedErrorBody).toEqual({
       error: "Sign in again",
       code: "UNAUTHORIZED",
       requestId: response.headers.get("x-request-id"),

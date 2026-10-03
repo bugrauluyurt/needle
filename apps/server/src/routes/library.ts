@@ -30,8 +30,8 @@ const searchQuerySchema = z.object({ q: z.string().max(500).optional() });
 const photoHeadersSchema = z.object({
   "content-type": z.string().refine((contentType) => PHOTO_TYPES.has(contentType), "Use a JPEG, PNG or WebP image"),
 });
-const validatePhotoHeaders = zValidator("header", photoHeadersSchema, (result) => {
-  if (!result.success) {
+const validatePhotoHeaders = zValidator("header", photoHeadersSchema, (photoHeaderValidationResult) => {
+  if (!photoHeaderValidationResult.success) {
     throw appError(415, ApiErrorCode.UNSUPPORTED_MEDIA_TYPE, "Use a JPEG, PNG or WebP image");
   }
 });
@@ -59,9 +59,9 @@ export function registerLibraryRoutes(app: App, { library, log, mixes, profiles 
   });
 
   app.get("/api/search", validate("query", searchQuerySchema), async (context) => {
-    const query = context.req.valid("query").q ?? "";
+    const librarySearchQuery = context.req.valid("query").q ?? "";
 
-    return context.json(await library.search(context.get("auth"), query));
+    return context.json(await library.search(context.get("auth"), librarySearchQuery));
   });
 
   app.get("/api/library/songs", compress(), async (context) => {
