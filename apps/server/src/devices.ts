@@ -180,9 +180,9 @@ export class DeviceHub {
     if (messageText === null) return null;
 
     try {
-      const result = ClientMessageSchema.safeParse(JSON.parse(messageText));
+      const clientMessageResult = ClientMessageSchema.safeParse(JSON.parse(messageText));
 
-      return result.success ? result.data : null;
+      return clientMessageResult.success ? clientMessageResult.data : null;
     } catch {
       return null;
     }

@@ -32,26 +32,26 @@ export function createRealtimeApp(httpApp: App, dependencies: DeviceRealtimeDepe
 
 export function registerDeviceRealtime(app: App, { hub, navidrome }: DeviceRealtimeDependencies) {
   const authenticateDevice = createMiddleware<AppEnv>(async (context, next) => {
-    const url = new URL(context.req.url);
-    const query = Object.fromEntries(url.searchParams);
-    const result = deviceQuerySchema.safeParse(query);
+    const deviceRequestUrl = new URL(context.req.url);
+    const deviceQuery = Object.fromEntries(deviceRequestUrl.searchParams);
+    const deviceQueryResult = deviceQuerySchema.safeParse(deviceQuery);
 
-    if (!result.success) {
+    if (!deviceQueryResult.success) {
       return new Response(null, {
-        status: Object.keys(query).length ? 400 : 401,
+        status: Object.keys(deviceQuery).length ? 400 : 401,
       });
     }
 
-    const auth = authFromQuery(url);
+    const deviceAuth = authFromQuery(deviceRequestUrl);
 
-    if (!auth) return new Response(null, { status: 401 });
+    if (!deviceAuth) return new Response(null, { status: 401 });
 
-    const verification = await navidrome.verify(auth);
+    const navidromeVerification = await navidrome.verify(deviceAuth);
 
-    if (verification === "down") return new Response(null, { status: 503 });
-    if (verification !== "ok") return new Response(null, { status: 401 });
+    if (navidromeVerification === "down") return new Response(null, { status: 503 });
+    if (navidromeVerification !== "ok") return new Response(null, { status: 401 });
 
-    context.set("auth", auth);
+    context.set("auth", deviceAuth);
 
     await next();
   });
@@ -72,7 +72,7 @@ export function registerDeviceRealtime(app: App, { hub, navidrome }: DeviceRealt
         };
 
         return {
-          onOpen: (_event, webSocket) => {
+          onOpen: (_webSocketEvent, webSocket) => {
             if (!webSocket.raw) {
               webSocket.close(1011, "socket unavailable");
 
@@ -87,7 +87,7 @@ export function registerDeviceRealtime(app: App, { hub, navidrome }: DeviceRealt
             if (connection) hub.receive(connection, event.data);
           },
           onClose: detach,
-          onError: (_event, webSocket) => {
+          onError: (_webSocketEvent, webSocket) => {
             detach();
             webSocket.close(1011, "socket error");
           },
