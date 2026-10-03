@@ -2,6 +2,7 @@ import type { Playlist, SubsonicEnvelope } from "@needle/shared";
 import { AUTH_HEADERS } from "@needle/shared";
 
 export type Auth = { user: string; token: string; salt: string };
+export type NavidromeVerification = "ok" | "denied" | "down";
 
 export class SubsonicFailure extends Error {
   readonly code: number;
@@ -15,11 +16,9 @@ export class NavidromeError extends Error {}
 
 const CLIENT = "needle-server";
 const DOWN = -1;
-const VALID_FOR_MS = 5 * 60_000;
 
 export class Navidrome {
   readonly url: string;
-  private readonly verified = new Map<string, number>();
 
   constructor(url: string) {
     this.url = url;
@@ -85,16 +84,11 @@ export class Navidrome {
     if (!link.ok) throw new NavidromeError(`Navidrome answered ${link.status} when linking ListenBrainz`);
   }
 
-  async verify(auth: Auth): Promise<"ok" | "denied" | "down"> {
-    const key = `${auth.user}\0${auth.token}\0${auth.salt}`;
-    const until = this.verified.get(key);
-    if (until && until > Date.now()) return "ok";
+  async verify(auth: Auth): Promise<NavidromeVerification> {
     try {
       await this.call(auth, "ping");
-      this.verified.set(key, Date.now() + VALID_FOR_MS);
       return "ok";
     } catch (e) {
-      this.verified.delete(key);
       return e instanceof SubsonicFailure && e.code === DOWN ? "down" : "denied";
     }
   }

@@ -2,8 +2,10 @@ import { ApiErrorCode, type InternetRadioStation } from "@needle/shared";
 import { z } from "zod";
 import type { Config } from "../config.ts";
 import type { Authorization } from "../http/authorization.ts";
+import { getClientAddress } from "../http/client-address.ts";
 import type { App } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
+import type { InMemoryNavidromeVerifier } from "../http/navidrome-verifier.ts";
 import { validate } from "../http/validation.ts";
 import type { Navidrome } from "../navidrome.ts";
 import { authFromQuery } from "../navidrome.ts";
@@ -30,12 +32,13 @@ type MediaRouteDependencies = {
   authorization: Authorization;
   config: Config;
   navidrome: Navidrome;
+  verifier: InMemoryNavidromeVerifier;
   youtubeMusic: YouTubeMusic | null;
 };
 
 export function registerMediaRoutes(
   app: App,
-  { authorization, config, navidrome, youtubeMusic }: MediaRouteDependencies,
+  { authorization, config, navidrome, verifier, youtubeMusic }: MediaRouteDependencies,
 ) {
   app.all("/rest/*", (context) => {
     return proxyToNavidrome(context.req.raw, config.navidromeUrl).catch(() => {
@@ -50,7 +53,17 @@ export function registerMediaRoutes(
     async (context) => {
       const auth = authFromQuery(new URL(context.req.url));
 
-      if (!auth || (await navidrome.verify(auth)) !== "ok") {
+      const verification = auth
+        ? await verifier.verify(auth, {
+            clientAddress: getClientAddress(context, { trustedProxy: config.trustedProxy }),
+          })
+        : "denied";
+
+      if (verification === "limited") {
+        throw appError(429, ApiErrorCode.RATE_LIMITED, "Too many sign-in attempts. Try again later.");
+      }
+
+      if (!auth || verification !== "ok") {
         throw appError(401, ApiErrorCode.UNAUTHORIZED, "Sign in again");
       }
 
@@ -93,7 +106,13 @@ export function registerMediaRoutes(
 
       if (!auth) throw appError(401, ApiErrorCode.UNAUTHORIZED, "Sign in again");
 
-      const verification = await navidrome.verify(auth);
+      const verification = await verifier.verify(auth, {
+        clientAddress: getClientAddress(context, { trustedProxy: config.trustedProxy }),
+      });
+
+      if (verification === "limited") {
+        throw appError(429, ApiErrorCode.RATE_LIMITED, "Too many sign-in attempts. Try again later.");
+      }
 
       if (verification === "down") {
         throw appError(503, ApiErrorCode.SERVICE_UNAVAILABLE, "Navidrome isn't responding");

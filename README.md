@@ -443,6 +443,7 @@ as unset.
 | -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
 | `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                               | Navidrome as the Needle server reaches it                    |
 | `PUBLIC_URL`                                 |                                                       | The `https://` address people open. Needed for Spotify       |
+| `TRUST_PROXY`                                | `false`                                               | Trust the nearest address in `X-Forwarded-For`               |
 | `PORT`                                       | `4535`                                                | Port the server listens on                                   |
 | `DATA_DIR`                                   | `/data` in the image                                  | Where `needle.db` lives                                      |
 | `TZ`                                         | `UTC`                                                 | Time zone for daily mixes and listening stats                |
@@ -459,6 +460,10 @@ as unset.
 | `MUSICBRAINZ_URL`                            | `https://musicbrainz.org/ws/2`                        | Song lookups; the tests point it at a mock                   |
 | `DEEZER_URL`                                 | `https://api.deezer.com`                              | Popular songs for an artist                                  |
 | `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                        | ListenBrainz playlists; the tests point it at a mock         |
+
+Set `TRUST_PROXY=true` only when every request reaches Needle through a proxy you
+control that appends `X-Forwarded-For`. Leave it false when Needle accepts direct
+connections.
 
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's

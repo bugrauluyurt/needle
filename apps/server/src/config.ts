@@ -24,6 +24,7 @@ export type Config = {
   listenbrainzUrl: string;
   dataDir: string;
   webDist: string;
+  trustedProxy: boolean;
 };
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -73,6 +74,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     listenbrainzUrl: trimSlash(env("LISTENBRAINZ_URL") ?? "https://api.listenbrainz.org"),
     dataDir: resolve(env("DATA_DIR") ?? "./data"),
     webDist: resolve(env("WEB_DIST") ?? new URL("../../web/dist", import.meta.url).pathname),
+    trustedProxy: env("TRUST_PROXY") === "true",
     ...overrides,
   };
 }

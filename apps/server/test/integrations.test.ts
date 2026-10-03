@@ -380,7 +380,7 @@ describe("Spotify import", () => {
       navidrome: new Navidrome("http://nd"),
       library: new LibrarySearch(new Navidrome("http://nd")),
     });
-    const url = new URL(spotify.authorizeUrl("alex"));
+    const url = new URL(spotify.getAuthorization("alex").url);
     expect(url.searchParams.get("redirect_uri")).toBe("https://needle.example/api/spotify/callback");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("scope")).toContain("user-library-read");
