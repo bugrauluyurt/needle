@@ -93,12 +93,12 @@ const SEARCH_SORTS: Record<Exclude<SearchKind, "Songs">, SortOption[]> = {
   Playlists: [["default", "Most relevant"], ["title", SORT_LABELS.title], ["by", "Creator"]],
 };
 
-export function cardBlock(kind: Exclude<SearchKind, "Songs">, items: CollectionItem[], { source = "library" }: { source?: "library" | "spotify" } = {}): Block {
+export function cardBlock(kind: Exclude<SearchKind, "Songs">, items: CollectionItem[], { source = "library" }: { source?: "library" | "spotify" | "youtubeMusic" } = {}): Block {
   return {
     kind,
     count: items.length,
     row: <CardRow>{items.slice(0, 6).map((item) => <ItemCard key={item.key} item={item} />)}</CardRow>,
-    all: <Collection id={`search-${source}-${kind.toLowerCase()}`} title={kind} items={items} sorts={source === "spotify" ? [["default", "Most relevant"]] : SEARCH_SORTS[kind]} />,
+    all: <Collection id={`search-${source}-${kind.toLowerCase()}`} title={kind} items={items} sorts={source !== "library" ? [["default", "Most relevant"]] : SEARCH_SORTS[kind]} />,
   };
 }
 
@@ -107,7 +107,7 @@ export function Source({ title, heading = true, subtitle, filter, setFilter, onS
   const sourceLabel = title.charAt(0).toLowerCase() + title.slice(1);
   const visible = blocks.filter((b) => b.count && (!kind || b.kind === kind));
   const body = () => {
-    if (status === "paused") return <p className="muted source-note">Search will resume after Spotify’s cooldown.</p>;
+    if (status === "paused") return <p className="muted source-note">Search will resume after {title.replace(/^On /, "")}’s cooldown.</p>;
     if (status === "loading") return <p className="muted source-note"><span className="spin" />Searching…</p>;
     if (status === "error") return <p className="muted source-note">{title} didn’t answer. Try again in a moment.</p>;
     if (!visible.length) return <p className="muted source-note">{empty(kind?.toLowerCase() ?? "")}</p>;

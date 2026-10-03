@@ -1188,3 +1188,58 @@ a.get-card:hover {
   color: var(--sleeve);
   line-height: 1.45;
 }
+.yt-experimental {
+  margin: 12px 0 16px;
+  color: var(--sleeve);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.yt-experimental b {
+  color: var(--label);
+}
+
+.yt-device-login {
+  margin: 16px 0;
+  padding: 24px;
+  background: color-mix(in oklab, var(--label) 5%, transparent);
+  border-radius: 8px;
+}
+
+.yt-device-login h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.yt-device-login p {
+  font-size: 13px;
+  color: var(--sleeve);
+  line-height: 1.7;
+}
+
+.yt-device-code,
+.yt-device-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.yt-device-code code {
+  font-family: ui-monospace, monospace;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.yt-more {
+  margin: 20px 0;
+  padding: 0 24px;
+}
+
+.yt-artist-about {
+  max-width: 65ch;
+  line-height: 1.7;
+  white-space: pre-line;
+}

@@ -1,0 +1,1 @@
+- Music-source icons have consistent spacing beside artist names in the player.

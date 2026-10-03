@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Song } from "@needle/shared";
+import { songSource } from "@needle/shared";
 import { lineAt, pickLyrics } from "../lib/lyrics.ts";
 import { player } from "../player/controller.ts";
 import { useProgress } from "../player/progress.ts";
 import { useLyrics } from "../queries/hooks.ts";
+import { useYouTubeMusicLyrics } from "../queries/youtube-music.ts";
 import { Icon } from "./Icon.tsx";
 
 const USER_SCROLL_PAUSE = 4_000;
 
 export function LyricsView({ song, variant, limit }: { song: Song; variant: "page" | "panel" | "mobile" | "peek"; limit?: number }) {
-  const { data, isLoading } = useLyrics(song.id);
+  const source = songSource(song);
+  const localLyrics = useLyrics(source === "library" ? song.id : undefined);
+  const youtubeMusicLyrics = useYouTubeMusicLyrics(source === "youtubeMusic" ? song.id : undefined);
+  const data = source === "youtubeMusic" ? youtubeMusicLyrics.data?.lyrics : localLyrics.data;
+  const isLoading = source === "youtubeMusic" ? youtubeMusicLyrics.isLoading : localLyrics.isLoading;
   const lyrics = useMemo(() => pickLyrics(data), [data]);
   const lines = useMemo(() => lyrics?.line ?? [], [lyrics]);
   const offset = lyrics?.offset ?? 0;
@@ -35,7 +41,7 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
     return (
       <div className={`lyrics ${variant} none`}>
         <p className="lyrics-none">No lyrics for this song</p>
-        {variant !== "peek" ? <p className="lyrics-hint">{song.source === "spotify" ? "Spotify doesn’t share lyrics with other apps." : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}</p> : null}
+        {variant !== "peek" ? <p className="lyrics-hint">{source === "spotify" ? "Spotify doesn’t share lyrics with other apps." : source === "youtubeMusic" ? "YouTube Music has no lyrics available for this song." : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}</p> : null}
       </div>
     );
   }
@@ -51,7 +57,7 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
       {variant === "page" ? (
         <p className="lyrics-src">
           <Icon name="mic" size={15} />
-          {synced ? "Lyrics, timed, from the song’s file" : "Lyrics from the song’s file. These aren’t timed, so they don’t follow along."}
+          {source === "youtubeMusic" ? `Lyrics from ${youtubeMusicLyrics.data?.source ?? "YouTube Music"}${synced ? ", timed" : ". These aren’t timed, so they don’t follow along."}` : synced ? "Lyrics, timed, from the song’s file" : "Lyrics from the song’s file. These aren’t timed, so they don’t follow along."}
         </p>
       ) : null}
       {shown.map((l, i) => {

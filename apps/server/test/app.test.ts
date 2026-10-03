@@ -295,7 +295,7 @@ describe("people and permissions", () => {
     expect((await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, { method: "POST", headers: as("sam") })).status).toBe(403);
 
     const put = await app.request("/api/people/sam", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true, canSpotify: true }) });
-    expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true, lastSeen: expect.any(Number) as number });
+    expect(await put.json()).toEqual({ user: "sam", admin: false, canRequest: true, canSpotify: true, canYouTubeMusic: false, lastSeen: expect.any(Number) as number });
     expect(await caps("sam")).toMatchObject({ lidarr: true, spotify: true });
   });
 
@@ -311,7 +311,7 @@ describe("people and permissions", () => {
 
   it("lets admins set up someone who hasn't opened Needle yet", async () => {
     const put = await app.request("/api/people/newcomer", { method: "PUT", headers: { ...as("alex"), "content-type": "application/json" }, body: JSON.stringify({ canRequest: true }) });
-    expect(await put.json()).toEqual({ user: "newcomer", admin: false, canRequest: true, canSpotify: false, lastSeen: null });
+    expect(await put.json()).toEqual({ user: "newcomer", admin: false, canRequest: true, canSpotify: false, canYouTubeMusic: false, lastSeen: null });
     const list = (await (await app.request("/api/people", { headers: as("alex") })).json()) as { user: string; lastSeen: number | null }[];
     expect(list.map((p) => [p.user, p.lastSeen === null])).toEqual([["alex", false], ["newcomer", true]]);
   });

@@ -131,8 +131,11 @@ separate; changing the query cancels outstanding requests.
                     │ local song: engine.ts plays /rest/stream (original or transcoded),
                     │             preloads the next one, crossfades on desktop
                     │ Spotify song: player/spotify.ts → Web Playback SDK device → Spotify API "play"
+                    │ YouTube Music song: /youtube-music/stream/:id → yt-dlp → range proxy,
+                    │                     engine.ts plays the same-origin audio response
                     ▼
-               scrobble to Navidrome, report to /api/plays (stats), save the play queue
+               report all sources to /api/plays (stats);
+               only local songs scrobble to Navidrome or enter its saved play queue
                (another device offers to "pick up where you left off", checked at most every 30 s)
 ```
 
@@ -157,6 +160,39 @@ for hours (`429`, `reason: QUOTA_EXCEEDED`). So:
   Spotify queries never refetch on focus and never retry.
 - Settings → **Use Spotify in Needle** (`PUT /api/spotify/enabled`) switches Spotify
   off for the account: the token endpoint refuses (409), so no device can call it.
+
+## YouTube Music
+
+```
+ Settings → device code ──► Google OAuth ──► per-user tokens in needle.db
+ app ──► /api/youtube-music/* ──► permission + enabled checks
+                                └─► bounded Python subprocess ──► ytmusicapi
+ audio ──► /youtube-music/stream/:id ──► Navidrome token + permission + enabled
+                                       └─► yt-dlp URL resolver ──► Google media CDN
+                                                               └─► byte-range response
+```
+
+The optional integration uses Python in the same container as the Node server.
+`requirements.txt` pins ytmusicapi and yt-dlp. The bridge accepts fixed operations
+and JSON over stdin and returns JSON over stdout; credentials never appear in
+process arguments. Node validates metadata before returning shared DTOs to React.
+
+All YouTube Music entities use `ytm:` IDs. `MusicSource`, source helpers and the
+existing route helpers preserve the identity through queue persistence, source
+badges, likes, lyrics, radio, statistics and remote transfers. Only local songs
+can enter Navidrome playlists, its saved play queue, scrobbles or offline storage.
+
+Account access and playback are separate. ytmusicapi receives the connected
+user's OAuth token for library reads and explicit likes, saves and follows.
+yt-dlp resolves public audio without that token. The browser receives a stable
+Needle stream URL; expiring CDN URLs stay in a bounded server cache. The proxy
+accepts only Google media hosts, forwards byte ranges, aborts when the client
+leaves, and does not store audio bytes.
+
+Provider queries, library caches and notices have their own namespace. A disabled
+or disconnected provider contributes no Home, Search or Library items. During
+cooldowns, previously loaded metadata remains visible and new requests pause.
+Resolver failures stop at the selected song to avoid repeated queue requests.
 
 ## Requests: albums and single songs
 

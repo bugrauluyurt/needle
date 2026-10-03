@@ -8,6 +8,7 @@ import { startPlayer } from "./player/controller.ts";
 import { queryClient } from "./queries/client.ts";
 import { prefetchStart } from "./queries/hooks.ts";
 import { clearSpotifyCache } from "./queries/spotify.ts";
+import { clearYouTubeMusicCache } from "./queries/youtube-music.ts";
 import { startRemote, stopRemote } from "./remote/client.ts";
 import { useSession } from "./state/session.ts";
 import { Login } from "./pages/Login.tsx";
@@ -40,6 +41,13 @@ const SpotifyPlaylist = spotifyPage("SpotifyPlaylistPage");
 const SpotifyAlbum = spotifyPage("SpotifyAlbumPage");
 const SpotifyArtist = spotifyPage("SpotifyArtistPage");
 
+const youtubeMusicPage = (name: "YouTubeMusicLikedPage" | "YouTubeMusicPlaylistPage" | "YouTubeMusicAlbumPage" | "YouTubeMusicArtistPage") =>
+  lazy(() => import("./pages/YouTubeMusic.tsx").then((module) => ({ default: module[name] })));
+const YouTubeMusicLiked = youtubeMusicPage("YouTubeMusicLikedPage");
+const YouTubeMusicPlaylist = youtubeMusicPage("YouTubeMusicPlaylistPage");
+const YouTubeMusicAlbum = youtubeMusicPage("YouTubeMusicAlbumPage");
+const YouTubeMusicArtist = youtubeMusicPage("YouTubeMusicArtistPage");
+
 const page = (el: React.ReactNode) => <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{el}</Suspense>;
 
 const router = createBrowserRouter([
@@ -69,6 +77,10 @@ const router = createBrowserRouter([
       { path: "/spotify/playlist/:id", element: page(<SpotifyPlaylist />) },
       { path: "/spotify/album/:id", element: page(<SpotifyAlbum />) },
       { path: "/spotify/artist/:id", element: page(<SpotifyArtist />) },
+      { path: "/youtube-music/liked", element: page(<YouTubeMusicLiked />) },
+      { path: "/youtube-music/playlist/:id", element: page(<YouTubeMusicPlaylist />) },
+      { path: "/youtube-music/album/:id", element: page(<YouTubeMusicAlbum />) },
+      { path: "/youtube-music/artist/:id", element: page(<YouTubeMusicArtist />) },
       { path: "*", element: page(<NotFound />) },
     ],
   },
@@ -82,6 +94,7 @@ export function App() {
       stopRemote();
       queryClient.clear();
       clearSpotifyCache();
+      clearYouTubeMusicCache();
       return;
     }
     prefetchStart(queryClient);

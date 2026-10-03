@@ -1862,6 +1862,64 @@ kbd {
   background: linear-gradient(135deg, #3ddc84, #1a7f55 55%, #123a4a);
 }
 
+.liked-art.yt-liked {
+  background: linear-gradient(135deg, #eaa399, #a6473a 55%, #562e34);
+}
+
+.yt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--source-gap);
+  height: 24px;
+  padding: 0 9px 0 6px;
+  border-radius: 12px;
+  background: rgb(227 130 119 / 0.16);
+  color: #edaca3;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 650;
+  vertical-align: middle;
+}
+
+.yt-badge.compact {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  flex: none;
+}
+
+.yt-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  background: color-mix(in oklab, var(--label) 5%, transparent);
+  border-radius: 8px;
+  color: var(--sleeve);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.yt-notice > .i {
+  flex: none;
+  margin-top: 2px;
+}
+
+.yt-notice b {
+  color: var(--label);
+}
+
+.yt-notice p {
+  margin: 2px 0;
+}
+
+.yt-notice-wrap:empty {
+  display: none;
+}
+
 .sp-badge {
   display: inline-flex;
   align-items: center;
@@ -2261,9 +2319,9 @@ kbd {
   margin: 20px 0 28px;
 }
 
-.mini-text .s .sp-badge.compact,
-.rp-title p .sp-badge.compact,
-.nowp .ti p .sp-badge.compact {
+.mini-text .s :is(.sp-badge, .yt-badge).compact,
+.rp-title p :is(.sp-badge, .yt-badge).compact,
+.nowp .ti p :is(.sp-badge, .yt-badge).compact {
   margin-right: var(--source-gap);
 }
 

@@ -8,6 +8,8 @@ import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
 import { useAllAlbums, useArtists, useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
 import { useSpotifyAlbums, useSpotifyFollowed, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { useYouTubeMusicAlbums, useYouTubeMusicArtists, useYouTubeMusicLiked, useYouTubeMusicOn, useYouTubeMusicPlaylists } from "../queries/youtube-music.ts";
+import { youtubeMusicAlbumItem, youtubeMusicArtistItem, youtubeMusicPlaylistItem } from "../components/YouTubeMusicCards.tsx";
 import { matchesTerms, queryTerms } from "@needle/shared";
 import { spId } from "../lib/spotify.ts";
 import { plural } from "../lib/format.ts";
@@ -22,7 +24,7 @@ export type LibraryEntry = CollectionItem & {
   added: string;
 };
 
-const ORIGINS: [LibraryOrigin, string][] = [["all", "Both"], ["server", "Your music"], ["spotify", "Spotify"]];
+const ORIGINS: [LibraryOrigin, string][] = [["all", "All"], ["server", "Your music"], ["spotify", "Spotify"], ["youtubeMusic", "YouTube Music"]];
 
 export const LIBRARY_SORTS: SortOption[] = [["default", "Recents"], ["title", SORT_LABELS.title], ["by", "Creator"]];
 
@@ -31,11 +33,17 @@ export const useLibrarySort = (fallback: CollectionView = "list") => useCollecti
 export function useLibraryOrigin(): { origin: LibraryOrigin; show: ShowFilter<LibraryOrigin> | undefined } {
   const picked = useUi((s) => s.libraryOrigin);
   const spotifyOn = useSpotifyOn();
-  if (!spotifyOn) return { origin: "server", show: undefined };
-  return { origin: picked, show: { value: picked, options: ORIGINS, onChange: (o) => useUi.setState({ libraryOrigin: o }) } };
+  const youtubeMusicOn = useYouTubeMusicOn();
+
+  if (!spotifyOn && !youtubeMusicOn) return { origin: "server", show: undefined };
+
+  const options = ORIGINS.filter(([origin]) => origin !== "spotify" && origin !== "youtubeMusic" || origin === "spotify" && spotifyOn || origin === "youtubeMusic" && youtubeMusicOn);
+  const origin = options.some(([availableOrigin]) => availableOrigin === picked) ? picked : "all";
+
+  return { origin, show: { value: origin, options, onChange: (nextOrigin) => useUi.setState({ libraryOrigin: nextOrigin }) } };
 }
 
-export function useLibraryEntries(filter: LibraryFilter, query: string, order: CollectionOrder, origin: LibraryOrigin): LibraryEntry[] {
+export function useLibraryEntries(filter: LibraryFilter, query: string, order: CollectionOrder, origin: LibraryOrigin, youtubeMusicLimit = 100): LibraryEntry[] {
   const { data: playlists = [] } = usePlaylists();
   const { data: starred } = useStarred();
   const { data: albums = [] } = useAllAlbums();
@@ -45,6 +53,11 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
   const { data: spPlaylists = [] } = useSpotifyPlaylists();
   const { data: spAlbums = [] } = useSpotifyAlbums();
   const { data: spArtists = [] } = useSpotifyFollowed();
+  const spotifyOn = useSpotifyOn();
+  const { data: youtubeLiked } = useYouTubeMusicLiked(youtubeMusicLimit);
+  const { data: youtubePlaylists = [] } = useYouTubeMusicPlaylists(youtubeMusicLimit);
+  const { data: youtubeAlbums = [] } = useYouTubeMusicAlbums(youtubeMusicLimit);
+  const { data: youtubeArtists = [] } = useYouTubeMusicArtists(youtubeMusicLimit);
   return useMemo(() => {
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
@@ -76,20 +89,25 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
         key: `sp-ar-${a.id}`, to: `/spotify/artist/${a.id}`, art: (px) => <Art images={a.images} px={px} round fallback="artist" />, title: a.name,
         subtitle: "Artist you follow on Spotify", by: a.name, kind: "artists", spotify: true, source: "spotify", contextId: spId(a.id), downloaded: false, added: "",
       })),
+      ...(youtubeLiked ? [{ key: "ytm-liked", to: "/youtube-music/liked", art: () => <LikedArt className="yt-liked" />, title: "Liked on YouTube Music", subtitle: `YouTube Music, ${plural(youtubeLiked.length, "song")}`, kind: "playlists", source: "youtubeMusic", contextId: "ytm:liked", downloaded: false, added: "9998", pinned: true } satisfies LibraryEntry] : []),
+      ...youtubePlaylists.map((playlist): LibraryEntry => ({ ...youtubeMusicPlaylistItem(playlist), kind: "playlists", contextId: playlist.id, downloaded: false, added: "" })),
+      ...youtubeAlbums.map((album): LibraryEntry => ({ ...youtubeMusicAlbumItem(album), kind: "albums", contextId: album.id, downloaded: false, added: "" })),
+      ...youtubeArtists.map((artist): LibraryEntry => ({ ...youtubeMusicArtistItem(artist), kind: "artists", contextId: artist.id, downloaded: false, added: "" })),
     ];
     const terms = queryTerms(query);
     const matches = (e: LibraryEntry) => {
-      if (origin !== "all" && (origin === "spotify") !== Boolean(e.spotify)) return false;
+      if (e.spotify && !spotifyOn) return false;
+      if (origin !== "all" && (origin === "server" ? "library" : origin) !== (e.source ?? "library")) return false;
       if (filter === "downloaded") return e.downloaded;
       return !filter || e.kind === filter;
     };
-    const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.spotify ? 2 : 1);
+    const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.source === "spotify" || e.source === "youtubeMusic" ? 2 : 1);
     const shown = entries
       .filter(matches)
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
       .sort((a, b) => rank(a) - rank(b) || b.added.localeCompare(a.added));
     return sortItems(shown, order);
-  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, filter, query, order, origin]);
+  }, [playlists, starred, albums, artists, collections, spLiked, spPlaylists, spAlbums, spArtists, youtubeLiked, youtubePlaylists, youtubeAlbums, youtubeArtists, spotifyOn, filter, query, order, origin]);
 }
 
 const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["downloaded", "On this device"]];

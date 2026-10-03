@@ -38,6 +38,7 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
 - [Fetching albums with Lidarr](#fetching-albums-with-lidarr)
 - [Fetching single songs with slskd](#fetching-single-songs-with-slskd)
 - [Spotify](#spotify)
+- [YouTube Music](#youtube-music)
 - [ListenBrainz discovery](#listenbrainz-discovery)
 - [Users and permissions](#users-and-permissions)
 - [Configuration reference](#configuration-reference)
@@ -75,6 +76,9 @@ you don't have yet through Lidarr and Soulseek. Everything runs on your own serv
   in the browser on that device.
 - **Spotify** (optional): your Spotify library, search and playback next to your own
   music, with an on/off switch per account.
+- **YouTube Music** (optional, experimental): liked songs, saved albums, followed
+  artists, playlists, search and playback beside your other music. Each person
+  connects their own account and can switch it off without disconnecting.
 - **ListenBrainz discovery** (optional, per person): the weekly playlists ListenBrainz
   makes from what you play, on Home. Play what you have, get the rest from Soulseek,
   save them as playlists.
@@ -316,6 +320,61 @@ calling it for as long as Spotify asks and hides Spotify meanwhile. Each device
 caches your Spotify library for six hours. **Settings → Use Spotify in Needle**
 turns it off for your account on every device.
 
+## YouTube Music
+
+Optional and experimental. Needle uses [ytmusicapi](https://github.com/sigma67/ytmusicapi)
+for your music library and [yt-dlp](https://github.com/yt-dlp/yt-dlp) to resolve audio
+for playback. Both use unofficial YouTube interfaces, which can change or stop
+working without notice. YouTube's terms restrict automated access and audio
+extraction; consider those terms before enabling this integration.
+
+1. Create your own project in [Google Cloud Console](https://console.cloud.google.com/)
+   and enable the YouTube Data API v3.
+2. Configure the OAuth consent screen and create an OAuth client of type **TVs and
+   Limited Input devices**. Add the Google accounts that will connect as test users
+   when the project is in Testing.
+3. Set `YTMUSIC_CLIENT_ID` and `YTMUSIC_CLIENT_SECRET` on the Needle container and
+   restart it. The published image already includes the Python bridge and playback
+   resolver.
+4. Open **Settings → YouTube Music → Connect**, open Google's device page, enter
+   the code and grant access. Keep Needle open while it waits for Google.
+
+Google projects left in Testing issue authorizations that expire after seven days.
+Needle shows when you need to reconnect. A personal project set to In Production
+can still show Google's unverified-app warning and user limits; Needle does not
+provide a shared Google developer account or bypass Google's restrictions.
+
+**Use YouTube Music in Needle** switches it off for your account on every device.
+When off, Needle stops YouTube Music requests and playback. Your connection stays
+saved. Disconnect removes the account credentials and cached library data from
+Needle. Admins control who can connect under **Settings → People**.
+
+Songs, albums, artists and playlists appear in Home, Search and Your library with
+their own source marks. You can like songs, save albums and follow artists. YouTube
+Music playlists are read-only in Needle. You can copy a playlist into Navidrome
+using songs you already have, with the same matching flow as Spotify imports.
+
+YouTube Music audio is streamed through Needle without being stored. It cannot be
+downloaded for offline listening. Playback resolves public music without passing
+your Google account credentials to yt-dlp, so some account-only or region-restricted
+tracks may not play here. Use **Open in YouTube Music** for those tracks. A failed
+resolver stops on the selected song instead of repeatedly resolving the rest of
+the queue. Your own music and Spotify remain available when YouTube Music fails.
+
+Running from source, install the bridge into a virtual environment and set its
+Python executable before starting Needle:
+
+```bash
+python3 -m venv .venv-ytmusic
+.venv-ytmusic/bin/pip install -r apps/server/requirements.txt
+YTMUSIC_PYTHON="$PWD/.venv-ytmusic/bin/python" pnpm dev
+```
+
+Python 3.10 or newer and Node 24 are required. Needle pins ytmusicapi, yt-dlp
+and its challenge scripts. Upgrade them through a tested Needle release when
+YouTube changes. Settings → Connections distinguishes account access from the
+local playback resolver.
+
 ## ListenBrainz discovery
 
 [ListenBrainz](https://listenbrainz.org) makes playlists from what you listen to:
@@ -355,7 +414,7 @@ Every Navidrome user can sign in.
 | Playlists (private unless made public) | Internet radio stations |
 | Play counts, Your listening, daily mixes | |
 | The queue, and picking up on another device | |
-| Spotify connection and its on/off switch; ListenBrainz connection; account photo | |
+| Spotify and YouTube Music connections and their on/off switches; ListenBrainz connection; account photo | |
 
 Add users in Navidrome (**Settings → Users**); keep them non-admin. What each person
 may do beyond listening is set in Needle, under **Settings → People** (admins only):
@@ -364,6 +423,7 @@ may do beyond listening is set in Needle, under **Settings → People** (admins 
 |---|---|---|
 | **Request music** (Get album, Get song) | Always | When switched on in People |
 | **Spotify** | On unless switched off | When switched on in People |
+| **YouTube Music** | On unless switched off | When switched on in People |
 | Lidarr's download queue, Connections, People, radio stations | Yes | No |
 
 Requests go straight to Lidarr or slskd. Admins see everyone's requests on the Requests
@@ -390,6 +450,8 @@ as unset.
 | `SOULSEEK_DIR` | `/soulseek` | slskd's downloads folder inside the Needle container |
 | `SINGLES_DIR` | `/singles` | Where fetched songs go; a Navidrome library |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | | Turns on Spotify (with `PUBLIC_URL`) |
+| `YTMUSIC_CLIENT_ID`, `YTMUSIC_CLIENT_SECRET` | | Turns on the experimental YouTube Music connection |
+| `YTMUSIC_PYTHON` | bundled Python in Docker, `python3` from source | Python executable with the pinned YouTube Music dependencies |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org/ws/2` | Song lookups; the tests point it at a mock |
 | `DEEZER_URL` | `https://api.deezer.com` | Popular songs for an artist |
 | `LISTENBRAINZ_URL` | `https://api.listenbrainz.org` | ListenBrainz playlists; the tests point it at a mock |
@@ -427,8 +489,13 @@ nothing to set up. Choose qualities in Needle's Settings.
 - Don't expose Needle to the internet without HTTPS. A private network such as
   Tailscale is the simplest safe setup.
 - API keys and the Spotify client secret never reach the browser.
-- Needle's server fetches only from Navidrome, Lidarr, slskd, MusicBrainz, Deezer,
-  ListenBrainz, Spotify's accounts service, and the internet radio stations you add.
+- YouTube Music client secrets and account tokens stay on the server. Needle never
+  asks for copied Google browser cookies and never passes account tokens to the
+  playback resolver. Protect and back up `DATA_DIR`, which holds connected-account
+  credentials.
+- Needle's server fetches from Navidrome, Lidarr, slskd, MusicBrainz, Deezer,
+  ListenBrainz, Spotify, Google and YouTube when configured, and the internet radio
+  stations you add.
 - A Navidrome password typed in Settings → ListenBrainz is used once to link the token
   in Navidrome and never stored or logged.
 
@@ -449,6 +516,8 @@ to fix what's wrong:
 | Song lookups | MusicBrainz and Deezer answer |
 | ListenBrainz | Your connection, and whether Navidrome sent a listen in the last 7 days |
 | Spotify | Keys set, and the redirect URI to register |
+| YouTube Music | The configured client and pinned metadata runtime |
+| YouTube playback | The Python bridge, pinned resolver and Node challenge solver |
 
 Common problems:
 
@@ -518,3 +587,6 @@ conventions are in [AGENTS.md](AGENTS.md).
 [Spotify](https://developer.spotify.com). Artist biographies come from Last.fm
 through Navidrome. The bundled fonts, Bricolage Grotesque and Instrument Sans, are
 under the [SIL Open Font License](apps/web/public/fonts/OFL.txt).
+
+Experimental YouTube Music support uses [ytmusicapi](https://github.com/sigma67/ytmusicapi)
+(MIT) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), with their dependencies.

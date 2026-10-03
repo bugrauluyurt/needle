@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { create } from "zustand";
-import { REPLACED_CLOSE_CODE } from "@needle/shared";
+import { REPLACED_CLOSE_CODE, songSource } from "@needle/shared";
 import type { ClientMessage, Device, InternetRadioStation, RemoteCommand, RemoteState, ServerMessage, Song } from "@needle/shared";
 import { devicesSocketUrl } from "../lib/api.ts";
 import { deviceKind } from "../lib/device.ts";
@@ -44,6 +44,7 @@ function snapshot(): RemoteState | null {
     songId: song.id,
     title: song.title,
     artist: artistName(song),
+    source: songSource(song),
     ...(song.coverArt ? { coverArt: song.coverArt } : {}),
     ...(song.uri ? { uri: song.uri } : {}),
     position: progress.get().position,

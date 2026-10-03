@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
+import { songSource } from "@needle/shared";
 import { artistName, clock } from "../lib/format.ts";
 import { useOffline } from "../offline/store.ts";
 import { player } from "../player/controller.ts";
@@ -94,11 +95,11 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
       return;
     }
     if ((e.target as HTMLElement).closest("a,button")) return;
-    if (pointer.current === "touch") p.onPlay(p.index);
+    if (pointer.current === "touch" && p.song.isAvailable !== false) p.onPlay(p.index);
     else p.onSelect(p.index);
   };
   const key = (e: KeyboardEvent) => {
-    if (e.key === "Enter") p.onPlay(p.index);
+    if (e.key === "Enter" && p.song.isAvailable !== false) p.onPlay(p.index);
   };
   const drag = p.draggable
     ? {
@@ -121,7 +122,7 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
     : {};
   return (
     <div
-      className={`tr ${p.playing ? "playing" : ""} ${p.located ? "located" : ""} ${p.selected ? "sel" : ""} ${over ? "drop" : ""}`}
+      className={`tr ${p.song.isAvailable === false ? "unavailable" : ""} ${p.playing ? "playing" : ""} ${p.located ? "located" : ""} ${p.selected ? "sel" : ""} ${over ? "drop" : ""}`}
       style={p.style}
       role="row"
       tabIndex={0}
@@ -147,13 +148,13 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
         if (pointer.current !== "touch") menu(e.clientX, e.clientY);
       }}
       onClick={click}
-      onDoubleClick={() => p.onPlay(p.index)}
+      onDoubleClick={() => p.song.isAvailable !== false && p.onPlay(p.index)}
       onKeyDown={key}
       {...drag}
     >
       <span className="n" role="cell">
         {p.playing && !p.elsewhere ? <Eq paused={p.paused} /> : <span className="num">{p.number}</span>}
-        <button type="button" className="row-play" aria-label={p.playing && !p.paused ? `Pause ${p.song.title}` : `Play ${p.song.title}`} onClick={() => (p.playing ? player.toggle() : p.onPlay(p.index))}>
+        <button type="button" className="row-play" disabled={p.song.isAvailable === false} aria-label={p.song.isAvailable === false ? `${p.song.title} is unavailable` : p.playing && !p.paused ? `Pause ${p.song.title}` : `Play ${p.song.title}`} onClick={() => (p.playing ? player.toggle() : p.onPlay(p.index))}>
           <Icon name={p.playing && !p.paused ? "pause" : "play"} size={14} />
         </button>
       </span>
@@ -163,8 +164,9 @@ const TrackRow = memo(function TrackRow(p: RowProps) {
           <div className="name">{p.song.title}</div>
           <div className="by">
             {p.downloaded ? <span className="dlmark" title="Downloaded"><Icon name="downloaded" size={13} /></span> : null}
-            <SourceMark source={p.song.source} compact />
+            <SourceMark source={songSource(p.song)} compact />
             {p.song.artistId ? <Link to={artistPath(p.song.artistId)}>{artistName(p.song)}</Link> : artistName(p.song)}
+            {p.song.isAvailable === false ? <span>Unavailable</span> : null}
           </div>
         </div>
       </div>
@@ -219,7 +221,12 @@ export function TrackList({ songs, context, art = false, album = false, column, 
   const shown = limit ? list.slice(0, limit) : list;
 
   const resorted = !order && own !== fallback;
-  const play = useCallback((i: number) => (onPlay && !resorted ? onPlay(i) : player.playSongs(list, i, context)), [list, context, onPlay, resorted]);
+  const play = useCallback((songIndex: number) => {
+    if (list[songIndex]?.isAvailable === false) return;
+
+    if (onPlay && !resorted) onPlay(songIndex);
+    else player.playSongs(list, songIndex, context);
+  }, [list, context, onPlay, resorted]);
   const select = useCallback((i: number) => setSelected(list[i]?.id ?? null), [list]);
   const like = likes.setLiked;
 

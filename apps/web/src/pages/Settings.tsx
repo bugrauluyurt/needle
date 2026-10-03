@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
-import type { CheckState, ImportResult, Person } from "@needle/shared";
+import type { Capabilities, CheckState, ImportResult, Person, YouTubeMusicLogin } from "@needle/shared";
 import { Icon } from "../components/Icon.tsx";
 import { Seg } from "../components/Seg.tsx";
 import { Slider } from "../components/Slider.tsx";
@@ -20,6 +20,8 @@ import { VERSION } from "../lib/version.ts";
 import { squarePhoto } from "../lib/photo.ts";
 import { useSession } from "../state/session.ts";
 import { clearSpotifyCache } from "../queries/spotify.ts";
+import { clearYouTubeMusicCache, useYouTubeMusicAccount, useYouTubeMusicPlaylists } from "../queries/youtube-music.ts";
+import { useYouTubeMusicStatus, ytm } from "../lib/youtube-music.ts";
 import type { Quality, Settings as S } from "../state/settings.ts";
 import { useSettings } from "../state/settings.ts";
 import { toast, useUi } from "../state/ui.ts";
@@ -209,6 +211,194 @@ function SpotifySettings() {
   );
 }
 
+function YouTubeMusicImport() {
+  const client = useQueryClient();
+  const playlists = useYouTubeMusicPlaylists();
+  const blocked = useYouTubeMusicStatus((status) => status.blocked);
+  const [open, setOpen] = useState(false);
+  const [busySource, setBusySource] = useState<string | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const copyPlaylist = async (source: string) => {
+    setBusySource(source);
+    setResult(null);
+
+    try {
+      const importResult = await ytm.importPlaylist(source);
+
+      setResult(importResult);
+
+      await client.invalidateQueries({ queryKey: keys.playlists });
+    } catch (importError) {
+      toast(importError instanceof Error ? importError.message : "The copy failed");
+    } finally {
+      setBusySource(null);
+    }
+  };
+
+  return (
+    <>
+      <Row title="Copy playlists into your own library" hint="Makes a Navidrome playlist using songs you already have. Your YouTube Music playlist stays as it is."><button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Choose playlists"}</button></Row>
+      {open ? <ul className="sp-list"><li><span><Icon name="heartFill" size={16} />Liked songs</span><button type="button" className="btn ghost sm" disabled={blocked || Boolean(busySource)} onClick={() => void copyPlaylist("liked")}>{busySource === "liked" ? "Copying…" : "Copy"}</button></li>{playlists.data?.map((playlist) => <li key={playlist.id}><span>{playlist.title}{playlist.songCount !== undefined ? <em>{plural(playlist.songCount, "song")}</em> : null}</span><button type="button" className="btn ghost sm" disabled={blocked || Boolean(busySource)} onClick={() => void copyPlaylist(playlist.id)}>{busySource === playlist.id ? "Copying…" : "Copy"}</button></li>)}{playlists.isLoading ? <li className="muted">Loading your playlists…</li> : null}{playlists.isError ? <li className="muted">Couldn’t load your YouTube Music playlists.</li> : null}</ul> : null}
+      {result ? <div className="sp-result" role="status"><b>{result.source}: {result.matched} of {plural(result.total, "song")} are in your library.</b>{result.missing.length ? <span>{plural(result.missing.length, "song")} could not be matched. Find them in Search to add them to your own library.</span> : null}</div> : null}
+    </>
+  );
+}
+
+function YouTubeMusicSettings() {
+  const capabilities = useCapabilities();
+  const client = useQueryClient();
+  const account = useYouTubeMusicAccount();
+  const [login, setLogin] = useState<YouTubeMusicLogin | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () => Promise.all([client.invalidateQueries({ queryKey: keys.capabilities }), client.invalidateQueries({ queryKey: keys.status })]);
+
+  useEffect(() => {
+    if (!login) return;
+
+    let canceled = false;
+    let pollTimer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      if (Date.now() >= login.expiresAt) {
+        setLogin(null);
+        setError("The code expired. Connect again to get a new one.");
+
+        return;
+      }
+
+      try {
+        const loginStatus = await ytm.pollLogin();
+
+        if (canceled) return;
+
+        if (loginStatus.state === "connected") {
+          await client.cancelQueries({ queryKey: ["ytm"] });
+
+          clearYouTubeMusicCache();
+
+          setLogin(null);
+
+          await client.invalidateQueries({ queryKey: keys.capabilities });
+          await client.invalidateQueries({ queryKey: keys.status });
+
+          toast("YouTube Music connected");
+
+          return;
+        }
+
+        if (loginStatus.state === "expired" || loginStatus.state === "denied") {
+          setLogin(null);
+          setError(loginStatus.state === "denied" ? "Google sign-in was canceled. Connect again when you’re ready." : "The code expired. Connect again to get a new one.");
+
+          return;
+        }
+
+        pollTimer = setTimeout(() => void poll(), Math.max(login.interval, loginStatus.retryAfter ?? 0, 1) * 1000);
+      } catch (loginError) {
+        if (canceled) return;
+
+        setError(loginError instanceof Error ? loginError.message : "Couldn’t check Google sign-in. Try connecting again.");
+        setLogin(null);
+      }
+    };
+
+    pollTimer = setTimeout(() => void poll(), Math.max(login.interval, 1) * 1000);
+
+    return () => {
+      canceled = true;
+
+      clearTimeout(pollTimer);
+    };
+  }, [login, client]);
+
+  const connect = async () => {
+    setBusy(true);
+    setError(null);
+
+    try {
+      const deviceLogin = await ytm.startLogin();
+      const verificationUrl = new URL(deviceLogin.verificationUrl);
+
+      if (verificationUrl.protocol !== "https:" || verificationUrl.username || verificationUrl.password || verificationUrl.port || !["www.youtube.com", "youtube.com", "accounts.google.com", "www.google.com", "google.com"].includes(verificationUrl.hostname)) throw new Error("Google sign-in returned an unexpected address. Try again.");
+
+      setLogin(deviceLogin);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Couldn’t start Google sign-in. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const changeEnabled = async (on: boolean) => {
+    const previousCapabilities = client.getQueryData<Capabilities>(keys.capabilities);
+
+    setBusy(true);
+    setError(null);
+
+    client.setQueryData<Capabilities>(keys.capabilities, (currentCapabilities) => currentCapabilities ? { ...currentCapabilities, youtubeMusicEnabled: on } : currentCapabilities);
+
+    try {
+      await client.cancelQueries({ queryKey: ["ytm"] });
+      await ytm.enabled(on);
+      await refresh();
+    } catch (toggleError) {
+      client.setQueryData(keys.capabilities, previousCapabilities);
+
+      setError(toggleError instanceof Error ? toggleError.message : "Couldn’t change YouTube Music. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const disconnect = async () => {
+    setBusy(true);
+    setError(null);
+
+    try {
+      await client.cancelQueries({ queryKey: ["ytm"] });
+      await ytm.disconnect();
+
+      clearYouTubeMusicCache();
+
+      await refresh();
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : "Couldn’t disconnect YouTube Music. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const cancelLogin = async () => {
+    setLogin(null);
+
+    try {
+      await ytm.cancelLogin();
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : "Couldn’t cancel sign-in. The code will expire shortly.");
+    }
+  };
+
+  return (
+    <>
+      <p className="yt-experimental"><b>Experimental.</b> YouTube Music can stop working when YouTube changes. Your own library and Spotify keep working.</p>
+      {!capabilities.data?.youtubeMusic ? <Row title="Connect YouTube Music" hint="Ask your server admin to enable YouTube Music in Needle."><button type="button" className="btn ghost sm" disabled>Connect</button></Row> : login ? (
+        <div className="yt-device-login" role="status">
+          <h3>Connect with Google</h3>
+          <p>Open Google’s device page and enter this code.</p>
+          <div className="yt-device-code"><code>{login.userCode}</code><button type="button" className="btn ghost sm" onClick={() => void navigator.clipboard.writeText(login.userCode).then(() => toast("Code copied"), () => toast("Couldn’t copy the code. Select it and copy it yourself."))}>Copy code</button></div>
+          <div className="yt-device-actions"><a className="btn primary sm" href={login.verificationUrl} target="_blank" rel="noopener noreferrer">Open Google</a><button type="button" className="btn ghost sm" onClick={() => void cancelLogin()}>Cancel</button></div>
+          <p className="muted"><span className="spin" />Waiting for Google. This code expires at {new Date(login.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</p>
+        </div>
+      ) : capabilities.data.youtubeMusicConnected ? (
+        <>
+          <Row title={account.data?.name ? `Connected as ${account.data.name}` : "YouTube Music is connected"} hint="Your YouTube Music account is connected to this Needle user."><button type="button" className="btn ghost sm" disabled={busy} onClick={() => void disconnect()}>Disconnect</button></Row>
+          <Row title="Use YouTube Music in Needle" hint="When off, YouTube Music stays out of Home, Search and your library. You stay connected."><button type="button" className="toggle" role="switch" aria-checked={capabilities.data.youtubeMusicEnabled} aria-label="Use YouTube Music in Needle" disabled={busy} onClick={() => void changeEnabled(!capabilities.data?.youtubeMusicEnabled)} /></Row>
+          {capabilities.data.youtubeMusicReconnect ? <Row title="Reconnect YouTube Music" hint="Google sign-in expired. Connect again to refresh Needle’s access."><button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>Reconnect</button></Row> : null}
+          {capabilities.data.youtubeMusicEnabled && !capabilities.data.youtubeMusicReconnect ? <YouTubeMusicImport /> : null}
+        </>
+      ) : <Row title="Connect YouTube Music" hint="Shows your liked songs, saved albums, followed artists and playlists beside your own music."><button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>{busy ? "Connecting…" : "Connect"}</button></Row>}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+    </>
+  );
+}
+
 const LB_KEYS = [keys.capabilities, keys.discoveries, keys.discoveryAll, keys.status];
 
 function ListenBrainzSettings() {
@@ -314,7 +504,7 @@ function Connections({ publicUrl }: { publicUrl: string | null }) {
 
 function PersonRow({ p }: { p: Person }) {
   const qc = useQueryClient();
-  const set = (patch: Partial<Pick<Person, "canRequest" | "canSpotify">>) =>
+  const set = (patch: Partial<Pick<Person, "canRequest" | "canSpotify" | "canYouTubeMusic">>) =>
     void api.setPerson(p.user, patch).then(
       () => void qc.invalidateQueries({ queryKey: keys.people }),
       (e: unknown) => toast(e instanceof Error ? e.message : "Couldn’t change that"),
@@ -332,6 +522,10 @@ function PersonRow({ p }: { p: Person }) {
       <label className="person-switch">
         <span>Spotify</span>
         <button type="button" className="toggle" role="switch" aria-checked={p.canSpotify} aria-label={`${p.user} can use Spotify`} onClick={() => set({ canSpotify: !p.canSpotify })} />
+      </label>
+      <label className="person-switch">
+        <span>YouTube Music</span>
+        <button type="button" className="toggle" role="switch" aria-checked={p.canYouTubeMusic ?? p.admin} aria-label={`${p.user} can use YouTube Music`} onClick={() => set({ canYouTubeMusic: !(p.canYouTubeMusic ?? p.admin) })} />
       </label>
     </div>
   );
@@ -444,6 +638,7 @@ export default function SettingsPage() {
             <SpotifySettings />
           </>
         ) : null}
+        {caps.data?.youtubeMusic || admin ? <><h2>YouTube Music</h2><YouTubeMusicSettings /></> : null}
 
         <h2>This app</h2>
         <Row title="Version" hint={health?.version && health.version !== VERSION ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.` : undefined}>

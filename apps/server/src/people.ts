@@ -1,14 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { Person } from "@needle/shared";
 
-type Row = { can_request: number; can_spotify: number };
+type Row = { can_request: number; can_spotify: number; can_youtube_music: number | null };
 type Known = { user: string; admin: number; last_seen: number | null };
-export type Permission = "request" | "spotify";
-export type PersonPatch = { canRequest?: boolean | undefined; canSpotify?: boolean | undefined };
+export type Permission = "request" | "spotify" | "youtubeMusic";
+export type PersonPatch = { canRequest?: boolean | undefined; canSpotify?: boolean | undefined; canYouTubeMusic?: boolean | undefined };
 
 export class People {
-  private readonly db: DatabaseSync;
-
   constructor(db: DatabaseSync) {
     this.db = db;
   }
@@ -19,8 +17,9 @@ export class People {
   }
 
   allowed(user: string, admin: boolean, what: Permission): boolean {
-    const row = this.db.prepare("SELECT can_request, can_spotify FROM permissions WHERE user = ?").get(user) as Row | undefined;
+    const row = this.db.prepare("SELECT can_request, can_spotify, can_youtube_music FROM permissions WHERE user = ?").get(user) as Row | undefined;
     if (what === "request") return admin || Boolean(row?.can_request);
+    if (what === "youtubeMusic") return row?.can_youtube_music == null ? admin : Boolean(row.can_youtube_music);
     return row ? Boolean(row.can_spotify) : admin;
   }
 
@@ -33,13 +32,18 @@ export class People {
 
   set(user: string, patch: PersonPatch): Person {
     const current = this.list().find((p) => p.user === user) ?? this.person(user, false, null);
-    this.db.prepare(`INSERT INTO permissions (user, can_request, can_spotify) VALUES (?, ?, ?)
-      ON CONFLICT(user) DO UPDATE SET can_request = excluded.can_request, can_spotify = excluded.can_spotify`)
-      .run(user, (patch.canRequest ?? current.canRequest) ? 1 : 0, (patch.canSpotify ?? current.canSpotify) ? 1 : 0);
+    this.db.prepare(`INSERT INTO permissions (user, can_request, can_spotify, can_youtube_music) VALUES (?, ?, ?, ?)
+      ON CONFLICT(user) DO UPDATE SET can_request = excluded.can_request, can_spotify = excluded.can_spotify,
+      can_youtube_music = excluded.can_youtube_music`)
+      .run(user, (patch.canRequest ?? current.canRequest) ? 1 : 0, (patch.canSpotify ?? current.canSpotify) ? 1 : 0,
+        (patch.canYouTubeMusic ?? current.canYouTubeMusic) ? 1 : 0);
     return this.person(user, current.admin, current.lastSeen);
   }
 
   private person(user: string, admin: boolean, lastSeen: number | null): Person {
-    return { user, admin, canRequest: this.allowed(user, admin, "request"), canSpotify: this.allowed(user, admin, "spotify"), lastSeen };
+    return { user, admin, canRequest: this.allowed(user, admin, "request"), canSpotify: this.allowed(user, admin, "spotify"),
+      canYouTubeMusic: this.allowed(user, admin, "youtubeMusic"), lastSeen };
   }
+
+  private readonly db: DatabaseSync;
 }

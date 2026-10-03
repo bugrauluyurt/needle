@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { compress } from "hono/compress";
-import type { Capabilities, DiscoveryTrack, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate } from "@needle/shared";
+import type { Capabilities, DiscoveryTrack, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate, YouTubeMusicSearchKind } from "@needle/shared";
 import { songKey, trackCandidate } from "@needle/shared";
 import type { Config } from "./config.ts";
 import { DeviceHub } from "./devices.ts";
@@ -22,13 +22,14 @@ import { Requests, toItem, toItemFor } from "./requests.ts";
 import { Slskd, SlskdError, SongDownloads } from "./soulseek.ts";
 import { LibrarySearch } from "./search.ts";
 import { Spotify, SpotifyError } from "./spotify.ts";
+import { YouTubeMusic, YouTubeMusicError } from "./youtube-music.ts";
 import { Status } from "./status.ts";
 import { People } from "./people.ts";
 import type { Permission, PersonPatch } from "./people.ts";
 import { VERSION } from "./version.ts";
 import { PlayLog } from "./stats.ts";
 
-type Env = { Variables: { auth: Auth } };
+type Env = { Variables: { auth: Auth; youtubeMusic: YouTubeMusic } };
 
 const PERIODS = new Set<Period>(["month", "quarter", "year", "all"]);
 const ADMIN_TTL = 10 * 60_000;
@@ -56,10 +57,11 @@ export function createApp(config: Config, db: DatabaseSync) {
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
   const people = new People(db);
   const listenbrainz = new ListenBrainz({ url: config.listenbrainzUrl, db, navidrome, library, requests });
-  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer, listenbrainz });
   const spotify = config.spotify && config.publicUrl
     ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome, library })
     : null;
+  const youtubeMusic = config.youtubeMusic ? new YouTubeMusic({ ...config.youtubeMusic, db, navidrome, library }) : null;
+  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer, listenbrainz, youtubeMusic });
   const hub = new DeviceHub();
   const admins = new Map<string, { admin: boolean; until: number }>();
 
@@ -76,6 +78,7 @@ export function createApp(config: Config, db: DatabaseSync) {
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
+    if (err instanceof YouTubeMusicError) return c.json({ error: err.message, code: err.code }, err.status);
     if (err instanceof SpotifyError) return c.json({ error: err.message }, err.status === 401 || err.status === 409 ? err.status : 502);
     if (err instanceof ListenBrainzError) return c.json({ error: err.message }, err.status);
     if (err instanceof LidarrError || err instanceof SubsonicFailure || err instanceof SlskdError || err instanceof MusicBrainzError) return c.json({ error: err.message }, 502);
@@ -138,12 +141,30 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (!(await can(c.get("auth"), "spotify"))) return { error: refuse(c, "Ask an admin to let you use Spotify in Needle") };
     return { spotify };
   };
+  const youtubeMusicGuard = async (c: Context<Env>, next: () => Promise<void>) => {
+    if (!youtubeMusic) return c.json({ error: "Add YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to the Needle server" }, 404);
+    if (!(await can(c.get("auth"), "youtubeMusic"))) return refuse(c, "Ask an admin to let you use YouTube Music in Needle");
+
+    c.set("youtubeMusic", youtubeMusic);
+
+    await next();
+  };
+  const youtubeMusicOn = async (c: Context<Env>): Promise<boolean> => {
+    const body = await c.req.json<{ on?: unknown }>().catch(() => ({ on: undefined }));
+    if (typeof body.on !== "boolean") throw new YouTubeMusicError(400, "Use a boolean on value");
+
+    return body.on;
+  };
+
+  app.use("/api/youtube-music", youtubeMusicGuard);
+  app.use("/api/youtube-music/*", youtubeMusicGuard);
 
   app.get("/api/capabilities", async (c) => {
     const auth = c.get("auth");
     const admin = await isAdmin(auth);
     const requests = people.allowed(auth.user, admin, "request");
     const sp = people.allowed(auth.user, admin, "spotify") ? spotify : null;
+    const youtube = people.allowed(auth.user, admin, "youtubeMusic") ? youtubeMusic : null;
     const lb = listenbrainz.account(auth.user);
     const caps: Capabilities = {
       admin,
@@ -153,6 +174,10 @@ export function createApp(config: Config, db: DatabaseSync) {
       spotifyPlayback: sp?.canPlay(auth.user) ?? false,
       spotifyReconnect: sp?.needsReconnect(auth.user) ?? false,
       spotifyEnabled: sp?.enabled(auth.user) ?? false,
+      ...(config.youtubeMusic ? {
+        youtubeMusic: Boolean(youtube), youtubeMusicConnected: youtube?.connected(auth.user) ?? false,
+        youtubeMusicEnabled: youtube?.enabled(auth.user) ?? false, youtubeMusicReconnect: youtube?.needsReconnect(auth.user) ?? false,
+      } : {}),
       songs: Boolean(songs) && requests,
       publicUrl: config.publicUrl,
       listenbrainzUser: lb?.user ?? null,
@@ -367,6 +392,70 @@ export function createApp(config: Config, db: DatabaseSync) {
     return r.error ?? c.json({ url: r.spotify.authorizeUrl(c.get("auth").user) });
   });
 
+  app.post("/api/youtube-music/login", async (c) => c.json(await c.get("youtubeMusic").login(c.get("auth").user)));
+  app.get("/api/youtube-music/login", async (c) => c.json(await c.get("youtubeMusic").loginStatus(c.get("auth").user)));
+  app.delete("/api/youtube-music/login", (c) => {
+    c.get("youtubeMusic").cancelLogin(c.get("auth").user);
+
+    return c.body(null, 204);
+  });
+
+  app.delete("/api/youtube-music", (c) => {
+    c.get("youtubeMusic").disconnect(c.get("auth").user);
+
+    return c.body(null, 204);
+  });
+
+  app.put("/api/youtube-music/enabled", async (c) => {
+    c.get("youtubeMusic").setEnabled(c.get("auth").user, await youtubeMusicOn(c));
+
+    return c.body(null, 204);
+  });
+
+  app.get("/api/youtube-music/account", async (c) => c.json(await c.get("youtubeMusic").account(c.get("auth").user)));
+  app.get("/api/youtube-music/liked", async (c) => c.json(await c.get("youtubeMusic").liked(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/albums", async (c) => c.json(await c.get("youtubeMusic").albums(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/artists", async (c) => c.json(await c.get("youtubeMusic").artists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/playlists", async (c) => c.json(await c.get("youtubeMusic").playlists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/search", async (c) => c.json(await c.get("youtubeMusic").search(c.get("auth").user,
+    c.req.query("q") ?? "", c.req.query("kind") as YouTubeMusicSearchKind | undefined, YouTubeMusic.limit(c.req.query("limit"), 20, 100))));
+
+  app.get("/api/youtube-music/albums/:id", async (c) => c.json(await c.get("youtubeMusic").album(c.get("auth").user, c.req.param("id"))));
+  app.get("/api/youtube-music/artists/:id", async (c) => c.json(await c.get("youtubeMusic").artist(c.get("auth").user, c.req.param("id"))));
+  app.get("/api/youtube-music/artists/:id/songs", async (c) => c.json(await c.get("youtubeMusic").artistSongs(c.get("auth").user,
+    c.req.param("id"), YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/artists/:id/releases", async (c) => c.json(await c.get("youtubeMusic").artistReleases(c.get("auth").user,
+    c.req.param("id"), c.req.query("kind") as "albums" | "singles", YouTubeMusic.limit(c.req.query("limit")))));
+  app.get("/api/youtube-music/playlists/:id", async (c) => c.json(await c.get("youtubeMusic").playlist(c.get("auth").user,
+    c.req.param("id"), YouTubeMusic.limit(c.req.query("limit"), 3000))));
+  app.get("/api/youtube-music/songs/:id/lyrics", async (c) => c.json(await c.get("youtubeMusic").lyrics(c.get("auth").user, c.req.param("id"))));
+  app.get("/api/youtube-music/songs/:id/radio", async (c) => c.json(await c.get("youtubeMusic").radio(c.get("auth").user, c.req.param("id"))));
+
+  app.put("/api/youtube-music/songs/:id/like", async (c) => {
+    await c.get("youtubeMusic").like(c.get("auth").user, c.req.param("id"), await youtubeMusicOn(c));
+
+    return c.body(null, 204);
+  });
+
+  app.put("/api/youtube-music/albums/:id/saved", async (c) => {
+    await c.get("youtubeMusic").saveAlbum(c.get("auth").user, c.req.param("id"), await youtubeMusicOn(c));
+
+    return c.body(null, 204);
+  });
+
+  app.put("/api/youtube-music/artists/:id/follow", async (c) => {
+    await c.get("youtubeMusic").follow(c.get("auth").user, c.req.param("id"), await youtubeMusicOn(c));
+
+    return c.body(null, 204);
+  });
+
+  app.post("/api/youtube-music/import", async (c) => {
+    const body = await c.req.json<{ source?: unknown }>().catch(() => ({ source: undefined }));
+    if (typeof body.source !== "string") throw new YouTubeMusicError(400, "Choose a YouTube Music playlist to import");
+
+    return c.json(await c.get("youtubeMusic").import(c.get("auth"), body.source));
+  });
+
   app.delete("/api/spotify", async (c) => {
     const r = await needSpotify(c);
     if (r.error) return r.error;
@@ -428,6 +517,19 @@ export function createApp(config: Config, db: DatabaseSync) {
     return new Response(upstream.body, {
       headers: { "content-type": upstream.headers.get("content-type") ?? "audio/mpeg", "cache-control": "no-store" },
     });
+  });
+
+  app.get("/youtube-music/stream/:videoId", async (c) => {
+    const auth = authFromQuery(new URL(c.req.url));
+    if (!auth) return c.json({ error: "Sign in again" }, 401);
+
+    const verification = await navidrome.verify(auth);
+    if (verification === "down") return c.json({ error: "Navidrome isn't responding" }, 503);
+    if (verification !== "ok") return c.json({ error: "Sign in again" }, 401);
+    if (!youtubeMusic) return c.json({ error: "YouTube Music isn't set up on the Needle server" }, 404);
+    if (!(await can(auth, "youtubeMusic"))) return refuse(c, "Ask an admin to let you use YouTube Music in Needle");
+
+    return youtubeMusic.stream(auth.user, c.req.param("videoId"), c.req.raw);
   });
 
   if (existsSync(config.webDist)) {

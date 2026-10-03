@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { songSource } from "@needle/shared";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
@@ -10,6 +11,7 @@ import type { IconName } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { SourceMark } from "../components/SpotifyMark.tsx";
+import { YouTubeMusicPlaybackError } from "../components/YouTubeMusicPlaybackError.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { albumPath, artistPath } from "../lib/paths.ts";
 import { useTone } from "../lib/tone.ts";
@@ -172,12 +174,13 @@ export function NowPlayingSheet() {
           <div className="ti">
             <div>
               <h2>{station?.name ?? (song?.albumId ? <Link to={albumPath(song.albumId)} onClick={close}>{song.title}</Link> : song?.title)}</h2>
-              <p>{station ? <LiveLabel /> : song ? <><SourceMark source={song.source} compact />{song.artistId ? <Link to={artistPath(song.artistId)} onClick={close}>{artistName(song)}</Link> : artistName(song)}</> : ""}</p>
+              <p>{station ? <LiveLabel /> : song ? <><SourceMark source={songSource(song)} compact />{song.artistId ? <Link to={artistPath(song.artistId)} onClick={close}>{artistName(song)}</Link> : artistName(song)}</> : ""}</p>
             </div>
             {song ? <LikeCurrent size={26} className="icon-btn big-heart" /> : null}
           </div>
           <SeekBar className="seek below" times="below" />
           <Transport big />
+          {!remote ? <YouTubeMusicPlaybackError song={song} /> : null}
           <div className="under">
             <DevicesButton trigger={<button type="button" className="dev-pill"><Icon name="devices" size={16} />{remote?.name ?? deviceName}</button>} />
             <div className="under-end">

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Artist, InternetRadioStation } from "@needle/shared";
+import { isYouTubeMusic } from "@needle/shared";
 import { Art } from "../components/Art.tsx";
 import { CardRow, RowHeader } from "../components/Cards.tsx";
 import { Icon } from "../components/Icon.tsx";
@@ -19,6 +20,7 @@ import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../quer
 import { toast } from "../state/ui.ts";
 import { isSpotify, rawId } from "../lib/spotify.ts";
 import { useSpotifyArtistProfile } from "../queries/spotify.ts";
+import { useYouTubeMusicArtistImage } from "../queries/youtube-music.ts";
 
 type StationFields = { name: string; url: string; home: string };
 
@@ -116,7 +118,8 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
 
 function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
   const { data } = useSpotifyArtistProfile(isSpotify(id) ? rawId(id) : undefined);
-  const source = isSpotify(id) ? { images: data?.images } : { id: library?.find((x) => x.id === id)?.coverArt };
+  const youtubeMusicImage = useYouTubeMusicArtistImage(isYouTubeMusic(id) ? id : "");
+  const source = isYouTubeMusic(id) ? { id: youtubeMusicImage } : isSpotify(id) ? { images: data?.images } : { id: library?.find((x) => x.id === id)?.coverArt };
   return <Art {...source} px={180} round fallback="artist" />;
 }
 
@@ -143,7 +146,7 @@ export default function RadioPage() {
                 <button key={a.id} type="button" className="card radio-card" onClick={() => void player.startRadio({ artistId: a.id, name: a.name })}>
                   <div className="card-art"><ArtistArt id={a.id} library={library} /></div>
                   <div className="t">{a.name} radio</div>
-                  <div className="s">{isSpotify(a.id) ? "Shuffles their Spotify albums" : "Artist radio"}</div>
+                  <div className="s">{isYouTubeMusic(a.id) ? "Plays their YouTube Music songs" : isSpotify(a.id) ? "Shuffles their Spotify albums" : "Artist radio"}</div>
                 </button>
               ))}
               {songs.map((s) => (

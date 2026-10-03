@@ -1,8 +1,8 @@
 import { memo } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import type { Album, Artist } from "@needle/shared";
-import { releaseDateString } from "@needle/shared";
+import type { Album, Artist, MusicSource } from "@needle/shared";
+import { musicSource, releaseDateString } from "@needle/shared";
 import { player } from "../player/controller.ts";
 import { useContextPlaying } from "../player/store.ts";
 import { sub } from "../lib/subsonic.ts";
@@ -10,7 +10,6 @@ import { api } from "../lib/api.ts";
 import { shownSongs } from "../lib/songs.ts";
 import { releaseDateLabel } from "../lib/format.ts";
 import { artistPath } from "../lib/paths.ts";
-import { isSpotify } from "../lib/spotify.ts";
 import { Art } from "./Art.tsx";
 import { Icon } from "./Icon.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
@@ -25,7 +24,7 @@ type CardProps = {
   onPlay?: () => void;
   playLabel?: string;
   playingId?: string;
-  source?: "spotify" | null;
+  source?: Exclude<MusicSource, "library"> | null;
 };
 
 export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playLabel, playingId, source }: CardProps) {
@@ -47,11 +46,15 @@ export const Card = memo(function Card({ to, art, title, subtitle, onPlay, playL
 });
 
 export async function playAlbum(id: string, name: string, shuffle = false) {
+  if (musicSource(id) !== "library") return;
+
   const album = await sub.album(id);
   player.playSongs(album.song ?? [], 0, { kind: "album", id, name, ordered: true }, { shuffle });
 }
 
 export async function playArtist(artist: Pick<Artist, "id" | "name">, { shuffle = false }: { shuffle?: boolean } = {}) {
+  if (musicSource(artist.id) !== "library") return;
+
   const librarySongs = await api.librarySongs();
   const artistSongs = librarySongs.filter((song) => song.artistId === artist.id || song.artists?.some((songArtist) => songArtist.id === artist.id));
 
@@ -78,6 +81,8 @@ export function albumItem(album: Album, subtitle?: string): CollectionItem {
 }
 
 export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem {
+  const source = musicSource(artist.id);
+
   return {
     key: artist.id,
     to: artistPath(artist.id),
@@ -86,8 +91,7 @@ export function artistItem(artist: Artist, subtitle = "Artist"): CollectionItem 
     subtitle,
     by: artist.name,
     contextId: artist.id,
-    ...(isSpotify(artist.id) ? { source: "spotify" as const } : {}),
-    ...(isSpotify(artist.id) ? {} : { onPlay: () => void playArtist(artist) }),
+    ...(source !== "library" ? { source } : { onPlay: () => void playArtist(artist) }),
   };
 }
 
