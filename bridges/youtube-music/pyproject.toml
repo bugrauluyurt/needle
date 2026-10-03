@@ -3,7 +3,8 @@ name = "needle-youtube-music-bridge"
 version = "0.0.0"
 requires-python = ">=3.10,<3.15"
 dependencies = [
-  "yt-dlp[pin]==2026.8.19",
+  "urllib3==2.8.0",
+  "yt-dlp[default]==2026.8.19",
   "ytmusicapi==1.12.3",
 ]
 
