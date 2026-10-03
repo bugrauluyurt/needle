@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "node:events";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { ClientMessageSchema, type ServerMessage } from "@needle/shared";
 import { createApp } from "../src/app.ts";
@@ -235,6 +238,41 @@ describe("server", () => {
     });
   });
 
+  it("keeps unknown authenticated API routes out of the static app fallback", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "needle-web-"));
+    const database = openDatabase(":memory:");
+
+    await writeFile(join(webDist, "index.html"), "<main>Needle app</main>");
+
+    try {
+      const productionApp = createApp(
+        loadConfig({
+          navidromeUrl: ND,
+          listenbrainzUrl: LB,
+          dataDir: ":memory:",
+          webDist,
+          lidarr: null,
+          spotify: null,
+          soulseek: null,
+        }),
+        database,
+      ).app;
+      const response = await productionApp.request("/api/not-a-route", {
+        headers: good,
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type")).toContain("application/json");
+      expect(await response.json()).toMatchObject({
+        error: "Not found",
+        code: "NOT_FOUND",
+      });
+    } finally {
+      database.close();
+      await rm(webDist, { recursive: true });
+    }
+  });
+
   it("records plays and reports them in stats", async () => {
     const play = {
       songId: "s",
@@ -275,9 +313,9 @@ describe("server", () => {
         body,
       });
     const invalidType = await put("image/gif", new Uint8Array([1]));
-    expect(invalidType.status).toBe(400);
+    expect(invalidType.status).toBe(415);
     expect(await invalidType.json()).toMatchObject({
-      code: "VALIDATION_ERROR",
+      code: "UNSUPPORTED_MEDIA_TYPE",
     });
     expect((await put("image/webp", new Uint8Array(500_000))).status).toBe(413);
     expect((await put("image/webp", new Uint8Array([1, 2, 3]))).status).toBe(204);
@@ -400,10 +438,15 @@ class FakeSocket extends EventEmitter {
   readonly OPEN = 1;
   readyState = 1;
   sent: ServerMessage[] = [];
+  closeCode: number | undefined;
+  closeReason: string | undefined;
+  pings = 0;
   send(raw: string) {
     this.sent.push(JSON.parse(raw) as ServerMessage);
   }
-  close() {
+  close(code?: number, reason?: string) {
+    this.closeCode = code;
+    this.closeReason = reason;
     this.readyState = 3;
     this.emit("close");
   }
@@ -411,10 +454,13 @@ class FakeSocket extends EventEmitter {
     this.close();
   }
   ping() {
-    return undefined;
+    this.pings++;
   }
   say(msg: object) {
     this.emit("message", Buffer.from(JSON.stringify(msg)));
+  }
+  sayRaw(message: string) {
+    this.emit("message", Buffer.from(message));
   }
 }
 
@@ -434,6 +480,71 @@ describe("device hub", () => {
       }).success,
     ).toBe(false);
     expect(ClientMessageSchema.safeParse({ type: "unknown" }).success).toBe(false);
+  });
+
+  it("closes invalid JSON and invalid message shapes with a policy violation", () => {
+    const invalidJsonSocket = new FakeSocket();
+    const nullSocket = new FakeSocket();
+    const invalidShapeSocket = new FakeSocket();
+    const hub = new DeviceHub();
+
+    hub.attach(invalidJsonSocket as never, "alex");
+    hub.attach(nullSocket as never, "alex");
+    hub.attach(invalidShapeSocket as never, "alex");
+    invalidJsonSocket.sayRaw("{");
+    nullSocket.sayRaw("null");
+    invalidShapeSocket.say({
+      type: "command",
+      to: "phone",
+      command: { action: "volume", volume: 2 },
+    });
+
+    expect([invalidJsonSocket, nullSocket, invalidShapeSocket]).toEqual([
+      expect.objectContaining({
+        readyState: 3,
+        closeCode: 1008,
+        closeReason: "invalid message",
+      }),
+      expect.objectContaining({
+        readyState: 3,
+        closeCode: 1008,
+        closeReason: "invalid message",
+      }),
+      expect.objectContaining({
+        readyState: 3,
+        closeCode: 1008,
+        closeReason: "invalid message",
+      }),
+    ]);
+  });
+
+  it("pings fresh connections and terminates stale devices", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+
+    try {
+      const hub = new DeviceHub();
+      const freshSocket = new FakeSocket();
+      const staleSocket = new FakeSocket();
+
+      hub.attach(freshSocket as never, "alex");
+      hub.attach(staleSocket as never, "alex");
+      staleSocket.say({
+        type: "hello",
+        device: { id: "old", name: "Old", kind: "desktop" },
+      });
+
+      hub.heartbeat();
+      expect(freshSocket.pings).toBe(1);
+      expect(staleSocket.pings).toBe(1);
+
+      vi.setSystemTime(46_000);
+      hub.heartbeat();
+      expect(freshSocket.pings).toBe(2);
+      expect(staleSocket.readyState).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("lists a user's devices and forwards commands only within that user", () => {

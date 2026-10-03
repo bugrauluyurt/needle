@@ -109,4 +109,8 @@ export function registerMediaRoutes(
       return youtubeMusic.stream(auth.user, context.req.valid("param").videoId, context.req.raw);
     },
   );
+
+  app.all("/api/*", () => {
+    throw appError(404, ApiErrorCode.NOT_FOUND, "Not found");
+  });
 }
