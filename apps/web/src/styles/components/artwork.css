@@ -116,10 +116,6 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    circle at 70% 20%,
-    rgba(255, 255, 255, 0.08),
-    transparent 60%
-  );
+  background: radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.08), transparent 60%);
   pointer-events: none;
 }

@@ -7,19 +7,10 @@ import type {
   YouTubeMusicPage,
   YouTubeMusicSearchKind,
 } from "@needle/shared";
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Query } from "@tanstack/react-query";
 import { image } from "../../spotify/api/client.ts";
-import {
-  clearYouTubeMusicStatus,
-  useYouTubeMusicStatus,
-  ytm,
-} from "../api/client.ts";
+import { clearYouTubeMusicStatus, useYouTubeMusicStatus, ytm } from "../api/client.ts";
 import { useSession } from "../../../state/session.ts";
 import { toast } from "../../../state/ui.ts";
 import { queryClient } from "../../../queries/client.ts";
@@ -28,13 +19,7 @@ import { translate } from "../../../i18n/index.ts";
 
 const LIBRARY_STALE = 6 * HOUR_MS;
 const CACHE_PREFIX = "needle.ytm.";
-const PERSISTED = new Set([
-  "account",
-  "liked",
-  "albums",
-  "artists",
-  "playlists",
-]);
+const PERSISTED = new Set(["account", "liked", "albums", "artists", "playlists"]);
 const currentUser = () => useSession.getState().credentials?.user ?? "";
 let cacheGeneration = 0;
 
@@ -54,12 +39,9 @@ export const ytmKeys = {
   get playlists() {
     return ["ytm", "playlists", currentUser()] as const;
   },
-  album: (id: string) =>
-    ["ytm", "album", youtubeMusicRawId(id), currentUser()] as const,
-  artist: (id: string) =>
-    ["ytm", "artist", youtubeMusicRawId(id), currentUser()] as const,
-  playlist: (id: string, limit = 100) =>
-    ["ytm", "playlist", youtubeMusicRawId(id), limit, currentUser()] as const,
+  album: (id: string) => ["ytm", "album", youtubeMusicRawId(id), currentUser()] as const,
+  artist: (id: string) => ["ytm", "artist", youtubeMusicRawId(id), currentUser()] as const,
+  playlist: (id: string, limit = 100) => ["ytm", "playlist", youtubeMusicRawId(id), limit, currentUser()] as const,
 };
 
 queryClient.setQueryDefaults(["ytm"], {
@@ -87,10 +69,7 @@ queryClient.getQueryCache().subscribe((queryEvent) => {
     return;
 
   try {
-    localStorage.setItem(
-      cacheKey(queryKey),
-      JSON.stringify({ at: state.dataUpdatedAt, data: state.data }),
-    );
+    localStorage.setItem(cacheKey(queryKey), JSON.stringify({ at: state.dataUpdatedAt, data: state.data }));
   } catch {
     return;
   }
@@ -105,28 +84,20 @@ export function clearYouTubeMusicCache() {
 
   try {
     for (const storageKey of Object.keys(localStorage)) {
-      if (storageKey.startsWith(CACHE_PREFIX))
-        localStorage.removeItem(storageKey);
+      if (storageKey.startsWith(CACHE_PREFIX)) localStorage.removeItem(storageKey);
     }
   } catch {
     return;
   }
 }
 
-function cached<T>(
-  queryKey: readonly unknown[],
-  visible: boolean,
-): { initialData?: T; initialDataUpdatedAt?: number } {
+function cached<T>(queryKey: readonly unknown[], visible: boolean): { initialData?: T; initialDataUpdatedAt?: number } {
   if (!visible) return {};
 
   try {
-    const cachedData = JSON.parse(
-      localStorage.getItem(cacheKey(queryKey)) ?? "null",
-    ) as { at: number; data: T } | null;
+    const cachedData = JSON.parse(localStorage.getItem(cacheKey(queryKey)) ?? "null") as { at: number; data: T } | null;
 
-    return cachedData
-      ? { initialData: cachedData.data, initialDataUpdatedAt: cachedData.at }
-      : {};
+    return cachedData ? { initialData: cachedData.data, initialDataUpdatedAt: cachedData.at } : {};
   } catch {
     return {};
   }
@@ -135,9 +106,7 @@ function cached<T>(
 export function useYouTubeMusicOn(): boolean {
   const capabilities = useCapabilities().data;
 
-  return Boolean(
-    capabilities?.youtubeMusicConnected && capabilities.youtubeMusicEnabled,
-  );
+  return Boolean(capabilities?.youtubeMusicConnected && capabilities.youtubeMusicEnabled);
 }
 
 export function useYouTubeMusicRequestsAllowed(): boolean {
@@ -187,14 +156,10 @@ function useLibraryPage<T>(
   };
 }
 
-export const useYouTubeMusicLiked = (limit = 100) =>
-  useLibraryPage(ytmKeys.liked, ytm.liked, limit);
-export const useYouTubeMusicAlbums = (limit = 100) =>
-  useLibraryPage(ytmKeys.albums, ytm.albums, limit);
-export const useYouTubeMusicArtists = (limit = 100) =>
-  useLibraryPage(ytmKeys.artists, ytm.artists, limit);
-export const useYouTubeMusicPlaylists = (limit = 100) =>
-  useLibraryPage(ytmKeys.playlists, ytm.playlists, limit);
+export const useYouTubeMusicLiked = (limit = 100) => useLibraryPage(ytmKeys.liked, ytm.liked, limit);
+export const useYouTubeMusicAlbums = (limit = 100) => useLibraryPage(ytmKeys.albums, ytm.albums, limit);
+export const useYouTubeMusicArtists = (limit = 100) => useLibraryPage(ytmKeys.artists, ytm.artists, limit);
+export const useYouTubeMusicPlaylists = (limit = 100) => useLibraryPage(ytmKeys.playlists, ytm.playlists, limit);
 
 export function useYouTubeMusicSaved(): Set<string> {
   const likedSongs = useYouTubeMusicLiked();
@@ -203,11 +168,7 @@ export function useYouTubeMusicSaved(): Set<string> {
   });
 
   return new Set(
-    likedSongs.data
-      ? loadedLikedPages.flatMap(
-          ([, page]) => page?.items.map((song) => song.id) ?? [],
-        )
-      : [],
+    likedSongs.data ? loadedLikedPages.flatMap(([, page]) => page?.items.map((song) => song.id) ?? []) : [],
   );
 }
 
@@ -253,24 +214,18 @@ export function useYouTubeMusicPlaylist(id: string, limit = 100) {
     ...youtubeMusicPlaylistQuery(id, limit),
     enabled: enabled && Boolean(id),
     placeholderData: (previousPlaylist, previousQuery) =>
-      previousQuery?.queryKey[2] === youtubeMusicRawId(id) &&
-      previousQuery.queryKey[4] === currentUser()
+      previousQuery?.queryKey[2] === youtubeMusicRawId(id) && previousQuery.queryKey[4] === currentUser()
         ? previousPlaylist
         : undefined,
   });
 }
 
-export function useYouTubeMusicSearch(
-  query: string,
-  kind?: YouTubeMusicSearchKind,
-  limit = 20,
-) {
+export function useYouTubeMusicSearch(query: string, kind?: YouTubeMusicSearchKind, limit = 20) {
   const enabled = useYouTubeMusicRequestsAllowed();
 
   return useQuery({
     queryKey: ["ytm", "search", query, kind ?? "all", limit, currentUser()],
-    queryFn: ({ signal }) =>
-      ytm.search(query, { limit, signal, ...(kind ? { kind } : {}) }),
+    queryFn: ({ signal }) => ytm.search(query, { limit, signal, ...(kind ? { kind } : {}) }),
     enabled: enabled && Boolean(query.trim()),
     placeholderData: (previousSearch, previousQuery) =>
       previousQuery?.queryKey[2] === query &&
@@ -318,8 +273,7 @@ function useLibraryMutation<T extends { id: string }>(
       const previousPages = client.getQueriesData<YouTubeMusicPage<T>>({
         queryKey,
       });
-      const artistDetailKey =
-        queryKey[1] === "artists" ? ytmKeys.artist(item.id) : undefined;
+      const artistDetailKey = queryKey[1] === "artists" ? ytmKeys.artist(item.id) : undefined;
       const previousArtist = artistDetailKey
         ? client.getQueryData<YouTubeMusicArtistDetail>(artistDetailKey)
         : undefined;
@@ -336,17 +290,13 @@ function useLibraryMutation<T extends { id: string }>(
       client.setQueriesData<YouTubeMusicPage<T>>({ queryKey }, (page) => {
         if (!page) return page;
 
-        const filteredItems = page.items.filter(
-          (savedItem) => savedItem.id !== item.id,
-        );
-        const countChange =
-          Number(on) - Number(filteredItems.length !== page.items.length);
+        const filteredItems = page.items.filter((savedItem) => savedItem.id !== item.id);
+        const countChange = Number(on) - Number(filteredItems.length !== page.items.length);
 
         return {
           ...page,
           items: on ? [item, ...filteredItems] : filteredItems,
-          total:
-            page.total === null ? null : Math.max(0, page.total + countChange),
+          total: page.total === null ? null : Math.max(0, page.total + countChange),
         };
       });
 
@@ -359,12 +309,7 @@ function useLibraryMutation<T extends { id: string }>(
       };
     },
     onError: (_mutationError, _variables, context) => {
-      if (
-        !context ||
-        context.generation !== cacheGeneration ||
-        context.user !== currentUser()
-      )
-        return;
+      if (!context || context.generation !== cacheGeneration || context.user !== currentUser()) return;
 
       for (const [previousKey, previousPage] of context?.previousPages ?? [])
         client.setQueryData(previousKey, previousPage);
@@ -373,48 +318,35 @@ function useLibraryMutation<T extends { id: string }>(
         client.setQueryData(context.artistDetailKey, context.previousArtist);
 
       toast(
-        useYouTubeMusicStatus.getState().blocked
-          ? translate("youtube.requestPaused")
-          : translate("youtube.saveFailed"),
+        useYouTubeMusicStatus.getState().blocked ? translate("youtube.requestPaused") : translate("youtube.saveFailed"),
       );
     },
   });
 }
 
 export function useToggleYouTubeMusicSave() {
-  const mutation = useLibraryMutation<Song>(ytmKeys.liked, (song, on) =>
-    ytm.like(song.id, on),
-  );
+  const mutation = useLibraryMutation<Song>(ytmKeys.liked, (song, on) => ytm.like(song.id, on));
 
   return {
     ...mutation,
-    mutate: ({ song, on }: { song: Song; on: boolean }) =>
-      mutation.mutate({ item: song, on }),
+    mutate: ({ song, on }: { song: Song; on: boolean }) => mutation.mutate({ item: song, on }),
   };
 }
 
 export function useToggleYouTubeMusicAlbum() {
-  const mutation = useLibraryMutation<YouTubeMusicAlbum>(
-    ytmKeys.albums,
-    (album, on) => ytm.saveAlbum(album.id, on),
-  );
+  const mutation = useLibraryMutation<YouTubeMusicAlbum>(ytmKeys.albums, (album, on) => ytm.saveAlbum(album.id, on));
 
   return {
     ...mutation,
-    mutate: ({ album, on }: { album: YouTubeMusicAlbum; on: boolean }) =>
-      mutation.mutate({ item: album, on }),
+    mutate: ({ album, on }: { album: YouTubeMusicAlbum; on: boolean }) => mutation.mutate({ item: album, on }),
   };
 }
 
 export function useToggleYouTubeMusicFollow() {
-  const mutation = useLibraryMutation<YouTubeMusicArtist>(
-    ytmKeys.artists,
-    (artist, on) => ytm.follow(artist.id, on),
-  );
+  const mutation = useLibraryMutation<YouTubeMusicArtist>(ytmKeys.artists, (artist, on) => ytm.follow(artist.id, on));
 
   return {
     ...mutation,
-    mutate: ({ artist, on }: { artist: YouTubeMusicArtist; on: boolean }) =>
-      mutation.mutate({ item: artist, on }),
+    mutate: ({ artist, on }: { artist: YouTubeMusicArtist; on: boolean }) => mutation.mutate({ item: artist, on }),
   };
 }

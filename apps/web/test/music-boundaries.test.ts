@@ -50,12 +50,9 @@ describe("music source boundaries", () => {
       { id: "ytm:video-1", title: "Remote" },
     ];
 
-    await expect(
-      download(
-        { id: "collection", kind: "playlist", name: "Queue", subtitle: "" },
-        songs,
-      ),
-    ).rejects.toThrow("Only songs in your library can be downloaded");
+    await expect(download({ id: "collection", kind: "playlist", name: "Queue", subtitle: "" }, songs)).rejects.toThrow(
+      "Only songs in your library can be downloaded",
+    );
     expect(idbPut).not.toHaveBeenCalled();
     expect(subsonicUrl).not.toHaveBeenCalled();
   });
@@ -64,8 +61,7 @@ describe("music source boundaries", () => {
     const cacheOpen = vi.fn();
     vi.stubGlobal("caches", { open: cacheOpen });
 
-    const { offlineSource, useOffline } =
-      await import("../src/offline/store.ts");
+    const { offlineSource, useOffline } = await import("../src/offline/store.ts");
     useOffline.setState({ songs: new Map([["ytm:video-1", 20]]) });
 
     expect(await offlineSource("ytm:video-1")).toBeNull();

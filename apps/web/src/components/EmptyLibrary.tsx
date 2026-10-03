@@ -39,25 +39,12 @@ export function EmptyLibrary({ compact = false }: { compact?: boolean }) {
   const text = translate("library.emptyHint");
   const acts = (
     <div className="acts">
-      <button
-        type="button"
-        className="btn primary"
-        onClick={() => void navigate("/search")}
-      >
+      <button type="button" className="btn primary" onClick={() => void navigate("/search")}>
         <Icon name="search" size={16} />
         {translate("library.findMusic")}
       </button>
-      <button
-        type="button"
-        className="btn ghost"
-        disabled={scanning}
-        onClick={() => void scan()}
-      >
-        {scanning ? (
-          <span className="spin" />
-        ) : (
-          <Icon name="refresh" size={16} />
-        )}
+      <button type="button" className="btn ghost" disabled={scanning} onClick={() => void scan()}>
+        {scanning ? <span className="spin" /> : <Icon name="refresh" size={16} />}
         {translate(scanning ? "library.scanning" : "library.scan")}
       </button>
     </div>

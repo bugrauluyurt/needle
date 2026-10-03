@@ -1,10 +1,5 @@
 import { memo, useRef, useState } from "react";
-import type {
-  CSSProperties,
-  DragEvent,
-  KeyboardEvent,
-  MouseEvent,
-} from "react";
+import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent } from "react";
 import { Link } from "react-router";
 import type { Song } from "@needle/shared";
 import { songSource } from "@needle/shared";
@@ -52,8 +47,7 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
     y: number;
     fired: boolean;
   } | null>(null);
-  const openMenu = (x: number, y: number) =>
-    openTrackMenu([props.song], { x, y }, props.extra);
+  const openMenu = (x: number, y: number) => openTrackMenu([props.song], { x, y }, props.extra);
   const cancelLongPress = () => {
     if (longPress.current) window.clearTimeout(longPress.current.timer);
   };
@@ -65,13 +59,11 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
     }
 
     if ((event.target as HTMLElement).closest("a,button")) return;
-    if (pointerType.current === "touch" && props.song.isAvailable !== false)
-      props.onPlay(props.index);
+    if (pointerType.current === "touch" && props.song.isAvailable !== false) props.onPlay(props.index);
     else props.onSelect(props.index);
   };
   const playFromKeyboard = (event: KeyboardEvent) => {
-    if (event.key === "Enter" && props.song.isAvailable !== false)
-      props.onPlay(props.index);
+    if (event.key === "Enter" && props.song.isAvailable !== false) props.onPlay(props.index);
   };
   const drag = props.draggable
     ? {
@@ -119,35 +111,22 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
       onPointerMove={(event) => {
         const pressState = longPress.current;
 
-        if (
-          pressState &&
-          Math.hypot(
-            event.clientX - pressState.x,
-            event.clientY - pressState.y,
-          ) > 10
-        )
+        if (pressState && Math.hypot(event.clientX - pressState.x, event.clientY - pressState.y) > 10)
           cancelLongPress();
       }}
       onPointerUp={cancelLongPress}
       onPointerCancel={cancelLongPress}
       onContextMenu={(event) => {
         event.preventDefault();
-        if (pointerType.current !== "touch")
-          openMenu(event.clientX, event.clientY);
+        if (pointerType.current !== "touch") openMenu(event.clientX, event.clientY);
       }}
       onClick={selectOrPlay}
-      onDoubleClick={() =>
-        props.song.isAvailable !== false && props.onPlay(props.index)
-      }
+      onDoubleClick={() => props.song.isAvailable !== false && props.onPlay(props.index)}
       onKeyDown={playFromKeyboard}
       {...drag}
     >
       <span className="n" role="cell">
-        {props.playing && !props.elsewhere ? (
-          <Eq paused={props.paused} />
-        ) : (
-          <span className="num">{props.number}</span>
-        )}
+        {props.playing && !props.elsewhere ? <Eq paused={props.paused} /> : <span className="num">{props.number}</span>}
         <button
           type="button"
           className="row-play"
@@ -159,14 +138,9 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
                 ? translate("track.pause", { title: props.song.title })
                 : translate("track.play", { title: props.song.title })
           }
-          onClick={() =>
-            props.playing ? player.toggle() : props.onPlay(props.index)
-          }
+          onClick={() => (props.playing ? player.toggle() : props.onPlay(props.index))}
         >
-          <Icon
-            name={props.playing && !props.paused ? "pause" : "play"}
-            size={14}
-          />
+          <Icon name={props.playing && !props.paused ? "pause" : "play"} size={14} />
         </button>
       </span>
       <div className="tt" role="cell">
@@ -181,25 +155,17 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
             ) : null}
             <SourceMark source={songSource(props.song)} compact />
             {props.song.artistId ? (
-              <Link to={artistPath(props.song.artistId)}>
-                {artistName(props.song)}
-              </Link>
+              <Link to={artistPath(props.song.artistId)}>{artistName(props.song)}</Link>
             ) : (
               artistName(props.song)
             )}
-            {props.song.isAvailable === false ? (
-              <span>{translate("track.unavailable")}</span>
-            ) : null}
+            {props.song.isAvailable === false ? <span>{translate("track.unavailable")}</span> : null}
           </div>
         </div>
       </div>
       {props.album ? (
         <span className="alb" role="cell">
-          {props.song.albumId ? (
-            <Link to={albumPath(props.song.albumId)}>{props.song.album}</Link>
-          ) : (
-            props.song.album
-          )}
+          {props.song.albumId ? <Link to={albumPath(props.song.albumId)}>{props.song.album}</Link> : props.song.album}
         </span>
       ) : null}
       {props.column ? (
@@ -211,10 +177,7 @@ export const TrackRow = memo(function TrackRow(props: TrackRowProps) {
         <button
           type="button"
           className={props.liked ? "heart liked" : "heart"}
-          aria-label={translate(
-            props.liked ? "track.removeLiked" : "track.addLiked",
-            { title: props.song.title },
-          )}
+          aria-label={translate(props.liked ? "track.removeLiked" : "track.addLiked", { title: props.song.title })}
           aria-pressed={props.liked}
           onClick={() => props.onLike(props.song, !props.liked)}
         >

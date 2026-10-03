@@ -10,18 +10,9 @@ import { useSession } from "../../../state/session.ts";
 import { command, pullFrom, transferTo, useRemote } from "../client.ts";
 import { translate } from "../../../i18n/index.ts";
 
-export const kindIcon = (kind: Device["kind"]): IconName =>
-  kind === "desktop" ? "devices" : "signal";
+export const kindIcon = (kind: Device["kind"]): IconName => (kind === "desktop" ? "devices" : "signal");
 
-function RemoteDevice({
-  d,
-  canSend,
-  active,
-}: {
-  d: Device;
-  canSend: boolean;
-  active: boolean;
-}) {
+function RemoteDevice({ d, canSend, active }: { d: Device; canSend: boolean; active: boolean }) {
   const s = d.state;
   return (
     <li className="dev">
@@ -51,13 +42,8 @@ function RemoteDevice({
             <button
               type="button"
               className="icon-btn"
-              aria-label={translate(
-                s.playing ? "devices.pauseOn" : "devices.playOn",
-                { device: d.name },
-              )}
-              onClick={() =>
-                command(d.id, { action: s.playing ? "pause" : "play" })
-              }
+              aria-label={translate(s.playing ? "devices.pauseOn" : "devices.playOn", { device: d.name })}
+              onClick={() => command(d.id, { action: s.playing ? "pause" : "play" })}
             >
               <Icon name={s.playing ? "pause" : "play"} size={16} />
             </button>
@@ -74,11 +60,7 @@ function RemoteDevice({
       </div>
       <div className="dev-transfer">
         {s ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => pullFrom(d)}
-          >
+          <button type="button" className="btn ghost sm" onClick={() => pullFrom(d)}>
             {translate("common.continueHere")}
           </button>
         ) : null}
@@ -114,13 +96,7 @@ export function DevicesPanel() {
         <div className="dev-head">
           <Icon name={kindIcon(deviceKind())} size={20} />
           <div className="dev-text">
-            <b>
-              {translate(
-                deviceKind() === "phone"
-                  ? "devices.thisPhone"
-                  : "devices.thisDevice",
-              )}
-            </b>
+            <b>{translate(deviceKind() === "phone" ? "devices.thisPhone" : "devices.thisDevice")}</b>
             <span className="ellipsis">{name}</span>
           </div>
           {song && playing ? <Eq /> : null}
@@ -137,21 +113,12 @@ export function DevicesPanel() {
           <h4>{translate("devices.other")}</h4>
           <ul>
             {others.map((d) => (
-              <RemoteDevice
-                key={d.id}
-                d={d}
-                canSend={Boolean(song)}
-                active={d.id === activeId}
-              />
+              <RemoteDevice key={d.id} d={d} canSend={Boolean(song)} active={d.id === activeId} />
             ))}
           </ul>
         </>
       ) : (
-        <p className="dev-empty">
-          {connected
-            ? translate("devices.openAnother")
-            : translate("devices.connecting")}
-        </p>
+        <p className="dev-empty">{connected ? translate("devices.openAnother") : translate("devices.connecting")}</p>
       )}
     </div>
   );
@@ -173,13 +140,7 @@ export function DevicesButton({ trigger }: { trigger?: ReactNode }) {
         )}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content
-          className="popover"
-          side="top"
-          align="end"
-          sideOffset={12}
-          collisionPadding={12}
-        >
+        <Popover.Content className="popover" side="top" align="end" sideOffset={12} collisionPadding={12}>
           <DevicesPanel />
         </Popover.Content>
       </Popover.Portal>

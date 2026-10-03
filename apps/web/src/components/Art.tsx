@@ -5,8 +5,7 @@ import { hashPalette } from "../lib/palette.ts";
 import { image } from "../features/spotify/api/client.ts";
 import { Icon } from "./Icon.tsx";
 
-const dpr =
-  typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);
+const dpr = typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);
 const LARGEST = 900;
 const STEPS = [64, 128, 256, 384, 600, LARGEST];
 
@@ -51,16 +50,11 @@ export function artSrcSet({
 
         return true;
       })
-      .sort(
-        (firstArtistImage, secondArtistImage) =>
-          firstArtistImage.width - secondArtistImage.width,
-      );
+      .sort((firstArtistImage, secondArtistImage) => firstArtistImage.width - secondArtistImage.width);
 
     if (imageCandidates.length < 2) return undefined;
 
-    return imageCandidates
-      .map((artistImage) => `${artistImage.url} ${artistImage.width}w`)
-      .join(", ");
+    return imageCandidates.map((artistImage) => `${artistImage.url} ${artistImage.width}w`).join(", ");
   }
 
   if (!artId || /^https?:\/\//.test(artId)) return undefined;
@@ -69,9 +63,7 @@ export function artSrcSet({
     const coverSource = coverUrl(artId, imageWidth, artVersion);
 
     return coverSource ? `${coverSource} ${imageWidth}w` : null;
-  }).filter((coverCandidate): coverCandidate is string =>
-    Boolean(coverCandidate),
-  );
+  }).filter((coverCandidate): coverCandidate is string => Boolean(coverCandidate));
 
   return coverCandidates.length > 1 ? coverCandidates.join(", ") : undefined;
 }
@@ -103,17 +95,10 @@ function ArtImpl({
   eager = false,
   fallback = "album",
 }: ArtProps) {
-  const url = images
-    ? (image(images, artSize(px)) ?? null)
-    : coverUrl(id, artSize(px), version);
+  const url = images ? (image(images, artSize(px)) ?? null) : coverUrl(id, artSize(px), version);
   const srcSet = sizes ? artSrcSet({ id, images, version }) : undefined;
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
-  const cls = [
-    "art",
-    round ? "round" : "",
-    state === "done" ? "loaded" : "",
-    className ?? "",
-  ]
+  const cls = ["art", round ? "round" : "", state === "done" ? "loaded" : "", className ?? ""]
     .filter(Boolean)
     .join(" ");
   return (
@@ -164,21 +149,11 @@ export function Collage({
 }) {
   const tiles: Tile[] = [
     ...urls.map((url) => ({ key: url, images: [{ url }] })),
-    ...ids
-      .filter((id): id is string => Boolean(id))
-      .map((id) => ({ key: id, id })),
+    ...ids.filter((id): id is string => Boolean(id)).map((id) => ({ key: id, id })),
   ].slice(0, 4);
   if (tiles.length < 4) {
     const first = tiles[0];
-    return (
-      <Art
-        id={first?.id}
-        images={first?.images}
-        px={px}
-        eager={eager}
-        {...(className ? { className } : {})}
-      />
-    );
+    return <Art id={first?.id} images={first?.images} px={px} eager={eager} {...(className ? { className } : {})} />;
   }
   return (
     <div className={`art collage ${className ?? ""}`}>

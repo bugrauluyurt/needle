@@ -60,8 +60,7 @@ async function playing() {
     setTimeout,
     clearTimeout,
   });
-  const { prepareSpotify, spotifyPlayer } =
-    await import("../src/player/spotify.ts");
+  const { prepareSpotify, spotifyPlayer } = await import("../src/player/spotify.ts");
   const events = {
     state: vi.fn(),
     ended: vi.fn(),

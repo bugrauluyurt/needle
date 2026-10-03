@@ -25,12 +25,7 @@ export function shuffleArray<T>(arr: T[], random = Math.random): T[] {
   return out;
 }
 
-export function start(
-  songs: Song[],
-  startIndex: number,
-  shuffle: boolean,
-  random = Math.random,
-): QueueState {
+export function start(songs: Song[], startIndex: number, shuffle: boolean, random = Math.random): QueueState {
   const items = songs.map((s) => makeItem(s));
   if (!shuffle)
     return {
@@ -49,8 +44,7 @@ export function start(
 
 export function userItemsAfter(q: QueueState): number {
   let n = 0;
-  for (let i = q.index + 1; i < q.items.length && q.items[i]?.fromUser; i++)
-    n++;
+  for (let i = q.index + 1; i < q.items.length && q.items[i]?.fromUser; i++) n++;
   return n;
 }
 
@@ -109,11 +103,7 @@ export function clearUserQueue(q: QueueState): QueueState {
   };
 }
 
-export function setShuffle(
-  q: QueueState,
-  on: boolean,
-  random = Math.random,
-): QueueState {
+export function setShuffle(q: QueueState, on: boolean, random = Math.random): QueueState {
   const current = q.items[q.index];
   if (!current) return { ...q, original: on ? q.items : null };
   if (on) {
@@ -134,9 +124,7 @@ export function setShuffle(
   const pendingUser = q.items.slice(q.index + 1).filter((it) => it.fromUser);
   const pendingUids = new Set(pendingUser.map((it) => it.uid));
   const rest = original.slice(pos + 1).filter((it) => !pendingUids.has(it.uid));
-  const before = original
-    .slice(0, pos)
-    .filter((it) => !pendingUids.has(it.uid));
+  const before = original.slice(0, pos).filter((it) => !pendingUids.has(it.uid));
   return {
     items: [...before, current, ...pendingUser, ...rest],
     index: before.length,

@@ -4,27 +4,11 @@ import { translate } from "../i18n/index.ts";
 import type { TranslationKey } from "../i18n/locales/en.ts";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
-import {
-  CollectionTools,
-  ItemList,
-  sortItems,
-  useCollectionView,
-} from "../components/Collection.tsx";
-import type {
-  CollectionItem,
-  CollectionOrder,
-  ShowFilter,
-  SortOption,
-} from "../components/Collection.tsx";
+import { CollectionTools, ItemList, sortItems, useCollectionView } from "../components/Collection.tsx";
+import type { CollectionItem, CollectionOrder, ShowFilter, SortOption } from "../components/Collection.tsx";
 import type { IconName } from "../components/Icon.tsx";
 import { useOffline } from "../offline/store.ts";
-import {
-  useAllAlbums,
-  useArtists,
-  useCreatePlaylist,
-  usePlaylists,
-  useStarred,
-} from "../queries/hooks.ts";
+import { useAllAlbums, useArtists, useCreatePlaylist, usePlaylists, useStarred } from "../queries/hooks.ts";
 import {
   useSpotifyAlbums,
   useSpotifyFollowed,
@@ -47,11 +31,7 @@ import {
 import { matchesTerms, queryTerms } from "@needle/shared";
 import { spId } from "../features/spotify/api/client.ts";
 import { plural } from "../lib/format.ts";
-import type {
-  CollectionView,
-  LibraryFilter,
-  LibraryOrigin,
-} from "../state/ui.ts";
+import type { CollectionView, LibraryFilter, LibraryOrigin } from "../state/ui.ts";
 import { useUi } from "../state/ui.ts";
 
 export type LibraryEntry = CollectionItem & {
@@ -86,8 +66,7 @@ export function useLibraryOrigin(): {
   const spotifyOn = useSpotifyOn();
   const youtubeMusicOn = useYouTubeMusicOn();
 
-  if (!spotifyOn && !youtubeMusicOn)
-    return { origin: "server", show: undefined };
+  if (!spotifyOn && !youtubeMusicOn) return { origin: "server", show: undefined };
 
   const options = originOptions().filter(
     ([origin]) =>
@@ -95,9 +74,7 @@ export function useLibraryOrigin(): {
       (origin === "spotify" && spotifyOn) ||
       (origin === "youtubeMusic" && youtubeMusicOn),
   );
-  const origin = options.some(([availableOrigin]) => availableOrigin === picked)
-    ? picked
-    : "all";
+  const origin = options.some(([availableOrigin]) => availableOrigin === picked) ? picked : "all";
 
   return {
     origin,
@@ -127,11 +104,9 @@ export function useLibraryEntries(
   const { data: spArtists = [] } = useSpotifyFollowed();
   const spotifyOn = useSpotifyOn();
   const { data: youtubeLiked } = useYouTubeMusicLiked(youtubeMusicLimit);
-  const { data: youtubePlaylists = [] } =
-    useYouTubeMusicPlaylists(youtubeMusicLimit);
+  const { data: youtubePlaylists = [] } = useYouTubeMusicPlaylists(youtubeMusicLimit);
   const { data: youtubeAlbums = [] } = useYouTubeMusicAlbums(youtubeMusicLimit);
-  const { data: youtubeArtists = [] } =
-    useYouTubeMusicArtists(youtubeMusicLimit);
+  const { data: youtubeArtists = [] } = useYouTubeMusicArtists(youtubeMusicLimit);
   return useMemo(() => {
     const down = new Set(collections.map((c) => c.id));
     const entries: LibraryEntry[] = [
@@ -214,9 +189,7 @@ export function useLibraryEntries(
         to: `/playlist/${p.id}`,
         art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />,
         title: p.name,
-        subtitle: p.owner
-          ? translate("search.playlistOwner", { owner: p.owner })
-          : translate("playlist.kind"),
+        subtitle: p.owner ? translate("search.playlistOwner", { owner: p.owner }) : translate("playlist.kind"),
         by: p.owner ?? "",
         kind: "playlists",
         contextId: p.id,
@@ -344,20 +317,11 @@ export function useLibraryEntries(
     const terms = queryTerms(query);
     const matches = (e: LibraryEntry) => {
       if (e.spotify && !spotifyOn) return false;
-      if (
-        origin !== "all" &&
-        (origin === "server" ? "library" : origin) !== (e.source ?? "library")
-      )
-        return false;
+      if (origin !== "all" && (origin === "server" ? "library" : origin) !== (e.source ?? "library")) return false;
       if (filter === "downloaded") return e.downloaded;
       return !filter || e.kind === filter;
     };
-    const rank = (e: LibraryEntry) =>
-      e.pinned
-        ? 0
-        : e.source === "spotify" || e.source === "youtubeMusic"
-          ? 2
-          : 1;
+    const rank = (e: LibraryEntry) => (e.pinned ? 0 : e.source === "spotify" || e.source === "youtubeMusic" ? 2 : 1);
     const shown = entries
       .filter(matches)
       .filter((e) => matchesTerms(terms, e.title, e.subtitle))
@@ -398,20 +362,16 @@ export function LibraryChips() {
   const previousLibraryFiltersButton = useRef<HTMLButtonElement>(null);
   const moreLibraryFiltersButton = useRef<HTMLButtonElement>(null);
   const pendingLibraryFilterFocus = useRef<"previous" | "more" | null>(null);
-  const [canShowPreviousLibraryFilters, setCanShowPreviousLibraryFilters] =
-    useState(false);
-  const [canShowMoreLibraryFilters, setCanShowMoreLibraryFilters] =
-    useState(false);
+  const [canShowPreviousLibraryFilters, setCanShowPreviousLibraryFilters] = useState(false);
+  const [canShowMoreLibraryFilters, setCanShowMoreLibraryFilters] = useState(false);
   const updateLibraryFilterScrollControls = useCallback(() => {
     const libraryFilterScrollerElement = libraryFilterScroller.current;
 
     if (!libraryFilterScrollerElement) return;
 
-    const hasPreviousLibraryFilters =
-      libraryFilterScrollerElement.scrollLeft > 1;
+    const hasPreviousLibraryFilters = libraryFilterScrollerElement.scrollLeft > 1;
     const hasMoreLibraryFilters =
-      libraryFilterScrollerElement.scrollLeft +
-        libraryFilterScrollerElement.clientWidth <
+      libraryFilterScrollerElement.scrollLeft + libraryFilterScrollerElement.clientWidth <
       libraryFilterScrollerElement.scrollWidth - 1;
 
     setCanShowPreviousLibraryFilters(hasPreviousLibraryFilters);
@@ -425,9 +385,7 @@ export function LibraryChips() {
 
     updateLibraryFilterScrollControls();
 
-    const libraryFilterResizeObserver = new ResizeObserver(
-      updateLibraryFilterScrollControls,
-    );
+    const libraryFilterResizeObserver = new ResizeObserver(updateLibraryFilterScrollControls);
 
     libraryFilterResizeObserver.observe(libraryFilterScrollerElement);
 
@@ -435,18 +393,12 @@ export function LibraryChips() {
   }, [libraryFilter, updateLibraryFilterScrollControls]);
 
   useLayoutEffect(() => {
-    if (
-      pendingLibraryFilterFocus.current === "previous" &&
-      canShowPreviousLibraryFilters
-    ) {
+    if (pendingLibraryFilterFocus.current === "previous" && canShowPreviousLibraryFilters) {
       previousLibraryFiltersButton.current?.focus();
       pendingLibraryFilterFocus.current = null;
     }
 
-    if (
-      pendingLibraryFilterFocus.current === "more" &&
-      canShowMoreLibraryFilters
-    ) {
+    if (pendingLibraryFilterFocus.current === "more" && canShowMoreLibraryFilters) {
       moreLibraryFiltersButton.current?.focus();
       pendingLibraryFilterFocus.current = null;
     }
@@ -457,27 +409,19 @@ export function LibraryChips() {
 
     if (!libraryFilterScrollerElement) return;
 
-    pendingLibraryFilterFocus.current =
-      libraryFilterScrollDirection < 0 ? "more" : "previous";
+    pendingLibraryFilterFocus.current = libraryFilterScrollDirection < 0 ? "more" : "previous";
     libraryFilterScrollerElement.scrollBy({
-      left:
-        libraryFilterScrollDirection * libraryFilterScrollerElement.clientWidth,
+      left: libraryFilterScrollDirection * libraryFilterScrollerElement.clientWidth,
       behavior: "smooth",
     });
   };
 
-  const activeLibraryFilter = FILTERS.find(
-    ([filterId]) => filterId === libraryFilter,
-  );
+  const activeLibraryFilter = FILTERS.find(([filterId]) => filterId === libraryFilter);
 
   return (
     <div className="library-chips">
       {activeLibraryFilter ? (
-        <div
-          className="chips selected"
-          role="group"
-          aria-label={translate("library.filter")}
-        >
+        <div className="chips selected" role="group" aria-label={translate("library.filter")}>
           <button
             type="button"
             className="icon-btn library-filter-clear"
@@ -545,8 +489,7 @@ export function LibraryChips() {
 }
 
 export function libraryEmptyText(filter: LibraryFilter, query: string): string {
-  if (query.trim())
-    return translate("search.libraryNoMatch", { query: query.trim() });
+  if (query.trim()) return translate("search.libraryNoMatch", { query: query.trim() });
 
   switch (filter) {
     case "albums":
@@ -573,15 +516,7 @@ export function useNewPlaylist() {
     );
 }
 
-function Nav({
-  to,
-  icon,
-  label,
-}: {
-  to: string;
-  icon: IconName;
-  label: string;
-}) {
+function Nav({ to, icon, label }: { to: string; icon: IconName; label: string }) {
   return (
     <NavLink
       to={to}
@@ -610,25 +545,13 @@ export function Sidebar() {
           <span>Needle</span>
         </Link>
         <Nav to="/" icon="home" label={translate("navigation.home")} />
-        <Nav
-          to="/search"
-          icon="search"
-          label={translate("navigation.search")}
-        />
-        <Nav
-          to="/stats"
-          icon="chart"
-          label={translate("navigation.yourListening")}
-        />
+        <Nav to="/search" icon="search" label={translate("navigation.search")} />
+        <Nav to="/stats" icon="chart" label={translate("navigation.yourListening")} />
         <Nav to="/radio" icon="radio" label={translate("navigation.radio")} />
       </div>
       <div className="panel side-lib">
         <div className="lib-head">
-          <Link
-            to="/library"
-            className="lib-title"
-            aria-label={translate("navigation.yourLibrary")}
-          >
+          <Link to="/library" className="lib-title" aria-label={translate("navigation.yourLibrary")}>
             <Icon name="library" size={22} />
             <span>{translate("navigation.yourLibrary")}</span>
           </Link>
@@ -653,12 +576,7 @@ export function Sidebar() {
         </div>
         <LibraryChips />
         <div className="lib-tools">
-          <CollectionTools
-            sorts={librarySorts()}
-            order={order}
-            onOrder={setOrder}
-            show={show}
-          />
+          <CollectionTools sorts={librarySorts()} order={order} onOrder={setOrder} show={show} />
         </div>
         <ItemList items={entries} empty={libraryEmptyText(filter, "")} />
       </div>

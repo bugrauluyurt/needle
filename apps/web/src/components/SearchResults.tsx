@@ -10,14 +10,7 @@ import { player } from "../player/controller.ts";
 import type { PlayContext } from "../player/store.ts";
 import { usePlaylists, useSearch } from "../queries/hooks.ts";
 import { Art } from "./Art.tsx";
-import {
-  albumItem,
-  artistItem,
-  CardRow,
-  ItemCard,
-  playArtist,
-  RowHeader,
-} from "./Cards.tsx";
+import { albumItem, artistItem, CardRow, ItemCard, playArtist, RowHeader } from "./Cards.tsx";
 import { Collection, CollectionTools, SORT_LABELS } from "./Collection.tsx";
 import type { CollectionItem, SortOption } from "./Collection.tsx";
 import { Icon } from "./Icon.tsx";
@@ -27,14 +20,7 @@ import { SearchField } from "./SearchField.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
 import { translate } from "../i18n/index.ts";
 
-export const FILTERS = [
-  "All",
-  "Songs",
-  "Albums",
-  "Artists",
-  "Playlists",
-  "Get music",
-] as const;
+export const FILTERS = ["All", "Songs", "Albums", "Artists", "Playlists", "Get music"] as const;
 export type Filter = (typeof FILTERS)[number];
 export const LIBRARY_FILTERS = FILTERS.filter((f) => f !== "Get music");
 
@@ -112,22 +98,11 @@ function TopResult({ top }: { top: Top }) {
   );
 }
 
-function SongsMini({
-  songs,
-  context,
-}: {
-  songs: Song[];
-  context: PlayContext;
-}) {
+function SongsMini({ songs, context }: { songs: Song[]; context: PlayContext }) {
   return (
     <div className="songs-mini">
       {songs.slice(0, 4).map((s, i) => (
-        <button
-          key={s.id}
-          type="button"
-          className="song-mini"
-          onClick={() => player.playSongs(songs, i, context)}
-        >
+        <button key={s.id} type="button" className="song-mini" onClick={() => player.playSongs(songs, i, context)}>
           <Art id={s.coverArt} px={40} />
           <div className="mini-text">
             <div className="t">{s.title}</div>
@@ -201,9 +176,7 @@ const searchSorts = (): Record<Exclude<SearchKind, "Songs">, SortOption[]> => ({
 export function cardBlock(
   kind: Exclude<SearchKind, "Songs">,
   items: CollectionItem[],
-  {
-    source = "library",
-  }: { source?: "library" | "spotify" | "youtubeMusic" } = {},
+  { source = "library" }: { source?: "library" | "spotify" | "youtubeMusic" } = {},
 ): Block {
   return {
     kind,
@@ -220,11 +193,7 @@ export function cardBlock(
         id={`search-${source}-${kind.toLowerCase()}`}
         title={searchKindLabel(kind)}
         items={items}
-        sorts={
-          source !== "library"
-            ? [["default", translate("collection.mostRelevant")]]
-            : searchSorts()[kind]
-        }
+        sorts={source !== "library" ? [["default", translate("collection.mostRelevant")]] : searchSorts()[kind]}
       />
     ),
   };
@@ -265,13 +234,8 @@ export function Source({
         </p>
       );
     if (status === "error")
-      return (
-        <p className="muted source-note">
-          {translate("search.sourceError", { source: sourceName })}
-        </p>
-      );
-    if (!visible.length)
-      return <p className="muted source-note">{empty(kind)}</p>;
+      return <p className="muted source-note">{translate("search.sourceError", { source: sourceName })}</p>;
+    if (!visible.length) return <p className="muted source-note">{empty(kind)}</p>;
     if (kind) return visible[0]?.all;
     return (
       <>
@@ -292,9 +256,7 @@ export function Source({
                       type="button"
                       className="show-all"
                       aria-label={`${translate("common.showAll")} ${translate("catalog.songs")} ${sourceLabel}`}
-                      onClick={() =>
-                        onShowAll ? onShowAll("Songs") : setFilter("Songs")
-                      }
+                      onClick={() => (onShowAll ? onShowAll("Songs") : setFilter("Songs"))}
                     >
                       {translate("common.showAll")}
                     </button>
@@ -316,9 +278,7 @@ export function Source({
                     type="button"
                     className="show-all"
                     aria-label={`${translate("common.showAll")} ${searchKindLabel(b.kind)} ${sourceLabel}`}
-                    onClick={() =>
-                      onShowAll ? onShowAll(b.kind) : setFilter(b.kind)
-                    }
+                    onClick={() => (onShowAll ? onShowAll(b.kind) : setFilter(b.kind))}
                   >
                     {translate("common.showAll")}
                   </button>
@@ -331,10 +291,7 @@ export function Source({
     );
   };
   return (
-    <section
-      className={heading ? "res-source" : "res-source bare"}
-      aria-label={title}
-    >
+    <section className={heading ? "res-source" : "res-source bare"} aria-label={title}>
       {heading ? (
         <div className="source-h">
           <h2>{title}</h2>
@@ -352,19 +309,10 @@ const releasedColumn = (): TrackColumn => ({
   sort: "year",
 });
 
-function LibrarySearchSongs({
-  songs,
-  context,
-}: {
-  songs: Song[];
-  context: PlayContext;
-}) {
+function LibrarySearchSongs({ songs, context }: { songs: Song[]; context: PlayContext }) {
   const [query, setQuery] = useState("");
   const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
-  const matchingSongs = useMemo(
-    () => shownSongs(songs, order, query),
-    [songs, order, query],
-  );
+  const matchingSongs = useMemo(() => shownSongs(songs, order, query), [songs, order, query]);
 
   return (
     <>
@@ -379,11 +327,7 @@ function LibrarySearchSongs({
               onChange={setQuery}
               label={translate("search.findResults")}
             />
-            <CollectionTools
-              sorts={searchSongSorts()}
-              order={order}
-              onOrder={setOrder}
-            />
+            <CollectionTools sorts={searchSongSorts()} order={order} onOrder={setOrder} />
           </div>
         }
       />
@@ -397,9 +341,7 @@ function LibrarySearchSongs({
         onOrder={setOrder}
       />
       {!matchingSongs.length ? (
-        <p className="muted source-note">
-          {translate("search.noMatchingSongs", { query })}
-        </p>
+        <p className="muted source-note">{translate("search.noMatchingSongs", { query })}</p>
       ) : null}
     </>
   );
@@ -420,9 +362,7 @@ export function LibrarySource({
 }) {
   const { data, isError } = useSearch(q);
   const { data: playlists = [] } = usePlaylists();
-  const matchingPlaylists = playlists.filter((p) =>
-    p.name.toLowerCase().includes(q.toLowerCase()),
-  );
+  const matchingPlaylists = playlists.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
   const songs = data?.song ?? [];
   const albums = data?.album ?? [];
   const artists = data?.artist ?? [];
@@ -430,8 +370,7 @@ export function LibrarySource({
     kind: "search",
     name: translate("search.context", { query: q }),
   };
-  const artist =
-    artists.find((a) => a.name.toLowerCase() === q.toLowerCase()) ?? artists[0];
+  const artist = artists.find((a) => a.name.toLowerCase() === q.toLowerCase()) ?? artists[0];
   const song = songs[0];
   const top: Top | undefined = artist
     ? {
@@ -480,9 +419,7 @@ export function LibrarySource({
         to: `/playlist/${p.id}`,
         art: (px) => <Art id={p.coverArt} version={p.changed} px={px} />,
         title: p.name,
-        subtitle: p.owner
-          ? translate("search.playlistOwner", { owner: p.owner })
-          : translate("playlist.kind"),
+        subtitle: p.owner ? translate("search.playlistOwner", { owner: p.owner }) : translate("playlist.kind"),
         by: p.owner ?? "",
       })),
     ),

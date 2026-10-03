@@ -39,13 +39,7 @@ export function Hero({
         <div className="hero-art">{art}</div>
         <div className="hero-text">
           <div className="kind">{kind}</div>
-          <h1
-            style={
-              { "--title": `${titleSize(title)}px` } as React.CSSProperties
-            }
-          >
-            {title}
-          </h1>
+          <h1 style={{ "--title": `${titleSize(title)}px` } as React.CSSProperties}>{title}</h1>
           {description ? <p className="desc">{description}</p> : null}
           <div className="meta">{meta}</div>
         </div>
@@ -105,13 +99,7 @@ export function ShuffleButton({
   );
 }
 
-export function ActBar({
-  children,
-  end,
-}: {
-  children: ReactNode;
-  end?: ReactNode;
-}) {
+export function ActBar({ children, end }: { children: ReactNode; end?: ReactNode }) {
   return (
     <div className="actbar">
       {children}
@@ -148,14 +136,9 @@ export function NotFoundState({
 }) {
   const mobile = useIsMobile();
   const navigate = useNavigate();
-  const missing =
-    !error || (error instanceof SubsonicError && error.code === 70);
+  const missing = !error || (error instanceof SubsonicError && error.code === 70);
   const back = (
-    <button
-      type="button"
-      className="btn ghost"
-      onClick={() => void navigate(-1)}
-    >
+    <button type="button" className="btn ghost" onClick={() => void navigate(-1)}>
       {translate("common.goBack")}
     </button>
   );
@@ -185,9 +168,7 @@ export function NotFoundState({
                 <button
                   type="button"
                   className="btn primary"
-                  onClick={() =>
-                    void navigate(`/search?q=${encodeURIComponent(name)}`)
-                  }
+                  onClick={() => void navigate(`/search?q=${encodeURIComponent(name)}`)}
                 >
                   <Icon name="search" size={16} />
                   {translate("empty.searchFor", { name })}

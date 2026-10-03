@@ -8,15 +8,10 @@ export function SpotifyNotice() {
   if (!on || !blocked) return null;
   const retryAt = new Date(until);
   return (
-    <aside
-      className="spotify-notice"
-      role="status"
-      aria-live="polite"
-      aria-label={translate("spotify.status")}
-    >
+    <aside className="spotify-notice" role="status" aria-live="polite" aria-label={translate("spotify.status")}>
       <strong>{translate("spotify.paused")}</strong>
       <p>
-        {translate("spotify.pausedHintPrefix")} {" "}
+        {translate("spotify.pausedHintPrefix")}{" "}
         <time dateTime={retryAt.toISOString()}>
           {retryAt.toLocaleString(i18next.resolvedLanguage, {
             month: "short",

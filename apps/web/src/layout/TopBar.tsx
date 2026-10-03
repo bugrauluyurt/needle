@@ -49,25 +49,15 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
           type="button"
           className="avatar"
           style={{ width: size, height: size }}
-          aria-label={translate(
-            update ? "account.labelUpdate" : "account.label",
-            { user },
-          )}
+          aria-label={translate(update ? "account.labelUpdate" : "account.label", { user })}
         >
           <AvatarFace px={size} />
           {update ? <span className="update-dot" aria-hidden="true" /> : null}
         </button>
       </DM.Trigger>
       <DM.Portal>
-        <DM.Content
-          className="menu"
-          align="end"
-          sideOffset={8}
-          collisionPadding={12}
-        >
-          <DM.Label className="menu-heading">
-            {translate("account.signedInAs", { user })}
-          </DM.Label>
+        <DM.Content className="menu" align="end" sideOffset={8} collisionPadding={12}>
+          <DM.Label className="menu-heading">{translate("account.signedInAs", { user })}</DM.Label>
           {update ? (
             <>
               <DM.Item className="menu-item update-item" onSelect={update}>
@@ -80,54 +70,33 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
               <DM.Separator className="menu-sep" />
             </>
           ) : null}
-          <DM.Item
-            className="menu-item"
-            onSelect={() => void navigate("/stats")}
-          >
+          <DM.Item className="menu-item" onSelect={() => void navigate("/stats")}>
             <Icon name="chart" size={18} />
-            <span className="menu-label">
-              {translate("common.yourListening")}
-            </span>
+            <span className="menu-label">{translate("common.yourListening")}</span>
           </DM.Item>
           {canRequest ? (
-            <DM.Item
-              className="menu-item"
-              onSelect={() => void navigate("/requests")}
-            >
+            <DM.Item className="menu-item" onSelect={() => void navigate("/requests")}>
               <Icon name="import" size={18} />
               <span className="menu-label">{translate("common.requests")}</span>
             </DM.Item>
           ) : null}
-          <DM.Item
-            className="menu-item"
-            onSelect={() => void navigate("/downloads")}
-          >
+          <DM.Item className="menu-item" onSelect={() => void navigate("/downloads")}>
             <Icon name="download" size={18} />
             <span className="menu-label">{translate("common.downloads")}</span>
           </DM.Item>
-          <DM.Item
-            className="menu-item"
-            onSelect={() => void navigate("/settings")}
-          >
+          <DM.Item className="menu-item" onSelect={() => void navigate("/settings")}>
             <Icon name="settings" size={18} />
             <span className="menu-label">{translate("common.settings")}</span>
           </DM.Item>
           {!mobile ? (
-            <DM.Item
-              className="menu-item"
-              onSelect={() => useUi.setState({ shortcutsOpen: true })}
-            >
+            <DM.Item className="menu-item" onSelect={() => useUi.setState({ shortcutsOpen: true })}>
               <Icon name="keyboard" size={18} />
-              <span className="menu-label">
-                {translate("common.keyboardShortcuts")}
-              </span>
+              <span className="menu-label">{translate("common.keyboardShortcuts")}</span>
             </DM.Item>
           ) : null}
           <DM.Item className="menu-item" onSelect={() => location.reload()}>
             <Icon name="refresh" size={18} />
-            <span className="menu-label">
-              {translate("common.refreshPage")}
-            </span>
+            <span className="menu-label">{translate("common.refreshPage")}</span>
           </DM.Item>
           <DM.Separator className="menu-sep" />
           <DM.Item className="menu-item" onSelect={signOut}>
@@ -144,14 +113,7 @@ const SEARCH_PROXY = "search-focus-proxy";
 
 export function SearchFocusProxy() {
   return (
-    <input
-      id={SEARCH_PROXY}
-      className="search-proxy"
-      type="text"
-      tabIndex={-1}
-      aria-hidden="true"
-      autoComplete="off"
-    />
+    <input id={SEARCH_PROXY} className="search-proxy" type="text" tabIndex={-1} aria-hidden="true" autoComplete="off" />
   );
 }
 
@@ -177,13 +139,7 @@ function OpenSearchField() {
   );
 }
 
-export function TopBar({
-  children,
-  extra,
-}: {
-  children?: ReactNode;
-  extra?: ReactNode;
-}) {
+export function TopBar({ children, extra }: { children?: ReactNode; extra?: ReactNode }) {
   const navigate = useNavigate();
   const idx = historyIdx();
   const bar = useRef<HTMLElement>(null);

@@ -5,8 +5,7 @@ export const turkish = {
   "app.home": "Needle ana sayfası",
   "app.title": "Needle",
   "account.label": "Hesap, {{user}} olarak oturum açıldı",
-  "account.labelUpdate":
-    "Hesap, {{user}} olarak oturum açıldı, güncelleme hazır",
+  "account.labelUpdate": "Hesap, {{user}} olarak oturum açıldı, güncelleme hazır",
   "account.signedInAs": "{{user}} olarak oturum açıldı",
   "account.update": "Needle'ı güncelle",
   "account.updateHint": "Yeni bir sürüm hazır. Sayfayı yeniden yükler.",
@@ -54,8 +53,7 @@ export const turkish = {
   "catalog.releaseDate": "Yayın tarihi",
   "catalog.similarInLibrary": "Arşivindeki benzer sanatçılar",
   "catalog.similarMissing": "Arşivinde olmayan benzer sanatçılar",
-  "catalog.similarMissingHint":
-    "Last.fm tarafından seçildi. Albüm ve şarkılarını bulmak için birini açın.",
+  "catalog.similarMissingHint": "Last.fm tarafından seçildi. Albüm ve şarkılarını bulmak için birini açın.",
   "catalog.singlesEps": "Tekliler ve EP'ler",
   "catalog.songs": "Şarkılar",
   "catalog.suggested": "Önerilen",
@@ -70,8 +68,7 @@ export const turkish = {
   "catalog.lidarrFetch": "Lidarr bunları alabilir",
   "catalog.loadSongsFailed": "Bu sanatçının şarkıları yüklenemedi.",
   "catalog.loadingSongs": "Şarkılar yükleniyor…",
-  "catalog.moreByMissing":
-    "{{artist}} sanatçısının sende olmayan diğer albümleri",
+  "catalog.moreByMissing": "{{artist}} sanatçısının sende olmayan diğer albümleri",
   "catalog.readMore": "Devamını oku",
   "catalog.trackOrder": "Parça sırası",
   "empty.addressHeading": "Bu adreste bir şey yok",
@@ -81,15 +78,13 @@ export const turkish = {
   "empty.musicConnectionHeading": "Müziğine ulaşılamadı",
   "empty.musicConnectionText":
     "Navidrome yanıt vermedi. Navidrome'un çalıştığını ve Needle sunucusunun ona ulaşabildiğini kontrol edin.",
-  "empty.notFoundText":
-    "Navidrome'dan kaldırılmış veya bağlantı hatalı olabilir.",
+  "empty.notFoundText": "Navidrome'dan kaldırılmış veya bağlantı hatalı olabilir.",
   "error.navidromeAnswered": "Navidrome {{status}} yanıtını verdi",
   "error.navidromeRequestFailed": "Navidrome isteği başarısız oldu",
   "error.serverAnswered": "Needle sunucusu {{status}} yanıtını verdi",
   "error.downloadFailed": "İndirme başarısız oldu ({{status}})",
   "error.spotifyAnswered": "Spotify {{status}} yanıtını verdi",
-  "empty.searchArtist":
-    "Bu sanatçının müziği arşivinizde yok. Albümlerini ve şarkılarını bulmak için arayın.",
+  "empty.searchArtist": "Bu sanatçının müziği arşivinizde yok. Albümlerini ve şarkılarını bulmak için arayın.",
   "language.english": "İngilizce",
   "language.label": "Dil",
   "language.turkish": "Türkçe",
@@ -110,8 +105,7 @@ export const turkish = {
   "library.likedArtists": "Beğenilen sanatçılar",
   "library.findLikedArtists": "Beğenilen sanatçılarda ara",
   "library.findLikedSongs": "Beğenilen şarkılarda ara",
-  "library.noLikedArtists":
-    "Beğendiğiniz sanatçılar burada görünür. Bir sanatçı sayfasında kalbe dokunun.",
+  "library.noLikedArtists": "Beğendiğiniz sanatçılar burada görünür. Bir sanatçı sayfasında kalbe dokunun.",
   "library.noLikedArtistMatch": "Aramanızla eşleşen beğenilmiş sanatçı yok.",
   "albumGrid.all": "Tüm albümler",
   "albumGrid.decade": "{{year}}'ler",
@@ -128,8 +122,7 @@ export const turkish = {
   "library.likedSpotify": "Spotify'da beğenilen şarkılar",
   "library.likedYouTube": "YouTube Music'te beğenilen şarkılar",
   "library.likedSongsEmpty": "Beğendiğiniz şarkılar burada görünür",
-  "library.likedSongsHint":
-    "Bir şarkıyı Beğenilen şarkılara kaydetmek için kalbe dokunun.",
+  "library.likedSongsHint": "Bir şarkıyı Beğenilen şarkılara kaydetmek için kalbe dokunun.",
   "library.loadYouTube": "YouTube Music'ten daha fazla yükle",
   "library.noDownloadsMatch": "Aramanızla eşleşen indirme yok.",
   "library.noLikedSpotify": "Spotify'da henüz beğenilen şarkı yok.",
@@ -165,26 +158,22 @@ export const turkish = {
   "library.findMusic": "Eklenecek müzik bul",
   "library.scan": "Arşivi yeniden tara",
   "library.scanning": "Taranıyor…",
-  "login.badCredentials":
-    "Bu kullanıcı adı ve parola bir Navidrome hesabıyla eşleşmiyor.",
+  "login.badCredentials": "Bu kullanıcı adı ve parola bir Navidrome hesabıyla eşleşmiyor.",
   "login.busy": "Oturum açılıyor…",
   "login.failed":
     "Navidrome'a ulaşılamadı. Navidrome'un çalıştığını ve Needle sunucusunun ona ulaşabildiğini kontrol edin.",
   "login.heading": "Müziğine giriş yap",
   "login.password": "Parola",
   "login.passwordHint": "Navidrome parolanız",
-  "login.privacy":
-    "Parolanız yalnızca Navidrome sunucunuza gider. Needle parolayı değil, bir jetonu saklar.",
+  "login.privacy": "Parolanız yalnızca Navidrome sunucunuza gider. Needle parolayı değil, bir jetonu saklar.",
   "login.server": "Sunucu",
   "login.submit": "Oturum aç",
   "login.subtitle": "Navidrome hesabınızı kullanın.",
   "login.username": "Kullanıcı adı",
-  "lyrics.fileHint":
-    "Needle şarkı dosyasında veya yanındaki .lrc dosyasında kayıtlı sözleri gösterir.",
+  "lyrics.fileHint": "Needle şarkı dosyasında veya yanındaki .lrc dosyasında kayıtlı sözleri gösterir.",
   "lyrics.none": "Bu şarkı için söz yok",
   "lyrics.playSong": "Şarkı sözlerini burada görmek için bir şarkı çal",
-  "lyrics.spotifyHint":
-    "Spotify şarkı sözlerini diğer uygulamalarla paylaşmaz.",
+  "lyrics.spotifyHint": "Spotify şarkı sözlerini diğer uygulamalarla paylaşmaz.",
   "lyrics.youtubeHint": "YouTube Music'te bu şarkı için söz yok.",
   "menu.addToPlaylist": "Çalma listesine ekle",
   "menu.addToQueue": "Kuyruğa ekle",
@@ -286,8 +275,7 @@ export const turkish = {
   "home.albumsYouTube": "YouTube Music'te kaydettiğin albümler",
   "home.dismiss": "Kapat",
   "home.listenBrainz": "ListenBrainz senin için hazırladı",
-  "home.listenBrainzHint":
-    "Dinlediklerinden ListenBrainz'in oluşturduğu çalma listeleri",
+  "home.listenBrainzHint": "Dinlediklerinden ListenBrainz'in oluşturduğu çalma listeleri",
   "home.likedSpotify": "Spotify'da beğenilenler",
   "home.likedYouTube": "YouTube Music'te beğenilenler",
   "home.loading": "Yükleniyor",
@@ -304,8 +292,7 @@ export const turkish = {
   "home.topArtists": "Bu ayın en iyi sanatçıları",
   "home.unplayed": "Bunları bir süredir dinlemedin",
   "home.unplayedHint": "Çok dinlediğin ama altı aydır açmadığın albümler",
-  "mix.description":
-    "{{description}} ve daha fazlası. Arşivinizden hazırlanır ve her sabah yenilenir.",
+  "mix.description": "{{description}} ve daha fazlası. Arşivinizden hazırlanır ve her sabah yenilenir.",
   "mix.find": "Karışımda ara",
   "mix.kind": "Karışım",
   "mix.order": "Karışım sırası",
@@ -384,15 +371,12 @@ export const turkish = {
   "player.radioNotFound": "{{name}} radyosu için şarkı bulunamadı",
   "player.signInYouTube": "YouTube Music çalmak için oturum açın.",
   "player.spotifyFailed": "Spotify bu şarkıyı çalamadı",
-  "player.spotifyOnly":
-    "Spotify şarkıları Spotify oynatıcısı üzerinden çalınır.",
+  "player.spotifyOnly": "Spotify şarkıları Spotify oynatıcısı üzerinden çalınır.",
   "player.spotifyUnavailable": "Spotify kapalı veya Needle'da kullanılamıyor.",
   "player.stationFailed": "{{name}} yanıt vermiyor",
   "player.streamFailed": "Yayın yüklenemedi.",
-  "player.unavailableYouTube":
-    "Bu şarkı kullanılamıyor. YouTube Music'te açın.",
-  "player.youtubeUnavailable":
-    "YouTube Music kapalı veya Needle'da kullanılamıyor.",
+  "player.unavailableYouTube": "Bu şarkı kullanılamıyor. YouTube Music'te açın.",
+  "player.youtubeUnavailable": "YouTube Music kapalı veya Needle'da kullanılamıyor.",
   "playlist.description": "Açıklama",
   "playlist.descriptionHint": "İsteğe bağlı bir açıklama ekle",
   "playlist.edit": "Ayrıntıları düzenle",
@@ -413,10 +397,8 @@ export const turkish = {
   "panel.autoplayTitle": "Benzer şarkıları çalmaya devam et",
   "panel.clear": "Temizle",
   "panel.emptyLyrics": "Şarkı sözlerini görmek için bir şarkı çal.",
-  "panel.emptyNow":
-    "Çalan bir şey yok. Başlamak için bir albüm veya çalma listesi seç.",
-  "panel.emptyQueue":
-    "Kuyruk boş. Bir şey çaldığında sıradakiler burada görünür.",
+  "panel.emptyNow": "Çalan bir şey yok. Başlamak için bir albüm veya çalma listesi seç.",
+  "panel.emptyQueue": "Kuyruk boş. Bir şey çaldığında sıradakiler burada görünür.",
   "panel.openQueue": "Kuyruğu aç",
   "panel.upNext": "Sıradaki",
   "requests.adminIntro":
@@ -425,8 +407,7 @@ export const turkish = {
   "requests.downloading": "Şimdi indiriliyor",
   "requests.empty": "Henüz istek yok",
   "requests.emptyDownloads": "Şu anda indirilen bir şey yok.",
-  "requests.emptyHint":
-    "Arşivinizde olmayan müziği arayın, ardından Albümü al veya Şarkıyı al seçeneğini kullanın.",
+  "requests.emptyHint": "Arşivinizde olmayan müziği arayın, ardından Albümü al veya Şarkıyı al seçeneğini kullanın.",
   "requests.everyone": "Herkesin istekleri",
   "requests.findAnother": "Başka bir kopya bul",
   "requests.loading": "İstekleriniz yükleniyor…",
@@ -435,8 +416,7 @@ export const turkish = {
   "requests.removeDownload": "{{title}} öğesini indirilenlerden kaldır",
   "requests.removeList": "{{title}} öğesini bu listeden kaldır",
   "requests.title": "İstekler",
-  "requests.userIntro":
-    "İstediğiniz albüm ve şarkılar. İlerleme kendiliğinden güncellenir.",
+  "requests.userIntro": "İstediğiniz albüm ve şarkılar. İlerleme kendiliğinden güncellenir.",
   "requests.yours": "İsteklerin",
   "requestState.available": "Arşivinde",
   "requestState.downloading": "İndiriliyor",
@@ -449,14 +429,11 @@ export const turkish = {
   "requestState.soulseek": "Soulseek aranıyor",
   "requestState.wanted": "Kaynak bekleniyor",
   "query.downloadFailed": "İndirme başlatılamadı",
-  "query.likesFailed":
-    "Beğenileriniz güncellenemedi. Bağlantıyı kontrol edip tekrar deneyin.",
+  "query.likesFailed": "Beğenileriniz güncellenemedi. Bağlantıyı kontrol edip tekrar deneyin.",
   "query.lookingSoulseek": "Soulseek'te “{{title}}” aranıyor",
   "query.localDownloadOnly": "Yalnızca arşivinizdeki şarkılar indirilebilir",
-  "query.localPlaylistOnly":
-    "Navidrome çalma listelerine yalnızca arşivinizdeki şarkılar eklenebilir",
-  "query.localStarOnly":
-    "Navidrome'da yalnızca arşivinizdeki öğeler beğenilebilir",
+  "query.localPlaylistOnly": "Navidrome çalma listelerine yalnızca arşivinizdeki şarkılar eklenebilir",
+  "query.localStarOnly": "Navidrome'da yalnızca arşivinizdeki öğeler beğenilebilir",
   "query.orderFailed": "Yeni sıralama kaydedilemedi.",
   "remote.nowPlayingHere": "Şimdi burada çalıyor",
   "remote.sentFrom": "Şimdi burada çalıyor, {{device}} cihazından gönderildi",
@@ -478,8 +455,7 @@ export const turkish = {
   "radio.stream": "Yayın adresi",
   "radio.title": "Radyo",
   "radio.undo": "Geri al",
-  "radio.adminFailed":
-    "Navidrome kaydedemedi. İstasyonları yalnızca yöneticiler değiştirebilir.",
+  "radio.adminFailed": "Navidrome kaydedemedi. İstasyonları yalnızca yöneticiler değiştirebilir.",
   "search.placeholder": "Ne dinlemek istiyorsun?",
   "search.allResults": "Tüm arama sonuçları",
   "search.albums": "Albümler",
@@ -488,18 +464,15 @@ export const turkish = {
   "search.browse": "Arşivine göz at",
   "search.browseHint": "Türler dosyalarınızdaki etiketlerden gelir",
   "search.getAlbumsHint": "Lidarr seçtiğiniz albümleri indirir.",
-  "search.getBothHint":
-    "Albümler Lidarr, tek şarkılar Soulseek üzerinden gelir.",
+  "search.getBothHint": "Albümler Lidarr, tek şarkılar Soulseek üzerinden gelir.",
   "search.getSongsHint": "Seçtiğiniz şarkıları Soulseek sağlar.",
   "search.getSuffix": "Hazır olduklarında arşivinizde görünürler.",
-  "search.libraryEmpty":
-    "Navidrome'da müzik olduğunda türler ve dönemler burada görünür.",
+  "search.libraryEmpty": "Navidrome'da müzik olduğunda türler ve dönemler burada görünür.",
   "search.lidarrEmpty": "Lidarr “{{query}}” için başka albüm bulamadı.",
   "search.lidarrLoading": "Lidarr'a “{{query}}” soruluyor…",
   "search.loadMore": "Daha fazla yükle",
   "search.loading": "Yükleniyor…",
-  "search.musicBrainzError":
-    "MusicBrainz yanıt vermedi. Birazdan tekrar deneyin.",
+  "search.musicBrainzError": "MusicBrainz yanıt vermedi. Birazdan tekrar deneyin.",
   "search.noBrowse": "Henüz göz atılacak bir şey yok",
   "search.noSongs": "“{{query}}” için başka şarkı bulunamadı.",
   "search.filterAll": "Tümü",
@@ -515,22 +488,17 @@ export const turkish = {
   "search.songLookup": "“{{query}}” için şarkılar aranıyor…",
   "search.spotifyAllLoaded": "Mevcut tüm Spotify sonuçları yüklendi.",
   "search.spotifyLimit": "Spotify arama sınırına ulaşıldı.",
-  "search.spotifyNextError":
-    "Spotify sonraki sayfayı yükleyemedi. Tekrar deneyin.",
-  "search.spotifyUnavailable":
-    "Spotify kullanılamıyor. Kataloğunda aramak için Ayarlar'da Spotify'ı bağlayın.",
+  "search.spotifyNextError": "Spotify sonraki sayfayı yükleyemedi. Tekrar deneyin.",
+  "search.spotifyUnavailable": "Spotify kullanılamıyor. Kataloğunda aramak için Ayarlar'da Spotify'ı bağlayın.",
   "search.searching": "Aranıyor…",
   "search.sourceError": "{{source}} yanıt vermedi. Birazdan tekrar deneyin.",
-  "search.sourcePaused":
-    "Arama {{source}} bekleme süresinden sonra devam edecek.",
+  "search.sourcePaused": "Arama {{source}} bekleme süresinden sonra devam edecek.",
   "search.topResult": "En iyi sonuç",
-  "search.youtubeUnavailable":
-    "YouTube Music kullanılamıyor. Kataloğunda aramak için Ayarlar'da bağlayın.",
+  "search.youtubeUnavailable": "YouTube Music kullanılamıyor. Kataloğunda aramak için Ayarlar'da bağlayın.",
   "search.artistOnYouTube": "YouTube Music'te sanatçı",
   "search.onSpotify": "Spotify'da",
   "search.onYouTube": "YouTube Music'te",
-  "search.youtubeExperimental":
-    "Deneysel. YouTube değiştiğinde kullanılabilirlik değişebilir.",
+  "search.youtubeExperimental": "Deneysel. YouTube değiştiğinde kullanılabilirlik değişebilir.",
   "search.youtubeEmpty": "YouTube Music “{{query}}” için {{kind}} bulamadı.",
   "track.addLiked": "{{title}} şarkısını beğenilenlere ekle",
   "track.album": "Albüm",
@@ -550,23 +518,18 @@ export const turkish = {
   "settings.app": "Bu uygulama",
   "settings.admin": "Yönetici",
   "settings.artColor": "Albüm kapağına göre renk",
-  "settings.artColorHint":
-    "Her sayfayı gösterilen içeriğin renkleriyle renklendirir.",
+  "settings.artColorHint": "Her sayfayı gösterilen içeriğin renkleriyle renklendirir.",
   "settings.autoplay": "Benzer şarkıları çalmaya devam et",
-  "settings.autoplayHint":
-    "Kuyruk bittiğinde son şarkıya benzer şarkılarla devam eder.",
+  "settings.autoplayHint": "Kuyruk bittiğinde son şarkıya benzer şarkılarla devam eder.",
   "settings.cellular": "Mobil veride",
   "settings.cellularHint":
     "Navidrome tarafından küçük boyutta iyi ses veren Opus'a veya iPhone'da AAC'ye dönüştürülür.",
   "settings.crossfade": "Çapraz geçiş",
-  "settings.crossfadeHint":
-    "Bir şarkının sonunu sonrakiyle harmanlar. Sıralı çalınan albümlerde kapalıdır.",
-  "settings.crossfadeIosHint":
-    "iPhone ve iPad aynı anda bir şarkı çaldığı için çapraz geçiş kullanılamaz.",
+  "settings.crossfadeHint": "Bir şarkının sonunu sonrakiyle harmanlar. Sıralı çalınan albümlerde kapalıdır.",
+  "settings.crossfadeIosHint": "iPhone ve iPad aynı anda bir şarkı çaldığı için çapraz geçiş kullanılamaz.",
   "settings.crossfadeSeconds": "Çapraz geçiş saniyesi",
   "settings.deviceName": "Cihaz adı",
-  "settings.deviceNameHint":
-    "Bu cihazın diğer cihazlarınızda nasıl görüneceği.",
+  "settings.deviceNameHint": "Bu cihazın diğer cihazlarınızda nasıl görüneceği.",
   "settings.downloadCellular": "Mobil veride indir",
   "settings.downloadCellularHint": "Kapalıyken indirmeler Wi-Fi bekler.",
   "settings.downloadQuality": "İndirilenler",
@@ -578,8 +541,7 @@ export const turkish = {
   "settings.choosePhoto": "Fotoğraf seç",
   "settings.choosePlaylists": "Çalma listelerini seç",
   "settings.codeCopied": "Kod kopyalandı",
-  "settings.codeCopyFailed":
-    "Kod kopyalanamadı. Kodu seçip kendiniz kopyalayın.",
+  "settings.codeCopyFailed": "Kod kopyalanamadı. Kodu seçip kendiniz kopyalayın.",
   "settings.connectGoogle": "Google ile bağlan",
   "settings.connectSpotify": "Spotify'ı bağla",
   "settings.connectYouTube": "YouTube Music'i bağla",
@@ -624,29 +586,22 @@ export const turkish = {
   "settings.spotifyReconnect": "Spotify'ı yeniden bağla",
   "settings.spotifyReconnectHint":
     "Needle'ın şarkı çalmak, çalma listelerini düzenlemek ve sanatçıları takip etmek için birkaç Spotify iznine daha ihtiyacı var.",
-  "settings.waitingGoogle":
-    "Google bekleniyor. Bu kodun süresi {{time}} tarihinde dolacak.",
+  "settings.waitingGoogle": "Google bekleniyor. Bu kodun süresi {{time}} tarihinde dolacak.",
   "settings.youtubeConnected": "YouTube Music bağlı",
-  "settings.youtubeAccountHint":
-    "YouTube Music hesabınız bu Needle kullanıcısına bağlı.",
-  "settings.youtubeAdminHint":
-    "Needle'da YouTube Music'i açması için sunucu yöneticinize başvurun.",
+  "settings.youtubeAccountHint": "YouTube Music hesabınız bu Needle kullanıcısına bağlı.",
+  "settings.youtubeAdminHint": "Needle'da YouTube Music'i açması için sunucu yöneticinize başvurun.",
   "settings.youtubeConnectHint":
     "Beğenilen şarkılarınızı, kayıtlı albümlerinizi, takip edilen sanatçıları ve çalma listelerini kendi müziğinizin yanında gösterir.",
   "settings.youtubeEnabled": "Needle'da YouTube Music kullan",
   "settings.youtubeEnabledHint":
     "Kapalıyken YouTube Music Ana Sayfa, Arama ve arşivinizde görünmez. Bağlantınız korunur.",
-  "settings.youtubeLoginAddressError":
-    "Google oturum açma işlemi beklenmeyen bir adres döndürdü. Tekrar deneyin.",
+  "settings.youtubeLoginAddressError": "Google oturum açma işlemi beklenmeyen bir adres döndürdü. Tekrar deneyin.",
   "settings.youtubeReconnect": "YouTube Music'i yeniden bağla",
-  "settings.youtubeReconnectHint":
-    "Google oturumunun süresi doldu. Needle erişimini yenilemek için tekrar bağlanın.",
+  "settings.youtubeReconnectHint": "Google oturumunun süresi doldu. Needle erişimini yenilemek için tekrar bağlanın.",
   "settings.listenBrainzConnectedHint":
     "Ana Sayfa, ListenBrainz'in sizin için hazırladığı listeleri gösterir. Needle dinlemeleri göndermez.",
-  "settings.importResult":
-    "{{source}}: {{total}} öğenin {{matched}} kadarı arşivinizde.",
-  "settings.importMissing":
-    "{{missing}} eşleştirilemedi. Kendi arşivinize eklemek için Arama'da bulun.",
+  "settings.importResult": "{{source}}: {{total}} öğenin {{matched}} kadarı arşivinizde.",
+  "settings.importMissing": "{{missing}} eşleştirilemedi. Kendi arşivinize eklemek için Arama'da bulun.",
   "settings.listenBrainzSending": "Navidrome gönderiyor",
   "settings.listenBrainzNotSending": "Henüz Navidrome'dan gelmiyor",
   "settings.navidromePasswordHint":
@@ -655,28 +610,22 @@ export const turkish = {
   "settings.connectedOn": "Açık",
   "settings.connectedOff": "Kapalı",
   "settings.downloadUnavailable": "İndirmeler burada kullanılamıyor",
-  "settings.downloadUnavailableHint":
-    "Müziği bu cihazda tutmak için Needle'ı https:// adresinden açın.",
+  "settings.downloadUnavailableHint": "Müziği bu cihazda tutmak için Needle'ı https:// adresinden açın.",
   "settings.googleCodeHint": "Google'ın cihaz sayfasını açıp bu kodu girin.",
   "settings.peopleHint":
     "Navidrome hesabı olan herkes Needle'a giriş yapabilir ve giriş yaptıktan sonra burada görünür. Hesapları Navidrome'da oluşturup kişilerin yapabileceklerini buradan açın.",
   "settings.photo": "Fotoğrafın",
-  "settings.photoHint":
-    "Her cihazda gösterilir. Needle verileriyle birlikte sunucuda saklanır.",
+  "settings.photoHint": "Her cihazda gösterilir. Needle verileriyle birlikte sunucuda saklanır.",
   "settings.photoUpdated": "Fotoğraf güncellendi",
-  "settings.serverFailed":
-    "Needle sunucusu yanıt vermedi. Birazdan tekrar deneyin.",
+  "settings.serverFailed": "Needle sunucusu yanıt vermedi. Birazdan tekrar deneyin.",
   "settings.youtubeConnectedToast": "YouTube Music bağlandı",
-  "settings.youtubeListsFailed":
-    "YouTube Music çalma listeleriniz yüklenemedi.",
+  "settings.youtubeListsFailed": "YouTube Music çalma listeleriniz yüklenemedi.",
   "settings.yourListens": "Dinlemelerin",
   "settings.listenBrainzToken": "ListenBrainz kullanıcı jetonu",
-  "settings.copyListenBrainz":
-    "listenbrainz.org/settings adresinden kopyalayın.",
+  "settings.copyListenBrainz": "listenbrainz.org/settings adresinden kopyalayın.",
   "settings.navidromePassword": "Navidrome parolası (isteğe bağlı)",
   "settings.gapless": "Boşluksuz çalma",
-  "settings.gaplessHint":
-    "Canlı ve kesintisiz albümlerde parçalar arasında sessizlik olmaz.",
+  "settings.gaplessHint": "Canlı ve kesintisiz albümlerde parçalar arasında sessizlik olmaz.",
   "settings.languageHint": "Bu cihazda kullanılan dili seçin.",
   "settings.listenBrainz": "ListenBrainz",
   "settings.normalize": "Ses düzeyini eşitle",
@@ -686,14 +635,11 @@ export const turkish = {
   "settings.normalizeTrack": "Şarkı başına",
   "settings.onDevice": "Bu cihazda",
   "settings.original": "Özgün",
-  "settings.originalHint":
-    "Özgün seçenek dosyayı dönüştürmeden olduğu gibi kullanır.",
+  "settings.originalHint": "Özgün seçenek dosyayı dönüştürmeden olduğu gibi kullanır.",
   "settings.playback": "Çalma",
   "settings.requestMusic": "Müzik iste",
-  "settings.requestMusicOff":
-    "Albüm ve şarkı isteyebilmek için bir yöneticiden izin isteyin.",
-  "settings.requestMusicOn":
-    "Arama, arşivinizde olmayan albüm ve şarkıları bulup sizin için alabilir.",
+  "settings.requestMusicOff": "Albüm ve şarkı isteyebilmek için bir yöneticiden izin isteyin.",
+  "settings.requestMusicOn": "Arama, arşivinizde olmayan albüm ve şarkıları bulup sizin için alabilir.",
   "settings.server": "Sunucun",
   "settings.soundQuality": "Ses kalitesi",
   "settings.spotify": "Spotify",
@@ -715,21 +661,17 @@ export const turkish = {
   "source.fromLibrary": "Arşivinden",
   "source.fromSpotify": "Spotify'dan",
   "source.fromYouTubeMusic": "YouTube Music'ten",
-  "spotify.albumsCooldown":
-    "Spotify bekleme süresinden sonra albümler yüklenecek.",
+  "spotify.albumsCooldown": "Spotify bekleme süresinden sonra albümler yüklenecek.",
   "spotify.artist": "Sanatçı",
   "spotify.backArtist": "Sanatçıya dön",
   "spotify.connectFirst": "Önce Spotify'ı bağlayın",
-  "spotify.connectHint":
-    "Spotify arşivinizi burada görmek için Ayarlar'ı açıp Spotify hesabınızı bağlayın.",
+  "spotify.connectHint": "Spotify arşivinizi burada görmek için Ayarlar'ı açıp Spotify hesabınızı bağlayın.",
   "spotify.emptyPlaylist": "Bu çalma listesi boş",
-  "spotify.emptyPlaylistHint":
-    "Herhangi bir Spotify şarkısına sağ tıklayıp Çalma listesine ekle seçeneğini kullanın.",
+  "spotify.emptyPlaylistHint": "Herhangi bir Spotify şarkısına sağ tıklayıp Çalma listesine ekle seçeneğini kullanın.",
   "spotify.loadAlbums": "Albümleri tekrar yüklemeyi dene",
   "spotify.loadSingles": "Teklileri ve EP'leri tekrar yüklemeyi dene",
   "spotify.loadingSongs": "Şarkılar yükleniyor…",
-  "spotify.lockedHeading":
-    "Spotify bu çalma listesinin şarkılarını paylaşmıyor",
+  "spotify.lockedHeading": "Spotify bu çalma listesinin şarkılarını paylaşmıyor",
   "spotify.lockedHint":
     "Spotify kişisel uygulamaların yalnızca oluşturduğunuz veya ortak çalıştığınız listeleri okumasına izin verir. Spotify'da açıp istediğiniz şarkıları beğenin.",
   "spotify.noAlbums": "Burada albüm yok.",
@@ -743,46 +685,33 @@ export const turkish = {
   "spotify.pausedHintPrefix":
     "Önceden yüklenen Spotify içerikleri gösterilmeye devam eder. İstekler şu zamanda otomatik olarak devam eder:",
   "spotify.status": "Spotify durumu",
-  "spotify.releasesCooldown":
-    "Spotify bekleme süresinden sonra yayınlar yüklenecek.",
-  "spotify.songsCooldown":
-    "Spotify bekleme süresinden sonra şarkılar yüklenecek.",
+  "spotify.releasesCooldown": "Spotify bekleme süresinden sonra yayınlar yüklenecek.",
+  "spotify.songsCooldown": "Spotify bekleme süresinden sonra şarkılar yüklenecek.",
   "spotify.songsError": "Bu sanatçının şarkıları Spotify'dan yüklenemedi.",
   "spotify.addedPlaylist": "{{name}} listesine eklendi",
   "spotify.followed": "Spotify'da {{name}} takip ediliyor",
   "spotify.followStopped": "{{name}} takibi bırakıldı",
   "spotify.removedPlaylist": "Çalma listesinden kaldırıldı",
-  "spotify.requestPaused":
-    "Spotify istekleri duraklatıldı. Bekleme süresinden sonra tekrar deneyin.",
-  "spotify.saveFailed":
-    "Spotify kaydedemedi. Sorun sürerse Ayarlar'dan Spotify'ı yeniden bağlayın.",
-  "spotify.updateFailed":
-    "Spotify bu değişikliği kabul etmedi. Sorun sürerse Ayarlar'dan yeniden bağlayın.",
+  "spotify.requestPaused": "Spotify istekleri duraklatıldı. Bekleme süresinden sonra tekrar deneyin.",
+  "spotify.saveFailed": "Spotify kaydedemedi. Sorun sürerse Ayarlar'dan Spotify'ı yeniden bağlayın.",
+  "spotify.updateFailed": "Spotify bu değişikliği kabul etmedi. Sorun sürerse Ayarlar'dan yeniden bağlayın.",
   "spotify.answerFailed": "Spotify yanıt vermedi. Birazdan tekrar deneyin.",
   "spotify.playerAnswerFailed": "Spotify oynatıcısı yanıt vermedi",
   "spotify.playerLoadFailed": "Spotify oynatıcısı yüklenemedi",
   "spotify.playerNotReady": "Spotify hazır değil",
   "spotify.playerStartFailed": "Spotify oynatıcısı başlamadı",
   "spotify.browserPlaybackFailed": "Spotify bu tarayıcıda çalamıyor",
-  "spotify.premiumRequired":
-    "Needle'da Spotify çalmak için Spotify Premium gerekir",
-  "spotify.signInRefused":
-    "Spotify oturumu reddetti. Ayarlar'dan Spotify'ı yeniden bağlayın.",
-  "discovery.playFailed":
-    "ListenBrainz bu çalma listesini göndermedi. Birazdan tekrar deneyin.",
-  "library.scanFailed":
-    "Tarama başlatılamadı. Yalnızca Navidrome yöneticileri tarama yapabilir.",
+  "spotify.premiumRequired": "Needle'da Spotify çalmak için Spotify Premium gerekir",
+  "spotify.signInRefused": "Spotify oturumu reddetti. Ayarlar'dan Spotify'ı yeniden bağlayın.",
+  "discovery.playFailed": "ListenBrainz bu çalma listesini göndermedi. Birazdan tekrar deneyin.",
+  "library.scanFailed": "Tarama başlatılamadı. Yalnızca Navidrome yöneticileri tarama yapabilir.",
   "settings.photoReadFailed": "Bu görsel okunamadı",
-  "youtube.requestPaused":
-    "YouTube Music istekleri duraklatıldı. Bekleme süresinden sonra tekrar deneyin.",
-  "youtube.saveFailed":
-    "YouTube Music değişikliği kaydedemedi. Tekrar deneyin veya Ayarlar'dan yeniden bağlayın.",
+  "youtube.requestPaused": "YouTube Music istekleri duraklatıldı. Bekleme süresinden sonra tekrar deneyin.",
+  "youtube.saveFailed": "YouTube Music değişikliği kaydedemedi. Tekrar deneyin veya Ayarlar'dan yeniden bağlayın.",
   "stats.allTime": "Tüm zamanlar",
-  "stats.empty":
-    "Bir süre dinledikten sonra saatleriniz, en iyi sanatçılarınız ve sevdiğiniz zamanlar burada görünür.",
+  "stats.empty": "Bir süre dinledikten sonra saatleriniz, en iyi sanatçılarınız ve sevdiğiniz zamanlar burada görünür.",
   "stats.emptyHeading": "Henüz bir şey çalınmadı{{period}}",
-  "stats.help":
-    "Oturum açtığınız herhangi bir cihazda {{seconds}} saniye veya daha uzun çaldığınız her şarkı sayılır.",
+  "stats.help": "Oturum açtığınız herhangi bir cihazda {{seconds}} saniye veya daha uzun çaldığınız her şarkı sayılır.",
   "stats.inPeriod": " bu dönemde",
   "stats.midnight": "Gece yarısı",
   "stats.noon": "Öğlen",
@@ -790,8 +719,7 @@ export const turkish = {
   "stats.lastDays": "Son {{count}} gün",
   "stats.comparisonBase": "{{artists}} arasından {{songs}}.",
   "stats.comparisonLess": "{{base}} {{previous}} döneminden {{hours}} daha az.",
-  "stats.comparisonMore":
-    "{{base}} {{previous}} döneminden {{hours}} daha fazla.",
+  "stats.comparisonMore": "{{base}} {{previous}} döneminden {{hours}} daha fazla.",
   "stats.comparisonSame": "{{base}} {{previous}} dönemiyle yaklaşık aynı.",
   "stats.leadAll": "Şimdiye kadar {{hours}} müzik",
   "stats.leadMonth": "{{month}} ayında {{hours}} müzik",
@@ -815,14 +743,12 @@ export const turkish = {
   "stats.mostAround": "En çok {{time}} civarında dinliyorsun",
   "youtube.open": "YouTube Music'te aç",
   "youtube.answerFailed": "YouTube Music yanıt vermedi",
-  "youtube.answerFailedHint":
-    "Birazdan tekrar deneyin. Diğer müzikleriniz kullanılabilir durumda.",
+  "youtube.answerFailedHint": "Birazdan tekrar deneyin. Diğer müzikleriniz kullanılabilir durumda.",
   "youtube.emptyPlaylist": "Bu çalma listesi boş",
   "youtube.playbackStopped": "Çalma durdu",
   "youtube.openSettings": "Ayarları aç",
   "youtube.paused": "YouTube Music istekleri duraklatıldı",
-  "youtube.pausedHint":
-    "Önceden yüklenen müzikler görünmeye devam eder. Needle {{time}} zamanında tekrar deneyecek.",
+  "youtube.pausedHint": "Önceden yüklenen müzikler görünmeye devam eder. Needle {{time}} zamanında tekrar deneyecek.",
   "youtube.reconnect": "YouTube Music'i yeniden bağla",
   "youtube.reconnectHint": "Hesabınızı yeniden bağlamak için Ayarlar'ı açın.",
   "youtube.albumKind": "YouTube Music'te albüm",
@@ -841,8 +767,7 @@ export const turkish = {
   "devices.movePlayback": "Çalmayı taşı",
   "devices.movePlaybackTo": "Çalmayı {{device}} cihazına taşı",
   "devices.nextOn": "{{device}} cihazında sonraki",
-  "devices.openAnother":
-    "Needle'ı oturum açtığınız başka bir cihazda açın; burada görünecektir.",
+  "devices.openAnother": "Needle'ı oturum açtığınız başka bir cihazda açın; burada görünecektir.",
   "devices.pauseOn": "{{device}} cihazında duraklat",
   "devices.playOn": "{{device}} cihazında çal",
   "devices.previousOn": "{{device}} cihazında önceki",
@@ -853,10 +778,8 @@ export const turkish = {
   "empty.itemMissing": "Bu {{item}} burada yok",
   "empty.searchFor": "{{name}} için ara",
   "home.positionOf": "{{duration}} içinde {{position}}",
-  "library.noSpotifyMatch":
-    "Spotify arşivinde “{{query}}” ile eşleşen bir şey yok.",
-  "library.noYouTubeMatch":
-    "YouTube Music arşivinde “{{query}}” ile eşleşen bir şey yok.",
+  "library.noSpotifyMatch": "Spotify arşivinde “{{query}}” ile eşleşen bir şey yok.",
+  "library.noYouTubeMatch": "YouTube Music arşivinde “{{query}}” ile eşleşen bir şey yok.",
   "panel.findQueue": "Kuyrukta ara",
   "panel.nextFrom": "Sırada: {{source}}",
   "panel.nextQueue": "Kuyrukta sonraki",
@@ -868,51 +791,39 @@ export const turkish = {
   "playlist.publicKind": "Herkese açık çalma listesi",
   "radio.named": "{{name}} radyosu",
   "radio.noStations": "Henüz istasyon yok.",
-  "radio.noStationsAdmin":
-    "Henüz istasyon yok. Yayın adresiyle bir istasyon ekleyin.",
+  "radio.noStationsAdmin": "Henüz istasyon yok. Yayın adresiyle bir istasyon ekleyin.",
   "requests.albumArtist": "Albüm, {{artist}}",
   "search.noMatchingSongs": "“{{query}}” ile eşleşen şarkı yok.",
-  "settings.adminPersonHint":
-    "Navidrome'u yönetir ve her zaman müzik isteyebilir.",
+  "settings.adminPersonHint": "Navidrome'u yönetir ve her zaman müzik isteyebilir.",
   "settings.askingLidarr": "Lidarr'a soruluyor…",
-  "settings.cancelSignInFailed":
-    "Oturum açma iptal edilemedi. Kod birazdan sona erecek.",
+  "settings.cancelSignInFailed": "Oturum açma iptal edilemedi. Kod birazdan sona erecek.",
   "settings.changeFailed": "Bu değiştirilemedi",
-  "settings.changeYouTubeFailed":
-    "YouTube Music değiştirilemedi. Tekrar deneyin.",
+  "settings.changeYouTubeFailed": "YouTube Music değiştirilemedi. Tekrar deneyin.",
   "settings.checkedAt": "{{time}} zamanında kontrol edildi.",
-  "settings.checkGoogleFailed":
-    "Google oturumu kontrol edilemedi. Tekrar bağlanmayı deneyin.",
+  "settings.checkGoogleFailed": "Google oturumu kontrol edilemedi. Tekrar bağlanmayı deneyin.",
   "settings.codeExpired": "Kodun süresi doldu. Yeni kod için tekrar bağlanın.",
   "settings.connectListenBrainz": "ListenBrainz'i bağla",
   "settings.connectionsAllWorking": "Her şey çalışıyor",
   "settings.connectionsNeedAttention": "{{connections}} kontrol edilmeli",
-  "settings.connectionsSummary":
-    "Needle ve sunucusunun erişebildiği hizmetler. Bunu yalnızca yöneticiler görür.",
+  "settings.connectionsSummary": "Needle ve sunucusunun erişebildiği hizmetler. Bunu yalnızca yöneticiler görür.",
   "settings.copyFailed": "Kopyalama başarısız oldu",
   "settings.disconnectFailed": "Bağlantı kesilemedi",
-  "settings.disconnectYouTubeFailed":
-    "YouTube Music bağlantısı kesilemedi. Tekrar deneyin.",
+  "settings.disconnectYouTubeFailed": "YouTube Music bağlantısı kesilemedi. Tekrar deneyin.",
   "settings.downloadStorageEmpty": "Henüz bir şey indirilmedi.",
   "settings.downloadStorageLiked": "beğendiğin şarkılar",
   "settings.downloadStorageRoom": "Yaklaşık {{size}} daha boş alan var.",
   "settings.downloadStorageUsed": "İndirmeler {{size}} kullanıyor",
   "settings.getMissingAlbums": "Eksik albümleri Lidarr ile al",
-  "settings.googleCanceled":
-    "Google oturumu iptal edildi. Hazır olduğunuzda tekrar bağlanın.",
-  "settings.importMissingExamples":
-    "{{missing}} eşleştirilemedi. Örneğin: {{examples}}.",
+  "settings.googleCanceled": "Google oturumu iptal edildi. Hazır olduğunuzda tekrar bağlanın.",
+  "settings.importMissingExamples": "{{missing}} eşleştirilemedi. Örneğin: {{examples}}.",
   "settings.lastHere": "En son {{time}} buradaydı.",
   "settings.lidarrFetchResult": "Lidarr {{albums}} alıyor{{details}}",
   "settings.lidarrNotFoundDetail": "; {{count}} bulunamadı",
   "settings.lidarrRequestFailed": "Lidarr isteği kabul etmedi",
   "settings.lidarrSkippedDetail": "; {{count}} sonraki sefere kaldı",
-  "settings.listenBrainzConnectFailed":
-    "ListenBrainz yanıt vermedi. Birazdan tekrar deneyin.",
-  "settings.listenBrainzConnected":
-    "ListenBrainz bağlandı. Navidrome artık dinlemelerinizi gönderiyor.",
-  "settings.listenBrainzConnectedAs":
-    "ListenBrainz'e {{user}} olarak bağlandı.",
+  "settings.listenBrainzConnectFailed": "ListenBrainz yanıt vermedi. Birazdan tekrar deneyin.",
+  "settings.listenBrainzConnected": "ListenBrainz bağlandı. Navidrome artık dinlemelerinizi gönderiyor.",
+  "settings.listenBrainzConnectedAs": "ListenBrainz'e {{user}} olarak bağlandı.",
   "settings.listenBrainzIntro":
     "ListenBrainz dinlediklerinizden çalma listeleri oluşturur: her hafta keşfedilecek yeni şarkılar ve tekrar tekrar dinledikleriniz. Needle bunları Ana Sayfa'da gösterir ve sizde olmayan şarkıları alır.",
   "settings.listenBrainzSendingHint":
@@ -924,16 +835,14 @@ export const turkish = {
   "settings.personCanSpotify": "{{user}} Spotify kullanabilir",
   "settings.personCanYouTube": "{{user}} YouTube Music kullanabilir",
   "settings.photoSaveFailed": "Bu fotoğraf kaydedilemedi",
-  "settings.serverHint":
-    "{{user}} olarak oturum açıldı. {{scanSummary}} {{songSummary}}",
+  "settings.serverHint": "{{user}} olarak oturum açıldı. {{scanSummary}} {{songSummary}}",
   "settings.serverScanHours": "Arşiv en son {{count}} saat önce tarandı.",
   "settings.serverScanJustNow": "Arşiv az önce tarandı.",
   "settings.serverScanMinutes": "Arşiv en son {{count}} dakika önce tarandı.",
   "settings.serverVersionMismatch":
     "Sunucu {{version}} sürümünü çalıştırıyor. Yüklemek için hesap menüsünden Needle'ı Güncelle'yi seçin.",
   "settings.spotifyConnectedToast": "Spotify bağlandı",
-  "settings.spotifyConnectFailed":
-    "Spotify oturumu tamamlanmadı. Tekrar deneyin.",
+  "settings.spotifyConnectFailed": "Spotify oturumu tamamlanmadı. Tekrar deneyin.",
   "settings.spotifyPlaylistsFailed": "Spotify çalma listeleriniz yüklenemedi",
   "settings.songByArtist": "{{artist}} tarafından {{title}}",
   "settings.startGoogleFailed": "Google oturumu başlatılamadı. Tekrar deneyin.",
@@ -957,19 +866,16 @@ export const turkish = {
   "like.removeArtists": "Beğenilen sanatçılarından kaldır",
   "like.removedAlbums": "Beğenilen albümlerinden kaldırıldı",
   "like.removedArtists": "Beğenilen sanatçılarından kaldırıldı",
-  "lyrics.filePlainSource":
-    "Şarkı dosyasındaki sözler. Zamanlanmadıkları için şarkıyı takip etmezler.",
+  "lyrics.filePlainSource": "Şarkı dosyasındaki sözler. Zamanlanmadıkları için şarkıyı takip etmezler.",
   "lyrics.fileTimedSource": "Şarkı dosyasından zamanlanmış sözler",
-  "lyrics.youtubePlainSource":
-    "{{source}} kaynağından şarkı sözleri. Zamanlanmadıkları için şarkıyı takip etmezler.",
+  "lyrics.youtubePlainSource": "{{source}} kaynağından şarkı sözleri. Zamanlanmadıkları için şarkıyı takip etmezler.",
   "lyrics.youtubeTimedSource": "{{source}} kaynağından zamanlanmış sözler",
   "search.context": "“{{query}}” için arama",
   "search.clear": "Aramayı temizle",
   "search.libraryArtist": "Sanatçı{{albums}}",
   "search.libraryArtistAlbums": ", arşivinde {{albums}}",
   "search.libraryNoMatch": "Arşivinde “{{query}}” ile eşleşen bir şey yok.",
-  "search.libraryKindNoMatch":
-    "Arşivinde “{{query}}” ile eşleşen {{kind}} yok.",
+  "search.libraryKindNoMatch": "Arşivinde “{{query}}” ile eşleşen {{kind}} yok.",
   "search.playlistOwner": "Çalma listesi, {{owner}}",
   "search.songArtist": "Şarkı, {{artist}}",
   "track.pauseNamed": "{{title}} duraklat",
@@ -979,8 +885,7 @@ export const turkish = {
   "catalog.lastFmSource": "Navidrome aracılığıyla Last.fm'den",
   "catalog.moreBy": "{{artist}} sanatçısından daha fazlası",
   "downloads.failed": "{{songs}} indirilemedi",
-  "downloads.progress":
-    "{{total}} içinden {{current}} indiriliyor, %{{percent}}",
+  "downloads.progress": "{{total}} içinden {{current}} indiriliyor, %{{percent}}",
   "downloads.saved": "{{songs}} içinden {{saved}} kaydedildi, {{size}}",
   "downloads.summary": "{{songs}}, {{size}}",
   "downloads.waitingWifi": "Wi-Fi bekleniyor",
@@ -1009,8 +914,7 @@ export const turkish = {
   "spotify.loadFailed": "Bu {{item}} Spotify'dan yüklenemedi",
   "spotify.playlist": "Spotify çalma listesi",
   "spotify.relevance": "Spotify alaka düzeyi",
-  "spotify.relevanceHint":
-    "Spotify alaka düzeyi. Buraya yüklenen şarkılarda ara.",
+  "spotify.relevanceHint": "Spotify alaka düzeyi. Buraya yüklenen şarkılarda ara.",
   "spotify.removeLibrary": "Spotify arşivinden kaldır",
   "spotify.removedLibrary": "Spotify arşivinden kaldırıldı",
   "spotify.saveLibrary": "Spotify arşivine kaydet",
@@ -1025,8 +929,7 @@ export const turkish = {
   "youtube.followStatusUnavailable": "Takip durumu kullanılamıyor",
   "youtube.followedArtist": "YouTube Music'te takip ettiğin sanatçı",
   "youtube.following": "Takip ediliyor",
-  "youtube.libraryStatusUnavailable":
-    "YouTube Music kayıt durumu kullanılamıyor",
+  "youtube.libraryStatusUnavailable": "YouTube Music kayıt durumu kullanılamıyor",
   "youtube.item": "öğe",
   "youtube.itemAlbum": "albüm",
   "youtube.itemArtist": "sanatçı",
@@ -1041,15 +944,13 @@ export const turkish = {
   "youtube.subscribers": "YouTube Music'te {{subscribers}} abone",
   "youtube.switchedOff": "YouTube Music kapalı",
   "connections.httpsDetail": "{{origin}} adresinde açıldı",
-  "connections.httpsInsecureDetail":
-    "{{origin}} adresinde HTTPS olmadan açıldı",
+  "connections.httpsInsecureDetail": "{{origin}} adresinde HTTPS olmadan açıldı",
   "connections.httpsFix":
     "Çevrimdışı indirmeler, Spotify ve uygulama kurulumu için bir https:// adresi gerekir. Needle'ı Tailscale Serve, Caddy veya başka bir ters vekil sunucunun arkasına koyun.",
   "connections.publicDetailMissing": "PUBLIC_URL ayarlı değil",
   "connections.publicFixMissing":
     "Yalnızca Spotify oturumu buna ihtiyaç duyar: PUBLIC_URL değerini insanların açtığı adres olarak ayarlayın.",
-  "connections.publicMismatch":
-    "PUBLIC_URL {{publicUrl}}, ancak bu sayfa {{origin}} adresinde",
+  "connections.publicMismatch": "PUBLIC_URL {{publicUrl}}, ancak bu sayfa {{origin}} adresinde",
   "connections.publicMismatchFix":
     "PUBLIC_URL değerini insanların açtığı adres olarak ayarlayın; aksi halde Spotify oturumu yanlış yere döner.",
   "connections.publicTitle": "Herkese açık adres",
@@ -1064,22 +965,18 @@ export const turkish = {
   "discovery.savedPlaylist": "{{songs}} çalma listesi olarak kaydedildi",
   "discovery.saveFailed": "Çalma listesi kaydedilemedi",
   "discovery.skippedDetail": "; {{count}} sonraki sefere kaldı",
-  "discovery.soulseekHint":
-    "Seçtiğiniz şarkıları Soulseek sağlar. Hazır olduklarında arşivinizde görünürler.",
+  "discovery.soulseekHint": "Seçtiğiniz şarkıları Soulseek sağlar. Hazır olduklarında arşivinizde görünürler.",
   "home.artistPlays": "{{plays}}",
   "library.albumsHint":
     "Arşivinizdeki ve Spotify'da kaydettiğiniz albümler burada görünür. Arama'dan daha fazlasını alın.",
-  "library.artistsHint":
-    "Arşivinizdeki ve Spotify'da takip ettiğiniz sanatçılar burada görünür.",
+  "library.artistsHint": "Arşivinizdeki ve Spotify'da takip ettiğiniz sanatçılar burada görünür.",
   "library.downloadsHint":
     "Bu cihazda henüz bir şey saklanmıyor. Çevrimdışı dinlemek için bir albüm veya çalma listesindeki indirme düğmesini kullanın.",
-  "library.entriesHint":
-    "Albümleriniz, sanatçılarınız ve çalma listeleriniz burada görünür. Arama'dan müzik alın.",
+  "library.entriesHint": "Albümleriniz, sanatçılarınız ve çalma listeleriniz burada görünür. Arama'dan müzik alın.",
   "library.entrySummary": "{{kind}}, {{count}}",
   "library.itemBy": "{{kind}}, {{by}}",
   "library.myPlaylist": "Çalma listem #{{number}}",
-  "library.playlistsHint":
-    "Çalma listeleriniz burada görünür. + düğmesiyle bir tane oluşturun.",
+  "library.playlistsHint": "Çalma listeleriniz burada görünür. + düğmesiyle bir tane oluşturun.",
   "panel.bitrate": "Bit hızı",
   "panel.firstTime": "İlk kez",
   "panel.format": "Biçim",

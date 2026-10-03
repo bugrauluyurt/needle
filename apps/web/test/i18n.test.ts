@@ -33,14 +33,11 @@ describe("language settings", () => {
 
     useSettings.getState().set("language", "tr");
 
-    expect(
-      JSON.parse(localStorage.getItem("needle.settings") ?? "null"),
-    ).toMatchObject({ state: { language: "tr" } });
+    expect(JSON.parse(localStorage.getItem("needle.settings") ?? "null")).toMatchObject({ state: { language: "tr" } });
 
     vi.resetModules();
 
-    const { useSettings: reloadedSettings } =
-      await import("../src/state/settings.ts");
+    const { useSettings: reloadedSettings } = await import("../src/state/settings.ts");
 
     expect(reloadedSettings.getState().language).toBe("tr");
   });
@@ -65,8 +62,7 @@ describe("language settings", () => {
     });
 
     const { changeLanguage, translate } = await import("../src/i18n/index.ts");
-    const { ago, count, plural, releaseDateLabel } =
-      await import("../src/lib/format.ts");
+    const { ago, count, plural, releaseDateLabel } = await import("../src/lib/format.ts");
 
     await changeLanguage("tr");
 
@@ -74,14 +70,9 @@ describe("language settings", () => {
     expect(translate("navigation.search")).toBe("Ara");
     expect(count(12_345)).toBe("12.345");
     expect(plural(2, "song")).toBe("2 şarkı");
-    expect(
-      ago("2026-10-02T12:00:00.000Z", Date.parse("2026-10-03T12:00:00.000Z")),
-    ).toBe("Dün");
+    expect(ago("2026-10-02T12:00:00.000Z", Date.parse("2026-10-03T12:00:00.000Z"))).toBe("Dün");
     expect(releaseDateLabel({ releaseDate: "2024-03" })).toBe("Mar 2024");
     expect(documentElement.lang).toBe("tr");
-    expect(manifestLink.setAttribute).toHaveBeenCalledWith(
-      "href",
-      "/manifest.tr.webmanifest",
-    );
+    expect(manifestLink.setAttribute).toHaveBeenCalledWith("href", "/manifest.tr.webmanifest");
   });
 });

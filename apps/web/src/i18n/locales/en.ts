@@ -51,8 +51,7 @@ export const english = {
   "catalog.releaseDate": "Release date",
   "catalog.similarInLibrary": "Similar artists in your library",
   "catalog.similarMissing": "Similar artists you don’t have",
-  "catalog.similarMissingHint":
-    "Picked from Last.fm. Open one to find their albums and songs.",
+  "catalog.similarMissingHint": "Picked from Last.fm. Open one to find their albums and songs.",
   "catalog.singlesEps": "Singles and EPs",
   "catalog.songs": "Songs",
   "catalog.suggested": "Suggested",
@@ -77,15 +76,13 @@ export const english = {
   "empty.musicConnectionHeading": "Couldn’t reach your music",
   "empty.musicConnectionText":
     "Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it.",
-  "empty.notFoundText":
-    "It may have been removed from Navidrome, or the link is wrong.",
+  "empty.notFoundText": "It may have been removed from Navidrome, or the link is wrong.",
   "error.navidromeAnswered": "Navidrome answered {{status}}",
   "error.navidromeRequestFailed": "Navidrome request failed",
   "error.serverAnswered": "Needle server answered {{status}}",
   "error.downloadFailed": "Download failed ({{status}})",
   "error.spotifyAnswered": "Spotify answered {{status}}",
-  "empty.searchArtist":
-    "None of their music is in your library. Search for them to find their albums and songs.",
+  "empty.searchArtist": "None of their music is in your library. Search for them to find their albums and songs.",
   "language.english": "English",
   "language.label": "Language",
   "language.turkish": "Turkish",
@@ -106,8 +103,7 @@ export const english = {
   "library.likedArtists": "Liked artists",
   "library.findLikedArtists": "Find in liked artists",
   "library.findLikedSongs": "Find in liked songs",
-  "library.noLikedArtists":
-    "Artists you like show up here. Tap the heart on an artist’s page.",
+  "library.noLikedArtists": "Artists you like show up here. Tap the heart on an artist’s page.",
   "library.noLikedArtistMatch": "No liked artists match your search.",
   "albumGrid.all": "All albums",
   "albumGrid.decade": "The {{year}}s",
@@ -124,8 +120,7 @@ export const english = {
   "library.likedSpotify": "Liked songs on Spotify",
   "library.likedYouTube": "Liked songs on YouTube Music",
   "library.likedSongsEmpty": "Songs you like appear here",
-  "library.likedSongsHint":
-    "Tap the heart on any song to save it to your Liked songs.",
+  "library.likedSongsHint": "Tap the heart on any song to save it to your Liked songs.",
   "library.loadYouTube": "Load more from YouTube Music",
   "library.noDownloadsMatch": "No downloads match your search.",
   "library.noLikedSpotify": "No liked songs on Spotify yet.",
@@ -136,8 +131,7 @@ export const english = {
   "library.title": "Your library",
   "downloads.cellularOff": "Off: downloads wait for Wi-Fi.",
   "downloads.cellularOn": "On: downloads use mobile data too.",
-  "downloads.empty":
-    "Nothing downloaded yet. Use the download button on an album, a playlist or your liked songs.",
+  "downloads.empty": "Nothing downloaded yet. Use the download button on an album, a playlist or your liked songs.",
   "downloads.find": "Find in downloads",
   "downloads.free": "Free",
   "downloads.offlineHint": "Plays with no connection, even away from home.",
@@ -161,22 +155,18 @@ export const english = {
   "library.findMusic": "Find music to add",
   "library.scan": "Scan the library again",
   "library.scanning": "Scanning…",
-  "login.badCredentials":
-    "That username and password don’t match a Navidrome account.",
+  "login.badCredentials": "That username and password don’t match a Navidrome account.",
   "login.busy": "Signing in…",
-  "login.failed":
-    "Couldn’t reach Navidrome. Check that it’s running and that Needle’s server can reach it.",
+  "login.failed": "Couldn’t reach Navidrome. Check that it’s running and that Needle’s server can reach it.",
   "login.heading": "Sign in to your music",
   "login.password": "Password",
   "login.passwordHint": "Your Navidrome password",
-  "login.privacy":
-    "Your password goes to your Navidrome server only; Needle keeps a token, not the password.",
+  "login.privacy": "Your password goes to your Navidrome server only; Needle keeps a token, not the password.",
   "login.server": "Server",
   "login.submit": "Sign in",
   "login.subtitle": "Use your Navidrome account.",
   "login.username": "Username",
-  "lyrics.fileHint":
-    "Needle shows the words saved in the song’s file, or in a .lrc file next to it.",
+  "lyrics.fileHint": "Needle shows the words saved in the song’s file, or in a .lrc file next to it.",
   "lyrics.none": "No lyrics for this song",
   "lyrics.playSong": "Play a song to see its lyrics here",
   "lyrics.spotifyHint": "Spotify doesn’t share lyrics with other apps.",
@@ -260,8 +250,7 @@ export const english = {
   "devices.paused": "Paused",
   "devices.playing": "Playing",
   "discovery.connect": "Connect ListenBrainz first",
-  "discovery.connectHint":
-    "Add your ListenBrainz token in Settings to see the playlists it makes for you.",
+  "discovery.connectHint": "Add your ListenBrainz token in Settings to see the playlists it makes for you.",
   "discovery.getMissing": "Get {{count}} missing",
   "discovery.loadFailed": "Couldn’t load this playlist",
   "discovery.madeForYou": "Made for you by ListenBrainz",
@@ -298,8 +287,7 @@ export const english = {
   "home.topArtists": "Your top artists this month",
   "home.unplayed": "You haven’t played these in a while",
   "home.unplayedHint": "Albums you played a lot, and not for six months",
-  "mix.description":
-    "{{description}} and more. Made from your library, new every morning.",
+  "mix.description": "{{description}} and more. Made from your library, new every morning.",
   "mix.find": "Find in mix",
   "mix.kind": "Mix",
   "mix.order": "Mix order",
@@ -315,8 +303,7 @@ export const english = {
   "install.choose": "Choose Add to Home Screen",
   "install.gotIt": "Got it",
   "install.heading": "Put Needle on your home screen",
-  "install.hint":
-    "It opens full screen like an app, keeps playing when the phone locks, and keeps your downloads.",
+  "install.hint": "It opens full screen like an app, keeps playing when the phone locks, and keeps your downloads.",
   "install.share": "Tap Share in Safari’s toolbar",
   "navigation.home": "Home",
   "navigation.library": "Library",
@@ -379,14 +366,11 @@ export const english = {
   "player.signInYouTube": "Sign in to play YouTube Music.",
   "player.spotifyFailed": "Spotify couldn’t play that song",
   "player.spotifyOnly": "Spotify songs play through the Spotify player.",
-  "player.spotifyUnavailable":
-    "Spotify is switched off or unavailable in Needle.",
+  "player.spotifyUnavailable": "Spotify is switched off or unavailable in Needle.",
   "player.stationFailed": "{{name}} isn't responding",
   "player.streamFailed": "The stream could not be loaded.",
-  "player.unavailableYouTube":
-    "This song is unavailable. Open it in YouTube Music.",
-  "player.youtubeUnavailable":
-    "YouTube Music is switched off or unavailable in Needle.",
+  "player.unavailableYouTube": "This song is unavailable. Open it in YouTube Music.",
+  "player.youtubeUnavailable": "YouTube Music is switched off or unavailable in Needle.",
   "playlist.description": "Description",
   "playlist.descriptionHint": "Add an optional description",
   "playlist.edit": "Edit details",
@@ -403,14 +387,12 @@ export const english = {
   "playlist.visible": "Visible to other Navidrome users",
   "panel.aboutArtist": "About the artist",
   "panel.aboutFile": "About the file",
-  "panel.autoplayHint":
-    "When the queue ends, play songs like it from your library",
+  "panel.autoplayHint": "When the queue ends, play songs like it from your library",
   "panel.autoplayTitle": "Keep playing similar songs",
   "panel.clear": "Clear",
   "panel.emptyLyrics": "Play a song to see its lyrics.",
   "panel.emptyNow": "Nothing is playing. Pick an album or a playlist to start.",
-  "panel.emptyQueue":
-    "The queue is empty. Play something and what’s next shows up here.",
+  "panel.emptyQueue": "The queue is empty. Play something and what’s next shows up here.",
   "panel.openQueue": "Open queue",
   "panel.upNext": "Up next",
   "requests.adminIntro":
@@ -419,8 +401,7 @@ export const english = {
   "requests.downloading": "Downloading now",
   "requests.empty": "Nothing requested yet",
   "requests.emptyDownloads": "Nothing is downloading right now.",
-  "requests.emptyHint":
-    "Search for music you don’t have, then pick Get album or Get song.",
+  "requests.emptyHint": "Search for music you don’t have, then pick Get album or Get song.",
   "requests.everyone": "Everyone’s requests",
   "requests.findAnother": "Find another copy",
   "requests.loading": "Loading your requests…",
@@ -429,8 +410,7 @@ export const english = {
   "requests.removeDownload": "Remove {{title}} from downloads",
   "requests.removeList": "Remove {{title}} from this list",
   "requests.title": "Requests",
-  "requests.userIntro":
-    "The albums and songs you asked for. Progress updates by itself.",
+  "requests.userIntro": "The albums and songs you asked for. Progress updates by itself.",
   "requests.yours": "Your requests",
   "requestState.available": "In your library",
   "requestState.downloading": "Downloading",
@@ -443,14 +423,11 @@ export const english = {
   "requestState.soulseek": "Searching Soulseek",
   "requestState.wanted": "Waiting for a source",
   "query.downloadFailed": "Couldn’t start the download",
-  "query.likesFailed":
-    "Couldn't update your likes. Check the connection and try again.",
+  "query.likesFailed": "Couldn't update your likes. Check the connection and try again.",
   "query.lookingSoulseek": "Looking for “{{title}}” on Soulseek",
   "query.localDownloadOnly": "Only songs in your library can be downloaded",
-  "query.localPlaylistOnly":
-    "Only songs in your library can be added to Navidrome playlists",
-  "query.localStarOnly":
-    "Only items in your library can be starred in Navidrome",
+  "query.localPlaylistOnly": "Only songs in your library can be added to Navidrome playlists",
+  "query.localStarOnly": "Only items in your library can be starred in Navidrome",
   "query.orderFailed": "Couldn't save the new order.",
   "remote.nowPlayingHere": "Now playing here",
   "remote.sentFrom": "Now playing here, sent from {{device}}",
@@ -461,8 +438,7 @@ export const english = {
   "radio.edit": "Edit {{name}}",
   "radio.editHeading": "Edit station",
   "radio.homepage": "Website (optional)",
-  "radio.hint":
-    "Right-click any song and choose Start radio, or use Artist radio on an artist’s page.",
+  "radio.hint": "Right-click any song and choose Start radio, or use Artist radio on an artist’s page.",
   "radio.internet": "Internet radio",
   "radio.name": "Name",
   "radio.savedStations": "Stations saved in Navidrome",
@@ -472,8 +448,7 @@ export const english = {
   "radio.stream": "Stream address",
   "radio.title": "Radio",
   "radio.undo": "Undo",
-  "radio.adminFailed":
-    "Navidrome didn’t save that. Only admins can change stations.",
+  "radio.adminFailed": "Navidrome didn’t save that. Only admins can change stations.",
   "search.placeholder": "What do you want to listen to?",
   "search.allResults": "All search results",
   "search.albums": "Albums",
@@ -482,18 +457,15 @@ export const english = {
   "search.browse": "Browse your library",
   "search.browseHint": "Genres come from your files’ tags",
   "search.getAlbumsHint": "Lidarr downloads the albums you pick.",
-  "search.getBothHint":
-    "Albums come through Lidarr and single songs from Soulseek.",
+  "search.getBothHint": "Albums come through Lidarr and single songs from Soulseek.",
   "search.getSongsHint": "Soulseek provides the songs you pick.",
   "search.getSuffix": "They show up in your library when they’re ready.",
-  "search.libraryEmpty":
-    "Once Navidrome has music, genres and decades show up here.",
+  "search.libraryEmpty": "Once Navidrome has music, genres and decades show up here.",
   "search.lidarrEmpty": "Lidarr found no other albums for “{{query}}”.",
   "search.lidarrLoading": "Asking Lidarr about “{{query}}”…",
   "search.loadMore": "Load more",
   "search.loading": "Loading…",
-  "search.musicBrainzError":
-    "MusicBrainz didn’t answer. Try again in a moment.",
+  "search.musicBrainzError": "MusicBrainz didn’t answer. Try again in a moment.",
   "search.noBrowse": "Nothing to browse yet",
   "search.noSongs": "No other songs found for “{{query}}”.",
   "search.filterAll": "All",
@@ -510,19 +482,16 @@ export const english = {
   "search.spotifyAllLoaded": "All available Spotify results are loaded.",
   "search.spotifyLimit": "Spotify’s search limit has been reached.",
   "search.spotifyNextError": "Spotify didn’t load the next page. Try again.",
-  "search.spotifyUnavailable":
-    "Spotify is unavailable. Connect Spotify in Settings to search its catalogue.",
+  "search.spotifyUnavailable": "Spotify is unavailable. Connect Spotify in Settings to search its catalogue.",
   "search.searching": "Searching…",
   "search.sourceError": "{{source}} didn’t answer. Try again in a moment.",
   "search.sourcePaused": "Search will resume after {{source}}’s cooldown.",
   "search.topResult": "Top result",
-  "search.youtubeUnavailable":
-    "YouTube Music is unavailable. Connect it in Settings to search its catalogue.",
+  "search.youtubeUnavailable": "YouTube Music is unavailable. Connect it in Settings to search its catalogue.",
   "search.artistOnYouTube": "Artist on YouTube Music",
   "search.onSpotify": "On Spotify",
   "search.onYouTube": "On YouTube Music",
-  "search.youtubeExperimental":
-    "Experimental. Availability can change when YouTube changes.",
+  "search.youtubeExperimental": "Experimental. Availability can change when YouTube changes.",
   "search.youtubeEmpty": "YouTube Music found no {{kind}} for “{{query}}”.",
   "track.addLiked": "Add {{title}} to liked songs",
   "track.album": "Album",
@@ -544,16 +513,12 @@ export const english = {
   "settings.artColor": "Colour from album art",
   "settings.artColorHint": "Tints each page with the colours of what’s on it.",
   "settings.autoplay": "Keep playing similar songs",
-  "settings.autoplayHint":
-    "When the queue ends, carry on with songs like the last one.",
+  "settings.autoplayHint": "When the queue ends, carry on with songs like the last one.",
   "settings.cellular": "On mobile data",
-  "settings.cellularHint":
-    "Converted by Navidrome to Opus, or AAC on iPhone, which sound good at small sizes.",
+  "settings.cellularHint": "Converted by Navidrome to Opus, or AAC on iPhone, which sound good at small sizes.",
   "settings.crossfade": "Crossfade",
-  "settings.crossfadeHint":
-    "Blend the end of one song into the next. Off for albums played in order.",
-  "settings.crossfadeIosHint":
-    "iPhone and iPad play one song at a time, so crossfade isn’t available here.",
+  "settings.crossfadeHint": "Blend the end of one song into the next. Off for albums played in order.",
+  "settings.crossfadeIosHint": "iPhone and iPad play one song at a time, so crossfade isn’t available here.",
   "settings.crossfadeSeconds": "Crossfade seconds",
   "settings.deviceName": "Device name",
   "settings.deviceNameHint": "How this device appears on your other devices.",
@@ -568,8 +533,7 @@ export const english = {
   "settings.choosePhoto": "Choose photo",
   "settings.choosePlaylists": "Choose playlists",
   "settings.codeCopied": "Code copied",
-  "settings.codeCopyFailed":
-    "Couldn’t copy the code. Select it and copy it yourself.",
+  "settings.codeCopyFailed": "Couldn’t copy the code. Select it and copy it yourself.",
   "settings.connectGoogle": "Connect with Google",
   "settings.connectSpotify": "Connect Spotify",
   "settings.connectYouTube": "Connect YouTube Music",
@@ -608,35 +572,27 @@ export const english = {
     "When off, no device asks Spotify for anything and Spotify stays out of Home, Search and your library. You stay connected.",
   "settings.spotifyConnectedHint":
     "Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium.",
-  "settings.spotifyDisabledHint":
-    "Switched off above. Disconnect to remove Needle's access to your Spotify account.",
+  "settings.spotifyDisabledHint": "Switched off above. Disconnect to remove Needle's access to your Spotify account.",
   "settings.spotifyEnabled": "Use Spotify in Needle",
   "settings.spotifyReconnect": "Reconnect Spotify",
   "settings.spotifyReconnectHint":
     "Needle needs a few more Spotify permissions, to play songs, edit playlists and follow artists. Reconnect once to grant them.",
-  "settings.waitingGoogle":
-    "Waiting for Google. This code expires at {{time}}.",
+  "settings.waitingGoogle": "Waiting for Google. This code expires at {{time}}.",
   "settings.youtubeConnected": "YouTube Music is connected",
-  "settings.youtubeAccountHint":
-    "Your YouTube Music account is connected to this Needle user.",
-  "settings.youtubeAdminHint":
-    "Ask your server admin to enable YouTube Music in Needle.",
+  "settings.youtubeAccountHint": "Your YouTube Music account is connected to this Needle user.",
+  "settings.youtubeAdminHint": "Ask your server admin to enable YouTube Music in Needle.",
   "settings.youtubeConnectHint":
     "Shows your liked songs, saved albums, followed artists and playlists beside your own music.",
   "settings.youtubeEnabled": "Use YouTube Music in Needle",
   "settings.youtubeEnabledHint":
     "When off, YouTube Music stays out of Home, Search and your library. You stay connected.",
-  "settings.youtubeLoginAddressError":
-    "Google sign-in returned an unexpected address. Try again.",
+  "settings.youtubeLoginAddressError": "Google sign-in returned an unexpected address. Try again.",
   "settings.youtubeReconnect": "Reconnect YouTube Music",
-  "settings.youtubeReconnectHint":
-    "Google sign-in expired. Connect again to refresh Needle’s access.",
+  "settings.youtubeReconnectHint": "Google sign-in expired. Connect again to refresh Needle’s access.",
   "settings.listenBrainzConnectedHint":
     "Home shows the playlists ListenBrainz makes for you. Needle never sends listens itself.",
-  "settings.importResult":
-    "{{source}}: {{matched}} of {{total}} are in your library.",
-  "settings.importMissing":
-    "{{missing}} could not be matched. Find them in Search to add them to your own library.",
+  "settings.importResult": "{{source}}: {{matched}} of {{total}} are in your library.",
+  "settings.importMissing": "{{missing}} could not be matched. Find them in Search to add them to your own library.",
   "settings.listenBrainzSending": "Navidrome sends them",
   "settings.listenBrainzNotSending": "Not from Navidrome yet",
   "settings.navidromePasswordHint":
@@ -645,17 +601,14 @@ export const english = {
   "settings.connectedOn": "On",
   "settings.connectedOff": "Off",
   "settings.downloadUnavailable": "Downloads aren’t available here",
-  "settings.downloadUnavailableHint":
-    "Open Needle at its https:// address to keep music on this device.",
+  "settings.downloadUnavailableHint": "Open Needle at its https:// address to keep music on this device.",
   "settings.googleCodeHint": "Open Google’s device page and enter this code.",
   "settings.peopleHint":
     "Everyone with a Navidrome account can sign in to Needle, and shows up here once they have. Create accounts in Navidrome; switch on what each person may do here.",
   "settings.photo": "Your photo",
-  "settings.photoHint":
-    "Shown on every device. Stored on the server with Needle’s data.",
+  "settings.photoHint": "Shown on every device. Stored on the server with Needle’s data.",
   "settings.photoUpdated": "Photo updated",
-  "settings.serverFailed":
-    "Needle’s server didn’t answer. Try again in a moment.",
+  "settings.serverFailed": "Needle’s server didn’t answer. Try again in a moment.",
   "settings.youtubeConnectedToast": "YouTube Music connected",
   "settings.youtubeListsFailed": "Couldn’t load your YouTube Music playlists.",
   "settings.yourListens": "Your listens",
@@ -663,8 +616,7 @@ export const english = {
   "settings.copyListenBrainz": "Copy it from listenbrainz.org/settings.",
   "settings.navidromePassword": "Navidrome password (optional)",
   "settings.gapless": "Gapless playback",
-  "settings.gaplessHint":
-    "No silence between tracks on live and continuous albums.",
+  "settings.gaplessHint": "No silence between tracks on live and continuous albums.",
   "settings.languageHint": "Choose the language used on this device.",
   "settings.listenBrainz": "ListenBrainz",
   "settings.normalize": "Even out volume",
@@ -677,10 +629,8 @@ export const english = {
   "settings.originalHint": "Original is the file as it is, with no conversion.",
   "settings.playback": "Playback",
   "settings.requestMusic": "Request music",
-  "settings.requestMusicOff":
-    "Ask an admin to let you request albums and songs.",
-  "settings.requestMusicOn":
-    "Search offers albums and songs you don’t have, and gets them for you.",
+  "settings.requestMusicOff": "Ask an admin to let you request albums and songs.",
+  "settings.requestMusicOn": "Search offers albums and songs you don’t have, and gets them for you.",
   "settings.server": "Your server",
   "settings.soundQuality": "Sound quality",
   "settings.spotify": "Spotify",
@@ -706,11 +656,9 @@ export const english = {
   "spotify.artist": "Artist",
   "spotify.backArtist": "Back to artist",
   "spotify.connectFirst": "Connect Spotify first",
-  "spotify.connectHint":
-    "Open Settings and connect your Spotify account to see your Spotify library here.",
+  "spotify.connectHint": "Open Settings and connect your Spotify account to see your Spotify library here.",
   "spotify.emptyPlaylist": "This playlist is empty",
-  "spotify.emptyPlaylistHint":
-    "Right-click any Spotify song and choose Add to playlist.",
+  "spotify.emptyPlaylistHint": "Right-click any Spotify song and choose Add to playlist.",
   "spotify.loadAlbums": "Try loading albums again",
   "spotify.loadSingles": "Try loading singles and EPs again",
   "spotify.loadingSongs": "Loading songs…",
@@ -723,10 +671,8 @@ export const english = {
   "spotify.searchReleases": "Search the releases loaded here.",
   "spotify.open": "Open in Spotify",
   "spotify.paused": "Spotify requests are paused",
-  "spotify.pausedHint":
-    "Previously loaded Spotify items are still shown. Requests resume automatically at {{time}}.",
-  "spotify.pausedHintPrefix":
-    "Previously loaded Spotify items are still shown. Requests resume automatically at",
+  "spotify.pausedHint": "Previously loaded Spotify items are still shown. Requests resume automatically at {{time}}.",
+  "spotify.pausedHintPrefix": "Previously loaded Spotify items are still shown. Requests resume automatically at",
   "spotify.status": "Spotify status",
   "spotify.releasesCooldown": "Releases will load after Spotify’s cooldown.",
   "spotify.songsCooldown": "Songs will load after Spotify’s cooldown.",
@@ -735,12 +681,9 @@ export const english = {
   "spotify.followed": "Following {{name}} on Spotify",
   "spotify.followStopped": "Stopped following {{name}}",
   "spotify.removedPlaylist": "Removed from playlist",
-  "spotify.requestPaused":
-    "Spotify requests are paused. Try again after the cooldown.",
-  "spotify.saveFailed":
-    "Spotify didn’t save that. Reconnect Spotify in Settings if this keeps happening.",
-  "spotify.updateFailed":
-    "Spotify didn’t take that change. Reconnect Spotify in Settings if this keeps happening.",
+  "spotify.requestPaused": "Spotify requests are paused. Try again after the cooldown.",
+  "spotify.saveFailed": "Spotify didn’t save that. Reconnect Spotify in Settings if this keeps happening.",
+  "spotify.updateFailed": "Spotify didn’t take that change. Reconnect Spotify in Settings if this keeps happening.",
   "spotify.answerFailed": "Spotify didn’t answer. Try again in a moment.",
   "spotify.playerAnswerFailed": "Spotify’s player didn’t answer",
   "spotify.playerLoadFailed": "Couldn’t load Spotify’s player",
@@ -748,22 +691,16 @@ export const english = {
   "spotify.playerStartFailed": "Spotify’s player didn’t start",
   "spotify.browserPlaybackFailed": "Spotify can’t play in this browser",
   "spotify.premiumRequired": "Playing Spotify in Needle needs Spotify Premium",
-  "spotify.signInRefused":
-    "Spotify refused the sign-in. Reconnect Spotify in Settings.",
-  "discovery.playFailed":
-    "ListenBrainz didn’t send this playlist. Try again in a moment.",
+  "spotify.signInRefused": "Spotify refused the sign-in. Reconnect Spotify in Settings.",
+  "discovery.playFailed": "ListenBrainz didn’t send this playlist. Try again in a moment.",
   "library.scanFailed": "Couldn’t start a scan. Only Navidrome admins can.",
   "settings.photoReadFailed": "Couldn’t read that image",
-  "youtube.requestPaused":
-    "YouTube Music requests are paused. Try again after the cooldown.",
-  "youtube.saveFailed":
-    "YouTube Music didn’t save that change. Try again or reconnect in Settings.",
+  "youtube.requestPaused": "YouTube Music requests are paused. Try again after the cooldown.",
+  "youtube.saveFailed": "YouTube Music didn’t save that change. Try again or reconnect in Settings.",
   "stats.allTime": "All time",
-  "stats.empty":
-    "Listen for a bit and your hours, top artists and favourite times show up here.",
+  "stats.empty": "Listen for a bit and your hours, top artists and favourite times show up here.",
   "stats.emptyHeading": "Nothing played yet{{period}}",
-  "stats.help":
-    "Counted from every song you play for {{seconds}} seconds or more, on any device signed in as you.",
+  "stats.help": "Counted from every song you play for {{seconds}} seconds or more, on any device signed in as you.",
   "stats.inPeriod": " in this period",
   "stats.midnight": "Midnight",
   "stats.noon": "Noon",
@@ -795,14 +732,12 @@ export const english = {
   "stats.mostAround": "You listen most around {{time}}",
   "youtube.open": "Open in YouTube Music",
   "youtube.answerFailed": "YouTube Music didn’t answer",
-  "youtube.answerFailedHint":
-    "Try again in a moment. Your other music is still available.",
+  "youtube.answerFailedHint": "Try again in a moment. Your other music is still available.",
   "youtube.emptyPlaylist": "This playlist is empty",
   "youtube.playbackStopped": "Playback stopped",
   "youtube.openSettings": "Open Settings",
   "youtube.paused": "YouTube Music requests are paused",
-  "youtube.pausedHint":
-    "Previously loaded music stays visible. Needle will try again at {{time}}.",
+  "youtube.pausedHint": "Previously loaded music stays visible. Needle will try again at {{time}}.",
   "youtube.reconnect": "Reconnect YouTube Music",
   "youtube.reconnectHint": "Open Settings to reconnect your account.",
   "youtube.albumKind": "Album on YouTube Music",
@@ -821,8 +756,7 @@ export const english = {
   "devices.movePlayback": "Move playback",
   "devices.movePlaybackTo": "Move playback to {{device}}",
   "devices.nextOn": "Next on {{device}}",
-  "devices.openAnother":
-    "Open Needle on another device signed in as you, and it shows up here.",
+  "devices.openAnother": "Open Needle on another device signed in as you, and it shows up here.",
   "devices.pauseOn": "Pause on {{device}}",
   "devices.playOn": "Play on {{device}}",
   "devices.previousOn": "Previous on {{device}}",
@@ -833,10 +767,8 @@ export const english = {
   "empty.itemMissing": "This {{item}} isn’t here",
   "empty.searchFor": "Search for {{name}}",
   "home.positionOf": "{{position}} of {{duration}}",
-  "library.noSpotifyMatch":
-    "Nothing in your Spotify library matches “{{query}}”.",
-  "library.noYouTubeMatch":
-    "Nothing in your YouTube Music library matches “{{query}}”.",
+  "library.noSpotifyMatch": "Nothing in your Spotify library matches “{{query}}”.",
+  "library.noYouTubeMatch": "Nothing in your YouTube Music library matches “{{query}}”.",
   "panel.findQueue": "Find in queue",
   "panel.nextFrom": "Next from {{source}}",
   "panel.nextQueue": "Next in queue",
@@ -851,44 +783,35 @@ export const english = {
   "radio.noStationsAdmin": "No stations yet. Add one with its stream address.",
   "requests.albumArtist": "Album, {{artist}}",
   "search.noMatchingSongs": "No songs match “{{query}}”.",
-  "settings.adminPersonHint":
-    "Manages Navidrome, and can always request music.",
+  "settings.adminPersonHint": "Manages Navidrome, and can always request music.",
   "settings.askingLidarr": "Asking Lidarr…",
-  "settings.cancelSignInFailed":
-    "Couldn’t cancel sign-in. The code will expire shortly.",
+  "settings.cancelSignInFailed": "Couldn’t cancel sign-in. The code will expire shortly.",
   "settings.changeFailed": "Couldn’t change that",
   "settings.changeYouTubeFailed": "Couldn’t change YouTube Music. Try again.",
   "settings.checkedAt": "Checked at {{time}}.",
-  "settings.checkGoogleFailed":
-    "Couldn’t check Google sign-in. Try connecting again.",
+  "settings.checkGoogleFailed": "Couldn’t check Google sign-in. Try connecting again.",
   "settings.codeExpired": "The code expired. Connect again to get a new one.",
   "settings.connectListenBrainz": "Connect ListenBrainz",
   "settings.connectionsAllWorking": "Everything is working",
   "settings.connectionsNeedAttention": "{{connections}} need a look",
-  "settings.connectionsSummary":
-    "What Needle and its server can reach. Only admins see this.",
+  "settings.connectionsSummary": "What Needle and its server can reach. Only admins see this.",
   "settings.copyFailed": "The copy failed",
   "settings.disconnectFailed": "Couldn’t disconnect",
-  "settings.disconnectYouTubeFailed":
-    "Couldn’t disconnect YouTube Music. Try again.",
+  "settings.disconnectYouTubeFailed": "Couldn’t disconnect YouTube Music. Try again.",
   "settings.downloadStorageEmpty": "Nothing downloaded yet.",
   "settings.downloadStorageLiked": "your liked songs",
   "settings.downloadStorageRoom": "Room for about {{size}} more.",
   "settings.downloadStorageUsed": "{{size}} used by downloads",
   "settings.getMissingAlbums": "Get the missing albums through Lidarr",
-  "settings.googleCanceled":
-    "Google sign-in was canceled. Connect again when you’re ready.",
-  "settings.importMissingExamples":
-    "{{missing}} aren’t, for example {{examples}}.",
+  "settings.googleCanceled": "Google sign-in was canceled. Connect again when you’re ready.",
+  "settings.importMissingExamples": "{{missing}} aren’t, for example {{examples}}.",
   "settings.lastHere": "Last here {{time}}.",
   "settings.lidarrFetchResult": "Lidarr is fetching {{albums}}{{details}}",
   "settings.lidarrNotFoundDetail": "; {{count}} weren’t found",
   "settings.lidarrRequestFailed": "Lidarr didn’t take the request",
   "settings.lidarrSkippedDetail": "; {{count}} more next time",
-  "settings.listenBrainzConnectFailed":
-    "ListenBrainz didn’t answer. Try again in a moment.",
-  "settings.listenBrainzConnected":
-    "ListenBrainz connected. Navidrome now sends your listens.",
+  "settings.listenBrainzConnectFailed": "ListenBrainz didn’t answer. Try again in a moment.",
+  "settings.listenBrainzConnected": "ListenBrainz connected. Navidrome now sends your listens.",
   "settings.listenBrainzConnectedAs": "ListenBrainz connected as {{user}}.",
   "settings.listenBrainzIntro":
     "ListenBrainz makes playlists from what you play: new songs to discover every week and the ones you keep coming back to. Needle shows them on Home and fetches the songs you don’t have.",
@@ -901,13 +824,11 @@ export const english = {
   "settings.personCanSpotify": "{{user}} can use Spotify",
   "settings.personCanYouTube": "{{user}} can use YouTube Music",
   "settings.photoSaveFailed": "Couldn’t save that photo",
-  "settings.serverHint":
-    "Signed in as {{user}}. {{scanSummary}} {{songSummary}}",
+  "settings.serverHint": "Signed in as {{user}}. {{scanSummary}} {{songSummary}}",
   "settings.serverScanHours": "Library last scanned {{count}} hours ago.",
   "settings.serverScanJustNow": "Library last scanned just now.",
   "settings.serverScanMinutes": "Library last scanned {{count}} minutes ago.",
-  "settings.serverVersionMismatch":
-    "The server runs {{version}}. Choose Update Needle in the account menu to load it.",
+  "settings.serverVersionMismatch": "The server runs {{version}}. Choose Update Needle in the account menu to load it.",
   "settings.spotifyConnectedToast": "Spotify connected",
   "settings.spotifyConnectFailed": "Spotify sign-in didn’t finish. Try again.",
   "settings.spotifyPlaylistsFailed": "Couldn’t load your Spotify playlists",
@@ -933,11 +854,9 @@ export const english = {
   "like.removeArtists": "Remove from your liked artists",
   "like.removedAlbums": "Removed from your liked albums",
   "like.removedArtists": "Removed from your liked artists",
-  "lyrics.filePlainSource":
-    "Lyrics from the song’s file. These aren’t timed, so they don’t follow along.",
+  "lyrics.filePlainSource": "Lyrics from the song’s file. These aren’t timed, so they don’t follow along.",
   "lyrics.fileTimedSource": "Lyrics, timed, from the song’s file",
-  "lyrics.youtubePlainSource":
-    "Lyrics from {{source}}. These aren’t timed, so they don’t follow along.",
+  "lyrics.youtubePlainSource": "Lyrics from {{source}}. These aren’t timed, so they don’t follow along.",
   "lyrics.youtubeTimedSource": "Lyrics from {{source}}, timed",
   "search.context": "Search for “{{query}}”",
   "search.clear": "Clear search",
@@ -1017,10 +936,8 @@ export const english = {
   "connections.httpsFix":
     "Offline downloads, Spotify and installing the app need an https:// address. Put Needle behind Tailscale Serve, Caddy or another reverse proxy.",
   "connections.publicDetailMissing": "PUBLIC_URL isn't set",
-  "connections.publicFixMissing":
-    "Only Spotify sign-in needs it: set PUBLIC_URL to the address people open.",
-  "connections.publicMismatch":
-    "PUBLIC_URL is {{publicUrl}}, but this page is {{origin}}",
+  "connections.publicFixMissing": "Only Spotify sign-in needs it: set PUBLIC_URL to the address people open.",
+  "connections.publicMismatch": "PUBLIC_URL is {{publicUrl}}, but this page is {{origin}}",
   "connections.publicMismatchFix":
     "Set PUBLIC_URL to the address people open, or Spotify sign-in returns to the wrong place.",
   "connections.publicTitle": "Public address",
@@ -1035,22 +952,17 @@ export const english = {
   "discovery.savedPlaylist": "Saved {{songs}} as a playlist",
   "discovery.saveFailed": "Couldn’t save the playlist",
   "discovery.skippedDetail": "; {{count}} more next time",
-  "discovery.soulseekHint":
-    "Soulseek provides the songs you pick. They show up in your library when they’re ready.",
+  "discovery.soulseekHint": "Soulseek provides the songs you pick. They show up in your library when they’re ready.",
   "home.artistPlays": "{{plays}}",
-  "library.albumsHint":
-    "Albums in your library, and ones you save on Spotify, show up here. Get more from Search.",
-  "library.artistsHint":
-    "Artists in your library, and ones you follow on Spotify, show up here.",
+  "library.albumsHint": "Albums in your library, and ones you save on Spotify, show up here. Get more from Search.",
+  "library.artistsHint": "Artists in your library, and ones you follow on Spotify, show up here.",
   "library.downloadsHint":
     "Nothing kept on this device yet. Use the download button on an album or playlist to listen offline.",
-  "library.entriesHint":
-    "Your albums, artists and playlists show up here. Get music from Search.",
+  "library.entriesHint": "Your albums, artists and playlists show up here. Get music from Search.",
   "library.entrySummary": "{{kind}}, {{count}}",
   "library.itemBy": "{{kind}}, {{by}}",
   "library.myPlaylist": "My playlist #{{number}}",
-  "library.playlistsHint":
-    "Your playlists show up here. Create one with the + button.",
+  "library.playlistsHint": "Your playlists show up here. Create one with the + button.",
   "panel.bitrate": "Bitrate",
   "panel.firstTime": "First time",
   "panel.format": "Format",

@@ -21,23 +21,12 @@ import { TrackList } from "../../../components/tracks/TrackList.tsx";
 import type { TrackColumn } from "../../../components/tracks/TrackList.tsx";
 import { AS_GIVEN, librarySongSorts, shownSongs } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
-import {
-  count,
-  formatLabel,
-  longDuration,
-  plural,
-  releaseKind,
-} from "../../../lib/format.ts";
+import { count, formatLabel, longDuration, plural, releaseKind } from "../../../lib/format.ts";
 import { useTone } from "../../../lib/tone.ts";
 import { usePageTone } from "../../../layout/pageTone.ts";
 import { player } from "../../../player/controller.ts";
 import type { PlayContext } from "../../../player/store.ts";
-import {
-  useAlbum,
-  useArtist,
-  useCapabilities,
-  useLidarrSearch,
-} from "../../../queries/hooks.ts";
+import { useAlbum, useArtist, useCapabilities, useLidarrSearch } from "../../../queries/hooks.ts";
 import { translate } from "../../../i18n/index.ts";
 
 const playsColumn = (): TrackColumn => ({
@@ -62,46 +51,27 @@ export default function AlbumPage() {
   usePageTone(tone);
   const { data: artist } = useArtist(album?.artistId);
   const caps = useCapabilities();
-  const missing = useLidarrSearch(
-    album?.artist ?? "",
-    Boolean(caps.data?.lidarr && album?.artist),
-  );
+  const missing = useLidarrSearch(album?.artist ?? "", Boolean(caps.data?.lidarr && album?.artist));
   const songs = useMemo(() => album?.song ?? [], [album]);
   const [order, setOrder] = useState<SongOrder>(AS_GIVEN);
   const [songFilter, setSongFilter] = useState("");
-  const orderedSongs = useMemo(
-    () => shownSongs(songs, order, ""),
-    [songs, order],
-  );
-  const sorted = useMemo(
-    () => shownSongs(songs, order, songFilter),
-    [songs, order, songFilter],
-  );
+  const orderedSongs = useMemo(() => shownSongs(songs, order, ""), [songs, order]);
+  const sorted = useMemo(() => shownSongs(songs, order, songFilter), [songs, order, songFilter]);
   const discs = useMemo(() => {
     const map = new Map<number, Song[]>();
-    for (const s of songs)
-      map.set(s.discNumber ?? 1, [...(map.get(s.discNumber ?? 1) ?? []), s]);
+    for (const s of songs) map.set(s.discNumber ?? 1, [...(map.get(s.discNumber ?? 1) ?? []), s]);
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
   }, [songs]);
   const visibleDiscs = useMemo(() => {
     const visibleSongIds = new Set(sorted.map((song) => song.id));
 
     return discs
-      .map(
-        ([discNumber, discSongs]) =>
-          [
-            discNumber,
-            discSongs.filter((song) => visibleSongIds.has(song.id)),
-          ] as const,
-      )
+      .map(([discNumber, discSongs]) => [discNumber, discSongs.filter((song) => visibleSongIds.has(song.id))] as const)
       .filter(([, discSongs]) => discSongs.length > 0);
   }, [discs, sorted]);
 
   if (isLoading) return <PageSkeleton />;
-  if (isError || !album)
-    return (
-      <NotFoundState what="album" error={error} retry={() => void refetch()} />
-    );
+  if (isError || !album) return <NotFoundState what="album" error={error} retry={() => void refetch()} />;
 
   const context: PlayContext = {
     kind: "album",
@@ -110,19 +80,12 @@ export default function AlbumPage() {
     ordered: true,
   };
   const fmt = commonFormat(songs);
-  const artistName =
-    album.displayArtist ?? album.artist ?? translate("catalog.unknownArtist");
+  const artistName = album.displayArtist ?? album.artist ?? translate("catalog.unknownArtist");
   const others = (artist?.album ?? []).filter((a) => a.id !== album.id);
   const notOwned = (missing.data?.albums ?? [])
-    .filter(
-      (m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase(),
-    )
+    .filter((m) => m.artist.toLowerCase() === (album.artist ?? "").toLowerCase())
     .slice(0, 3);
-  const kind = releaseKind(
-    album.songCount,
-    album.duration,
-    album.isCompilation,
-  );
+  const kind = releaseKind(album.songCount, album.duration, album.isCompilation);
   const plays = songs.reduce((n, s) => n + (s.playCount ?? 0), 0);
 
   return (
@@ -161,30 +124,16 @@ export default function AlbumPage() {
               label={translate("catalog.findAlbum")}
             />
             <CollectionTools
-              sorts={[
-                ["custom", translate("catalog.trackOrder")],
-                ...librarySongSorts(),
-              ]}
+              sorts={[["custom", translate("catalog.trackOrder")], ...librarySongSorts()]}
               order={order}
               onOrder={setOrder}
             />
-            {plays ? (
-              <span className="muted">{plural(plays, "play")}</span>
-            ) : null}
+            {plays ? <span className="muted">{plural(plays, "play")}</span> : null}
           </>
         }
       >
-        <PlayContextButton
-          contextId={album.id}
-          label={album.name}
-          onPlay={() => player.playSongs(songs, 0, context)}
-        />
-        <ShuffleButton
-          label={album.name}
-          onShuffle={() =>
-            player.playSongs(songs, 0, context, { shuffle: true })
-          }
-        />
+        <PlayContextButton contextId={album.id} label={album.name} onPlay={() => player.playSongs(songs, 0, context)} />
+        <ShuffleButton label={album.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <LikeButton kind="album" item={album} />
         <DownloadButton
           target={{
@@ -209,9 +158,7 @@ export default function AlbumPage() {
             return (
               <section key={discNumber} className="disc">
                 {discs.length > 1 ? (
-                  <h3 className="disc-h">
-                    {translate("catalog.disc", { number: discNumber })}
-                  </h3>
+                  <h3 className="disc-h">{translate("catalog.disc", { number: discNumber })}</h3>
                 ) : null}
                 <TrackList
                   songs={discSongs}
@@ -224,12 +171,7 @@ export default function AlbumPage() {
                   onPlay={(songIndex) => {
                     const selectedSong = discSongs[songIndex];
 
-                    if (selectedSong)
-                      player.playSongs(
-                        songs,
-                        songs.indexOf(selectedSong),
-                        context,
-                      );
+                    if (selectedSong) player.playSongs(songs, songs.indexOf(selectedSong), context);
                   }}
                 />
               </section>
@@ -259,12 +201,7 @@ export default function AlbumPage() {
             onPlay={(songIndex) => {
               const selectedSong = sorted[songIndex];
 
-              if (selectedSong)
-                player.playSongs(
-                  orderedSongs,
-                  orderedSongs.indexOf(selectedSong),
-                  context,
-                );
+              if (selectedSong) player.playSongs(orderedSongs, orderedSongs.indexOf(selectedSong), context);
             }}
           />
         </section>
@@ -273,9 +210,7 @@ export default function AlbumPage() {
         <p className="album-foot muted">
           {album.year ? `${album.year}. ` : ""}
           {plural(album.songCount, "song")}, {longDuration(album.duration)}
-          {album.genres?.length
-            ? `. ${album.genres.map((g) => g.name).join(", ")}`
-            : ""}
+          {album.genres?.length ? `. ${album.genres.map((g) => g.name).join(", ")}` : ""}
         </p>
         {others.length ? (
           <>
@@ -285,11 +220,7 @@ export default function AlbumPage() {
             />
             <CardRow>
               {others.map((a) => (
-                <AlbumCard
-                  key={a.id}
-                  album={a}
-                  subtitle={String(a.year ?? "")}
-                />
+                <AlbumCard key={a.id} album={a} subtitle={String(a.year ?? "")} />
               ))}
             </CardRow>
           </>

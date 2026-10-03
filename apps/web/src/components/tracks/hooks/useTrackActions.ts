@@ -1,18 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Song } from "@needle/shared";
-import {
-  fold,
-  isLocalSong,
-  songSource,
-  youtubeMusicLink,
-} from "@needle/shared";
+import { fold, isLocalSong, songSource, youtubeMusicLink } from "@needle/shared";
 import { spotifyLink } from "../../../features/spotify/api/client.ts";
 import type { SpImage } from "../../../features/spotify/api/client.ts";
-import {
-  useSpotifyPlaylistEdits,
-  useSpotifyPlaylists,
-} from "../../../features/spotify/hooks/useSpotify.ts";
+import { useSpotifyPlaylistEdits, useSpotifyPlaylists } from "../../../features/spotify/hooks/useSpotify.ts";
 import { translate } from "../../../i18n/index.ts";
 import { api } from "../../../lib/api.ts";
 import { albumPath, artistPath } from "../../../lib/paths.ts";
@@ -39,14 +31,9 @@ type PlaylistTarget = {
   };
 };
 
-const isTrackMenuAction = (
-  action: TrackMenuAction | false | undefined,
-): action is TrackMenuAction => Boolean(action);
+const isTrackMenuAction = (action: TrackMenuAction | false | undefined): action is TrackMenuAction => Boolean(action);
 
-export function useTrackActions(
-  songs: Song[],
-  extra?: TrackMenuExtra[],
-): TrackMenuAction[][] {
+export function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): TrackMenuAction[][] {
   const navigate = useNavigate();
   const songLikes = useSongLikes();
   const capabilities = useCapabilities().data;
@@ -55,26 +42,18 @@ export function useTrackActions(
 
   if (!song) return [];
 
-  const spotify = songs.every(
-    (selectedSong) => songSource(selectedSong) === "spotify",
-  );
-  const youtubeMusic = songs.every(
-    (selectedSong) => songSource(selectedSong) === "youtubeMusic",
-  );
+  const spotify = songs.every((selectedSong) => songSource(selectedSong) === "spotify");
+  const youtubeMusic = songs.every((selectedSong) => songSource(selectedSong) === "youtubeMusic");
   const local = songs.every(isLocalSong);
   const liked = songs.every(songLikes.isLiked);
-  const playableSongs = songs.filter(
-    (selectedSong) => selectedSong.isAvailable !== false,
-  );
+  const playableSongs = songs.filter((selectedSong) => selectedSong.isAvailable !== false);
   const single = songs.length === 1;
   const { artistId, albumId } = song;
   const provider = youtubeMusic ? "YouTube Music " : spotify ? "Spotify " : "";
   const getAlbum = async () => {
     const {
       albums: [album],
-    } = await api
-      .lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`)
-      .catch(() => ({ albums: [] }));
+    } = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => ({ albums: [] }));
 
     if (!album) {
       toast(translate("menu.lidarrNotFound"));
@@ -97,9 +76,7 @@ export function useTrackActions(
         run: () => {
           player.addToQueue(playableSongs);
           toast(
-            single
-              ? translate("menu.addedToQueue")
-              : translate("menu.queueSongs", { count: playableSongs.length }),
+            single ? translate("menu.addedToQueue") : translate("menu.queueSongs", { count: playableSongs.length }),
           );
         },
       },
@@ -110,11 +87,7 @@ export function useTrackActions(
         quick: translate("menu.playNext"),
         run: () => {
           player.playNext(playableSongs);
-          toast(
-            single
-              ? translate("menu.playsNext")
-              : translate("menu.queueSongs", { count: playableSongs.length }),
-          );
+          toast(single ? translate("menu.playsNext") : translate("menu.queueSongs", { count: playableSongs.length }));
         },
       },
       single &&
@@ -141,10 +114,7 @@ export function useTrackActions(
         }),
         quick: translate(liked ? "menu.liked" : "menu.like"),
         on: liked,
-        run: () =>
-          songs.forEach((selectedSong) =>
-            songLikes.setLiked(selectedSong, !liked),
-          ),
+        run: () => songs.forEach((selectedSong) => songLikes.setLiked(selectedSong, !liked)),
       },
       single &&
         (spotify || youtubeMusic) &&
@@ -202,12 +172,7 @@ export function useTrackActions(
                 icon: "link",
                 label: translate("menu.openYouTubeMusic"),
                 go: true,
-                run: () =>
-                  void window.open(
-                    youtubeMusicLink("song", song.id),
-                    "_blank",
-                    "noopener",
-                  ),
+                run: () => void window.open(youtubeMusicLink("song", song.id), "_blank", "noopener"),
               }
             : spotify
               ? {
@@ -215,12 +180,7 @@ export function useTrackActions(
                   icon: "link",
                   label: translate("menu.openSpotify"),
                   go: true,
-                  run: () =>
-                    void window.open(
-                      spotifyLink("track", song.id),
-                      "_blank",
-                      "noopener",
-                    ),
+                  run: () => void window.open(spotifyLink("track", song.id), "_blank", "noopener"),
                 }
               : {
                   id: "details",
@@ -266,16 +226,10 @@ export function usePlaylistTargets(songs: Song[]) {
     [spotify, spotifyPlaylists, localPlaylists],
   );
   const shownPlaylists = useMemo(
-    () =>
-      playlistTargets.filter((playlist) =>
-        fold(playlist.name).includes(fold(filter)),
-      ),
+    () => playlistTargets.filter((playlist) => fold(playlist.name).includes(fold(filter))),
     [playlistTargets, filter],
   );
-  const playlistName =
-    songs.length === 1 && songs[0]
-      ? songs[0].title
-      : translate("menu.newPlaylist");
+  const playlistName = songs.length === 1 && songs[0] ? songs[0].title : translate("menu.newPlaylist");
   const songIds = songs.map((song) => song.id);
 
   return {
@@ -286,24 +240,16 @@ export function usePlaylistTargets(songs: Song[]) {
     addTo: (playlist: PlaylistTarget) => {
       if (spotify) void spotifyPlaylistEdits.add(playlist, songs);
       else
-        void addToPlaylist
-          .mutateAsync({ playlistId: playlist.id, songIds })
-          .then(
-            () =>
-              toast(
-                translate("menu.addedToNamedPlaylist", { name: playlist.name }),
-              ),
-            () => toast(translate("menu.couldNotAdd", { name: playlist.name })),
-          );
+        void addToPlaylist.mutateAsync({ playlistId: playlist.id, songIds }).then(
+          () => toast(translate("menu.addedToNamedPlaylist", { name: playlist.name })),
+          () => toast(translate("menu.couldNotAdd", { name: playlist.name })),
+        );
     },
     createNew: () => {
       if (spotify) void spotifyPlaylistEdits.create(playlistName, songs);
       else
         void createPlaylist.mutateAsync({ name: playlistName, songIds }).then(
-          (playlist) =>
-            toast(
-              translate("menu.addedToNamedPlaylist", { name: playlist.name }),
-            ),
+          (playlist) => toast(translate("menu.addedToNamedPlaylist", { name: playlist.name })),
           () => toast(translate("menu.couldNotCreatePlaylist")),
         );
     },

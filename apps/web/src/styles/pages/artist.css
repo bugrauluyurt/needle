@@ -58,11 +58,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 14, 19, 0) 30%,
-    rgba(15, 14, 19, 0.72)
-  );
+  background: linear-gradient(180deg, rgba(15, 14, 19, 0) 30%, rgba(15, 14, 19, 0.72));
 }
 
 .a-hero-text {

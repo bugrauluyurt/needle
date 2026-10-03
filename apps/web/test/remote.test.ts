@@ -1,11 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Device, RemoteState } from "@needle/shared";
-import {
-  activeRemote,
-  FRESH_MS,
-  remotePosition,
-  remoteSong,
-} from "../src/features/remote/active.ts";
+import { activeRemote, FRESH_MS, remotePosition, remoteSong } from "../src/features/remote/active.ts";
 import { startRemote, stopRemote } from "../src/features/remote/client.ts";
 import { usePlayer } from "../src/player/store.ts";
 import { useSession } from "../src/state/session.ts";
@@ -59,28 +54,17 @@ describe("activeRemote", () => {
   });
 
   it("ignores a playing device that has not reported for a while", () => {
-    const quiet = [
-      device("mac"),
-      device("phone", state({ updatedAt: NOW - FRESH_MS })),
-    ];
+    const quiet = [device("mac"), device("phone", state({ updatedAt: NOW - FRESH_MS }))];
     expect(activeRemote(quiet, "phone", "mac", NOW)).toBeNull();
   });
 
   it("keeps a paused device active however long it has been paused", () => {
-    const paused = [
-      device("mac"),
-      device(
-        "phone",
-        state({ playing: false, updatedAt: NOW - 10 * FRESH_MS }),
-      ),
-    ];
+    const paused = [device("mac"), device("phone", state({ playing: false, updatedAt: NOW - 10 * FRESH_MS }))];
     expect(activeRemote(paused, "phone", "mac", NOW)?.id).toBe("phone");
   });
 
   it("ignores a device with nothing loaded or no active device", () => {
-    expect(
-      activeRemote([device("mac"), device("phone", null)], "phone", "mac", NOW),
-    ).toBeNull();
+    expect(activeRemote([device("mac"), device("phone", null)], "phone", "mac", NOW)).toBeNull();
     expect(activeRemote(devices, null, "mac", NOW)).toBeNull();
   });
 });
@@ -149,9 +133,7 @@ describe("remoteSong", () => {
   });
 
   it("preserves the explicit source when receiving newer device state", () => {
-    expect(
-      remoteSong(state({ songId: "abc", source: "youtubeMusic" })).source,
-    ).toBe("youtubeMusic");
+    expect(remoteSong(state({ songId: "abc", source: "youtubeMusic" })).source).toBe("youtubeMusic");
   });
 });
 

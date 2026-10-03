@@ -23,11 +23,7 @@ for (const gesture of ["gesturestart", "gesturechange"])
     passive: false,
   });
 
-if (
-  "serviceWorker" in navigator &&
-  import.meta.env.PROD &&
-  window.isSecureContext
-) {
+if ("serviceWorker" in navigator && import.meta.env.PROD && window.isSecureContext) {
   void import("workbox-window").then(({ Workbox }) => {
     const wb = new Workbox("/sw.js");
     wb.addEventListener("waiting", () =>
@@ -38,10 +34,7 @@ if (
         },
       }),
     );
-    document.addEventListener(
-      "visibilitychange",
-      () => document.visibilityState === "visible" && void wb.update(),
-    );
+    document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void wb.update());
     void wb.register();
   });
 }

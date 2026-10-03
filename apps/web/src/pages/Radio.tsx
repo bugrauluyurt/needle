@@ -17,13 +17,7 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import { usePlayer } from "../player/store.ts";
 import { keys } from "../queries/keys.ts";
-import {
-  useArtists,
-  useIsAdmin,
-  useRadios,
-  useStarred,
-  useStats,
-} from "../queries/hooks.ts";
+import { useArtists, useIsAdmin, useRadios, useStarred, useStats } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
 import { isSpotify, rawId } from "../features/spotify/api/client.ts";
 import { useSpotifyArtistProfile } from "../features/spotify/hooks/useSpotify.ts";
@@ -38,23 +32,12 @@ const fieldsOf = (s?: InternetRadioStation): StationFields => ({
   home: s?.homePageUrl ?? "",
 });
 
-function StationForm({
-  station,
-  onDone,
-}: {
-  station?: InternetRadioStation;
-  onDone: () => void;
-}) {
+function StationForm({ station, onDone }: { station?: InternetRadioStation; onDone: () => void }) {
   const qc = useQueryClient();
   const [f, setF] = useState(fieldsOf(station));
-  const set = (k: keyof StationFields) => (e: ChangeEvent<HTMLInputElement>) =>
-    setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof StationFields) => (e: ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const refresh = () => qc.invalidateQueries({ queryKey: keys.radios });
-  const run = async (
-    work: Promise<unknown>,
-    done: string,
-    action?: Parameters<typeof toast>[1],
-  ) => {
+  const run = async (work: Promise<unknown>, done: string, action?: Parameters<typeof toast>[1]) => {
     try {
       await work;
       await refresh();
@@ -64,32 +47,21 @@ function StationForm({
       toast(translate("radio.adminFailed"));
     }
   };
-  const [name, url, home] = [
-    f.name.trim(),
-    f.url.trim(),
-    f.home.trim() || undefined,
-  ];
+  const [name, url, home] = [f.name.trim(), f.url.trim(), f.home.trim() || undefined];
   const submit = (e: FormEvent) => {
     e.preventDefault();
     void run(
-      station
-        ? sub.updateRadio(station.id, name, url, home)
-        : sub.addRadio(name, url, home),
+      station ? sub.updateRadio(station.id, name, url, home) : sub.addRadio(name, url, home),
       translate(station ? "radio.savedStation" : "radio.addedStation", {
         name,
       }),
     );
   };
   const remove = (s: InternetRadioStation) =>
-    void run(
-      sub.deleteRadio(s.id),
-      translate("radio.deletedStation", { name: s.name }),
-      {
-        label: translate("radio.undo"),
-        run: () =>
-          void sub.addRadio(s.name, s.streamUrl, s.homePageUrl).then(refresh),
-      },
-    );
+    void run(sub.deleteRadio(s.id), translate("radio.deletedStation", { name: s.name }), {
+      label: translate("radio.undo"),
+      run: () => void sub.addRadio(s.name, s.streamUrl, s.homePageUrl).then(refresh),
+    });
   return (
     <form onSubmit={submit}>
       <label className="field">
@@ -112,11 +84,7 @@ function StationForm({
       </label>
       <div className={station ? "dialog-actions" : "dialog-actions end"}>
         {station ? (
-          <button
-            type="button"
-            className="btn ghost danger"
-            onClick={() => remove(station)}
-          >
+          <button type="button" className="btn ghost danger" onClick={() => remove(station)}>
             <Icon name="trash" size={16} />
             {translate("radio.delete")}
           </button>
@@ -147,17 +115,11 @@ function StationDialog({
             <Dialog.Title className="dialog-title small">
               {translate(station ? "radio.editHeading" : "radio.addHeading")}
             </Dialog.Title>
-            <Dialog.Close
-              className="icon-btn"
-              aria-label={translate("common.close")}
-              type="button"
-            >
+            <Dialog.Close className="icon-btn" aria-label={translate("common.close")} type="button">
               <Icon name="close" />
             </Dialog.Close>
           </div>
-          {open ? (
-            <StationForm station={station} onDone={() => onOpenChange(false)} />
-          ) : null}
+          {open ? <StationForm station={station} onDone={() => onOpenChange(false)} /> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -168,11 +130,7 @@ function AddStation() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className="btn ghost sm"
-        onClick={() => setOpen(true)}
-      >
+      <button type="button" className="btn ghost sm" onClick={() => setOpen(true)}>
         <Icon name="plus" size={15} />
         {translate("radio.add")}
       </button>
@@ -196,9 +154,7 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
       <div className="station-text">
         <div className="t">{s.name}</div>
         <div className="s ellipsis">
-          {s.homePageUrl
-            ? s.homePageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")
-            : translate("radio.internet")}
+          {s.homePageUrl ? s.homePageUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") : translate("radio.internet")}
         </div>
       </div>
       {admin ? (
@@ -228,19 +184,9 @@ function Station({ s, admin }: { s: InternetRadioStation; admin: boolean }) {
   );
 }
 
-function ArtistArt({
-  id,
-  library,
-}: {
-  id: string;
-  library: Artist[] | undefined;
-}) {
-  const { data } = useSpotifyArtistProfile(
-    isSpotify(id) ? rawId(id) : undefined,
-  );
-  const youtubeMusicImage = useYouTubeMusicArtistImage(
-    isYouTubeMusic(id) ? id : "",
-  );
+function ArtistArt({ id, library }: { id: string; library: Artist[] | undefined }) {
+  const { data } = useSpotifyArtistProfile(isSpotify(id) ? rawId(id) : undefined);
+  const youtubeMusicImage = useYouTubeMusicArtistImage(isYouTubeMusic(id) ? id : "");
   const source = isYouTubeMusic(id)
     ? { id: youtubeMusicImage }
     : isSpotify(id)
@@ -266,32 +212,21 @@ export default function RadioPage() {
         {!mobile ? <h1 className="hello">{translate("radio.title")}</h1> : null}
         {artists.length || songs.length ? (
           <>
-            <RowHeader
-              title={translate("radio.startHeading")}
-              subtitle={translate("radio.startHint")}
-            />
+            <RowHeader title={translate("radio.startHeading")} subtitle={translate("radio.startHint")} />
             <CardRow>
               {artists.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   className="card radio-card"
-                  onClick={() =>
-                    void player.startRadio({ artistId: a.id, name: a.name })
-                  }
+                  onClick={() => void player.startRadio({ artistId: a.id, name: a.name })}
                 >
                   <div className="card-art">
                     <ArtistArt id={a.id} library={library} />
                   </div>
-                  <div className="t">
-                    {translate("radio.named", { name: a.name })}
-                  </div>
+                  <div className="t">{translate("radio.named", { name: a.name })}</div>
                   <div className="s">
-                    {isYouTubeMusic(a.id)
-                      ? "YouTube Music"
-                      : isSpotify(a.id)
-                        ? "Spotify"
-                        : translate("radio.artist")}
+                    {isYouTubeMusic(a.id) ? "YouTube Music" : isSpotify(a.id) ? "Spotify" : translate("radio.artist")}
                   </div>
                 </button>
               ))}
@@ -300,16 +235,12 @@ export default function RadioPage() {
                   key={s.id}
                   type="button"
                   className="card radio-card"
-                  onClick={() =>
-                    void player.startRadio({ song: s, name: s.title })
-                  }
+                  onClick={() => void player.startRadio({ song: s, name: s.title })}
                 >
                   <div className="card-art">
                     <Art id={s.coverArt} px={180} />
                   </div>
-                  <div className="t">
-                    {translate("radio.named", { name: s.title })}
-                  </div>
+                  <div className="t">{translate("radio.named", { name: s.title })}</div>
                   <div className="s">{translate("radio.song")}</div>
                 </button>
               ))}
@@ -330,9 +261,7 @@ export default function RadioPage() {
             ))}
           </div>
         ) : !isLoading ? (
-          <p className="muted">
-            {translate(admin ? "radio.noStationsAdmin" : "radio.noStations")}
-          </p>
+          <p className="muted">{translate(admin ? "radio.noStationsAdmin" : "radio.noStations")}</p>
         ) : null}
       </div>
     </>

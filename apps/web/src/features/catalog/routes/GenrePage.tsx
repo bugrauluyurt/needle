@@ -1,22 +1,9 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import {
-  albumItem,
-  CardSkeletons,
-  RowHeader,
-} from "../../../components/Cards.tsx";
-import {
-  Collection,
-  CollectionTools,
-  SORT_LABELS,
-} from "../../../components/Collection.tsx";
+import { albumItem, CardSkeletons, RowHeader } from "../../../components/Cards.tsx";
+import { Collection, CollectionTools, SORT_LABELS } from "../../../components/Collection.tsx";
 import type { SortOption } from "../../../components/Collection.tsx";
-import {
-  ActBar,
-  Hero,
-  PlayContextButton,
-  ShuffleButton,
-} from "../../../components/Hero.tsx";
+import { ActBar, Hero, PlayContextButton, ShuffleButton } from "../../../components/Hero.tsx";
 import { MixArt } from "../../../components/MixArt.tsx";
 import { SearchField } from "../../../components/SearchField.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
@@ -27,11 +14,7 @@ import type { SongOrder } from "../../../lib/songs.ts";
 import { translate } from "../../../i18n/index.ts";
 import { usePageTone } from "../../../layout/pageTone.ts";
 import { player } from "../../../player/controller.ts";
-import {
-  useAllAlbums,
-  useGenres,
-  useLibrarySongs,
-} from "../../../queries/hooks.ts";
+import { useAllAlbums, useGenres, useLibrarySongs } from "../../../queries/hooks.ts";
 
 const genreSorts = (): SortOption[] => [
   ["default", translate("catalog.suggested")],
@@ -52,27 +35,20 @@ export default function GenrePage() {
   const albums = useMemo(
     () =>
       (libraryAlbums.data ?? []).filter(
-        (album) =>
-          album.genre === genre ||
-          album.genres?.some((albumGenre) => albumGenre.name === genre),
+        (album) => album.genre === genre || album.genres?.some((albumGenre) => albumGenre.name === genre),
       ),
     [libraryAlbums.data, genre],
   );
   const songs = useMemo(
     () =>
       (librarySongs.data ?? []).filter(
-        (song) =>
-          song.genre === genre ||
-          song.genres?.some((songGenre) => songGenre.name === genre),
+        (song) => song.genre === genre || song.genres?.some((songGenre) => songGenre.name === genre),
       ),
     [librarySongs.data, genre],
   );
   const [songFilter, setSongFilter] = useState("");
   const [songOrder, setSongOrder] = useState<SongOrder>(AS_GIVEN);
-  const visibleSongs = useMemo(
-    () => shownSongs(songs, songOrder, songFilter),
-    [songs, songOrder, songFilter],
-  );
+  const visibleSongs = useMemo(() => shownSongs(songs, songOrder, songFilter), [songs, songOrder, songFilter]);
   const info = genres?.find((g) => g.value === genre);
   const context = { kind: "genre" as const, id: `genre:${genre}`, name: genre };
   return (
@@ -84,8 +60,7 @@ export default function GenrePage() {
         meta={
           info ? (
             <span>
-              {plural(info.albumCount, "album")},{" "}
-              {plural(info.songCount, "song")}
+              {plural(info.albumCount, "album")}, {plural(info.songCount, "song")}
             </span>
           ) : null
         }
@@ -96,12 +71,7 @@ export default function GenrePage() {
           label={genre}
           onPlay={() => player.playSongs(songs, 0, context, { shuffle: true })}
         />
-        <ShuffleButton
-          label={genre}
-          onShuffle={() =>
-            player.playSongs(songs, 0, context, { shuffle: true })
-          }
-        />
+        <ShuffleButton label={genre} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
       </ActBar>
       <div className="pad">
         <Collection
@@ -125,24 +95,14 @@ export default function GenrePage() {
                     label={translate("catalog.findGenreSongs")}
                   />
                   <CollectionTools
-                    sorts={[
-                      ["custom", translate("catalog.suggested")],
-                      ...librarySongSorts(),
-                    ]}
+                    sorts={[["custom", translate("catalog.suggested")], ...librarySongSorts()]}
                     order={songOrder}
                     onOrder={setSongOrder}
                   />
                 </div>
               }
             />
-            <TrackList
-              songs={visibleSongs}
-              context={context}
-              art
-              album
-              order={songOrder}
-              onOrder={setSongOrder}
-            />
+            <TrackList songs={visibleSongs} context={context} art album order={songOrder} onOrder={setSongOrder} />
           </>
         ) : null}
       </div>

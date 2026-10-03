@@ -40,12 +40,7 @@ export function InstallHint({ inline = false }: { inline?: boolean }) {
   return (
     <>
       <div className="dim-bg" onClick={close} aria-hidden="true" />
-      <div
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={translate("install.heading")}
-      >
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={translate("install.heading")}>
         <div className="grab" />
         {body}
         <button type="button" className="btn light" onClick={close}>

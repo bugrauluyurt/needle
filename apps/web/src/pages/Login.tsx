@@ -22,9 +22,7 @@ export function Login() {
       signIn(creds);
     } catch (err) {
       setError(
-        err instanceof SubsonicError && err.code === 40
-          ? translate("login.badCredentials")
-          : translate("login.failed"),
+        err instanceof SubsonicError && err.code === 40 ? translate("login.badCredentials") : translate("login.failed"),
       );
     } finally {
       setBusy(false);
@@ -47,12 +45,7 @@ export function Login() {
         <p>{translate("login.subtitle")}</p>
         <label className="field">
           <span>{translate("login.server")}</span>
-          <input
-            value={location.host}
-            readOnly
-            aria-readonly="true"
-            tabIndex={-1}
-          />
+          <input value={location.host} readOnly aria-readonly="true" tabIndex={-1} />
         </label>
         <label className="field">
           <span>{translate("login.username")}</span>
@@ -83,11 +76,7 @@ export function Login() {
             {error}
           </p>
         ) : null}
-        <button
-          type="submit"
-          className="btn primary"
-          disabled={busy || !user || !password}
-        >
+        <button type="submit" className="btn primary" disabled={busy || !user || !password}>
           {busy ? translate("login.busy") : translate("login.submit")}
         </button>
         <p className="fine">{translate("login.privacy")}</p>

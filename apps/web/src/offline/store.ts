@@ -38,10 +38,7 @@ type OfflineState = {
 };
 
 export const offlineSupported =
-  typeof window !== "undefined" &&
-  "caches" in window &&
-  window.isSecureContext &&
-  "indexedDB" in window;
+  typeof window !== "undefined" && "caches" in window && window.isSecureContext && "indexedDB" in window;
 
 export const useOffline = create<OfflineState>(() => ({
   ready: false,
@@ -72,34 +69,22 @@ export async function loadOffline() {
   });
   void navigator.storage?.persist?.().catch(() => false);
   const have = useOffline.getState().songs;
-  for (const c of collections)
-    if (c.songIds.some((id) => !have.has(id)))
-      void resumeDownload(c).catch(() => undefined);
+  for (const c of collections) if (c.songIds.some((id) => !have.has(id))) void resumeDownload(c).catch(() => undefined);
 }
 
 export async function offlineSource(songId: string): Promise<string | null> {
-  if (
-    musicSource(songId) !== "library" ||
-    !offlineSupported ||
-    !useOffline.getState().songs.has(songId)
-  )
-    return null;
+  if (musicSource(songId) !== "library" || !offlineSupported || !useOffline.getState().songs.has(songId)) return null;
   const hit = await (await caches.open(CACHE)).match(key(songId));
   return hit ? URL.createObjectURL(await hit.blob()) : null;
 }
 
 export async function offlineSongs(ids: string[]): Promise<Song[]> {
-  const rows = await Promise.all(
-    ids.map((id) => idbGet<OfflineSong>("songs", id)),
-  );
+  const rows = await Promise.all(ids.map((id) => idbGet<OfflineSong>("songs", id)));
   return rows.filter((r): r is OfflineSong => Boolean(r)).map((r) => r.song);
 }
 
 function onCellular(): boolean {
-  return (
-    (navigator as Navigator & { connection?: { type?: string } }).connection
-      ?.type === "cellular"
-  );
+  return (navigator as Navigator & { connection?: { type?: string } }).connection?.type === "cellular";
 }
 
 function downloadUrl(song: Song): string {
@@ -117,11 +102,7 @@ function setJob(id: string, job: Job | null) {
   useOffline.setState({ jobs });
 }
 
-async function saveSong(
-  cache: Cache,
-  song: Song,
-  onProgress: (fraction: number) => void,
-): Promise<number> {
+async function saveSong(cache: Cache, song: Song, onProgress: (fraction: number) => void): Promise<number> {
   const abort = new AbortController();
   let stall = setTimeout(() => abort.abort(), STALL_MS);
   const alive = () => {
@@ -130,20 +111,12 @@ async function saveSong(
   };
   try {
     const res = await fetch(downloadUrl(song), { signal: abort.signal });
-    if (!res.ok || !res.body)
-      throw new Error(
-        translate("error.downloadFailed", { status: res.status }),
-      );
-    const total =
-      Number(res.headers.get("content-length") ?? 0) || (song.size ?? 0);
+    if (!res.ok || !res.body) throw new Error(translate("error.downloadFailed", { status: res.status }));
+    const total = Number(res.headers.get("content-length") ?? 0) || (song.size ?? 0);
     const reader = res.body.getReader();
     const chunks: Uint8Array<ArrayBuffer>[] = [];
     let received = 0;
-    for (
-      let part = await reader.read();
-      !part.done;
-      part = await reader.read()
-    ) {
+    for (let part = await reader.read(); !part.done; part = await reader.read()) {
       chunks.push(part.value);
       received += part.value.length;
       alive();
@@ -151,10 +124,7 @@ async function saveSong(
     }
     const type = res.headers.get("content-type") ?? "audio/mpeg";
     const blob = new Blob(chunks, { type });
-    await cache.put(
-      key(song.id),
-      new Response(blob, { headers: { "content-type": type } }),
-    );
+    await cache.put(key(song.id), new Response(blob, { headers: { "content-type": type } }));
     await idbPut<OfflineSong>("songs", {
       id: song.id,
       song,
@@ -169,12 +139,8 @@ async function saveSong(
 
 const running = new Set<string>();
 
-export async function download(
-  collection: Omit<OfflineCollection, "savedAt" | "songIds">,
-  songs: Song[],
-) {
-  if (!songs.every(isLocalSong))
-    throw new Error(translate("query.localDownloadOnly"));
+export async function download(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
+  if (!songs.every(isLocalSong)) throw new Error(translate("query.localDownloadOnly"));
 
   if (!offlineSupported || running.has(collection.id)) return;
   running.add(collection.id);
@@ -185,10 +151,7 @@ export async function download(
   }
 }
 
-async function fetchAll(
-  collection: Omit<OfflineCollection, "savedAt" | "songIds">,
-  songs: Song[],
-) {
+async function fetchAll(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
   const entry: OfflineCollection = {
     ...collection,
     songIds: songs.map((s) => s.id),
@@ -210,9 +173,7 @@ async function fetchAll(
   };
   const partial = new Map<string, number>();
   const report = () => {
-    job.progress =
-      (job.done + [...partial.values()].reduce((a, b) => a + b, 0)) /
-      Math.max(1, job.total);
+    job.progress = (job.done + [...partial.values()].reduce((a, b) => a + b, 0)) / Math.max(1, job.total);
     setJob(entry.id, { ...job });
   };
   report();
@@ -223,8 +184,7 @@ async function fetchAll(
         setJob(entry.id, { ...job, waiting: true });
         await new Promise((r) => setTimeout(r, 15_000));
       }
-      if (!useOffline.getState().collections.some((c) => c.id === entry.id))
-        return;
+      if (!useOffline.getState().collections.some((c) => c.id === entry.id)) return;
       const id = song.id;
       try {
         const bytes = await saveSong(cache, song, (f) => {
@@ -283,7 +243,5 @@ export async function removeAllDownloads() {
 }
 
 export function useIsDownloaded(collectionId: string | undefined): boolean {
-  return useOffline((s) =>
-    Boolean(collectionId && s.collections.some((c) => c.id === collectionId)),
-  );
+  return useOffline((s) => Boolean(collectionId && s.collections.some((c) => c.id === collectionId)));
 }

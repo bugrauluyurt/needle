@@ -2,8 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type RightPanel = "now" | "queue" | "lyrics";
-export type LibraryFilter =
-  "playlists" | "albums" | "artists" | "downloaded" | null;
+export type LibraryFilter = "playlists" | "albums" | "artists" | "downloaded" | null;
 export type LibraryOrigin = "all" | "server" | "spotify" | "youtubeMusic";
 export type CollectionView = "compact" | "list" | "dense" | "grid";
 export type SortKey = "default" | "added" | "title" | "by" | "year" | "plays";
@@ -30,10 +29,7 @@ type UiState = {
   toasts: Toast[];
 };
 
-type Persisted = Pick<
-  UiState,
-  "rightPanel" | "libraryFilter" | "libraryOrigin" | "collections"
->;
+type Persisted = Pick<UiState, "rightPanel" | "libraryFilter" | "libraryOrigin" | "collections">;
 
 export const useUi = create<UiState>()(
   persist(
@@ -77,24 +73,15 @@ let toastId = 0;
 export function toast(message: string, action?: Toast["action"]) {
   const id = ++toastId;
   useUi.setState((s) => ({
-    toasts: [
-      ...s.toasts.slice(-2),
-      { id, message, ...(action ? { action } : {}) },
-    ],
+    toasts: [...s.toasts.slice(-2), { id, message, ...(action ? { action } : {}) }],
   }));
-  window.setTimeout(
-    () =>
-      useUi.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-    4500,
-  );
+  window.setTimeout(() => useUi.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4500);
 }
 
 export function setFullScreen(on: boolean) {
   useUi.setState({ fullScreen: on });
-  if (on)
-    void document.documentElement.requestFullscreen?.().catch(() => undefined);
-  else if (document.fullscreenElement)
-    void document.exitFullscreen().catch(() => undefined);
+  if (on) void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  else if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
 }
 
 export function toggleRightPanel(panel: RightPanel) {
