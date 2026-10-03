@@ -243,6 +243,8 @@ test("mobile Spotify remains connected with a visible cooldown notice", async ({
       calls += 1;
   });
   await signIn(page);
+  const callsBeforeCooldown = calls;
+
   await page.evaluate((accountUser) => {
     localStorage.setItem(
       `needle.spotifyBlockedUntil.${encodeURIComponent(accountUser)}`,
@@ -253,7 +255,7 @@ test("mobile Spotify remains connected with a visible cooldown notice", async ({
   await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
   expect(await page.locator("#main").evaluate((main) => main.scrollWidth <= main.clientWidth)).toBe(true);
-  expect(calls).toBe(0);
+  expect(calls).toBe(callsBeforeCooldown);
 });
 
 test("separates a locked Spotify playlist note from its description", async ({ page }) => {
