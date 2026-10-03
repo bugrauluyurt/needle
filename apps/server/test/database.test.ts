@@ -5,8 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase, openDatabaseWithBackup } from "../src/db/database.ts";
+
+const { TEMPORARY_BACKUP_ID } = vi.hoisted(() => ({
+  TEMPORARY_BACKUP_ID: "00000000-0000-4000-8000-000000000000",
+}));
+
+vi.mock("node:crypto", () => ({ randomUUID: () => TEMPORARY_BACKUP_ID }));
 
 const LEGACY_SCHEMA = `
 CREATE TABLE plays (
@@ -107,24 +113,26 @@ async function temporaryDirectory(): Promise<string> {
   return directory;
 }
 
-function legacyDatabase(directory: string): DatabaseSync {
+function createLegacyDatabase(directory: string): DatabaseSync {
   const database = new DatabaseSync(join(directory, "needle.db"));
   database.exec(LEGACY_SCHEMA);
 
   return database;
 }
 
-function columns(database: DatabaseSync, table: string): string[] {
-  return (database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((column) => column.name);
+function columnNames(database: DatabaseSync, tableName: string): string[] {
+  return (database.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[]).map(
+    (databaseColumn) => databaseColumn.name,
+  );
 }
 
-function integrity(databasePath: string): string {
+function databaseIntegrity(databasePath: string): string {
   const database = new DatabaseSync(databasePath, { readOnly: true });
 
   try {
-    const result = database.prepare("PRAGMA integrity_check").get() as { integrity_check: string };
+    const integrityCheckResult = database.prepare("PRAGMA integrity_check").get() as { integrity_check: string };
 
-    return result.integrity_check;
+    return integrityCheckResult.integrity_check;
   } finally {
     database.close();
   }
@@ -139,8 +147,8 @@ describe("database migrations", () => {
     const directory = await temporaryDirectory();
     const database = await openDatabaseWithBackup(directory);
 
-    expect(columns(database, "spotify_tokens")).toEqual(expect.arrayContaining(["scope", "enabled"]));
-    expect(columns(database, "permissions")).toContain("can_youtube_music");
+    expect(columnNames(database, "spotify_tokens")).toEqual(expect.arrayContaining(["scope", "enabled"]));
+    expect(columnNames(database, "permissions")).toContain("can_youtube_music");
     expect(database.prepare("SELECT COUNT(*) AS count FROM needle_migrations").get()).toEqual({ count: 4 });
     expect(existsSync(join(directory, "needle.pre-migrations.db"))).toBe(false);
 
@@ -149,7 +157,7 @@ describe("database migrations", () => {
 
   it("adopts an older database, preserves rows and creates one backup", async () => {
     const directory = await temporaryDirectory();
-    const legacy = legacyDatabase(directory);
+    const legacy = createLegacyDatabase(directory);
     legacy
       .prepare("INSERT INTO spotify_tokens (user, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)")
       .run("alex", "access", "refresh", 123);
@@ -185,13 +193,13 @@ describe("database migrations", () => {
       artist: "Artist",
       state: "wanted",
     });
-    expect(columns(database, "permissions")).toContain("can_youtube_music");
+    expect(columnNames(database, "permissions")).toContain("can_youtube_music");
     expect(existsSync(join(directory, "needle.pre-migrations.db"))).toBe(true);
 
     database.close();
 
     const backupDatabase = new DatabaseSync(join(directory, "needle.pre-migrations.db"));
-    expect(columns(backupDatabase, "spotify_tokens")).not.toContain("scope");
+    expect(columnNames(backupDatabase, "spotify_tokens")).not.toContain("scope");
     expect(backupDatabase.prepare("SELECT user, access_token FROM spotify_tokens").get()).toEqual({
       user: "alex",
       access_token: "access",
@@ -209,7 +217,7 @@ describe("database migrations", () => {
 
   it("adopts the current legacy schema without changing existing column values", async () => {
     const directory = await temporaryDirectory();
-    const legacy = legacyDatabase(directory);
+    const legacy = createLegacyDatabase(directory);
     legacy.exec(
       "ALTER TABLE spotify_tokens ADD COLUMN scope TEXT NOT NULL DEFAULT ''; ALTER TABLE spotify_tokens ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1; ALTER TABLE permissions ADD COLUMN can_youtube_music INTEGER;",
     );
@@ -232,18 +240,40 @@ describe("database migrations", () => {
 
   it("replaces a partial backup atomically before adopting a legacy database", async () => {
     const directory = await temporaryDirectory();
-    const legacy = legacyDatabase(directory);
+    const legacy = createLegacyDatabase(directory);
     legacy.prepare("INSERT INTO seen (user, admin, last_seen) VALUES (?, ?, ?)").run("alex", 1, 123);
     legacy.close();
 
     const backupPath = join(directory, "needle.pre-migrations.db");
     await writeFile(backupPath, "partial backup");
+    const temporaryBackupPath = `${backupPath}.tmp-${process.pid}-${TEMPORARY_BACKUP_ID}`;
+    await writeFile(`${temporaryBackupPath}-shm`, "temporary shared memory");
 
     const database = await openDatabaseWithBackup(directory);
     database.close();
 
-    expect(integrity(backupPath)).toBe("ok");
-    expect(await readdir(directory)).not.toContain(expect.stringContaining("needle.pre-migrations.db.tmp"));
+    expect(databaseIntegrity(backupPath)).toBe("ok");
+
+    const databaseFiles = await readdir(directory);
+    expect(databaseFiles.some((databaseFile) => databaseFile.startsWith("needle.pre-migrations.db.tmp"))).toBe(false);
+
+    const backupDatabase = new DatabaseSync(backupPath, { readOnly: true });
+    expect(backupDatabase.prepare("SELECT * FROM seen").get()).toEqual({ user: "alex", admin: 1, last_seen: 123 });
+    backupDatabase.close();
+  });
+
+  it("replaces an empty valid SQLite backup with the legacy Needle database", async () => {
+    const directory = await temporaryDirectory();
+    const legacy = createLegacyDatabase(directory);
+    legacy.prepare("INSERT INTO seen (user, admin, last_seen) VALUES (?, ?, ?)").run("alex", 1, 123);
+    legacy.close();
+
+    const backupPath = join(directory, "needle.pre-migrations.db");
+    const emptyBackup = new DatabaseSync(backupPath);
+    emptyBackup.close();
+
+    const database = await openDatabaseWithBackup(directory);
+    database.close();
 
     const backupDatabase = new DatabaseSync(backupPath, { readOnly: true });
     expect(backupDatabase.prepare("SELECT * FROM seen").get()).toEqual({ user: "alex", admin: 1, last_seen: 123 });
@@ -252,7 +282,7 @@ describe("database migrations", () => {
 
   it("keeps an existing valid backup during first adoption", async () => {
     const directory = await temporaryDirectory();
-    const legacy = legacyDatabase(directory);
+    const legacy = createLegacyDatabase(directory);
     legacy.prepare("INSERT INTO seen (user, admin, last_seen) VALUES (?, ?, ?)").run("alex", 1, 123);
 
     const backupPath = join(directory, "needle.pre-migrations.db");
@@ -264,7 +294,7 @@ describe("database migrations", () => {
     database.close();
 
     expect(statSync(backupPath).mtimeMs).toBe(backupModifiedAt);
-    expect(integrity(backupPath)).toBe("ok");
+    expect(databaseIntegrity(backupPath)).toBe("ok");
   });
 
   it("uses no backup file for an in-memory database", () => {
@@ -289,7 +319,7 @@ describe("database migrations", () => {
     expect(
       inspected.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'needle_migrations'").get(),
     ).toBeUndefined();
-    expect(columns(inspected, "plays")).toEqual(["id"]);
+    expect(columnNames(inspected, "plays")).toEqual(["id"]);
     inspected.close();
   });
 
@@ -307,7 +337,7 @@ describe("database migrations", () => {
 
   it("serializes concurrent startup migration planning", async () => {
     const directory = await temporaryDirectory();
-    const legacy = legacyDatabase(directory);
+    const legacy = createLegacyDatabase(directory);
     legacy.close();
 
     const databaseModule = new URL("../src/db/database.ts", import.meta.url).href;
