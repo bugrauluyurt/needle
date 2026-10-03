@@ -37,7 +37,7 @@
   .side .brand span,
   .side .nav-btn span,
   .side .lib-title span,
-  .side-lib .chips,
+  .side .library-chips,
   .side .lib-tools,
   .side .lib-text,
   .side .lib-item .eq {
@@ -89,8 +89,8 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px 12px 6px;
+  gap: 6px;
+  padding: 0 12px 12px 2px;
   font-family: var(--display);
   font-weight: 800;
   font-size: 21px;
@@ -129,13 +129,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 6px 18px;
+  padding: 14px 14px 6px 22px;
 }
 
 .lib-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   color: var(--sleeve);
   font-weight: 600;
   font-size: 15px;
@@ -158,9 +158,40 @@
   display: none;
 }
 
+.library-chips {
+  position: relative;
+}
+
 .side-lib .chips {
   padding-right: 32px;
   mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+}
+
+.side-lib .chips.selected {
+  padding-right: 14px;
+  overflow: hidden;
+  mask-image: none;
+}
+
+.library-chip-nav {
+  position: absolute;
+  z-index: 1;
+  top: 7px;
+  background: var(--ridge);
+}
+
+.library-chip-nav.previous {
+  left: 8px;
+  box-shadow: -12px 0 0 8px var(--deck);
+}
+
+.library-chip-nav.next {
+  right: 8px;
+  box-shadow: 12px 0 0 8px var(--deck);
+}
+
+.library-filter-clear {
+  background: var(--ridge);
 }
 
 .side-lib .chips .pill {

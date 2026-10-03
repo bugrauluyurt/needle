@@ -37,6 +37,60 @@ test("lists every album in the library and likes one", async ({ page }) => {
   await expect(page.locator(".card", { hasText: "Pulse Theory" })).toHaveCount(0);
 });
 
+test("navigates overflowing library filters and collapses the selected filter", async ({ page }) => {
+  await signIn(page);
+
+  const libraryFilters = page.locator(".side .library-chips");
+  const libraryFilterScroller = libraryFilters.locator(".chips");
+  const albumsFilter = libraryFilters.getByRole("button", { name: "Albums", exact: true });
+  const onDeviceFilter = libraryFilters.getByRole("button", { name: "On this device", exact: true });
+  const showMoreFilters = libraryFilters.getByRole("button", { name: "Show more library filters", exact: true });
+  const showPreviousFilters = libraryFilters.getByRole("button", { name: "Show previous library filters", exact: true });
+  const onDeviceIsFullyVisible = () => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => {
+    const libraryFilterScrollerRect = libraryFilterScrollerElement.getBoundingClientRect();
+    const onDeviceElement = [...libraryFilterScrollerElement.querySelectorAll("button")].find((filterButton) => filterButton.textContent === "On this device");
+
+    if (!onDeviceElement) return false;
+
+    const onDeviceRect = onDeviceElement.getBoundingClientRect();
+
+    return onDeviceRect.left >= libraryFilterScrollerRect.left && onDeviceRect.right <= libraryFilterScrollerRect.right;
+  });
+
+  await expect(showMoreFilters).toBeVisible();
+  await expect(showPreviousFilters).toBeHidden();
+  await expect.poll(onDeviceIsFullyVisible).toBe(false);
+
+  await showMoreFilters.focus();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft)).toBeGreaterThan(0);
+  await expect.poll(onDeviceIsFullyVisible).toBe(true);
+  await expect(showPreviousFilters).toBeVisible();
+  await expect(showMoreFilters).toBeHidden();
+  await expect(showPreviousFilters).toBeFocused();
+
+  await page.keyboard.press("Space");
+  await expect.poll(() => libraryFilterScroller.evaluate((libraryFilterScrollerElement) => libraryFilterScrollerElement.scrollLeft)).toBe(0);
+  await expect(showPreviousFilters).toBeHidden();
+  await expect(showMoreFilters).toBeVisible();
+  await expect(showMoreFilters).toBeFocused();
+
+  await albumsFilter.click();
+  await expect(albumsFilter).toHaveAttribute("aria-pressed", "true");
+  await expect(libraryFilters.getByRole("button")).toHaveCount(2);
+  await expect(libraryFilters.getByRole("button", { name: "Playlists", exact: true })).toHaveCount(0);
+  await expect(libraryFilters.getByRole("button", { name: "Artists", exact: true })).toHaveCount(0);
+  await expect(onDeviceFilter).toHaveCount(0);
+
+  const clearLibraryFilter = libraryFilters.getByRole("button", { name: "Clear library filter", exact: true });
+
+  await clearLibraryFilter.focus();
+  await page.keyboard.press("Enter");
+  await expect(clearLibraryFilter).toHaveCount(0);
+  await expect(libraryFilters.getByRole("group", { name: "Filter your library" }).getByRole("button")).toHaveCount(4);
+  await expect(showMoreFilters).toBeVisible();
+});
+
 test("creates, fills, renames, reorders and deletes a playlist", async ({ page }) => {
   await signIn(page);
   await page.locator(".side").getByRole("button", { name: "Create playlist" }).click();

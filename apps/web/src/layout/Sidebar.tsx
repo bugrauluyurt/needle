@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Art, LikedArt } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
@@ -95,14 +95,92 @@ export function useLibraryEntries(filter: LibraryFilter, query: string, order: C
 const FILTERS: [Exclude<LibraryFilter, null>, string][] = [["playlists", "Playlists"], ["albums", "Albums"], ["artists", "Artists"], ["downloaded", "On this device"]];
 
 export function LibraryChips() {
-  const filter = useUi((s) => s.libraryFilter);
+  const libraryFilter = useUi((uiState) => uiState.libraryFilter);
+  const libraryFilterScroller = useRef<HTMLDivElement>(null);
+  const previousLibraryFiltersButton = useRef<HTMLButtonElement>(null);
+  const moreLibraryFiltersButton = useRef<HTMLButtonElement>(null);
+  const pendingLibraryFilterFocus = useRef<"previous" | "more" | null>(null);
+  const [canShowPreviousLibraryFilters, setCanShowPreviousLibraryFilters] = useState(false);
+  const [canShowMoreLibraryFilters, setCanShowMoreLibraryFilters] = useState(false);
+  const updateLibraryFilterScrollControls = useCallback(() => {
+    const libraryFilterScrollerElement = libraryFilterScroller.current;
+
+    if (!libraryFilterScrollerElement) return;
+
+    const hasPreviousLibraryFilters = libraryFilterScrollerElement.scrollLeft > 1;
+    const hasMoreLibraryFilters = libraryFilterScrollerElement.scrollLeft + libraryFilterScrollerElement.clientWidth < libraryFilterScrollerElement.scrollWidth - 1;
+
+    setCanShowPreviousLibraryFilters(hasPreviousLibraryFilters);
+    setCanShowMoreLibraryFilters(hasMoreLibraryFilters);
+  }, []);
+
+  useLayoutEffect(() => {
+    const libraryFilterScrollerElement = libraryFilterScroller.current;
+
+    if (!libraryFilterScrollerElement || libraryFilter) return;
+
+    updateLibraryFilterScrollControls();
+
+    const libraryFilterResizeObserver = new ResizeObserver(updateLibraryFilterScrollControls);
+
+    libraryFilterResizeObserver.observe(libraryFilterScrollerElement);
+
+    return () => libraryFilterResizeObserver.disconnect();
+  }, [libraryFilter, updateLibraryFilterScrollControls]);
+
+  useLayoutEffect(() => {
+    if (pendingLibraryFilterFocus.current === "previous" && canShowPreviousLibraryFilters) {
+      previousLibraryFiltersButton.current?.focus();
+      pendingLibraryFilterFocus.current = null;
+    }
+
+    if (pendingLibraryFilterFocus.current === "more" && canShowMoreLibraryFilters) {
+      moreLibraryFiltersButton.current?.focus();
+      pendingLibraryFilterFocus.current = null;
+    }
+  }, [canShowMoreLibraryFilters, canShowPreviousLibraryFilters]);
+
+  const scrollLibraryFilters = (libraryFilterScrollDirection: -1 | 1) => {
+    const libraryFilterScrollerElement = libraryFilterScroller.current;
+
+    if (!libraryFilterScrollerElement) return;
+
+    pendingLibraryFilterFocus.current = libraryFilterScrollDirection < 0 ? "more" : "previous";
+    libraryFilterScrollerElement.scrollBy({ left: libraryFilterScrollDirection * libraryFilterScrollerElement.clientWidth, behavior: "smooth" });
+  };
+
+  const activeLibraryFilter = FILTERS.find(([filterId]) => filterId === libraryFilter);
+
   return (
-    <div className="chips" role="group" aria-label="Filter your library">
-      {FILTERS.map(([id, label]) => (
-        <button key={id} type="button" className="pill" aria-pressed={filter === id} onClick={() => useUi.setState({ libraryFilter: filter === id ? null : id })}>
-          {label}
-        </button>
-      ))}
+    <div className="library-chips">
+      {activeLibraryFilter ? (
+        <div className="chips selected" role="group" aria-label="Filter your library">
+          <button type="button" className="icon-btn library-filter-clear" aria-label="Clear library filter" onClick={() => useUi.setState({ libraryFilter: null })}>
+            <Icon name="close" size={18} />
+          </button>
+          <button type="button" className="pill" aria-pressed="true" onClick={() => useUi.setState({ libraryFilter: null })}>{activeLibraryFilter[1]}</button>
+        </div>
+      ) : (
+        <>
+          <div ref={libraryFilterScroller} className="chips" role="group" aria-label="Filter your library" onScroll={updateLibraryFilterScrollControls}>
+            {FILTERS.map(([filterId, filterLabel]) => (
+              <button key={filterId} type="button" className="pill" aria-pressed="false" onClick={() => useUi.setState({ libraryFilter: filterId })}>
+                {filterLabel}
+              </button>
+            ))}
+          </div>
+          {canShowPreviousLibraryFilters ? (
+            <button ref={previousLibraryFiltersButton} type="button" className="icon-btn library-chip-nav previous" aria-label="Show previous library filters" onClick={() => scrollLibraryFilters(-1)}>
+              <Icon name="back" size={20} />
+            </button>
+          ) : null}
+          {canShowMoreLibraryFilters ? (
+            <button ref={moreLibraryFiltersButton} type="button" className="icon-btn library-chip-nav next" aria-label="Show more library filters" onClick={() => scrollLibraryFilters(1)}>
+              <Icon name="forward" size={20} />
+            </button>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -146,7 +224,7 @@ export function Sidebar() {
     <nav className="side" aria-label="Main">
       <div className="panel side-top">
         <Link to="/" className="brand" aria-label="Needle home">
-          <Logo size={34} />
+          <Logo size={42} />
           <span>Needle</span>
         </Link>
         <Nav to="/" icon="home" label="Home" />

@@ -31,6 +31,47 @@ test("names the rail's links and explains them with tooltips", async ({ page }) 
   await expect(page.getByRole("tooltip")).toHaveText(/^Liked songs/);
 });
 
+test("aligns sidebar icons and labels at desktop widths", async ({ page }) => {
+  await signIn(page);
+
+  const sidebar = page.locator(".side");
+  const sidebarLinks = [
+    sidebar.getByRole("link", { name: "Needle home", exact: true }),
+    sidebar.getByRole("link", { name: "Home", exact: true }),
+    sidebar.getByRole("link", { name: "Search", exact: true }),
+    sidebar.getByRole("link", { name: "Your listening", exact: true }),
+    sidebar.getByRole("link", { name: "Radio", exact: true }),
+    sidebar.getByRole("link", { name: "Your library", exact: true }),
+  ];
+
+  for (const viewportWidth of [1024, 1180, 1440]) {
+    await page.setViewportSize({ width: viewportWidth, height: 1000 });
+    const iconCenterXs: number[] = [];
+    const labelLeftXs: number[] = [];
+
+    for (const sidebarLink of sidebarLinks) {
+      const iconBounds = await sidebarLink.locator("svg").evaluate((iconElement) => {
+        const iconRect = iconElement.getBoundingClientRect();
+
+        return { centerX: iconRect.x + iconRect.width / 2, centerY: iconRect.y + iconRect.height / 2 };
+      });
+      const labelBounds = await sidebarLink.locator("span").evaluate((labelElement) => {
+        const labelRect = labelElement.getBoundingClientRect();
+
+        return { left: labelRect.x, centerY: labelRect.y + labelRect.height / 2 };
+      });
+
+      iconCenterXs.push(iconBounds.centerX);
+      labelLeftXs.push(labelBounds.left);
+      expect(Math.abs(iconBounds.centerY - labelBounds.centerY), `icon and label at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+    }
+
+    expect(Math.max(...iconCenterXs) - Math.min(...iconCenterXs), `icon centers at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+    expect(Math.max(...labelLeftXs) - Math.min(...labelLeftXs), `label edges at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+    await expect(sidebar.getByRole("link", { name: "Needle home", exact: true }).locator("svg")).toHaveCSS("width", "42px");
+  }
+});
+
 test("hides duplicate library actions and centers navigation in the medium rail", async ({ page }) => {
   await signIn(page);
 
@@ -38,6 +79,7 @@ test("hides duplicate library actions and centers navigation in the medium rail"
   const primarySearch = side.getByRole("link", { name: "Search", exact: true });
   const librarySearch = side.getByRole("button", { name: "Search in your library" });
   const createPlaylist = side.getByRole("button", { name: "Create playlist" });
+  const needleLogo = side.getByRole("link", { name: "Needle home", exact: true }).locator("svg");
   const railLinks = [
     side.getByRole("link", { name: "Needle home", exact: true }),
     side.getByRole("link", { name: "Home", exact: true }),
@@ -52,18 +94,22 @@ test("hides duplicate library actions and centers navigation in the medium rail"
     await expect(primarySearch).toBeVisible();
     await expect(librarySearch).toBeHidden();
     await expect(createPlaylist).toBeHidden();
+    await expect(needleLogo).toHaveCSS("width", "42px");
 
-    const sideBounds = await side.boundingBox();
+    const sideBounds = await side.evaluate((sideElement) => {
+      const sideRect = sideElement.getBoundingClientRect();
 
-    expect(sideBounds).not.toBeNull();
-
-    const sideCenter = (sideBounds?.x ?? 0) + (sideBounds?.width ?? 0) / 2;
+      return { centerX: sideRect.x + sideRect.width / 2 };
+    });
 
     for (const railLink of railLinks) {
-      const iconBounds = await railLink.locator("svg").boundingBox();
+      const iconBounds = await railLink.locator("svg").evaluate((iconElement) => {
+        const iconRect = iconElement.getBoundingClientRect();
 
-      expect(iconBounds).not.toBeNull();
-      expect(Math.abs((iconBounds?.x ?? 0) + (iconBounds?.width ?? 0) / 2 - sideCenter), `rail icon at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+        return { centerX: iconRect.x + iconRect.width / 2 };
+      });
+
+      expect(Math.abs(iconBounds.centerX - sideBounds.centerX), `rail icon at ${viewportWidth}px`).toBeLessThanOrEqual(1);
     }
   }
 

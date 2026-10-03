@@ -153,7 +153,7 @@ export default function ArtistPage() {
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
         <div className="bg">
-          <Art id={banner ?? albums[0]?.coverArt} px={900} eager fallback="artist" className={banner ? "" : "blurred"} />
+          <Art id={banner ?? albums[0]?.coverArt} px={900} sizes="100vw" eager fallback="artist" className={banner ? "" : "blurred"} />
         </div>
         <div className="a-hero-text">
           {starred.artists.has(artist.id) ? <div className="kind"><Icon name="heartFill" size={15} /> In your favourites</div> : null}

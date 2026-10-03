@@ -2,6 +2,12 @@ import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers.ts";
 import { mockSpotify } from "./spotify-mock.ts";
 
+const responsiveSpotifyImages = [64, 128, 256, 384, 600, 900].map((imageWidth) => ({
+  url: `https://i.scdn.co/image/artist-${imageWidth}`,
+  width: imageWidth,
+  height: imageWidth,
+}));
+
 const artistSources = [
   { source: "library", path: "/search?q=neon", artistName: "Neon Harbor", songTitle: "Overpass", releaseHeading: "Singles and EPs" },
   { source: "Spotify", path: "/spotify/artist/ar1", artistName: "Lumen Drift", songTitle: "Glass Song 2", releaseHeading: "Albums" },
@@ -128,3 +134,59 @@ test("artist return link animates without forcing motion preferences", async ({ 
     return linkStyle.animationDuration.split(",").every((duration) => parseFloat(duration) <= 0.001);
   })).toBe(true);
 });
+
+for (const artistSource of artistSources) {
+  test(`${artistSource.source} artist hero loads responsive artwork`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockSpotify(page, { artistImages: responsiveSpotifyImages });
+    await signIn(page, artistSource.path);
+
+    if (artistSource.source === "library") {
+      await page.getByRole("region", { name: "In your library", exact: true }).locator(".top-link").click();
+    }
+
+    const artistImage = page.locator(".a-hero .bg .art img");
+    const getArtistSourceWidth = async () => {
+      const artistSourceUrl = await artistImage.evaluate((artistElement) => {
+        if (!(artistElement instanceof HTMLImageElement)) throw new Error("Artist artwork is not an image");
+
+        return artistElement.currentSrc;
+      });
+
+      if (!artistSourceUrl) return 0;
+
+      if (artistSource.source === "library") return Number(new URL(artistSourceUrl, page.url()).searchParams.get("size"));
+
+      return Number(artistSourceUrl.match(/artist-(\d+)$/)?.[1]);
+    };
+
+    await expect(page.getByRole("heading", { level: 1, name: artistSource.artistName })).toBeVisible();
+    await expect(artistImage).toHaveAttribute("sizes", "100vw");
+    await expect(artistImage).toHaveAttribute("srcset", /64w.*128w.*256w.*384w.*600w.*900w/);
+    await expect(artistImage).toHaveCSS("object-fit", "cover");
+    expect(await page.evaluate(() => window.devicePixelRatio)).toBe(1);
+    const artworkDimensions = await artistImage.evaluate((artistElement) => {
+      if (!(artistElement instanceof HTMLImageElement)) throw new Error("Artist artwork is not an image");
+
+      return {
+        imageWidth: artistElement.offsetWidth,
+        imageHeight: artistElement.offsetHeight,
+        containerWidth: artistElement.parentElement?.clientWidth,
+        containerHeight: artistElement.parentElement?.clientHeight,
+      };
+    });
+
+    expect(artworkDimensions.imageWidth).toBe(artworkDimensions.containerWidth);
+    expect(artworkDimensions.imageHeight).toBe(artworkDimensions.containerHeight);
+
+    await expect.poll(getArtistSourceWidth).toBeGreaterThanOrEqual(384);
+
+    const selectedPhoneArtistWidth = await getArtistSourceWidth();
+
+    expect(selectedPhoneArtistWidth).toBeLessThanOrEqual(600);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    await expect.poll(getArtistSourceWidth).toBe(900);
+  });
+}
