@@ -21,6 +21,15 @@
   overflow-wrap: anywhere;
 }
 
+button.lyric {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
 .lyrics.plain .lyric {
   color: var(--label);
 }
@@ -52,7 +61,7 @@
   color: #fff;
 }
 
-.lyric[role="button"]:hover {
+button.lyric:hover {
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
 }
