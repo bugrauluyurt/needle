@@ -1,0 +1,1 @@
+- Avoid excessive CPU use when library titles contain unusually long unmatched metadata delimiters.
