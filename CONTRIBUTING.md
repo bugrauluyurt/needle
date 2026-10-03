@@ -9,11 +9,14 @@ an issue first so we can agree on the approach.
 the conventions and the design rules. Read it before changing anything; the rules there are the
 review checklist.
 
+Source development requires Node 24, pnpm, Docker, uv and Python 3.10 through 3.14.
+
 ## Making a change
 
 1. Fork, branch, and change the smallest thing that solves the problem.
-2. Run `pnpm lint`, `pnpm typecheck` and `pnpm test`. For anything that touches the UI or the
-   player, also run the e2e suite (`pnpm navidrome:test`, then `pnpm e2e`). CI runs the first three.
+2. Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`.
+   For UI, player, HTTP route or realtime changes, also run `pnpm e2e`. CI runs all of
+   these gates.
 3. If people running Needle would notice the change, add its entry as a file,
    `changelog.d/<name>.<heading>.md`, instead of editing `CHANGELOG.md`
    ([format](changelog.d/README.md)). The heading (`added`, `changed`, `fixed`, `security`,
@@ -53,7 +56,8 @@ rejects a summary that doesn't follow it.
   | `revert`   | Undoing an earlier commit                        |
 
 - **Scope** is optional: the area touched, in lowercase, such as `web`, `server`, `shared`,
-  `player`, `spotify`, `remote`, `offline`, `docker`, `e2e`, `docs`, `deps` or `release`.
+  `api`, `db`, `i18n`, `python`, `realtime`, `player`, `spotify`, `offline`, `docker`,
+  `e2e`, `docs`, `deps` or `release`.
 - **`!`** after the scope marks a breaking change; explain it in a `BREAKING CHANGE:` footer.
 - **Summary:** imperative mood ("add", not "added" or "adds"), lowercase, no final period, and
   the whole line at most 72 characters. Say what changes for the user, not which files moved.
@@ -76,7 +80,7 @@ usually pairs with `.added.md` and a `fix` with `.fixed.md`.
 
 Pull requests are squash-merged, and the pull request **title** becomes the commit on `main`:
 write it in the same format. The **PR title** check runs the commit hook on it. A pull request
-merges into `main` once it is up to date with `main`, its `checks` run passes and a maintainer
-approves it; maintainers merge their own through the admin bypass.
+merges into `main` once it is up to date, both `checks` and `e2e` pass, and a maintainer
+approves it. Maintainers merge their own through the admin bypass.
 
 By contributing you agree that your work is released under the [MIT license](LICENSE).
