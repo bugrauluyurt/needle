@@ -116,7 +116,7 @@ allowed; the server refuses it anyway with 403.
 | `needle.pre-migrations.db`        | One-time integrity-checked copy made before adopting versioned migrations for an existing populated database                                                                         |
 | Navidrome                         | The library, users, playlists, likes and the play queue each device syncs                                                                                                            |
 | Browser sessionStorage            | Replayable Navidrome credentials for the current tab session only                                                                                                                    |
-| Browser localStorage              | Device identity, queue, UI state, provider caches and `needle.settings`, including the manually selected language                                                                    |
+| Browser localStorage              | Device identity, UI state, account-namespaced queues, recent searches and provider caches, plus `needle.settings`, including the manually selected language                          |
 | Browser Cache Storage + IndexedDB | Offline downloads namespaced by Navidrome user, plus service-worker caches for the app shell and cover art                                                                           |
 
 Database migrations run under `BEGIN IMMEDIATE`. Startup rejects unknown migration

@@ -33,6 +33,8 @@ export class SubsonicError extends Error {
 type Param = string | number | boolean | undefined | null | (string | number)[];
 type Params = Record<string, Param>;
 
+const AUTHENTICATION_FAILURE_CODES = new Set<number>([40, 41, 44, 401]);
+
 const clientName = () => `Needle ${useSession.getState().deviceName}`;
 
 export function makeCredentials(user: string, password: string): Credentials {
@@ -67,28 +69,54 @@ export function coverUrl(id: string | undefined, size = 300, version?: string): 
   return `/rest/getCoverArt.view?${new URLSearchParams({ id, size: String(size), u: c.user, t: c.token, s: c.salt, v: API_VERSION, c: "Needle", ...(version ? { changed: version } : {}) }).toString()}`;
 }
 
+function signOutForAuthenticationFailure(errorCode: number, requestCredentials: Credentials | null): void {
+  const activeCredentials = credentials();
+  const requestIsStillActive =
+    requestCredentials !== null &&
+    activeCredentials?.user === requestCredentials.user &&
+    activeCredentials.token === requestCredentials.token &&
+    activeCredentials.salt === requestCredentials.salt;
+
+  if (requestIsStillActive && AUTHENTICATION_FAILURE_CODES.has(errorCode)) useSession.getState().signOut();
+}
+
 export async function call<T>(
   method: string,
   params: Params = {},
-  creds?: Credentials,
+  providedCredentials?: Credentials,
   signal?: AbortSignal,
 ): Promise<T> {
-  const body = query(params, creds ?? credentials());
-  const res = await fetch(`/rest/${method}.view`, {
+  const availableCredentials = providedCredentials ?? credentials();
+  const requestCredentials = availableCredentials ? { ...availableCredentials } : null;
+  const body = query(params, requestCredentials);
+  const response = await fetch(`/rest/${method}.view`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,
     signal: signal ?? null,
   });
-  if (!res.ok) throw new SubsonicError(res.status, translate("error.navidromeAnswered", { status: res.status }));
-  const json = (await res.json()) as SubsonicEnvelope<T>;
-  const r = json["subsonic-response"];
-  if (r.status !== "ok") {
-    const err = new SubsonicError(r.error?.code ?? 0, r.error?.message ?? translate("error.navidromeRequestFailed"));
-    if (!creds && (err.code === 40 || err.code === 41 || err.code === 44)) useSession.getState().signOut();
-    throw err;
+  if (!response.ok) {
+    const error = new SubsonicError(response.status, translate("error.navidromeAnswered", { status: response.status }));
+
+    signOutForAuthenticationFailure(error.code, requestCredentials);
+
+    throw error;
   }
-  return r;
+
+  const responseBody = (await response.json()) as SubsonicEnvelope<T>;
+  const subsonicResponse = responseBody["subsonic-response"];
+  if (subsonicResponse.status !== "ok") {
+    const error = new SubsonicError(
+      subsonicResponse.error?.code ?? 0,
+      subsonicResponse.error?.message ?? translate("error.navidromeRequestFailed"),
+    );
+
+    signOutForAuthenticationFailure(error.code, requestCredentials);
+
+    throw error;
+  }
+
+  return subsonicResponse;
 }
 
 export type AlbumListType =

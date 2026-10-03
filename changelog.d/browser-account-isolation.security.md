@@ -1,1 +1,1 @@
-- Browser sessions no longer persist Navidrome credentials, downloads, queues, or provider state across different signed-in users.
+- Browser sessions no longer expose Navidrome credentials, downloads, queues, provider state or recent searches across different signed-in users, and a late failed request cannot sign out a newer session.

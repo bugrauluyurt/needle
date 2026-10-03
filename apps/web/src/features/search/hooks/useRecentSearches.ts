@@ -1,47 +1,32 @@
-import { useState } from "react";
-
-const RECENT_SEARCHES_KEY = "needle.recentSearches";
-const RECENT_SEARCHES_LIMIT = 8;
-
-function loadRecentSearches(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) ?? "[]") as string[];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecentSearches(recentSearches: string[]) {
-  try {
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recentSearches.slice(0, RECENT_SEARCHES_LIMIT)));
-  } catch {
-    return;
-  }
-}
+import { useCallback, useSyncExternalStore } from "react";
+import { useSession } from "../../../state/session.ts";
+import {
+  clearRecentSearches,
+  recentSearchesForAccount,
+  rememberRecentSearch,
+  removeRecentSearch,
+  subscribeToRecentSearches,
+} from "../services/recentSearches.ts";
 
 export function useRecentSearches() {
-  const [recentSearches, setRecentSearches] = useState(loadRecentSearches);
+  const accountUser = useSession((sessionState) => sessionState.credentials?.user ?? null);
+  const recentSearchesSnapshot = useCallback(() => recentSearchesForAccount(accountUser), [accountUser]);
+  const recentSearches = useSyncExternalStore(
+    subscribeToRecentSearches,
+    recentSearchesSnapshot,
+    recentSearchesSnapshot,
+  );
 
   const rememberSearch = (searchQuery: string) => {
-    const nextRecentSearches = [
-      searchQuery,
-      ...recentSearches.filter((recentSearch) => recentSearch.toLowerCase() !== searchQuery.toLowerCase()),
-    ].slice(0, RECENT_SEARCHES_LIMIT);
-
-    setRecentSearches(nextRecentSearches);
-    saveRecentSearches(nextRecentSearches);
+    rememberRecentSearch(accountUser, searchQuery);
   };
 
   const removeSearch = (searchQuery: string) => {
-    const nextRecentSearches = recentSearches.filter((recentSearch) => recentSearch !== searchQuery);
-
-    setRecentSearches(nextRecentSearches);
-    saveRecentSearches(nextRecentSearches);
+    removeRecentSearch(accountUser, searchQuery);
   };
 
   const clearSearches = () => {
-    setRecentSearches([]);
-    saveRecentSearches([]);
+    clearRecentSearches(accountUser);
   };
 
   return {
