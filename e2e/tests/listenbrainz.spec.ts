@@ -1,13 +1,45 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { openDatabase } from "../../apps/server/src/db.ts";
-import { LB_TOKEN, LB_USER, UNDERTOW_MBID } from "../fixtures/listenbrainz.ts";
-import { bar, PASSWORD, signIn } from "./helpers.ts";
+import { LB_TOKEN, LB_USER } from "../fixtures/listenbrainz.ts";
+import { bar, PASSWORD, signIn, USER } from "./helpers.ts";
 
-test.afterEach(() => {
-  const db = openDatabase(join(import.meta.dirname, "../.data"));
-  db.prepare("DELETE FROM requests WHERE ref = ?").run(UNDERTOW_MBID);
-  db.close();
+const NAVIDROME = "http://127.0.0.1:14533";
+
+function navidromeUrl(method: string, parameters: Record<string, string> = {}): string {
+  return `${NAVIDROME}/rest/${method}.view?${new URLSearchParams({
+    u: USER,
+    p: PASSWORD,
+    c: "e2e",
+    v: "1.16.1",
+    f: "json",
+    ...parameters,
+  })}`;
+}
+
+test.afterEach(async ({ page }) => {
+  await page.goto("/requests");
+  const undertowRequestRow = page.locator(".requests-page > .req-list .req-row", { hasText: "Undertow" });
+  await expect(undertowRequestRow).toBeVisible();
+
+  const removalResponse = page.waitForResponse(
+    (response) => response.request().method() === "DELETE" && /\/api\/requests\/\d+$/u.test(response.url()),
+  );
+  await undertowRequestRow.getByRole("button", { name: "Remove Undertow from this list" }).click();
+  expect((await removalResponse).ok()).toBe(true);
+  await expect(undertowRequestRow).toHaveCount(0);
+
+  await rm(join(import.meta.dirname, "../.singles/Glass Harbor/Glass Harbor - Undertow.flac"), { force: true });
+  await fetch(navidromeUrl("startScan", { fullScan: "true" }));
+
+  await page.goto("/search?q=undertow");
+  await page
+    .getByRole("group", { name: "Filter results" })
+    .getByRole("button", { name: "Get music", exact: true })
+    .click();
+  await expect(
+    page.locator(".get-card", { hasText: "Undertow" }).getByRole("button", { name: "Get song" }),
+  ).toBeVisible({ timeout: 20_000 });
 });
 
 test("connects ListenBrainz, opens its weekly playlist, fetches the missing song and saves it", async ({ page }) => {

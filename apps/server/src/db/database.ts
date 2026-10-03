@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chmodSync, closeSync, constants, lstatSync, mkdirSync, openSync } from "node:fs";
+import { chmodSync, closeSync, constants, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync } from "node:fs";
 import { rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
@@ -257,7 +257,7 @@ function prepareDatabaseFile(databasePath: string): boolean {
     try {
       createRestrictedFile(databasePath);
     } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+      if (!isFileSystemErrorCode(error, "EEXIST")) throw error;
 
       restrictDatabaseFiles(databasePath);
 
@@ -286,8 +286,36 @@ function restrictDatabaseFiles(databasePath: string): void {
   validateDatabaseFiles(databaseFilePaths);
 
   for (const databaseFilePath of databaseFilePaths) {
-    if (fileExists(databaseFilePath)) chmodSync(databaseFilePath, DATABASE_FILE_MODE);
+    const databaseFileDescriptor = restrictedDatabaseFileDescriptor(databaseFilePath);
+    if (databaseFileDescriptor === null) continue;
+
+    try {
+      if (!fstatSync(databaseFileDescriptor).isFile()) {
+        throw new Error(`Database file ${databaseFilePath} must be a regular file`);
+      }
+
+      fchmodSync(databaseFileDescriptor, DATABASE_FILE_MODE);
+    } finally {
+      closeSync(databaseFileDescriptor);
+    }
   }
+}
+
+function restrictedDatabaseFileDescriptor(databaseFilePath: string): number | null {
+  try {
+    return openSync(databaseFilePath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  } catch (error) {
+    if (isFileSystemErrorCode(error, "ENOENT")) return null;
+    if (isFileSystemErrorCode(error, "ELOOP")) {
+      throw new Error(`Database file ${databaseFilePath} cannot be a symbolic link`, { cause: error });
+    }
+
+    throw error;
+  }
+}
+
+function isFileSystemErrorCode(error: unknown, errorCode: string): boolean {
+  return error instanceof Error && "code" in error && error.code === errorCode;
 }
 
 function validateDatabaseFiles(databaseFilePaths: readonly string[]): void {
