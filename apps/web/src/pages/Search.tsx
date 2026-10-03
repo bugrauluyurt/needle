@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useIsFetching } from "@tanstack/react-query";
-import type { BrowseTile } from "@needle/shared";
+import type { BrowseTile, YouTubeMusicSearchKind } from "@needle/shared";
 import { GetCard, GetSongCard } from "../components/GetCard.tsx";
 import { Art } from "../components/Art.tsx";
 import { RowHeader } from "../components/Cards.tsx";
@@ -23,6 +23,12 @@ import { useSpotifyOn, useSpotifyPlaylists, useSpotifySearch, useSpotifySearchCa
 import { uniqueSpotifyItems, useSpotifyStatus } from "../lib/spotify.ts";
 import type { SpotifySearchKind } from "../lib/spotify.ts";
 import { playSpotifyArtist, spotifyAlbumItem, spotifyArtistItem, spotifyPlaylistItem } from "../components/SpotifyCards.tsx";
+import { useYouTubeMusicOn, useYouTubeMusicSearch } from "../queries/youtube-music.ts";
+import { useYouTubeMusicStatus } from "../lib/youtube-music.ts";
+import { playYouTubeMusicArtist, youtubeMusicAlbumItem, youtubeMusicArtistItem, youtubeMusicPlaylistItem } from "../components/YouTubeMusicCards.tsx";
+import { YouTubeMusicNotice } from "../components/YouTubeMusicNotice.tsx";
+import { artistPath } from "../lib/paths.ts";
+import { toast } from "../state/ui.ts";
 
 const tile = (i: number) => TILE_COLORS[i % TILE_COLORS.length] ?? "#1E3C78";
 
@@ -97,6 +103,41 @@ function Browse({ recent, onPick, onRemove, onClear }: { recent: string[]; onPic
 }
 
 const SPOTIFY_KINDS: Record<SearchKind, SpotifySearchKind> = { Songs: "songs", Albums: "albums", Artists: "artists", Playlists: "playlists" };
+
+const YOUTUBE_MUSIC_KINDS: Record<SearchKind, YouTubeMusicSearchKind> = { Songs: "songs", Albums: "albums", Artists: "artists", Playlists: "playlists" };
+
+function YouTubeMusicSource({ q, filter, setFilter, onShowAll }: { q: string; filter: Filter; setFilter: (filter: Filter) => void; onShowAll: (kind: SearchKind) => void }) {
+  const [limit, setLimit] = useState(20);
+  const category = filter !== "All" && filter !== "Get music" ? YOUTUBE_MUSIC_KINDS[filter] : undefined;
+  const search = useYouTubeMusicSearch(q, category, limit);
+  const blocked = useYouTubeMusicStatus((status) => status.blocked);
+  const songs = search.data?.songs ?? [];
+  const albums = search.data?.albums ?? [];
+  const artists = search.data?.artists ?? [];
+  const playlists = search.data?.playlists ?? [];
+  const context: PlayContext = { kind: "search", name: `YouTube Music search for “${q}”` };
+  const matchingArtist = artists.find((artist) => artist.name.toLowerCase() === q.toLowerCase());
+  const firstSong = songs[0];
+  const top: Top | undefined = matchingArtist
+    ? { to: artistPath(matchingArtist.id), art: <Art images={matchingArtist.images} px={104} round fallback="artist" />, title: matchingArtist.name, subtitle: "Artist on YouTube Music", onPlay: () => void playYouTubeMusicArtist(matchingArtist.id).catch(() => toast("YouTube Music didn’t answer. Try again in a moment.")) }
+    : firstSong
+      ? { to: firstSong.albumId ? albumPath(firstSong.albumId) : "#", art: <Art id={firstSong.coverArt} px={104} />, title: firstSong.title, subtitle: `Song, ${artistName(firstSong)}`, onPlay: () => player.playSongs(songs, 0, context) }
+      : undefined;
+  const blocks: Block[] = [
+    { kind: "Songs", count: songs.length, row: null, all: <TrackList songs={songs} context={context} art album canSort={false} column={{ label: "Released", value: releaseDateLabel }} /> },
+    cardBlock("Albums", albums.map((album) => youtubeMusicAlbumItem(album)), { source: "youtubeMusic" }),
+    cardBlock("Artists", artists.map(youtubeMusicArtistItem), { source: "youtubeMusic" }),
+    cardBlock("Playlists", playlists.map(youtubeMusicPlaylistItem), { source: "youtubeMusic" }),
+  ];
+
+  return (
+    <>
+      <Source title="On YouTube Music" subtitle="Experimental. Availability can change when YouTube changes." filter={filter} setFilter={setFilter} onShowAll={onShowAll} blocks={blocks} top={top} songs={songs} context={context} status={search.data ? "ok" : blocked ? "paused" : search.isError ? "error" : "loading"} empty={(kind) => `YouTube Music found no ${kind || "results"} for “${q}”.`} />
+      <YouTubeMusicNotice error={search.isError} retry={() => void search.refetch()} />
+      {category && search.data?.hasMore && limit < 100 ? <div className="search-pagination"><button type="button" className="btn ghost sm" disabled={blocked || search.isFetching} onClick={() => setLimit(Math.min(limit + 20, 100))}>{search.isFetching ? "Loading…" : "Load more"}</button></div> : null}
+    </>
+  );
+}
 
 function SpotifySource({ q, filter, setFilter, onShowAll }: { q: string; filter: Filter; setFilter: (f: Filter) => void; onShowAll: (kind: SearchKind) => void }) {
   const blocked = useSpotifyStatus((s) => s.blocked);
@@ -218,11 +259,12 @@ function Results({ q }: { q: string }) {
   const albumsOn = Boolean(caps?.lidarr);
   const songsOn = Boolean(caps?.songs);
   const spotifyOn = useSpotifyOn();
+  const youtubeMusicOn = useYouTubeMusicOn();
   const local = filter !== "Get music";
   const requestedSource = params.get("source");
   const requestedCategory = params.get("category");
   const focusedCategory = LIBRARY_FILTERS.find((category): category is SearchKind => category !== "All" && category === requestedCategory);
-  const focusedSource = focusedCategory && (requestedSource === "library" || requestedSource === "spotify") ? requestedSource : null;
+  const focusedSource = focusedCategory && (requestedSource === "library" || requestedSource === "spotify" || requestedSource === "youtubeMusic") ? requestedSource : null;
   const scrollContainer = useScrollContainer();
   const overviewScrollTop = useRef(0);
 
@@ -230,7 +272,7 @@ function Results({ q }: { q: string }) {
     scrollContainer?.current?.scrollTo(0, focusedSource ? 0 : overviewScrollTop.current);
   }, [focusedSource, focusedCategory, scrollContainer]);
 
-  const showAll = (source: "library" | "spotify", category: SearchKind) => {
+  const showAll = (source: "library" | "spotify" | "youtubeMusic", category: SearchKind) => {
     overviewScrollTop.current = scrollContainer?.current?.scrollTop ?? 0;
 
     setParams({ q, source, category });
@@ -242,13 +284,14 @@ function Results({ q }: { q: string }) {
       {focusedSource && focusedCategory ? (
         <>
           <button type="button" className="btn ghost sm search-focus-back" aria-label="Back to all search results" onClick={back}><Icon name="back" size={16} />All search results</button>
-          {focusedSource === "library" ? <LibrarySource q={q} filter={focusedCategory} setFilter={setFilter} /> : spotifyOn ? <SpotifySource q={q} filter={focusedCategory} setFilter={setFilter} onShowAll={(category) => showAll("spotify", category)} /> : <p className="muted source-note">Spotify is unavailable. Connect Spotify in Settings to search its catalogue.</p>}
+          {focusedSource === "library" ? <LibrarySource q={q} filter={focusedCategory} setFilter={setFilter} /> : focusedSource === "spotify" ? spotifyOn ? <SpotifySource q={q} filter={focusedCategory} setFilter={setFilter} onShowAll={(category) => showAll("spotify", category)} /> : <p className="muted source-note">Spotify is unavailable. Connect Spotify in Settings to search its catalogue.</p> : youtubeMusicOn ? <YouTubeMusicSource key={`${q}:${focusedCategory}`} q={q} filter={focusedCategory} setFilter={setFilter} onShowAll={(category) => showAll("youtubeMusic", category)} /> : <p className="muted source-note">YouTube Music is unavailable. Connect it in Settings to search its catalogue.</p>}
         </>
       ) : (
         <>
           <FilterChips filters={albumsOn || songsOn ? FILTERS : LIBRARY_FILTERS} value={filter} onChange={setFilter} label="Filter results" />
           {local ? <LibrarySource q={q} filter={filter} setFilter={setFilter} onShowAll={(category) => showAll("library", category)} /> : null}
           {local && spotifyOn ? <SpotifySource q={q} filter={filter} setFilter={setFilter} onShowAll={(category) => showAll("spotify", category)} /> : null}
+          {local && youtubeMusicOn ? <YouTubeMusicSource key={`${q}:${filter}`} q={q} filter={filter} setFilter={setFilter} onShowAll={(category) => showAll("youtubeMusic", category)} /> : null}
           {(albumsOn || songsOn) && filter !== "Playlists" && filter !== "Artists" ? <GetSource q={q} filter={filter} albumsOn={albumsOn} songsOn={songsOn} /> : null}
         </>
       )}

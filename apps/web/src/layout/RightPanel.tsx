@@ -7,7 +7,8 @@ import { Icon } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
 import { SearchField } from "../components/SearchField.tsx";
 import { SourceMark } from "../components/SpotifyMark.tsx";
-import { matchesTerms, queryTerms } from "@needle/shared";
+import { YouTubeMusicPlaybackError } from "../components/YouTubeMusicPlaybackError.tsx";
+import { isLocalSong, matchesTerms, queryTerms, songSource } from "@needle/shared";
 import { TrackMoreButton } from "../components/TrackMenu.tsx";
 import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
@@ -16,6 +17,7 @@ import { userItemsAfter } from "../player/queue.ts";
 import { usePlayer } from "../player/store.ts";
 import { useArtistInfo } from "../queries/hooks.ts";
 import { useArtistImage } from "../queries/spotify.ts";
+import { useYouTubeMusicArtist } from "../queries/youtube-music.ts";
 import { usePlayback } from "../remote/client.ts";
 import { useSettings } from "../state/settings.ts";
 import type { RightPanel as Panel } from "../state/ui.ts";
@@ -52,7 +54,7 @@ export function QueueRow({ item, playing, onDragStart, onDrop }: { item: QueueIt
         <Art id={item.song.coverArt} px={44} />
         <div className="mini-text">
           <div className={`t ${playing ? "playing" : ""}`}>{item.song.title}</div>
-          <div className="s"><SourceMark source={item.song.source} compact />{artistName(item.song)}</div>
+          <div className="s"><SourceMark source={songSource(item.song)} compact />{artistName(item.song)}</div>
         </div>
       </button>
       {!playing ? (
@@ -123,8 +125,9 @@ export function QueueView() {
 
 function AboutArtist({ song }: { song: Song }) {
   const { data } = useArtistInfo(song.artistId);
+  const youtubeMusicArtist = useYouTubeMusicArtist(songSource(song) === "youtubeMusic" ? song.artistId ?? "" : "");
   const cover = useArtistImage(song.artistId, song.artists?.[0]?.name ?? song.artist);
-  const bio = plainBio(data?.biography);
+  const bio = plainBio(youtubeMusicArtist.data?.artist.description ?? data?.biography);
   if (!song.artistId) return null;
   return (
     <Link to={artistPath(song.artistId)} className="rp-card about-card">
@@ -155,11 +158,12 @@ function NowView() {
       <div className="rp-title">
         <div>
           <h5>{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</h5>
-          <p><SourceMark source={song.source} compact />{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</p>
+          <p><SourceMark source={songSource(song)} compact />{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</p>
         </div>
         <TrackMoreButton songs={[song]} />
         <LikeCurrent size={20} />
       </div>
+      {!remote ? <YouTubeMusicPlaybackError song={song} /> : null}
       {next ? (
         <div className="rp-card">
           <h6>
@@ -169,7 +173,7 @@ function NowView() {
           <QueueRow item={next} />
         </div>
       ) : null}
-      {remote ? null : (
+      {remote || !isLocalSong(song) ? null : (
         <div className="rp-card">
           <h6>About the file</h6>
           <dl className="kv">

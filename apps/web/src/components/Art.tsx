@@ -1,8 +1,8 @@
 import { memo, useState } from "react";
+import type { RemoteImage } from "@needle/shared";
 import { coverUrl } from "../lib/subsonic.ts";
 import { hashPalette } from "../lib/palette.ts";
 import { image } from "../lib/spotify.ts";
-import type { SpImage } from "../lib/spotify.ts";
 import { Icon } from "./Icon.tsx";
 
 const dpr = typeof window === "undefined" ? 1 : Math.min(3, window.devicePixelRatio || 1);
@@ -16,7 +16,7 @@ export function artSize(cssPx: number): number {
 
 type ArtProps = {
   id?: string | undefined;
-  images?: SpImage[] | null | undefined;
+  images?: RemoteImage[] | null | undefined;
   version?: string | undefined;
   px: number;
   sizes?: string;
@@ -31,7 +31,7 @@ export function artSrcSet({ id: artId, images: artImages, version: artVersion }:
   if (artImages) {
     const seenImageWidths = new Set<number>();
     const imageCandidates = artImages
-      .filter((artistImage): artistImage is SpImage & { width: number } => {
+      .filter((artistImage): artistImage is RemoteImage & { width: number } => {
         const imageWidth = artistImage.width;
 
         if (typeof imageWidth !== "number" || !Number.isFinite(imageWidth) || imageWidth <= 0 || seenImageWidths.has(imageWidth)) return false;
@@ -105,7 +105,7 @@ function ArtImpl({ id, images, version, px, sizes, round = false, className, alt
 
 export const Art = memo(ArtImpl);
 
-type Tile = { key: string; id?: string; images?: SpImage[] };
+type Tile = { key: string; id?: string; images?: RemoteImage[] };
 
 export function Collage({ ids = [], urls = [], px, className, eager = false }: { ids?: (string | undefined)[]; urls?: string[]; px: number; className?: string; eager?: boolean }) {
   const tiles: Tile[] = [

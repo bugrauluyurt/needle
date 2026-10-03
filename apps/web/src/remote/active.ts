@@ -1,5 +1,5 @@
 import type { Device, RemoteState, Song } from "@needle/shared";
-import { isSpotify } from "../lib/spotify.ts";
+import { musicSource } from "@needle/shared";
 
 export const FRESH_MS = 15_000;
 
@@ -13,12 +13,16 @@ export function remotePosition(s: RemoteState, now: number): number {
   return s.duration > 0 ? Math.min(at, s.duration) : at;
 }
 
-export const remoteSong = (s: RemoteState): Song => ({
-  id: s.songId,
-  title: s.title,
-  artist: s.artist,
-  ...(s.coverArt ? { coverArt: s.coverArt } : {}),
-  duration: s.duration,
-  ...(isSpotify(s.songId) ? { source: "spotify" as const } : {}),
-  ...(s.uri ? { uri: s.uri } : {}),
-});
+export function remoteSong(remoteState: RemoteState): Song {
+  const source = remoteState.source ?? musicSource(remoteState.songId);
+
+  return {
+    id: remoteState.songId,
+    title: remoteState.title,
+    artist: remoteState.artist,
+    ...(remoteState.coverArt ? { coverArt: remoteState.coverArt } : {}),
+    duration: remoteState.duration,
+    ...(source !== "library" ? { source } : {}),
+    ...(remoteState.uri ? { uri: remoteState.uri } : {}),
+  };
+}

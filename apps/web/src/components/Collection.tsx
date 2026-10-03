@@ -13,6 +13,7 @@ import type { Order } from "../lib/order.ts";
 import type { IconName } from "./Icon.tsx";
 import { SearchField } from "./SearchField.tsx";
 import { SourceMark } from "./SpotifyMark.tsx";
+import type { MusicSource } from "@needle/shared";
 
 export type CollectionItem = {
   key: string;
@@ -28,7 +29,7 @@ export type CollectionItem = {
   contextId?: string;
   downloaded?: boolean;
   pinned?: boolean;
-  source?: "spotify";
+  source?: Exclude<MusicSource, "library">;
   onPlay?: () => void;
 };
 

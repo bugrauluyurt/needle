@@ -1,4 +1,4 @@
-import type { Song, SpotifyToken } from "@needle/shared";
+import type { RemoteImage, Song, SpotifyToken } from "@needle/shared";
 import { HOUR_MS, MINUTE_MS } from "@needle/shared";
 import { create } from "zustand";
 import { api } from "./api.ts";
@@ -10,7 +10,7 @@ const ARTIST_ALBUMS_PAGE = 10;
 const SEARCH_PAGE = 10;
 export const SPOTIFY_SEARCH_MAX_OFFSET = 1000;
 
-export type SpImage = { url: string; width?: number | null; height?: number | null };
+export type SpImage = RemoteImage;
 export type SpArtistRef = { id: string; name: string };
 export type SpAlbumRef = { id: string; name: string; images: SpImage[]; release_date?: string; artists?: SpArtistRef[]; album_type?: string; total_tracks?: number; uri?: string };
 export type SpTrack = { id: string; uri: string; name: string; duration_ms: number; artists: SpArtistRef[]; album?: SpAlbumRef; track_number?: number; disc_number?: number; is_local?: boolean };
@@ -151,7 +151,7 @@ async function pages<T>(first: string, limit = MAX_ITEMS, unwrap: (body: unknown
   return out;
 }
 
-export function image(images: SpImage[] | null | undefined, px = 300): string | undefined {
+export function image(images: RemoteImage[] | null | undefined, px = 300): string | undefined {
   if (!images?.length) return undefined;
   const sorted = [...images].sort((a, b) => (a.width ?? 640) - (b.width ?? 640));
   return (sorted.find((i) => (i.width ?? 640) >= px) ?? sorted[sorted.length - 1])?.url;

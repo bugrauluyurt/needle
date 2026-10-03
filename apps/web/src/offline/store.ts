@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Song } from "@needle/shared";
+import { isLocalSong, musicSource } from "@needle/shared";
 import { sub, subsonicUrl } from "../lib/subsonic.ts";
 import { settings } from "../state/settings.ts";
 import { idbAll, idbDelete, idbGet, idbPut } from "./idb.ts";
@@ -53,7 +54,7 @@ export async function loadOffline() {
 }
 
 export async function offlineSource(songId: string): Promise<string | null> {
-  if (!offlineSupported || !useOffline.getState().songs.has(songId)) return null;
+  if (musicSource(songId) !== "library" || !offlineSupported || !useOffline.getState().songs.has(songId)) return null;
   const hit = await (await caches.open(CACHE)).match(key(songId));
   return hit ? URL.createObjectURL(await hit.blob()) : null;
 }
@@ -115,6 +116,8 @@ async function saveSong(cache: Cache, song: Song, onProgress: (fraction: number)
 const running = new Set<string>();
 
 export async function download(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
+  if (!songs.every(isLocalSong)) throw new Error("Only songs in your library can be downloaded");
+
   if (!offlineSupported || running.has(collection.id)) return;
   running.add(collection.id);
   try {

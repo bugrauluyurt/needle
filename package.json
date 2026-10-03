@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter ./apps/* dev",
-    "build": "pnpm --filter ./packages/* --filter ./apps/* build",
+    "build": "pnpm --filter './packages/*' --filter './apps/*' build",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck && tsc -p . && tsc -p e2e",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",

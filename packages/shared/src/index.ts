@@ -1,4 +1,5 @@
 import type { Song } from "./subsonic.ts";
+import type { MusicSource } from "./music-source.ts";
 
 export type Period = "month" | "quarter" | "year" | "all";
 
@@ -77,6 +78,10 @@ export type Capabilities = {
   spotifyPlayback: boolean;
   spotifyReconnect: boolean;
   spotifyEnabled: boolean;
+  youtubeMusic?: boolean;
+  youtubeMusicConnected?: boolean;
+  youtubeMusicEnabled?: boolean;
+  youtubeMusicReconnect?: boolean;
   songs: boolean;
   publicUrl: string | null;
   listenbrainzUser: string | null;
@@ -97,6 +102,7 @@ export type RemoteState = {
   artist: string;
   coverArt?: string;
   uri?: string;
+  source?: MusicSource;
   position: number;
   duration: number;
   playing: boolean;
@@ -198,7 +204,7 @@ export const trackCandidate = (t: DiscoveryTrack): SongCandidate => ({
   id: t.mbid, title: t.title, artist: t.artist, album: t.album, duration: t.duration, year: null, coverUrl: t.coverUrl,
 });
 
-export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean; lastSeen: number | null };
+export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean; canYouTubeMusic?: boolean; lastSeen: number | null };
 
 export type Me = { user: string; photo: string | null };
 
@@ -209,3 +215,5 @@ export const AUTH_HEADERS = { user: "x-needle-user", token: "x-needle-token", sa
 export type * from "./subsonic.ts";
 export * from "./search.ts";
 export * from "./time.ts";
+export * from "./music-source.ts";
+export type * from "./youtube-music.ts";

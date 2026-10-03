@@ -4,10 +4,11 @@ import type { MouseEvent, ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { create } from "zustand";
 import type { Song } from "@needle/shared";
-import { fold } from "@needle/shared";
+import { fold, isLocalSong, songSource, youtubeMusicLink } from "@needle/shared";
 import { player } from "../player/controller.ts";
-import { useAddToPlaylist, useCapabilities, useCreatePlaylist, useGetSong, usePlaylists, useStarredIds, useToggleStar } from "../queries/hooks.ts";
-import { useSpotifyPlaylistEdits, useSpotifyPlaylists, useSpotifySaved, useToggleSpotifySave } from "../queries/spotify.ts";
+import { useAddToPlaylist, useCapabilities, useCreatePlaylist, useGetSong, usePlaylists } from "../queries/hooks.ts";
+import { useSpotifyPlaylistEdits, useSpotifyPlaylists } from "../queries/spotify.ts";
+import { useSongLikes } from "../queries/likes.ts";
 import { api } from "../lib/api.ts";
 import { artistName } from "../lib/format.ts";
 import { spotifyLink } from "../lib/spotify.ts";
@@ -39,20 +40,19 @@ const isAction = (a: Action | false | undefined): a is Action => Boolean(a);
 
 function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): Action[][] {
   const navigate = useNavigate();
-  const starred = useStarredIds();
-  const star = useToggleStar();
-  const saved = useSpotifySaved();
-  const save = useToggleSpotifySave();
+  const songLikes = useSongLikes();
   const caps = useCapabilities().data;
   const getSong = useGetSong();
   const song = songs[0];
   if (!song) return [];
-  const spotify = songs.every((s) => s.source === "spotify");
-  const mixed = !spotify && songs.some((s) => s.source === "spotify");
-  const liked = songs.every((s) => (s.source === "spotify" ? saved.has(s.id) : starred.songs.has(s.id)));
+  const spotify = songs.every((song) => songSource(song) === "spotify");
+  const youtubeMusic = songs.every((song) => songSource(song) === "youtubeMusic");
+  const local = songs.every(isLocalSong);
+  const liked = songs.every(songLikes.isLiked);
+  const playableSongs = songs.filter((song) => song.isAvailable !== false);
   const single = songs.length === 1;
   const { artistId, albumId } = song;
-  const where = spotify ? "Spotify " : "";
+  const where = youtubeMusic ? "YouTube Music " : spotify ? "Spotify " : "";
   const getAlbum = async () => {
     const { albums: [hit] } = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => ({ albums: [] }));
     if (!hit) {
@@ -63,34 +63,36 @@ function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): Action[][] {
   };
   const groups: (Action | false | undefined)[][] = [
     [
-      { id: "queue", icon: "addToQueue", label: "Add to queue", quick: "Add to queue", run: () => { player.addToQueue(songs); toast(single ? "Added to queue" : `${songs.length} songs added to queue`); } },
-      { id: "next", icon: "playNext", label: "Play next", quick: "Play next", run: () => { player.playNext(songs); toast(single ? "Plays next" : `${songs.length} songs play next`); } },
-      single && { id: "radio", icon: "radio", label: "Start radio from this song", run: () => void player.startRadio({ song, name: song.title }) },
+      playableSongs.length > 0 && { id: "queue", icon: "addToQueue", label: "Add to queue", quick: "Add to queue", run: () => { player.addToQueue(playableSongs); toast(single ? "Added to queue" : `${playableSongs.length} songs added to queue`); } },
+      playableSongs.length > 0 && { id: "next", icon: "playNext", label: "Play next", quick: "Play next", run: () => { player.playNext(playableSongs); toast(single ? "Plays next" : `${playableSongs.length} songs play next`); } },
+      single && song.isAvailable !== false && { id: "radio", icon: "radio", label: "Start radio from this song", run: () => void player.startRadio({ song, name: song.title }) },
     ],
     [
-      !mixed && { id: "playlist", icon: "plus", label: "Add to playlist", playlists: true, run: () => undefined },
+      (spotify || local) && { id: "playlist", icon: "plus", label: "Add to playlist", playlists: true, run: () => undefined },
       {
         id: "like",
         icon: liked ? "heartFill" : "heart",
         label: liked ? `Remove from ${where}liked songs` : `Add to ${where}liked songs`,
         quick: liked ? "Liked" : "Like",
         on: liked,
-        run: () => songs.forEach((s) => (s.source === "spotify" ? save.mutate({ song: s, on: !liked }) : star.mutate({ kind: "song", item: s, on: !liked }))),
+        run: () => songs.forEach((song) => songLikes.setLiked(song, !liked)),
       },
-      single && spotify && caps?.songs && {
+      single && (spotify || youtubeMusic) && caps?.songs && {
         id: "get-song",
         icon: "download",
         label: "Get this song",
         run: () => void getSong({ id: song.id, title: song.title, artist: song.artists?.[0]?.name ?? song.artist ?? "", album: song.album ?? null, duration: song.duration ?? null, year: song.year ?? null, coverUrl: song.coverArt ?? null }),
       },
-      single && spotify && caps?.lidarr && { id: "get-album", icon: "download", label: "Get this album through Lidarr", run: () => void getAlbum() },
+      single && (spotify || youtubeMusic) && caps?.lidarr && { id: "get-album", icon: "download", label: "Get this album through Lidarr", run: () => void getAlbum() },
       ...(extra ?? []).map((x) => ({ id: x.label, ...x })),
     ],
     single
       ? [
           artistId ? { id: "artist", icon: "user", label: "Go to artist", go: true, run: () => void navigate(artistPath(artistId)) } : false,
           albumId ? { id: "album", icon: "album", label: "Go to album", go: true, run: () => void navigate(albumPath(albumId)) } : false,
-          spotify
+          youtubeMusic
+            ? { id: "open", icon: "link", label: "Open in YouTube Music", go: true, run: () => void window.open(youtubeMusicLink("song", song.id), "_blank", "noopener") }
+            : spotify
             ? { id: "open", icon: "link", label: "Open in Spotify", go: true, run: () => void window.open(spotifyLink("track", song.id), "_blank", "noopener") }
             : { id: "details", icon: "info", label: "Song details", go: true, run: () => openSongDetails(song) },
         ]
@@ -102,7 +104,7 @@ function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): Action[][] {
 type Target = { id: string; name: string; art: { id?: string | undefined; images?: SpImage[] | null | undefined; version?: string | undefined } };
 
 function usePlaylistTargets(songs: Song[]) {
-  const spotify = songs.every((s) => s.source === "spotify");
+  const spotify = songs.every((song) => songSource(song) === "spotify");
   const { data: local = [] } = usePlaylists();
   const { data: remote = [] } = useSpotifyPlaylists();
   const edits = useSpotifyPlaylistEdits();

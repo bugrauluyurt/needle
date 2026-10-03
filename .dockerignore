@@ -7,3 +7,5 @@ test-results
 playwright-report
 .git
 data
+.venv-ytmusic
+**/__pycache__

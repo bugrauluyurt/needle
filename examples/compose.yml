@@ -23,6 +23,8 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      YTMUSIC_CLIENT_ID: ${YTMUSIC_CLIENT_ID:-}
+      YTMUSIC_CLIENT_SECRET: ${YTMUSIC_CLIENT_SECRET:-}
       TZ: ${TZ:-UTC}
     volumes:
       - ./config/needle:/data

@@ -11,13 +11,14 @@ import type { MusicBrainz } from "./musicbrainz.ts";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { LibrarySearch } from "./search.ts";
 import type { Slskd } from "./soulseek.ts";
+import type { YouTubeMusic } from "./youtube-music.ts";
 
 const TTL_MS = 30_000;
 const SAMPLE_FILES = 3;
 const LISTEN_WINDOW_MS = 7 * DAY_MS;
 const AUDIO = /\.(flac|mp3|m4a|aac|ogg|opus|wav|alac|aiff?|wma)$/i;
 
-type Deps = { config: Config; navidrome: Navidrome; library: LibrarySearch; lidarr: Lidarr | null; slskd: Slskd | null; musicbrainz: MusicBrainz; deezer: Deezer; listenbrainz: ListenBrainz };
+type Deps = { config: Config; navidrome: Navidrome; library: LibrarySearch; lidarr: Lidarr | null; slskd: Slskd | null; musicbrainz: MusicBrainz; deezer: Deezer; listenbrainz: ListenBrainz; youtubeMusic?: YouTubeMusic | null };
 type Outcome = { state: CheckState; detail: string; fix?: string };
 type Check = { id: string; label: string; fix: string; run: () => Promise<Outcome> };
 
@@ -159,6 +160,18 @@ export class Status {
         fix: "Check SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL.",
         run: () => Promise.resolve(spotifyOutcome(config)),
       },
+      ...(["metadata", "resolver"] as const).map((component): Check => ({
+        id: `youtube-music-${component}`,
+        label: component === "metadata" ? "YouTube Music" : "YouTube Music playback",
+        fix: "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET, then install apps/server/requirements.txt in YTMUSIC_PYTHON's environment.",
+        run: async () => {
+          if (!this.d.youtubeMusic) return off("Not set up", "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to connect YouTube Music.");
+
+          const version = await this.d.youtubeMusic.health(component);
+
+          return { state: "ok", detail: `${component === "metadata" ? "ytmusicapi" : "yt-dlp"} ${version}. Experimental integration.` };
+        },
+      })),
     ];
   }
 }

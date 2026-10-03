@@ -157,6 +157,12 @@ export class AudioEngine {
     el.load();
   }
 
+  clearPreload() {
+    this.cancelFade();
+
+    this.releaseSlot((1 - this.active) as 0 | 1);
+  }
+
   isPreloaded(src: string): boolean {
     return this.srcs[(1 - this.active) as 0 | 1] === src;
   }

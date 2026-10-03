@@ -42,6 +42,24 @@ CREATE TABLE IF NOT EXISTS requests (
   updated INTEGER NOT NULL,
   UNIQUE (user, kind, ref)
 );
+CREATE TABLE IF NOT EXISTS youtube_music_tokens (
+  user TEXT PRIMARY KEY,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  scope TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  reconnect INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS youtube_music_logins (
+  user TEXT PRIMARY KEY,
+  device_code TEXT NOT NULL,
+  user_code TEXT NOT NULL,
+  verification_url TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  interval INTEGER NOT NULL,
+  next_poll INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS seen (
   user TEXT PRIMARY KEY,
   admin INTEGER NOT NULL,
@@ -85,5 +103,6 @@ export function openDatabase(dataDir: string): DatabaseSync {
   db.exec(SCHEMA);
   addColumn(db, "spotify_tokens", "scope", "TEXT NOT NULL DEFAULT ''");
   addColumn(db, "spotify_tokens", "enabled", "INTEGER NOT NULL DEFAULT 1");
+  addColumn(db, "permissions", "can_youtube_music", "INTEGER");
   return db;
 }

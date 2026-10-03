@@ -19,6 +19,11 @@ import { MobileHeader } from "../layout/Mobile.tsx";
 import { spId } from "../lib/spotify.ts";
 import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
 import { playSpotifyPlaylist, SpotifyAlbumCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
+import { useYouTubeMusicAlbums, useYouTubeMusicLiked, useYouTubeMusicOn, useYouTubeMusicPlaylists } from "../queries/youtube-music.ts";
+import { playYouTubeMusicPlaylist, YouTubeMusicAlbumCard, YouTubeMusicPlaylistCard } from "../components/YouTubeMusicCards.tsx";
+import { YouTubeMusicNotice } from "../components/YouTubeMusicNotice.tsx";
+import { youtubeMusicRawId } from "@needle/shared";
+import { toast } from "../state/ui.ts";
 
 const YEAR_MS = 365 * DAY_MS;
 
@@ -78,6 +83,26 @@ function SpotifyLikedTile() {
   return <QuickTile to="/spotify/liked" art={<LikedArt className="sp-liked" />} title="Liked on Spotify" playingId="sp:liked" {...(liked.length ? { onPlay: () => player.playSongs(liked, 0, context) } : {})} />;
 }
 
+function YouTubeMusicLikedTile() {
+  const { data: likedSongs = [] } = useYouTubeMusicLiked();
+  const context = { kind: "liked" as const, id: "ytm:liked", name: "Liked on YouTube Music" };
+
+  return <QuickTile to="/youtube-music/liked" art={<LikedArt className="yt-liked" />} title="Liked on YouTube Music" playingId="ytm:liked" {...(likedSongs.length ? { onPlay: () => player.playSongs(likedSongs, 0, context) } : {})} />;
+}
+
+function YouTubeMusicRows() {
+  const playlists = useYouTubeMusicPlaylists();
+  const albums = useYouTubeMusicAlbums();
+
+  return (
+    <>
+      <YouTubeMusicNotice error={playlists.isError || albums.isError} retry={() => { void playlists.refetch(); void albums.refetch(); }} />
+      {playlists.isLoading || playlists.data?.length ? <><RowHeader title="Your YouTube Music playlists" to="/library" /><CardRow>{playlists.isLoading ? <CardSkeletons /> : playlists.data?.map((playlist) => <YouTubeMusicPlaylistCard key={playlist.id} playlist={playlist} />)}</CardRow></> : null}
+      {albums.isLoading || albums.data?.length ? <><RowHeader title="Albums you saved on YouTube Music" to="/library" /><CardRow>{albums.isLoading ? <CardSkeletons /> : albums.data?.map((album) => <YouTubeMusicAlbumCard key={album.id} album={album} />)}</CardRow></> : null}
+    </>
+  );
+}
+
 function SpotifyRows() {
   const playlists = useSpotifyPlaylists();
   const albums = useSpotifyAlbums();
@@ -100,22 +125,28 @@ function SpotifyRows() {
   );
 }
 
-function SpotifyHome({ header }: { header: React.ReactNode }) {
+function ConnectedHome({ header }: { header: React.ReactNode }) {
   const mobile = useIsMobile();
   const { data: playlists = [] } = useSpotifyPlaylists();
+  const spotifyOn = useSpotifyOn();
+  const youtubeMusicOn = useYouTubeMusicOn();
+  const { data: youtubePlaylists = [] } = useYouTubeMusicPlaylists();
   return (
     <div className="tinted">
       {header}
       <div className="pad">
         {!mobile ? <h1 className="hello">{greeting()}</h1> : null}
         <div className="quick">
-          <SpotifyLikedTile />
-          {playlists.slice(0, mobile ? 5 : 7).map((p) => (
+          {spotifyOn ? <SpotifyLikedTile /> : null}
+          {youtubeMusicOn ? <YouTubeMusicLikedTile /> : null}
+          {(spotifyOn ? playlists : []).slice(0, mobile ? 3 : 5).map((p) => (
             <QuickTile key={p.id} to={`/spotify/playlist/${p.id}`} art={<Art images={p.images} px={56} />} title={p.name} playingId={spId(p.id)} onPlay={() => void playSpotifyPlaylist(p.id)} />
           ))}
+          {youtubePlaylists.slice(0, mobile ? 3 : 5).map((playlist) => <QuickTile key={playlist.id} to={`/youtube-music/playlist/${youtubeMusicRawId(playlist.id)}`} art={<Art images={playlist.images} px={56} />} title={playlist.title} playingId={playlist.id} onPlay={() => void playYouTubeMusicPlaylist(playlist.id).catch(() => toast("YouTube Music didn’t answer. Try again in a moment."))} />)}
         </div>
         <Resume />
-        <SpotifyRows />
+        {spotifyOn ? <SpotifyRows /> : null}
+        {youtubeMusicOn ? <YouTubeMusicRows /> : null}
         <EmptyLibrary compact />
       </div>
     </div>
@@ -168,6 +199,7 @@ export default function Home() {
   const headerCover = current?.coverArt ?? recent.data?.[0]?.coverArt ?? newest.data?.[0]?.coverArt;
   const tone = useTone(headerCover);
   const spotifyOn = useSpotifyOn();
+  const youtubeMusicOn = useYouTubeMusicOn();
   usePageTone(tone);
   const header = mobile ? <MobileHeader title={greeting()} /> : <TopBar />;
 
@@ -181,7 +213,7 @@ export default function Home() {
   }
 
   if (!newest.data?.length) {
-    return spotifyOn ? <SpotifyHome header={header} /> : (
+    return spotifyOn || youtubeMusicOn ? <ConnectedHome header={header} /> : (
       <>
         {header}
         <EmptyLibrary />
@@ -189,7 +221,7 @@ export default function Home() {
     );
   }
 
-  const quick = [...(recent.data ?? []), ...(newest.data ?? [])].filter((a, i, all) => all.findIndex((b) => b.id === a.id) === i).slice(0, (mobile ? 5 : 7) - (spotifyOn ? 1 : 0));
+  const quick = [...(recent.data ?? []), ...(newest.data ?? [])].filter((a, i, all) => all.findIndex((b) => b.id === a.id) === i).slice(0, (mobile ? 5 : 7) - Number(spotifyOn) - Number(youtubeMusicOn));
   const old = forgotten(frequent.data);
   const liked = starred.data?.song ?? [];
 
@@ -201,6 +233,7 @@ export default function Home() {
         <div className="quick">
           <QuickTile to="/liked" art={<LikedArt />} title="Liked songs" playingId="liked" {...(liked.length ? { onPlay: () => player.playSongs(liked, 0, { kind: "liked", id: "liked", name: "Liked songs" }) } : {})} />
           {spotifyOn ? <SpotifyLikedTile /> : null}
+          {youtubeMusicOn ? <YouTubeMusicLikedTile /> : null}
           {quick.map((a) => (
             <QuickTile key={a.id} to={`/album/${a.id}`} art={<Art id={a.coverArt} px={56} />} title={a.name} playingId={a.id} onPlay={() => void playAlbum(a.id, a.name)} />
           ))}
@@ -216,6 +249,7 @@ export default function Home() {
         <RowHeader title="Recently added" to="/albums/newest" />
         <CardRow>{newest.data.map((a) => <AlbumCard key={a.id} album={a} />)}</CardRow>
         {spotifyOn ? <SpotifyRows /> : null}
+        {youtubeMusicOn ? <YouTubeMusicRows /> : null}
         {old.length ? (
           <>
             <RowHeader title="You haven’t played these in a while" subtitle="Albums you played a lot, and not for six months" />

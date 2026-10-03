@@ -12,8 +12,13 @@ RUN pnpm --filter @needle/web build \
  && pnpm --filter @needle/server deploy --prod --legacy /out
 
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
-ENV NODE_ENV=production PORT=4535 DATA_DIR=/data WEB_DIST=/app/web
+ENV NODE_ENV=production PORT=4535 DATA_DIR=/data WEB_DIST=/app/web YTMUSIC_PYTHON=/opt/ytmusic/bin/python
 WORKDIR /app
+COPY --from=build /src/apps/server/requirements.txt /tmp/ytmusic-requirements.txt
+RUN apk add --no-cache python3 py3-pip \
+ && python3 -m venv /opt/ytmusic \
+ && /opt/ytmusic/bin/pip install --no-cache-dir -r /tmp/ytmusic-requirements.txt \
+ && rm /tmp/ytmusic-requirements.txt
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /src/packages/shared ./packages/shared

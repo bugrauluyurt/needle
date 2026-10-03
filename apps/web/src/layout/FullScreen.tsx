@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Art } from "../components/Art.tsx";
 import { Icon, Logo } from "../components/Icon.tsx";
 import { LyricsView } from "../components/Lyrics.tsx";
+import { YouTubeMusicPlaybackError } from "../components/YouTubeMusicPlaybackError.tsx";
 import { artistName, formatLabel } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { player } from "../player/controller.ts";
@@ -50,6 +51,7 @@ export default function FullScreenPlayer() {
         <div className="full-info">
           <h2>{station?.name ?? song?.title}</h2>
           <div className="by">{station ? <LiveLabel /> : song ? artistName(song) : ""}</div>
+          {!remote ? <YouTubeMusicPlaybackError song={song} /> : null}
           {lyrics && song ? (
             <div className="full-lyrics"><LyricsView song={song} variant="panel" /></div>
           ) : upNext.length ? (
@@ -83,4 +85,3 @@ export default function FullScreenPlayer() {
     </div>
   );
 }
-

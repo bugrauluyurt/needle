@@ -32,5 +32,8 @@ jobs:
 
       - run: pnpm test
 
+      - name: YouTube Music bridge tests
+        run: python3 -m unittest discover -s apps/server/test -p 'test_youtube_music.py'
+
       - name: Changelog entries
         run: python3 scripts/changelog.py next package.json

@@ -1,12 +1,11 @@
 import { useNavigate } from "react-router";
-import { HOUR_MS, MINUTE_MS } from "@needle/shared";
+import { HOUR_MS, MINUTE_MS, musicSource } from "@needle/shared";
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Query, QueryClient } from "@tanstack/react-query";
 import type { Album, Artist, Period, PlaylistWithSongs, RequestItem, Song, SongCandidate } from "@needle/shared";
 import { api } from "../lib/api.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
-import { isSpotify } from "../lib/spotify.ts";
 import { useSession } from "../state/session.ts";
 import { toast } from "../state/ui.ts";
 import { keys } from "./keys.ts";
@@ -14,7 +13,7 @@ import { queryClient } from "./client.ts";
 
 
 export const useAlbum = (id: string | undefined) =>
-  useQuery({ queryKey: keys.album(id ?? ""), queryFn: () => sub.album(id ?? ""), enabled: Boolean(id) });
+  useQuery({ queryKey: keys.album(id ?? ""), queryFn: () => sub.album(id ?? ""), enabled: navidromeId(id) });
 
 type ListOpts = { genre?: string; fromYear?: number; toYear?: number };
 
@@ -99,7 +98,7 @@ export function prefetchStart(qc: QueryClient) {
 }
 
 export const useArtist = (id: string | undefined) =>
-  useQuery({ queryKey: keys.artist(id ?? ""), queryFn: () => sub.artist(id ?? ""), enabled: Boolean(id) });
+  useQuery({ queryKey: keys.artist(id ?? ""), queryFn: () => sub.artist(id ?? ""), enabled: navidromeId(id) });
 
 export const useLibrarySongs = (enabled: boolean) => useQuery({ queryKey: keys.librarySongs, queryFn: api.librarySongs, enabled, staleTime: 60_000 });
 
@@ -123,7 +122,7 @@ export function useArtistCover(id: string | undefined): string | undefined {
   return id ? data?.find((a) => a.id === id)?.coverArt : undefined;
 }
 
-const navidromeId = (id: string | undefined) => Boolean(id) && !isSpotify(id ?? "");
+const navidromeId = (id: string | undefined) => Boolean(id) && musicSource(id) === "library";
 
 export const useArtistInfo = (id: string | undefined) =>
   useQuery({ queryKey: keys.artistInfo(id ?? ""), queryFn: () => sub.artistInfo(id ?? "", 12, true), enabled: navidromeId(id), staleTime: HOUR_MS });
@@ -134,7 +133,7 @@ export const useTopSongs = (name: string | undefined) =>
 export const usePlaylists = () => useQuery({ queryKey: keys.playlists, queryFn: sub.playlists });
 
 export const usePlaylist = (id: string | undefined) =>
-  useQuery({ queryKey: keys.playlist(id ?? ""), queryFn: () => sub.playlist(id ?? ""), enabled: Boolean(id) });
+  useQuery({ queryKey: keys.playlist(id ?? ""), queryFn: () => sub.playlist(id ?? ""), enabled: navidromeId(id) });
 
 export const useStarred = () => useQuery({ queryKey: keys.starred, queryFn: sub.starred, staleTime: 60_000 });
 
@@ -205,7 +204,7 @@ export const useLidarrArtists = (names: string[], enabled: boolean) =>
   });
 
 export const useSimilarSongs = (id: string | undefined) =>
-  useQuery({ queryKey: keys.similar(id ?? ""), queryFn: () => sub.similarSongs(id ?? "", 20), enabled: Boolean(id), staleTime: HOUR_MS });
+  useQuery({ queryKey: keys.similar(id ?? ""), queryFn: () => sub.similarSongs(id ?? "", 20), enabled: navidromeId(id), staleTime: HOUR_MS });
 
 type StarKind = "song" | "album" | "artist";
 type Starred = { song?: Song[]; album?: Album[]; artist?: Artist[] };
@@ -223,6 +222,8 @@ export function useToggleStar() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ kind, item, on }: { kind: StarKind; item: Song | Album | Artist; on: boolean }) => {
+      if (!navidromeId(item.id)) throw new Error("Only items in your library can be starred in Navidrome");
+
       const ids = kind === "song" ? { id: [item.id] } : kind === "album" ? { albumId: [item.id] } : { artistId: [item.id] };
       await (on ? sub.star(ids) : sub.unstar(ids));
     },
@@ -246,7 +247,11 @@ export function useToggleStar() {
 export function useCreatePlaylist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, songIds }: { name: string; songIds?: string[] }) => sub.createPlaylist(name, songIds),
+    mutationFn: ({ name, songIds }: { name: string; songIds?: string[] }) => {
+      if (songIds?.some((songId) => !navidromeId(songId))) throw new Error("Only songs in your library can be added to Navidrome playlists");
+
+      return sub.createPlaylist(name, songIds);
+    },
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.playlists }),
   });
 }
@@ -254,7 +259,11 @@ export function useCreatePlaylist() {
 export function useAddToPlaylist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ playlistId, songIds }: { playlistId: string; songIds: string[] }) => sub.updatePlaylist(playlistId, { add: songIds }),
+    mutationFn: ({ playlistId, songIds }: { playlistId: string; songIds: string[] }) => {
+      if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId))) throw new Error("Only songs in your library can be added to Navidrome playlists");
+
+      return sub.updatePlaylist(playlistId, { add: songIds });
+    },
     onSuccess: (_d, v) => {
       void qc.invalidateQueries({ queryKey: keys.playlist(v.playlistId) });
       void qc.invalidateQueries({ queryKey: keys.playlists });

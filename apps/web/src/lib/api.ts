@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const c = credentials();
   const headers = new Headers(init.headers);
   if (c) {
@@ -47,7 +47,7 @@ export const api = {
   requests: () => request<RequestItem[]>("/requests"),
   everyonesRequests: () => request<RequestItem[]>("/requests?everyone=1"),
   people: () => request<Person[]>("/people"),
-  setPerson: (user: string, patch: Partial<Pick<Person, "canRequest" | "canSpotify">>) => send("PUT")<Person>(`/people/${encodeURIComponent(user)}`, patch),
+  setPerson: (user: string, patch: Partial<Pick<Person, "canRequest" | "canSpotify" | "canYouTubeMusic">>) => send("PUT")<Person>(`/people/${encodeURIComponent(user)}`, patch),
   retryRequest: (id: number) => post<RequestItem>(`/requests/${id}/retry`),
   removeRequest: (id: number) => request<void>(`/requests/${id}`, { method: "DELETE" }),
   setPhoto: (photo: Blob) => request<void>("/me/photo", { method: "PUT", body: photo, headers: { "content-type": photo.type } }),

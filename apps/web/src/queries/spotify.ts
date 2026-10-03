@@ -7,7 +7,8 @@ import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
 import { useArtists, useCapabilities } from "./hooks.ts";
 import { useSession } from "../state/session.ts";
-import { fold, HOUR_MS } from "@needle/shared";
+import { fold, HOUR_MS, isYouTubeMusic } from "@needle/shared";
+import { useYouTubeMusicArtistImage } from "./youtube-music.ts";
 
 const LIBRARY_STALE = 6 * HOUR_MS;
 const CACHE_PREFIX = "needle.sp.";
@@ -353,6 +354,8 @@ export function useArtistImage(id: string | undefined, name: string | undefined)
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
   const spotify = isSpotify(id);
+  const youtubeMusic = isYouTubeMusic(id);
+  const youtubeMusicImage = useYouTubeMusicArtistImage(youtubeMusic ? id ?? "" : "");
   const { data: localArtists, isPending: localPending } = useArtists();
   const local = spotify ? undefined : localArtists?.find((artist) => artist.id === id)?.coverArt;
   const { data: artist } = useSpotifyArtistProfile(spotify ? rawId(id ?? "") : undefined);
@@ -362,9 +365,9 @@ export function useArtistImage(id: string | undefined, name: string | undefined)
       const hits = await sp.findArtist(name ?? "");
       return image(hits.find((a) => fold(a.name) === fold(name ?? ""))?.images, 640) ?? null;
     },
-    enabled: on && !spotify && !localPending && !local && Boolean(name),
+    enabled: on && !spotify && !youtubeMusic && !localPending && !local && Boolean(name),
     staleTime: Infinity,
     ...cached<string | null>(spKeys.artistImage(name ?? ""), visible),
   });
-  return spotify ? image(artist?.images, 640) : (local ?? found ?? undefined);
+  return youtubeMusic ? youtubeMusicImage : spotify ? image(artist?.images, 640) : (local ?? found ?? undefined);
 }

@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
-import { allowSpotify, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
+import { allowSpotify, allowYouTubeMusic, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyRequestsAllowed } from "../queries/spotify.ts";
+import { useYouTubeMusicOn } from "../queries/youtube-music.ts";
 import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
@@ -203,12 +204,16 @@ export function Shell() {
   const panelOver = usePanelOver(!wide && !mobile);
   const spotifyOn = useSpotifyRequestsAllowed();
   const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
+  const youtubeMusicOn = useYouTubeMusicOn();
   useShortcuts();
   useCloseOverlaysOnNavigate();
   useEffect(() => {
     allowSpotify(spotifyPlayback);
     if (spotifyPlayback) warmSpotify();
   }, [spotifyPlayback]);
+  useEffect(() => {
+    allowYouTubeMusic(youtubeMusicOn);
+  }, [youtubeMusicOn]);
   if (mobile) {
     return (
       <div className={`phone-app ${hasSong ? "has-mini" : ""}`}>
