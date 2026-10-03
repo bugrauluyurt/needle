@@ -6,6 +6,7 @@ import globals from "globals";
 export default tseslint.config(
   {
     ignores: [
+      "**/.venv/**",
       "**/dist/**",
       "**/node_modules/**",
       "e2e/.library/**",

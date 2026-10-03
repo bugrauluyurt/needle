@@ -361,16 +361,15 @@ tracks may not play here. Use **Open in YouTube Music** for those tracks. A fail
 resolver stops on the selected song instead of repeatedly resolving the rest of
 the queue. Your own music and Spotify remain available when YouTube Music fails.
 
-Running from source, install the bridge into a virtual environment and set its
-Python executable before starting Needle:
+Running from source, sync the bridge with uv and set its Python executable before
+starting Needle:
 
 ```bash
-python3 -m venv .venv-ytmusic
-.venv-ytmusic/bin/pip install -r apps/server/requirements.txt
-YTMUSIC_PYTHON="$PWD/.venv-ytmusic/bin/python" pnpm dev
+uv sync --project bridges/youtube-music --locked
+YTMUSIC_PYTHON="$PWD/bridges/youtube-music/.venv/bin/python" pnpm dev
 ```
 
-Python 3.10 or newer and Node 24 are required. Needle pins ytmusicapi, yt-dlp
+Python 3.10 or newer and Node 24 are required. Needle locks ytmusicapi, yt-dlp
 and its challenge scripts. Upgrade them through a tested Needle release when
 YouTube changes. Settings → Connections distinguishes account access from the
 local playback resolver.
@@ -436,25 +435,26 @@ Spotify allowance.
 All settings are environment variables on the `needle` container. Empty values count
 as unset.
 
-| Variable                                     | Default                                         |                                                              |
-| -------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
-| `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                         | Navidrome as the Needle server reaches it                    |
-| `PUBLIC_URL`                                 |                                                 | The `https://` address people open. Needed for Spotify       |
-| `PORT`                                       | `4535`                                          | Port the server listens on                                   |
-| `DATA_DIR`                                   | `/data` in the image                            | Where `needle.db` lives                                      |
-| `TZ`                                         | `UTC`                                           | Time zone for daily mixes and listening stats                |
-| `LIDARR_URL`, `LIDARR_API_KEY`               |                                                 | Turns on Get album                                           |
-| `LIDARR_QUALITY_PROFILE`                     | root folder's default                           | Quality profile name for new albums                          |
-| `LIDARR_ROOT_FOLDER`                         | Lidarr's first root folder                      | Root folder path for new albums                              |
-| `SLSKD_URL`, `SLSKD_API_KEY`                 |                                                 | Turns on Get song                                            |
-| `SOULSEEK_DIR`                               | `/soulseek`                                     | slskd's downloads folder inside the Needle container         |
-| `SINGLES_DIR`                                | `/singles`                                      | Where fetched songs go; a Navidrome library                  |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |                                                 | Turns on Spotify (with `PUBLIC_URL`)                         |
-| `YTMUSIC_CLIENT_ID`, `YTMUSIC_CLIENT_SECRET` |                                                 | Turns on the experimental YouTube Music connection           |
-| `YTMUSIC_PYTHON`                             | bundled Python in Docker, `python3` from source | Python executable with the pinned YouTube Music dependencies |
-| `MUSICBRAINZ_URL`                            | `https://musicbrainz.org/ws/2`                  | Song lookups; the tests point it at a mock                   |
-| `DEEZER_URL`                                 | `https://api.deezer.com`                        | Popular songs for an artist                                  |
-| `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                  | ListenBrainz playlists; the tests point it at a mock         |
+| Variable                                     | Default                                               |                                                              |
+| -------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| `NAVIDROME_URL`                              | `http://127.0.0.1:4533`                               | Navidrome as the Needle server reaches it                    |
+| `PUBLIC_URL`                                 |                                                       | The `https://` address people open. Needed for Spotify       |
+| `PORT`                                       | `4535`                                                | Port the server listens on                                   |
+| `DATA_DIR`                                   | `/data` in the image                                  | Where `needle.db` lives                                      |
+| `TZ`                                         | `UTC`                                                 | Time zone for daily mixes and listening stats                |
+| `LIDARR_URL`, `LIDARR_API_KEY`               |                                                       | Turns on Get album                                           |
+| `LIDARR_QUALITY_PROFILE`                     | root folder's default                                 | Quality profile name for new albums                          |
+| `LIDARR_ROOT_FOLDER`                         | Lidarr's first root folder                            | Root folder path for new albums                              |
+| `SLSKD_URL`, `SLSKD_API_KEY`                 |                                                       | Turns on Get song                                            |
+| `SOULSEEK_DIR`                               | `/soulseek`                                           | slskd's downloads folder inside the Needle container         |
+| `SINGLES_DIR`                                | `/singles`                                            | Where fetched songs go; a Navidrome library                  |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |                                                       | Turns on Spotify (with `PUBLIC_URL`)                         |
+| `YTMUSIC_CLIENT_ID`, `YTMUSIC_CLIENT_SECRET` |                                                       | Turns on the experimental YouTube Music connection           |
+| `YTMUSIC_PYTHON`                             | bundled Python in Docker, `python3` from source       | Python executable with the pinned YouTube Music dependencies |
+| `YTMUSIC_BRIDGE_PATH`                        | bundled path in Docker, repository bridge from source | Python bridge script path                                    |
+| `MUSICBRAINZ_URL`                            | `https://musicbrainz.org/ws/2`                        | Song lookups; the tests point it at a mock                   |
+| `DEEZER_URL`                                 | `https://api.deezer.com`                              | Popular songs for an artist                                  |
+| `LISTENBRAINZ_URL`                           | `https://api.listenbrainz.org`                        | ListenBrainz playlists; the tests point it at a mock         |
 
 **Transcoding:** Navidrome converts songs for the Opus/AAC quality settings. Its
 Docker image includes ffmpeg and ready-made Opus and AAC transcodings, so there's

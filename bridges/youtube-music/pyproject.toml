@@ -1,0 +1,21 @@
+[project]
+name = "needle-youtube-music-bridge"
+version = "0.0.0"
+requires-python = ">=3.10,<3.15"
+dependencies = [
+  "yt-dlp[pin]==2026.8.19",
+  "ytmusicapi==1.12.3",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.16,<0.17"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E4", "E7", "E9", "F", "SIM", "UP"]

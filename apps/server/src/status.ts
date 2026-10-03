@@ -208,7 +208,7 @@ export class Status {
       ...(["metadata", "resolver"] as const).map((component): Check => ({
         id: `youtube-music-${component}`,
         label: component === "metadata" ? "YouTube Music" : "YouTube Music playback",
-        fix: "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET, then install apps/server/requirements.txt in YTMUSIC_PYTHON's environment.",
+        fix: "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET, then run uv sync in bridges/youtube-music.",
         run: async () => {
           if (!this.d.youtubeMusic)
             return off("Not set up", "Set YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to connect YouTube Music.");

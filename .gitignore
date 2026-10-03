@@ -13,5 +13,5 @@ e2e/.singles/
 .env.local
 data/
 examples/config/
-.venv-ytmusic/
+**/.venv/
 __pycache__/

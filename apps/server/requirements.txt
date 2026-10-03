@@ -1,2 +1,0 @@
-ytmusicapi==1.12.3
-yt-dlp[pin]==2026.8.19
