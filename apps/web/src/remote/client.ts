@@ -1,7 +1,15 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { REPLACED_CLOSE_CODE, songSource } from "@needle/shared";
-import type { ClientMessage, Device, InternetRadioStation, RemoteCommand, RemoteState, ServerMessage, Song } from "@needle/shared";
+import type {
+  ClientMessage,
+  Device,
+  InternetRadioStation,
+  RemoteCommand,
+  RemoteState,
+  ServerMessage,
+  Song,
+} from "@needle/shared";
 import { devicesSocketUrl } from "../lib/api.ts";
 import { deviceKind } from "../lib/device.ts";
 import { artistName } from "../lib/format.ts";
@@ -70,7 +78,13 @@ export function transferTo(deviceId: string) {
   send({
     type: "command",
     to: deviceId,
-    command: { action: "transfer", songs: s.items.slice(start, start + TRANSFER_LIMIT).map((i) => i.song), index: s.index - start, position: progress.get().position, playing: true },
+    command: {
+      action: "transfer",
+      songs: s.items.slice(start, start + TRANSFER_LIMIT).map((i) => i.song),
+      index: s.index - start,
+      position: progress.get().position,
+      playing: true,
+    },
   });
   player.pause();
 }
@@ -86,7 +100,12 @@ function stopWaiting() {
 
 function playHere(from: string, songs: Song[], index: number, position: number, playing: boolean) {
   stopWaiting();
-  player.playSongs(songs, index, { kind: "queue", name: "Your queue" }, { shuffle: false, at: position, autoplay: playing });
+  player.playSongs(
+    songs,
+    index,
+    { kind: "queue", name: "Your queue" },
+    { shuffle: false, at: position, autoplay: playing },
+  );
   const sender = useRemote.getState().devices.find((d) => d.id === from)?.name;
   toast(sender ? `Now playing here, sent from ${sender}` : "Now playing here");
 }
@@ -95,7 +114,11 @@ export function pullFrom(d: Device) {
   command(d.id, { action: "pull" });
   stopWaiting();
   const state = d.state;
-  if (state) pullTimer = window.setTimeout(() => playHere(d.id, [remoteSong(state)], 0, remotePosition(state, Date.now()), true), PULL_WAIT);
+  if (state)
+    pullTimer = window.setTimeout(
+      () => playHere(d.id, [remoteSong(state)], 0, remotePosition(state, Date.now()), true),
+      PULL_WAIT,
+    );
 }
 
 function receive(from: string, cmd: RemoteCommand) {
@@ -159,7 +182,14 @@ export function startRemote() {
   if (socket) return;
   connect();
   usePlayer.subscribe((s, prev) => {
-    if (s.playing !== prev.playing || s.index !== prev.index || s.items !== prev.items || s.volume !== prev.volume || s.muted !== prev.muted) publish();
+    if (
+      s.playing !== prev.playing ||
+      s.index !== prev.index ||
+      s.items !== prev.items ||
+      s.volume !== prev.volume ||
+      s.muted !== prev.muted
+    )
+      publish();
   });
   stateTimer ??= window.setInterval(() => usePlayer.getState().playing && publish(true), STATE_EVERY);
   useSession.subscribe((s, prev) => {
@@ -211,7 +241,11 @@ const localControls: Controls = {
 };
 
 function patchRemote(id: string, patch: (s: RemoteState) => Partial<RemoteState>) {
-  useRemote.setState((r) => ({ devices: r.devices.map((d) => (d.id === id && d.state ? { ...d, state: { ...d.state, ...patch(d.state), updatedAt: Date.now() } } : d)) }));
+  useRemote.setState((r) => ({
+    devices: r.devices.map((d) =>
+      d.id === id && d.state ? { ...d, state: { ...d.state, ...patch(d.state), updatedAt: Date.now() } } : d,
+    ),
+  }));
 }
 
 function remoteControls(id: string): Controls {
@@ -259,16 +293,31 @@ export function usePlayback(): Playback {
   const state = remote?.state;
   const shown = useMemo(() => (state ? remoteSong(state) : song), [state, song]);
   if (!remote || !state) return { remote: null, song, station, playing, buffering, volume, controls };
-  return { remote, song: shown, station: null, playing: state.playing, buffering: false, volume: state.volume, controls };
+  return {
+    remote,
+    song: shown,
+    station: null,
+    playing: state.playing,
+    buffering: false,
+    volume: state.volume,
+    controls,
+  };
 }
 
 export function useShownProgress<T>(remote: Device | null, select: (p: Progress) => T): T {
   const local = useProgress(select);
   const state = remote?.state;
-  const tick = useCallback((cb: () => void) => {
-    if (!state?.playing) return () => undefined;
-    const timer = window.setInterval(cb, REMOTE_TICK);
-    return () => window.clearInterval(timer);
-  }, [state]);
-  return useSyncExternalStore(tick, () => (state ? select({ position: remotePosition(state, Date.now()), duration: state.duration, buffered: state.duration }) : local));
+  const tick = useCallback(
+    (cb: () => void) => {
+      if (!state?.playing) return () => undefined;
+      const timer = window.setInterval(cb, REMOTE_TICK);
+      return () => window.clearInterval(timer);
+    },
+    [state],
+  );
+  return useSyncExternalStore(tick, () =>
+    state
+      ? select({ position: remotePosition(state, Date.now()), duration: state.duration, buffered: state.duration })
+      : local,
+  );
 }

@@ -7,7 +7,9 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const server = process.env.NEEDLE_SERVER ?? "http://127.0.0.1:14535";
-const { version } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string };
+const { version } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as {
+  version: string;
+};
 const COMPRESS = /\.(js|css|html|svg|json|webmanifest)$/;
 
 function precompress(): Plugin {
@@ -15,10 +17,11 @@ function precompress(): Plugin {
     name: "needle-precompress",
     apply: "build",
     closeBundle() {
-      const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
-        const p = join(dir, f);
-        return statSync(p).isDirectory() ? walk(p) : [p];
-      });
+      const walk = (dir: string): string[] =>
+        readdirSync(dir).flatMap((f) => {
+          const p = join(dir, f);
+          return statSync(p).isDirectory() ? walk(p) : [p];
+        });
       for (const file of walk("dist").filter((f) => COMPRESS.test(f))) {
         const data = readFileSync(file);
         if (data.length < 1024) continue;
@@ -74,7 +77,10 @@ export default defineConfig({
             { name: "react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
             { name: "router", test: /node_modules[\\/](react-router|cookie|set-cookie-parser)[\\/]/ },
             { name: "query", test: /node_modules[\\/](@tanstack|zustand)[\\/]/ },
-            { name: "ui", test: /node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|tslib|detect-node-es|get-nonce)[\\/]/ },
+            {
+              name: "ui",
+              test: /node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll|react-remove-scroll-bar|react-style-singleton|use-callback-ref|use-sidecar|aria-hidden|tslib|detect-node-es|get-nonce)[\\/]/,
+            },
           ],
         },
       },

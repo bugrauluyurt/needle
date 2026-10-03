@@ -70,7 +70,12 @@ vi.mock("../src/lib/spotify.ts", () => ({
 }));
 
 vi.mock("../src/lib/subsonic.ts", () => ({
-  sub: { scrobble: playerMocks.scrobble, savePlayQueue: playerMocks.savePlayQueue, playQueue: playerMocks.playQueue, similarSongs: playerMocks.similarSongs },
+  sub: {
+    scrobble: playerMocks.scrobble,
+    savePlayQueue: playerMocks.savePlayQueue,
+    playQueue: playerMocks.playQueue,
+    similarSongs: playerMocks.similarSongs,
+  },
   subsonicUrl: playerMocks.subsonicUrl,
   coverUrl: () => null,
 }));
@@ -80,10 +85,21 @@ vi.mock("../src/lib/api.ts", () => ({ api: { reportPlay: playerMocks.reportPlay 
 vi.mock("../src/offline/store.ts", () => ({ offlineSource: playerMocks.offlineSource }));
 
 vi.mock("../src/state/settings.ts", () => ({
-  settings: () => ({ wifiQuality: "original", cellularQuality: "original", normalize: "off", crossfade: 0, autoplay: false, gapless: false }),
+  settings: () => ({
+    wifiQuality: "original",
+    cellularQuality: "original",
+    normalize: "off",
+    crossfade: 0,
+    autoplay: false,
+    gapless: false,
+  }),
 }));
 
-vi.mock("../src/lib/device.ts", () => ({ isIOS: false, randomId: () => "test-device", defaultDeviceName: () => "Test device" }));
+vi.mock("../src/lib/device.ts", () => ({
+  isIOS: false,
+  randomId: () => "test-device",
+  defaultDeviceName: () => "Test device",
+}));
 
 const youtubeSong: Song = { id: "ytm:video-12345", title: "Remote song", duration: 200 };
 
@@ -96,7 +112,14 @@ beforeEach(() => {
 
   const storage = { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() };
 
-  vi.stubGlobal("window", { setTimeout, clearTimeout, setInterval, clearInterval, addEventListener: vi.fn(), localStorage: storage });
+  vi.stubGlobal("window", {
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+    addEventListener: vi.fn(),
+    localStorage: storage,
+  });
   vi.stubGlobal("document", { addEventListener: vi.fn() });
   vi.stubGlobal("navigator", {});
   vi.stubGlobal("localStorage", storage);
@@ -186,7 +209,10 @@ describe("YouTube Music playback boundaries", () => {
 
   it("preserves the existing clamped start index for library queues", async () => {
     const controller = await initializedPlayer();
-    const songs: Song[] = [{ id: "local-1", title: "First song" }, { id: "local-2", title: "Last song" }];
+    const songs: Song[] = [
+      { id: "local-1", title: "First song" },
+      { id: "local-2", title: "Last song" },
+    ];
 
     controller.player.playSongs(songs, 50);
     expect(controller.usePlayer.getState().index).toBe(1);
@@ -240,7 +266,9 @@ describe("YouTube Music playback boundaries", () => {
     await controller.player.next();
 
     expect(playerMocks.reportPlay).toHaveBeenCalledOnce();
-    expect(playerMocks.reportPlay).toHaveBeenCalledWith(expect.objectContaining({ songId: youtubeSong.id, title: youtubeSong.title }));
+    expect(playerMocks.reportPlay).toHaveBeenCalledWith(
+      expect.objectContaining({ songId: youtubeSong.id, title: youtubeSong.title }),
+    );
     expect(playerMocks.scrobble).toHaveBeenCalledWith("local-next", false);
   });
 
@@ -248,7 +276,11 @@ describe("YouTube Music playback boundaries", () => {
     const controller = await initializedPlayer();
     controller.allowYouTubeMusic(true);
     controller.usePlayer.setState({
-      items: [{ uid: "local-first", song: { id: "local-1", title: "First local song" } }, { uid: "local-second", song: { id: "local-2", title: "Second local song" } }, { uid: "youtube-last", song: youtubeSong }],
+      items: [
+        { uid: "local-first", song: { id: "local-1", title: "First local song" } },
+        { uid: "local-second", song: { id: "local-2", title: "Second local song" } },
+        { uid: "youtube-last", song: youtubeSong },
+      ],
       index: 0,
       repeat: "all",
       playing: true,

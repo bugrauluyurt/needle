@@ -130,19 +130,21 @@ function finishListen() {
   const song = listenedSong;
   if (!song || reported || listenedMs < MIN_REPORT_MS) return;
   reported = true;
-  void api.reportPlay({
-    songId: song.id,
-    title: song.title,
-    artist: artistName(song),
-    ...(song.artistId ? { artistId: song.artistId } : {}),
-    album: song.album ?? "",
-    ...(song.albumId ? { albumId: song.albumId } : {}),
-    ...(song.genre ? { genre: song.genre } : {}),
-    ...(song.coverArt ? { coverArt: song.coverArt } : {}),
-    duration: song.duration ?? 0,
-    msPlayed: listenedMs,
-    device: useSession.getState().deviceName,
-  }).catch(() => undefined);
+  void api
+    .reportPlay({
+      songId: song.id,
+      title: song.title,
+      artist: artistName(song),
+      ...(song.artistId ? { artistId: song.artistId } : {}),
+      album: song.album ?? "",
+      ...(song.albumId ? { albumId: song.albumId } : {}),
+      ...(song.genre ? { genre: song.genre } : {}),
+      ...(song.coverArt ? { coverArt: song.coverArt } : {}),
+      duration: song.duration ?? 0,
+      msPlayed: listenedMs,
+      device: useSession.getState().deviceName,
+    })
+    .catch(() => undefined);
 }
 
 function beginListen(item: Q.QueueItem, announce: boolean) {
@@ -180,7 +182,14 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
     loadedUid = null;
     listenedSong = null;
     listenedMs = 0;
-    set({ playing: false, buffering: false, error: item.song.isAvailable === false ? "This song is unavailable. Open it in YouTube Music." : "YouTube Music is switched off or unavailable in Needle." });
+    set({
+      playing: false,
+      buffering: false,
+      error:
+        item.song.isAvailable === false
+          ? "This song is unavailable. Open it in YouTube Music."
+          : "YouTube Music is switched off or unavailable in Needle.",
+    });
 
     return;
   }
@@ -197,7 +206,8 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   }
   if (backend === "spotify") leaveSpotify();
   const src = await sourceFor(item).catch((error: unknown) => {
-    if (get().items[get().index]?.uid === item.uid) onError(error instanceof Error ? error.message : "The stream could not be loaded.");
+    if (get().items[get().index]?.uid === item.uid)
+      onError(error instanceof Error ? error.message : "The stream could not be loaded.");
 
     return null;
   });
@@ -254,7 +264,11 @@ export function allowYouTubeMusic(on: boolean) {
   const playerState = get();
   const nextIndex = Q.nextIndex(playerState, playerState.repeat);
   const previousIndex = Q.previousIndex(playerState, playerState.repeat);
-  if ((nextIndex !== null && onYouTubeMusic(playerState.items[nextIndex]?.song)) || (engine?.fading && previousIndex !== null && onYouTubeMusic(playerState.items[previousIndex]?.song))) engine?.clearPreload();
+  if (
+    (nextIndex !== null && onYouTubeMusic(playerState.items[nextIndex]?.song)) ||
+    (engine?.fading && previousIndex !== null && onYouTubeMusic(playerState.items[previousIndex]?.song))
+  )
+    engine?.clearPreload();
 
   for (const queueItem of playerState.items) {
     if (onYouTubeMusic(queueItem.song)) resolved.delete(queueItem.uid);
@@ -291,7 +305,11 @@ async function startSpotify(item: Q.QueueItem, startAt: number) {
     await spotifyPlayer.play(item.song.uri, startAt);
     spotifyTicker ??= window.setInterval(tickSpotify, SPOTIFY_TICK);
   } catch (e) {
-    set({ playing: false, buffering: false, error: e instanceof Error ? e.message : "Spotify couldn’t play that song" });
+    set({
+      playing: false,
+      buffering: false,
+      error: e instanceof Error ? e.message : "Spotify couldn’t play that song",
+    });
   }
 }
 
@@ -336,11 +354,22 @@ function onTime(position: number, duration: number, buffered: number) {
   const remaining = duration - position;
   const nextIdx = s.repeat === "one" ? null : Q.nextIndex(s, s.repeat);
   const next = nextIdx !== null ? s.items[nextIdx] : undefined;
-  if (!next || onSpotify(next.song) || next.song.isAvailable === false || (onYouTubeMusic(next.song) && !youtubeMusicAllowed) || !duration || !s.playing) return;
+  if (
+    !next ||
+    onSpotify(next.song) ||
+    next.song.isAvailable === false ||
+    (onYouTubeMusic(next.song) && !youtubeMusicAllowed) ||
+    !duration ||
+    !s.playing
+  )
+    return;
   if (onSpotify(song)) {
-    if (remaining < PRELOAD_AT && !resolved.has(next.uid)) void sourceFor(next).then((src) => {
-      if (!onYouTubeMusic(next.song) || youtubeMusicAllowed) engine?.preload(src);
-    }).catch(() => undefined);
+    if (remaining < PRELOAD_AT && !resolved.has(next.uid))
+      void sourceFor(next)
+        .then((src) => {
+          if (!onYouTubeMusic(next.song) || youtubeMusicAllowed) engine?.preload(src);
+        })
+        .catch(() => undefined);
     return;
   }
   const cf = crossfadeSeconds();
@@ -356,9 +385,12 @@ function onTime(position: number, duration: number, buffered: number) {
     }
   }
   if (remaining < PRELOAD_AT && !resolved.has(next.uid)) {
-    void sourceFor(next).then((src) => {
-      if ((!onYouTubeMusic(next.song) || youtubeMusicAllowed) && (settings().gapless || crossfadeSeconds() > 0)) engine?.preload(src);
-    }).catch(() => undefined);
+    void sourceFor(next)
+      .then((src) => {
+        if ((!onYouTubeMusic(next.song) || youtubeMusicAllowed) && (settings().gapless || crossfadeSeconds() > 0))
+          engine?.preload(src);
+      })
+      .catch(() => undefined);
   }
 }
 
@@ -407,7 +439,8 @@ async function appendSimilar(): Promise<boolean> {
   if (!song || !isLocalSong(song)) return false;
   const have = new Set(get().items.map((i) => i.song.id));
   let songs = (await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])).filter((x) => !have.has(x.id));
-  if (songs.length < 5) songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
+  if (songs.length < 5)
+    songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
   if (!songs.length) return false;
   set({ items: [...get().items, ...songs.map((x) => Q.makeItem(x))] });
   return true;
@@ -446,24 +479,48 @@ export async function previous() {
   await loadCurrent(true);
 }
 
-export function playSongs(songs: Song[], startIndex = 0, context: PlayContext | null = null, opts: { shuffle?: boolean; at?: number; autoplay?: boolean } = {}) {
+export function playSongs(
+  songs: Song[],
+  startIndex = 0,
+  context: PlayContext | null = null,
+  opts: { shuffle?: boolean; at?: number; autoplay?: boolean } = {},
+) {
   if (!songs.length) return;
 
   const shuffle = opts.shuffle ?? get().shuffle;
-  const selectedIndex = shuffle ? (songs[startIndex] ? startIndex : 0) : Math.max(0, Math.min(startIndex, songs.length - 1));
+  const selectedIndex = shuffle
+    ? songs[startIndex]
+      ? startIndex
+      : 0
+    : Math.max(0, Math.min(startIndex, songs.length - 1));
   const selectedSong = songs[selectedIndex];
   if (!selectedSong || selectedSong.isAvailable === false || (onYouTubeMusic(selectedSong) && !youtubeMusicAllowed)) {
-    toast(selectedSong?.isAvailable === false ? "This song is unavailable. Open it in YouTube Music." : "YouTube Music is switched off or unavailable in Needle.");
+    toast(
+      selectedSong?.isAvailable === false
+        ? "This song is unavailable. Open it in YouTube Music."
+        : "YouTube Music is switched off or unavailable in Needle.",
+    );
 
     return;
   }
 
-  const playableSongs = songs.filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed));
-  const playableIndex = songs.slice(0, selectedIndex).filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed)).length;
+  const playableSongs = songs.filter(
+    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+  );
+  const playableIndex = songs
+    .slice(0, selectedIndex)
+    .filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed)).length;
 
   spotifyPlayer.activate();
   const at = opts.at ?? 0;
-  set({ ...Q.start(playableSongs, playableIndex, shuffle), shuffle, context, station: null, resume: null, lastPosition: at });
+  set({
+    ...Q.start(playableSongs, playableIndex, shuffle),
+    shuffle,
+    context,
+    station: null,
+    resume: null,
+    lastPosition: at,
+  });
   void loadCurrent(opts.autoplay ?? true, at);
 }
 
@@ -566,7 +623,9 @@ export function cycleRepeat() {
 }
 
 export function addToQueue(songs: Song[]) {
-  const playableSongs = songs.filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed));
+  const playableSongs = songs.filter(
+    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+  );
   if (!playableSongs.length) return;
 
   const s = get();
@@ -577,7 +636,9 @@ export function addToQueue(songs: Song[]) {
 }
 
 export function playNext(songs: Song[]) {
-  const playableSongs = songs.filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed));
+  const playableSongs = songs.filter(
+    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+  );
   if (!playableSongs.length) return;
 
   const s = get();
@@ -612,10 +673,16 @@ export function playStation(station: InternetRadioStation) {
   loadedUid = null;
   set({ station, playing: true, buffering: true, error: null });
   const c = useSession.getState().credentials;
-  const src = c ? `/radio/${encodeURIComponent(station.id)}?${new URLSearchParams({ u: c.user, t: c.token, s: c.salt }).toString()}` : station.streamUrl;
+  const src = c
+    ? `/radio/${encodeURIComponent(station.id)}?${new URLSearchParams({ u: c.user, t: c.token, s: c.salt }).toString()}`
+    : station.streamUrl;
   engine.load(src, { autoplay: true, gain: 1 });
   if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: station.name, artist: "Internet radio", album: "Needle" });
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: station.name,
+      artist: "Internet radio",
+      album: "Needle",
+    });
   }
 }
 
@@ -640,9 +707,16 @@ export async function startRadio(seed: { song?: Song; artistId?: string; name: s
     return;
   }
 
-  const pool = source === "youtubeMusic"
-    ? await (seed.song ? ytm.radio(id) : ytm.artist(id).then((artistDetail) => artistDetail.songs)).catch(() => [] as Song[])
-    : source === "spotify" ? (artistId ? await spotifyRadio(artistId) : []) : await similarTo(id, seed.song?.genre);
+  const pool =
+    source === "youtubeMusic"
+      ? await (seed.song ? ytm.radio(id) : ytm.artist(id).then((artistDetail) => artistDetail.songs)).catch(
+          () => [] as Song[],
+        )
+      : source === "spotify"
+        ? artistId
+          ? await spotifyRadio(artistId)
+          : []
+        : await similarTo(id, seed.song?.genre);
   const songs = seed.song ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)] : pool;
   if (songs.length < 2) {
     toast(`Couldn’t find songs for ${seed.name} radio`);
@@ -654,7 +728,12 @@ export async function startRadio(seed: { song?: Song; artistId?: string; name: s
 export function acceptResume() {
   const offer = get().resume;
   if (!offer) return;
-  set({ ...Q.start(offer.songs, offer.index, false), shuffle: false, context: { kind: "queue", name: "Your queue" }, resume: null });
+  set({
+    ...Q.start(offer.songs, offer.index, false),
+    shuffle: false,
+    context: { kind: "queue", name: "Your queue" },
+    resume: null,
+  });
   void loadCurrent(true, offer.position);
 }
 
@@ -676,22 +755,35 @@ function saveNow() {
   const song = current(s);
   if (!dirty || !song || s.station || !isLocalSong(song)) return;
   dirty = false;
-  const ids = s.items.slice(Math.max(0, s.index - 100), s.index + 400).filter((queueItem) => isLocalSong(queueItem.song)).map((queueItem) => queueItem.song.id);
-  void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(() => {
-    try {
-      localStorage.setItem(SAVED_AT, String(Date.now()));
-    } catch {
-      return;
-    }
-  }, () => {
-    dirty = true;
-  });
+  const ids = s.items
+    .slice(Math.max(0, s.index - 100), s.index + 400)
+    .filter((queueItem) => isLocalSong(queueItem.song))
+    .map((queueItem) => queueItem.song.id);
+  void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(
+    () => {
+      try {
+        localStorage.setItem(SAVED_AT, String(Date.now()));
+      } catch {
+        return;
+      }
+    },
+    () => {
+      dirty = true;
+    },
+  );
 }
 
 function updateMediaSession(song: Song) {
   if (!("mediaSession" in navigator)) return;
-  const art = [96, 192, 256, 512].map((size) => ({ src: coverUrl(song.coverArt, size) ?? "", sizes: `${size}x${size}`, type: "image/jpeg" })).filter((a) => a.src);
-  navigator.mediaSession.metadata = new MediaMetadata({ title: song.title, artist: artistName(song), album: song.album ?? "", artwork: art });
+  const art = [96, 192, 256, 512]
+    .map((size) => ({ src: coverUrl(song.coverArt, size) ?? "", sizes: `${size}x${size}`, type: "image/jpeg" }))
+    .filter((a) => a.src);
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song.title,
+    artist: artistName(song),
+    album: song.album ?? "",
+    artwork: art,
+  });
 }
 
 function setPositionState(position: number, duration: number) {
@@ -744,28 +836,40 @@ async function offerResume() {
     return;
   }
   const changed = q.changed ? Date.parse(q.changed) : 0;
-  const savedHere = Number((() => {
-    try {
-      return localStorage.getItem(SAVED_AT);
-    } catch {
-      return null;
-    }
-  })() ?? 0);
-  if (changed <= savedHere + CLOCK_SLACK_MS || Date.now() - changed > RESUME_WINDOW_MS || q.changed === dismissed) return;
+  const savedHere = Number(
+    (() => {
+      try {
+        return localStorage.getItem(SAVED_AT);
+      } catch {
+        return null;
+      }
+    })() ?? 0,
+  );
+  if (changed <= savedHere + CLOCK_SLACK_MS || Date.now() - changed > RESUME_WINDOW_MS || q.changed === dismissed)
+    return;
   if (current(s)?.id === q.current && Math.abs(s.lastPosition - position) < 5) return;
-  const offer: ResumeOffer = { songs: q.entry, index, position, changedBy: (q.changedBy ?? "another device").replace(/^Needle /, ""), changed: q.changed ?? "" };
+  const offer: ResumeOffer = {
+    songs: q.entry,
+    index,
+    position,
+    changedBy: (q.changedBy ?? "another device").replace(/^Needle /, ""),
+    changed: q.changed ?? "",
+  };
   set({ resume: offer });
 }
 
 export function startPlayer() {
   if (engine) return;
-  engine = new AudioEngine({
-    time: onTime,
-    ended: onEnded,
-    playing: (playing) => set({ playing, ...(playing ? { buffering: false } : {}) }),
-    waiting: (buffering) => set({ buffering }),
-    error: onError,
-  }, canCrossfade);
+  engine = new AudioEngine(
+    {
+      time: onTime,
+      ended: onEnded,
+      playing: (playing) => set({ playing, ...(playing ? { buffering: false } : {}) }),
+      waiting: (buffering) => set({ buffering }),
+      error: onError,
+    },
+    canCrossfade,
+  );
   const s = get();
   engine.setVolume(s.muted ? 0 : s.volume);
   set({ playing: false, buffering: false, station: null });
@@ -791,7 +895,26 @@ export function startPlayer() {
 }
 
 export const player = {
-  playSongs, playQueueItem, toggle, play, pause, next, previous, seek, seekBy, setVolume, toggleMute,
-  setShuffle, cycleRepeat, addToQueue, playNext, removeFromQueue, moveInQueue, clearUserQueue,
-  playStation, startRadio, acceptResume, dismissResume,
+  playSongs,
+  playQueueItem,
+  toggle,
+  play,
+  pause,
+  next,
+  previous,
+  seek,
+  seekBy,
+  setVolume,
+  toggleMute,
+  setShuffle,
+  cycleRepeat,
+  addToQueue,
+  playNext,
+  removeFromQueue,
+  moveInQueue,
+  clearUserQueue,
+  playStation,
+  startRadio,
+  acceptResume,
+  dismissResume,
 };

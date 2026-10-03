@@ -3,7 +3,8 @@ import { persist } from "zustand/middleware";
 import type { InternetRadioStation, Song } from "@needle/shared";
 import type { QueueItem, QueueState, Repeat } from "./queue.ts";
 
-export type ContextKind = "album" | "playlist" | "artist" | "liked" | "mix" | "genre" | "search" | "radio" | "queue" | "downloads";
+export type ContextKind =
+  "album" | "playlist" | "artist" | "liked" | "mix" | "genre" | "search" | "radio" | "queue" | "downloads";
 export type PlayContext = { kind: ContextKind; id?: string; name: string; ordered?: boolean };
 
 export type ResumeOffer = { songs: Song[]; index: number; position: number; changedBy: string; changed: string };

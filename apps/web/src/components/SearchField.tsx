@@ -17,7 +17,20 @@ type Props = {
   className?: string;
 };
 
-export function SearchField({ value, onChange, label, placeholder = label, variant, collapsible = false, autoFocus = false, focusKey, busy = false, onCommit, onFocusChange, className }: Props) {
+export function SearchField({
+  value,
+  onChange,
+  label,
+  placeholder = label,
+  variant,
+  collapsible = false,
+  autoFocus = false,
+  focusKey,
+  busy = false,
+  onCommit,
+  onFocusChange,
+  className,
+}: Props) {
   const mobile = useIsMobile();
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -25,15 +38,37 @@ export function SearchField({ value, onChange, label, placeholder = label, varia
     if (focusKey) input.current?.focus();
   }, [focusKey]);
   const expanded = !collapsible || open || Boolean(value);
-  const cls = ["sf", `sf-${variant}`, collapsible ? "collapsible" : "", expanded ? "open" : "", value ? "has-value" : "", busy ? "busy" : "", className ?? ""].filter(Boolean).join(" ");
+  const cls = [
+    "sf",
+    `sf-${variant}`,
+    collapsible ? "collapsible" : "",
+    expanded ? "open" : "",
+    value ? "has-value" : "",
+    busy ? "busy" : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className={cls}>
       {collapsible ? (
-        <button type="button" className="sf-icon" aria-label={label} aria-hidden={expanded} tabIndex={expanded ? -1 : 0} onClick={() => { setOpen(true); input.current?.focus(); }}>
+        <button
+          type="button"
+          className="sf-icon"
+          aria-label={label}
+          aria-hidden={expanded}
+          tabIndex={expanded ? -1 : 0}
+          onClick={() => {
+            setOpen(true);
+            input.current?.focus();
+          }}
+        >
           <Icon name="search" size={17} />
         </button>
       ) : (
-        <span className="sf-icon"><Icon name="search" size={variant === "inline" ? 17 : 20} /></span>
+        <span className="sf-icon">
+          <Icon name="search" size={variant === "inline" ? 17 : 20} />
+        </span>
       )}
       <input
         ref={input}
@@ -66,7 +101,17 @@ export function SearchField({ value, onChange, label, placeholder = label, varia
           else input.current?.blur();
         }}
       />
-      <button type="button" className="sf-clear" aria-label="Clear search" aria-hidden={!value} tabIndex={value ? 0 : -1} onClick={() => { onChange(""); input.current?.focus(); }}>
+      <button
+        type="button"
+        className="sf-clear"
+        aria-label="Clear search"
+        aria-hidden={!value}
+        tabIndex={value ? 0 : -1}
+        onClick={() => {
+          onChange("");
+          input.current?.focus();
+        }}
+      >
         <Icon name="close" size={variant === "inline" ? 15 : 18} />
       </button>
       <span className="sf-busy" aria-hidden="true" />

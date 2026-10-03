@@ -17,7 +17,12 @@ export function releaseDateString(releaseDate: ItemDate | undefined): string | u
   const day = String(releaseDate.day ?? 1).padStart(2, "0");
   const parsedReleaseDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
 
-  if (parsedReleaseDate.getUTCFullYear() !== releaseDate.year || parsedReleaseDate.getUTCMonth() + 1 !== releaseDate.month || parsedReleaseDate.getUTCDate() !== (releaseDate.day ?? 1)) return undefined;
+  if (
+    parsedReleaseDate.getUTCFullYear() !== releaseDate.year ||
+    parsedReleaseDate.getUTCMonth() + 1 !== releaseDate.month ||
+    parsedReleaseDate.getUTCDate() !== (releaseDate.day ?? 1)
+  )
+    return undefined;
 
   return releaseDate.day ? `${year}-${month}-${day}` : `${year}-${month}`;
 }

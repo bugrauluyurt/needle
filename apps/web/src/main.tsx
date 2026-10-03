@@ -17,17 +17,20 @@ if (root) {
   );
 }
 
-for (const gesture of ["gesturestart", "gesturechange"]) document.addEventListener(gesture, (e) => e.preventDefault(), { passive: false });
+for (const gesture of ["gesturestart", "gesturechange"])
+  document.addEventListener(gesture, (e) => e.preventDefault(), { passive: false });
 
 if ("serviceWorker" in navigator && import.meta.env.PROD && window.isSecureContext) {
   void import("workbox-window").then(({ Workbox }) => {
     const wb = new Workbox("/sw.js");
-    wb.addEventListener("waiting", () => useUpdate.setState({
-      apply: () => {
-        wb.addEventListener("controlling", () => location.reload());
-        wb.messageSkipWaiting();
-      },
-    }));
+    wb.addEventListener("waiting", () =>
+      useUpdate.setState({
+        apply: () => {
+          wb.addEventListener("controlling", () => location.reload());
+          wb.messageSkipWaiting();
+        },
+      }),
+    );
     document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void wb.update());
     void wb.register();
   });

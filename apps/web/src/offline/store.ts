@@ -10,7 +10,15 @@ const CONCURRENCY = 2;
 const STALL_MS = 60_000;
 
 export type CollectionKind = "album" | "playlist" | "liked";
-export type OfflineCollection = { id: string; kind: CollectionKind; name: string; subtitle: string; coverArt?: string; songIds: string[]; savedAt: number };
+export type OfflineCollection = {
+  id: string;
+  kind: CollectionKind;
+  name: string;
+  subtitle: string;
+  coverArt?: string;
+  songIds: string[];
+  savedAt: number;
+};
 type OfflineSong = { id: string; song: Song; bytes: number; savedAt: number };
 export type Job = { done: number; total: number; waiting: boolean; failed: number; progress: number };
 
@@ -22,7 +30,8 @@ type OfflineState = {
   jobs: Record<string, Job>;
 };
 
-export const offlineSupported = typeof window !== "undefined" && "caches" in window && window.isSecureContext && "indexedDB" in window;
+export const offlineSupported =
+  typeof window !== "undefined" && "caches" in window && window.isSecureContext && "indexedDB" in window;
 
 export const useOffline = create<OfflineState>(() => ({
   ready: false,
@@ -42,7 +51,10 @@ export async function loadOffline() {
     useOffline.setState({ ready: true });
     return;
   }
-  const [songs, collections] = await Promise.all([idbAll<OfflineSong>("songs"), idbAll<OfflineCollection>("collections")]);
+  const [songs, collections] = await Promise.all([
+    idbAll<OfflineSong>("songs"),
+    idbAll<OfflineCollection>("collections"),
+  ]);
   useOffline.setState({
     ready: true,
     songs: new Map(songs.map((s) => [s.id, s.bytes])),

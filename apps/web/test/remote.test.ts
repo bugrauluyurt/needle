@@ -17,7 +17,13 @@ const state = (patch: Partial<RemoteState> = {}): RemoteState => ({
   ...patch,
 });
 
-const device = (id: string, s: RemoteState | null = state()): Device => ({ id, name: id, kind: "desktop", lastSeen: NOW, state: s });
+const device = (id: string, s: RemoteState | null = state()): Device => ({
+  id,
+  name: id,
+  kind: "desktop",
+  lastSeen: NOW,
+  state: s,
+});
 
 describe("activeRemote", () => {
   const devices = [device("mac"), device("phone")];
@@ -62,15 +68,37 @@ describe("remotePosition", () => {
 
 describe("remoteSong", () => {
   it("describes the song for the player", () => {
-    expect(remoteSong(state())).toEqual({ id: "s1", title: "Blue Minutes", artist: "The Quiet Hours", coverArt: "al-1", duration: 200 });
+    expect(remoteSong(state())).toEqual({
+      id: "s1",
+      title: "Blue Minutes",
+      artist: "The Quiet Hours",
+      coverArt: "al-1",
+      duration: 200,
+    });
   });
 
   it("marks Spotify songs and keeps their link", () => {
-    expect(remoteSong(state({ songId: "sp:abc", coverArt: undefined, uri: "spotify:track:abc" }))).toEqual({ id: "sp:abc", title: "Blue Minutes", artist: "The Quiet Hours", duration: 200, source: "spotify", uri: "spotify:track:abc" });
+    expect(remoteSong(state({ songId: "sp:abc", coverArt: undefined, uri: "spotify:track:abc" }))).toEqual({
+      id: "sp:abc",
+      title: "Blue Minutes",
+      artist: "The Quiet Hours",
+      duration: 200,
+      source: "spotify",
+      uri: "spotify:track:abc",
+    });
   });
 
   it("restores YouTube Music from a namespaced state without source metadata", () => {
-    expect(remoteSong(state({ songId: "ytm:abc", coverArt: undefined, uri: "https://music.youtube.com/watch?v=abc" }))).toEqual({ id: "ytm:abc", title: "Blue Minutes", artist: "The Quiet Hours", duration: 200, source: "youtubeMusic", uri: "https://music.youtube.com/watch?v=abc" });
+    expect(
+      remoteSong(state({ songId: "ytm:abc", coverArt: undefined, uri: "https://music.youtube.com/watch?v=abc" })),
+    ).toEqual({
+      id: "ytm:abc",
+      title: "Blue Minutes",
+      artist: "The Quiet Hours",
+      duration: 200,
+      source: "youtubeMusic",
+      uri: "https://music.youtube.com/watch?v=abc",
+    });
   });
 
   it("preserves the explicit source when receiving newer device state", () => {

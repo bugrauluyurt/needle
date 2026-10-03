@@ -14,8 +14,26 @@ import { TopBar } from "../layout/TopBar.tsx";
 import { useArtists, useStats } from "../queries/hooks.ts";
 import { albumPath, artistPath } from "../lib/paths.ts";
 
-const PERIODS: [Period, string][] = [["month", "This month"], ["quarter", `Last ${QUARTER_DAYS} days`], ["year", "This year"], ["all", "All time"]];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const PERIODS: [Period, string][] = [
+  ["month", "This month"],
+  ["quarter", `Last ${QUARTER_DAYS} days`],
+  ["year", "This year"],
+  ["all", "All time"],
+];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 function hourLabel(h: number): string {
   if (h === 0) return "midnight";
@@ -34,7 +52,14 @@ function when(h: number | null): string | null {
 
 function headline(s: Stats, period: Period): { lead: string; accent: string | null } {
   const now = new Date();
-  const span = period === "month" ? `in ${MONTHS[now.getMonth()]}` : period === "quarter" ? `in the last ${QUARTER_DAYS} days` : period === "year" ? `in ${now.getFullYear()}` : "so far";
+  const span =
+    period === "month"
+      ? `in ${MONTHS[now.getMonth()]}`
+      : period === "quarter"
+        ? `in the last ${QUARTER_DAYS} days`
+        : period === "year"
+          ? `in ${now.getFullYear()}`
+          : "so far";
   return { lead: `${hours(s.msPlayed)} of music ${span}`, accent: when(s.peakHour) };
 }
 
@@ -42,7 +67,12 @@ function comparison(s: Stats, period: Period): string {
   const base = `${plural(s.songs, "song")} from ${plural(s.artists, "artist")}.`;
   if (period === "all" || !s.prevMsPlayed) return base;
   const diffH = Math.round((s.msPlayed - s.prevMsPlayed) / HOUR_MS);
-  const prev = period === "month" ? MONTHS[(new Date().getMonth() + 11) % 12] : period === "year" ? String(new Date().getFullYear() - 1) : `the ${QUARTER_DAYS} days before`;
+  const prev =
+    period === "month"
+      ? MONTHS[(new Date().getMonth() + 11) % 12]
+      : period === "year"
+        ? String(new Date().getFullYear() - 1)
+        : `the ${QUARTER_DAYS} days before`;
   if (diffH === 0) return `${base} About the same as ${prev}.`;
   return `${base} That’s ${plural(Math.abs(diffH), "hour")} ${diffH > 0 ? "more" : "less"} than ${prev}.`;
 }
@@ -63,7 +93,9 @@ export default function StatsPage() {
       <div className="pad stats">
         <div className="chips page-chips flush" role="group" aria-label="Period">
           {PERIODS.map(([p, label]) => (
-            <button key={p} type="button" className="pill" aria-pressed={period === p} onClick={() => setPeriod(p)}>{label}</button>
+            <button key={p} type="button" className="pill" aria-pressed={period === p} onClick={() => setPeriod(p)}>
+              {label}
+            </button>
           ))}
         </div>
         {isLoading || !s ? (
@@ -77,56 +109,112 @@ export default function StatsPage() {
           <>
             <h1 className="stat-lede">
               {h?.lead}
-              {h?.accent ? <>, <em>{h.accent}</em>.</> : "."}
+              {h?.accent ? (
+                <>
+                  , <em>{h.accent}</em>.
+                </>
+              ) : (
+                "."
+              )}
             </h1>
             <p className="muted stat-sub">{comparison(s, period)}</p>
             <div className="stat-grid">
               <section className="stat-box">
-                <h3>Top artists <span>Plays</span></h3>
+                <h3>
+                  Top artists <span>Plays</span>
+                </h3>
                 {s.topArtists.map((a, i) => (
-                  <Link key={a.id} to={known(a.id) || musicSource(a.id) !== "library" ? artistPath(a.id) : "/stats"} className="rank">
+                  <Link
+                    key={a.id}
+                    to={known(a.id) || musicSource(a.id) !== "library" ? artistPath(a.id) : "/stats"}
+                    className="rank"
+                  >
                     <span className="n">{i + 1}</span>
                     <Art id={cover(a.id)} px={44} round fallback="artist" />
                     <div>
-                      <div className="t">{a.name}{musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}</div>
-                      <div className="bar-in"><i style={{ width: `${(a.plays / (s.topArtists[0]?.plays ?? 1)) * 100}%` }} /></div>
+                      <div className="t">
+                        {a.name}
+                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
+                      </div>
+                      <div className="bar-in">
+                        <i style={{ width: `${(a.plays / (s.topArtists[0]?.plays ?? 1)) * 100}%` }} />
+                      </div>
                     </div>
                     <span className="c">{count(a.plays)}</span>
                   </Link>
                 ))}
               </section>
               <section className="stat-box">
-                <h3>Top albums <span>Plays</span></h3>
+                <h3>
+                  Top albums <span>Plays</span>
+                </h3>
                 {s.topAlbums.map((a, i) => (
                   <Link key={a.id} to={albumPath(a.id)} className="rank">
                     <span className="n">{i + 1}</span>
                     <Art id={a.coverArt} px={44} />
                     <div>
-                      <div className="t">{a.name}{musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}</div>
-                      <div className="bar-in"><i style={{ width: `${(a.plays / (s.topAlbums[0]?.plays ?? 1)) * 100}%` }} /></div>
+                      <div className="t">
+                        {a.name}
+                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
+                      </div>
+                      <div className="bar-in">
+                        <i style={{ width: `${(a.plays / (s.topAlbums[0]?.plays ?? 1)) * 100}%` }} />
+                      </div>
                     </div>
                     <span className="c">{count(a.plays)}</span>
                   </Link>
                 ))}
               </section>
               <section className="stat-box">
-                <h3>When you listen <span>By hour of day</span></h3>
-                <div className="hours" role="img" aria-label={s.peakHour !== null ? `You listen most around ${hourLabel(s.peakHour)}` : "Listening by hour"}>
+                <h3>
+                  When you listen <span>By hour of day</span>
+                </h3>
+                <div
+                  className="hours"
+                  role="img"
+                  aria-label={
+                    s.peakHour !== null ? `You listen most around ${hourLabel(s.peakHour)}` : "Listening by hour"
+                  }
+                >
                   {s.hours.map((ms, i) => (
-                    <i key={i} className={ms >= maxHour * 0.75 ? "hot" : ""} style={{ height: `${Math.max(2, (ms / maxHour) * 130)}px` }} title={`${hourLabel(i)}: ${hours(ms)}`} />
+                    <i
+                      key={i}
+                      className={ms >= maxHour * 0.75 ? "hot" : ""}
+                      style={{ height: `${Math.max(2, (ms / maxHour) * 130)}px` }}
+                      title={`${hourLabel(i)}: ${hours(ms)}`}
+                    />
                   ))}
                 </div>
-                <div className="hours-x"><span>Midnight</span><span>6 am</span><span>Noon</span><span>6 pm</span><span>11 pm</span></div>
+                <div className="hours-x">
+                  <span>Midnight</span>
+                  <span>6 am</span>
+                  <span>Noon</span>
+                  <span>6 pm</span>
+                  <span>11 pm</span>
+                </div>
               </section>
               <section className="stat-box">
-                <h3>Genres <span>Share of listening</span></h3>
+                <h3>
+                  Genres <span>Share of listening</span>
+                </h3>
                 <div className="genrebar">
-                  {s.genres.map((g) => <i key={g.name} style={{ background: g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1], flex: g.share }} />)}
+                  {s.genres.map((g) => (
+                    <i
+                      key={g.name}
+                      style={{ background: g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1], flex: g.share }}
+                    />
+                  ))}
                 </div>
                 <div className="legend">
                   {s.genres.map((g) => (
-                    <span key={g.name} style={{ "--c": g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1] } as React.CSSProperties}>
-                      {g.name}<em>{Math.round(g.share * 100)}%</em>
+                    <span
+                      key={g.name}
+                      style={
+                        { "--c": g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1] } as React.CSSProperties
+                      }
+                    >
+                      {g.name}
+                      <em>{Math.round(g.share * 100)}%</em>
                     </span>
                   ))}
                 </div>
@@ -134,7 +222,10 @@ export default function StatsPage() {
             </div>
           </>
         )}
-        <p className="help"><Icon name="info" size={15} />Counted from every song you play for {MIN_REPORT_MS / 1000} seconds or more, on any device signed in as you.</p>
+        <p className="help">
+          <Icon name="info" size={15} />
+          Counted from every song you play for {MIN_REPORT_MS / 1000} seconds or more, on any device signed in as you.
+        </p>
       </div>
     </>
   );

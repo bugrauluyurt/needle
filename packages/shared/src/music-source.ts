@@ -19,9 +19,9 @@ export const isLocalSong = (song: Pick<Song, "id" | "source">): boolean => songS
 
 export const isYouTubeMusic = (id: string | undefined): boolean => musicSource(id) === "youtubeMusic";
 
-export const youtubeMusicId = (id: string): string => id.startsWith("ytm:") ? id : `ytm:${id}`;
+export const youtubeMusicId = (id: string): string => (id.startsWith("ytm:") ? id : `ytm:${id}`);
 
-export const youtubeMusicRawId = (id: string): string => id.startsWith("ytm:") ? id.slice(4) : id;
+export const youtubeMusicRawId = (id: string): string => (id.startsWith("ytm:") ? id.slice(4) : id);
 
 export function youtubeMusicLink(kind: "song" | "album" | "artist" | "playlist", id: string): string {
   const rawId = youtubeMusicRawId(id);

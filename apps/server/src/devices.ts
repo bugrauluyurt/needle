@@ -13,7 +13,12 @@ export class DeviceHub {
   attach(socket: WebSocket, user: string) {
     const conn: Conn = { socket, user, device: null };
     this.conns.add(conn);
-    socket.on("message", (raw) => this.onMessage(conn, Array.isArray(raw) ? Buffer.concat(raw).toString() : Buffer.from(raw as ArrayBuffer).toString()));
+    socket.on("message", (raw) =>
+      this.onMessage(
+        conn,
+        Array.isArray(raw) ? Buffer.concat(raw).toString() : Buffer.from(raw as ArrayBuffer).toString(),
+      ),
+    );
     socket.on("close", () => {
       this.conns.delete(conn);
       const id = conn.device?.id;
@@ -35,7 +40,8 @@ export class DeviceHub {
     if (msg.type === "hello") {
       conn.device = { ...msg.device, lastSeen: Date.now(), state: null };
       for (const other of this.conns) {
-        if (other !== conn && other.user === conn.user && other.device?.id === msg.device.id) other.socket.close(REPLACED_CLOSE_CODE, "replaced");
+        if (other !== conn && other.user === conn.user && other.device?.id === msg.device.id)
+          other.socket.close(REPLACED_CLOSE_CODE, "replaced");
       }
       this.broadcast(conn.user);
     } else if (msg.type === "state" && conn.device) {
@@ -57,7 +63,8 @@ export class DeviceHub {
   private takeOver(user: string, id: string) {
     this.active.set(user, id);
     for (const c of this.conns) {
-      if (c.user === user && c.device && c.device.id !== id && c.device.state?.playing) this.send(c, { type: "command", from: id, command: { action: "pause" } });
+      if (c.user === user && c.device && c.device.id !== id && c.device.state?.playing)
+        this.send(c, { type: "command", from: id, command: { action: "pause" } });
     }
   }
 

@@ -6,7 +6,11 @@ export async function squarePhoto(file: Blob, px = PHOTO_PX): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = px;
   canvas.height = px;
-  canvas.getContext("2d")?.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, px, px);
+  canvas
+    .getContext("2d")
+    ?.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, px, px);
   bitmap.close();
-  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t read that image"))), "image/webp", 0.86));
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t read that image"))), "image/webp", 0.86),
+  );
 }

@@ -5,8 +5,18 @@ import { buildMix, hash, seededShuffle } from "../src/mixes.ts";
 import { periodStart, PlayLog } from "../src/stats.ts";
 
 const play = (over: Partial<PlayReport> = {}): PlayReport => ({
-  songId: "s1", title: "Afterglow", artist: "Neon Harbor", artistId: "ar1", album: "Afterglow Avenue", albumId: "al1",
-  genre: "Synthwave", coverArt: "al-1", duration: 200, msPlayed: 180_000, device: "test", ...over,
+  songId: "s1",
+  title: "Afterglow",
+  artist: "Neon Harbor",
+  artistId: "ar1",
+  album: "Afterglow Avenue",
+  albumId: "al1",
+  genre: "Synthwave",
+  coverArt: "al-1",
+  duration: 200,
+  msPlayed: 180_000,
+  device: "test",
+  ...over,
 });
 
 describe("periods", () => {
@@ -29,7 +39,18 @@ describe("play log", () => {
     const at = (d: number, h: number) => new Date(2026, 8, d, h).getTime();
     log.record("alex", play(), at(20, 22));
     log.record("alex", play({ songId: "s2" }), at(20, 22));
-    log.record("alex", play({ songId: "s3", artist: "Lumen Field", artistId: "ar2", album: "Weightless", albumId: "al2", genre: "Ambient" }), at(19, 9));
+    log.record(
+      "alex",
+      play({
+        songId: "s3",
+        artist: "Lumen Field",
+        artistId: "ar2",
+        album: "Weightless",
+        albumId: "al2",
+        genre: "Ambient",
+      }),
+      at(19, 9),
+    );
     log.record("alex", play({ msPlayed: 100_000 }), at(15, 3) - 40 * 86_400_000);
     log.record("someone-else", play(), at(20, 22));
 
@@ -54,7 +75,12 @@ describe("play log", () => {
 });
 
 describe("mixes", () => {
-  const songs = Array.from({ length: 60 }, (_, i) => ({ id: `s${i}`, title: `T${i}`, artist: `A${i % 4}`, coverArt: `c${i % 7}` }));
+  const songs = Array.from({ length: 60 }, (_, i) => ({
+    id: `s${i}`,
+    title: `T${i}`,
+    artist: `A${i % 4}`,
+    coverArt: `c${i % 7}`,
+  }));
 
   it("shuffles the same way for the same seed", () => {
     expect(seededShuffle(songs, "x")).toEqual(seededShuffle(songs, "x"));

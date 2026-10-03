@@ -23,15 +23,38 @@ import type { IconName } from "./Icon.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
 
 export type TrackMenuExtra = { label: string; icon: IconName; run: () => void };
-type MenuRequest = { songs: Song[]; extra?: TrackMenuExtra[] | undefined; x: number; y: number; align: "start" | "end"; key: number };
-type Action = { id: string; icon: IconName; label: string; run: () => void; quick?: string; on?: boolean; playlists?: boolean; go?: boolean };
+type MenuRequest = {
+  songs: Song[];
+  extra?: TrackMenuExtra[] | undefined;
+  x: number;
+  y: number;
+  align: "start" | "end";
+  key: number;
+};
+type Action = {
+  id: string;
+  icon: IconName;
+  label: string;
+  run: () => void;
+  quick?: string;
+  on?: boolean;
+  playlists?: boolean;
+  go?: boolean;
+};
 
 const useTrackMenu = create<{ req: MenuRequest | null; open: boolean }>(() => ({ req: null, open: false }));
 let opened = 0;
 
-export function openTrackMenu(songs: Song[], at: { x: number; y: number; align?: "start" | "end" }, extra?: TrackMenuExtra[]) {
+export function openTrackMenu(
+  songs: Song[],
+  at: { x: number; y: number; align?: "start" | "end" },
+  extra?: TrackMenuExtra[],
+) {
   if (!songs.length) return;
-  useTrackMenu.setState({ req: { songs, extra, x: at.x, y: at.y, align: at.align ?? "start", key: ++opened }, open: true });
+  useTrackMenu.setState({
+    req: { songs, extra, x: at.x, y: at.y, align: at.align ?? "start", key: ++opened },
+    open: true,
+  });
 }
 
 export const closeTrackMenu = () => useTrackMenu.setState({ open: false });
@@ -54,21 +77,56 @@ function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): Action[][] {
   const { artistId, albumId } = song;
   const where = youtubeMusic ? "YouTube Music " : spotify ? "Spotify " : "";
   const getAlbum = async () => {
-    const { albums: [hit] } = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => ({ albums: [] }));
+    const {
+      albums: [hit],
+    } = await api.lidarrSearch(`${song.artist ?? ""} ${song.album ?? ""}`).catch(() => ({ albums: [] }));
     if (!hit) {
       toast("Lidarr couldn’t find that album");
       return;
     }
-    await api.lidarrGet(hit.foreignAlbumId).then(() => toast(`Lidarr is looking for ${hit.title}`), () => toast("Lidarr didn’t take the request"));
+    await api.lidarrGet(hit.foreignAlbumId).then(
+      () => toast(`Lidarr is looking for ${hit.title}`),
+      () => toast("Lidarr didn’t take the request"),
+    );
   };
   const groups: (Action | false | undefined)[][] = [
     [
-      playableSongs.length > 0 && { id: "queue", icon: "addToQueue", label: "Add to queue", quick: "Add to queue", run: () => { player.addToQueue(playableSongs); toast(single ? "Added to queue" : `${playableSongs.length} songs added to queue`); } },
-      playableSongs.length > 0 && { id: "next", icon: "playNext", label: "Play next", quick: "Play next", run: () => { player.playNext(playableSongs); toast(single ? "Plays next" : `${playableSongs.length} songs play next`); } },
-      single && song.isAvailable !== false && { id: "radio", icon: "radio", label: "Start radio from this song", run: () => void player.startRadio({ song, name: song.title }) },
+      playableSongs.length > 0 && {
+        id: "queue",
+        icon: "addToQueue",
+        label: "Add to queue",
+        quick: "Add to queue",
+        run: () => {
+          player.addToQueue(playableSongs);
+          toast(single ? "Added to queue" : `${playableSongs.length} songs added to queue`);
+        },
+      },
+      playableSongs.length > 0 && {
+        id: "next",
+        icon: "playNext",
+        label: "Play next",
+        quick: "Play next",
+        run: () => {
+          player.playNext(playableSongs);
+          toast(single ? "Plays next" : `${playableSongs.length} songs play next`);
+        },
+      },
+      single &&
+        song.isAvailable !== false && {
+          id: "radio",
+          icon: "radio",
+          label: "Start radio from this song",
+          run: () => void player.startRadio({ song, name: song.title }),
+        },
     ],
     [
-      (spotify || local) && { id: "playlist", icon: "plus", label: "Add to playlist", playlists: true, run: () => undefined },
+      (spotify || local) && {
+        id: "playlist",
+        icon: "plus",
+        label: "Add to playlist",
+        playlists: true,
+        run: () => undefined,
+      },
       {
         id: "like",
         icon: liked ? "heartFill" : "heart",
@@ -77,31 +135,81 @@ function useTrackActions(songs: Song[], extra?: TrackMenuExtra[]): Action[][] {
         on: liked,
         run: () => songs.forEach((song) => songLikes.setLiked(song, !liked)),
       },
-      single && (spotify || youtubeMusic) && caps?.songs && {
-        id: "get-song",
-        icon: "download",
-        label: "Get this song",
-        run: () => void getSong({ id: song.id, title: song.title, artist: song.artists?.[0]?.name ?? song.artist ?? "", album: song.album ?? null, duration: song.duration ?? null, year: song.year ?? null, coverUrl: song.coverArt ?? null }),
-      },
-      single && (spotify || youtubeMusic) && caps?.lidarr && { id: "get-album", icon: "download", label: "Get this album through Lidarr", run: () => void getAlbum() },
+      single &&
+        (spotify || youtubeMusic) &&
+        caps?.songs && {
+          id: "get-song",
+          icon: "download",
+          label: "Get this song",
+          run: () =>
+            void getSong({
+              id: song.id,
+              title: song.title,
+              artist: song.artists?.[0]?.name ?? song.artist ?? "",
+              album: song.album ?? null,
+              duration: song.duration ?? null,
+              year: song.year ?? null,
+              coverUrl: song.coverArt ?? null,
+            }),
+        },
+      single &&
+        (spotify || youtubeMusic) &&
+        caps?.lidarr && {
+          id: "get-album",
+          icon: "download",
+          label: "Get this album through Lidarr",
+          run: () => void getAlbum(),
+        },
       ...(extra ?? []).map((x) => ({ id: x.label, ...x })),
     ],
     single
       ? [
-          artistId ? { id: "artist", icon: "user", label: "Go to artist", go: true, run: () => void navigate(artistPath(artistId)) } : false,
-          albumId ? { id: "album", icon: "album", label: "Go to album", go: true, run: () => void navigate(albumPath(albumId)) } : false,
+          artistId
+            ? {
+                id: "artist",
+                icon: "user",
+                label: "Go to artist",
+                go: true,
+                run: () => void navigate(artistPath(artistId)),
+              }
+            : false,
+          albumId
+            ? {
+                id: "album",
+                icon: "album",
+                label: "Go to album",
+                go: true,
+                run: () => void navigate(albumPath(albumId)),
+              }
+            : false,
           youtubeMusic
-            ? { id: "open", icon: "link", label: "Open in YouTube Music", go: true, run: () => void window.open(youtubeMusicLink("song", song.id), "_blank", "noopener") }
+            ? {
+                id: "open",
+                icon: "link",
+                label: "Open in YouTube Music",
+                go: true,
+                run: () => void window.open(youtubeMusicLink("song", song.id), "_blank", "noopener"),
+              }
             : spotify
-            ? { id: "open", icon: "link", label: "Open in Spotify", go: true, run: () => void window.open(spotifyLink("track", song.id), "_blank", "noopener") }
-            : { id: "details", icon: "info", label: "Song details", go: true, run: () => openSongDetails(song) },
+              ? {
+                  id: "open",
+                  icon: "link",
+                  label: "Open in Spotify",
+                  go: true,
+                  run: () => void window.open(spotifyLink("track", song.id), "_blank", "noopener"),
+                }
+              : { id: "details", icon: "info", label: "Song details", go: true, run: () => openSongDetails(song) },
         ]
       : [],
   ];
   return groups.map((g) => g.filter(isAction)).filter((g) => g.length);
 }
 
-type Target = { id: string; name: string; art: { id?: string | undefined; images?: SpImage[] | null | undefined; version?: string | undefined } };
+type Target = {
+  id: string;
+  name: string;
+  art: { id?: string | undefined; images?: SpImage[] | null | undefined; version?: string | undefined };
+};
 
 function usePlaylistTargets(songs: Song[]) {
   const spotify = songs.every((song) => songSource(song) === "spotify");
@@ -112,9 +220,12 @@ function usePlaylistTargets(songs: Song[]) {
   const create = useCreatePlaylist();
   const [filter, setFilter] = useState("");
   const targets = useMemo<Target[]>(
-    () => (spotify
-      ? remote.filter((p) => p.mine).map((p) => ({ id: p.id, name: p.name, art: { images: p.images } }))
-      : local.filter((p) => !p.readonly).map((p) => ({ id: p.id, name: p.name, art: { id: p.coverArt, version: p.changed } }))),
+    () =>
+      spotify
+        ? remote.filter((p) => p.mine).map((p) => ({ id: p.id, name: p.name, art: { images: p.images } }))
+        : local
+            .filter((p) => !p.readonly)
+            .map((p) => ({ id: p.id, name: p.name, art: { id: p.coverArt, version: p.changed } })),
     [spotify, remote, local],
   );
   const shown = useMemo(() => targets.filter((p) => fold(p.name).includes(fold(filter))), [targets, filter]);
@@ -127,11 +238,19 @@ function usePlaylistTargets(songs: Song[]) {
     setFilter,
     addTo: (p: Target) => {
       if (spotify) void edits.add(p, songs);
-      else void add.mutateAsync({ playlistId: p.id, songIds: ids }).then(() => toast(`Added to ${p.name}`), () => toast(`Couldn’t add to ${p.name}`));
+      else
+        void add.mutateAsync({ playlistId: p.id, songIds: ids }).then(
+          () => toast(`Added to ${p.name}`),
+          () => toast(`Couldn’t add to ${p.name}`),
+        );
     },
     createNew: () => {
       if (spotify) void edits.create(name, songs);
-      else void create.mutateAsync({ name, songIds: ids }).then((p) => toast(`Added to ${p.name}`), () => toast("Couldn’t create the playlist"));
+      else
+        void create.mutateAsync({ name, songIds: ids }).then(
+          (p) => toast(`Added to ${p.name}`),
+          () => toast("Couldn’t create the playlist"),
+        );
     },
   };
 }
@@ -151,13 +270,20 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
   return (
     <DM.Sub>
       <DM.SubTrigger className="menu-item">
-        <Row icon="plus" end={<Icon name="forward" size={16} />}>Add to playlist</Row>
+        <Row icon="plus" end={<Icon name="forward" size={16} />}>
+          Add to playlist
+        </Row>
       </DM.SubTrigger>
       <DM.Portal>
         <DM.SubContent className="menu sub" sideOffset={4} collisionPadding={12}>
           <label className="menu-search" onKeyDown={(e) => e.stopPropagation()}>
             <Icon name="search" size={15} />
-            <input value={t.filter} onChange={(e) => t.setFilter(e.target.value)} placeholder="Find a playlist" aria-label="Find a playlist" />
+            <input
+              value={t.filter}
+              onChange={(e) => t.setFilter(e.target.value)}
+              placeholder="Find a playlist"
+              aria-label="Find a playlist"
+            />
           </label>
           <DM.Item className="menu-item" onSelect={t.createNew}>
             <Row icon="plus">{t.spotify ? "New Spotify playlist" : "New playlist"}</Row>
@@ -203,11 +329,16 @@ function SheetHead({ songs }: { songs: Song[] }) {
   return (
     <div className="as-head">
       <div className={single ? "as-covers" : "as-covers stack"}>
-        {songs.slice(0, 3).map((s) => <Art key={s.id} id={s.coverArt} px={52} />)}
+        {songs.slice(0, 3).map((s) => (
+          <Art key={s.id} id={s.coverArt} px={52} />
+        ))}
       </div>
       <div className="as-title">
         <b>{single ? first.title : `${songs.length} songs`}</b>
-        <span>{artists.slice(0, 3).join(", ")}{artists.length > 3 ? " and more" : ""}</span>
+        <span>
+          {artists.slice(0, 3).join(", ")}
+          {artists.length > 3 ? " and more" : ""}
+        </span>
       </div>
     </div>
   );
@@ -222,15 +353,24 @@ function PlaylistPane({ songs, onBack, onDone }: { songs: Song[]; onBack: () => 
   return (
     <div className="as-pane as-scroll in-right">
       <div className="as-pane-head">
-        <button type="button" className="icon-btn light" aria-label="Back" onClick={onBack}><Icon name="back" size={22} /></button>
+        <button type="button" className="icon-btn light" aria-label="Back" onClick={onBack}>
+          <Icon name="back" size={22} />
+        </button>
         <b>Add to playlist</b>
       </div>
       <label className="as-search">
         <Icon name="search" size={16} />
-        <input value={t.filter} onChange={(e) => t.setFilter(e.target.value)} placeholder="Find a playlist" aria-label="Find a playlist" />
+        <input
+          value={t.filter}
+          onChange={(e) => t.setFilter(e.target.value)}
+          placeholder="Find a playlist"
+          aria-label="Find a playlist"
+        />
       </label>
       <button type="button" className="as-row" onClick={() => pick(t.createNew)}>
-        <span className="as-new"><Icon name="plus" size={20} /></span>
+        <span className="as-new">
+          <Icon name="plus" size={20} />
+        </span>
         <span>{t.spotify ? "New Spotify playlist" : "New playlist"}</span>
       </button>
       {t.shown.map((p) => (
@@ -261,7 +401,12 @@ function TrackSheet({ req, open }: { req: MenuRequest; open: boolean }) {
   const quick = all.filter((a) => a.quick);
   const rest = [all.filter((a) => !a.quick && !a.go), all.filter((a) => a.go)].filter((g) => g.length);
   return (
-    <ActionSheet open={open} onClose={closeTrackMenu} label={single ? (req.songs[0]?.title ?? "Song") : `${req.songs.length} songs`} tone={tone}>
+    <ActionSheet
+      open={open}
+      onClose={closeTrackMenu}
+      label={single ? (req.songs[0]?.title ?? "Song") : `${req.songs.length} songs`}
+      tone={tone}
+    >
       <SheetHead songs={req.songs} />
       {pane === "playlists" ? (
         <PlaylistPane songs={req.songs} onBack={() => setPane("back")} onDone={closeTrackMenu} />
@@ -269,7 +414,13 @@ function TrackSheet({ req, open }: { req: MenuRequest; open: boolean }) {
         <div className={pane === "back" ? "as-pane as-scroll in-left" : "as-pane as-scroll"}>
           <div className="as-quick">
             {quick.map((a) => (
-              <button key={a.id} type="button" className={a.on ? "on" : ""} aria-pressed={a.on ?? undefined} onClick={() => run(a)}>
+              <button
+                key={a.id}
+                type="button"
+                className={a.on ? "on" : ""}
+                aria-pressed={a.on ?? undefined}
+                onClick={() => run(a)}
+              >
                 <Icon name={a.icon} size={24} />
                 <span>{a.quick}</span>
               </button>
@@ -302,7 +453,13 @@ export function TrackMenuHost({ mobile }: { mobile: boolean }) {
         <span aria-hidden="true" className="menu-anchor" style={{ left: req?.x ?? 0, top: req?.y ?? 0 }} />
       </DM.Trigger>
       <DM.Portal>
-        <DM.Content className="menu" align={req?.align ?? "start"} sideOffset={4} collisionPadding={12} onCloseAutoFocus={(e) => e.preventDefault()}>
+        <DM.Content
+          className="menu"
+          align={req?.align ?? "start"}
+          sideOffset={4}
+          collisionPadding={12}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           {req ? <DropdownItems songs={req.songs} extra={req.extra} /> : null}
         </DM.Content>
       </DM.Portal>
@@ -310,7 +467,19 @@ export function TrackMenuHost({ mobile }: { mobile: boolean }) {
   );
 }
 
-export function TrackMoreButton({ songs, extra, className, size = 20, label = "More options" }: { songs: Song[]; extra?: TrackMenuExtra[]; className?: string; size?: number; label?: string }) {
+export function TrackMoreButton({
+  songs,
+  extra,
+  className,
+  size = 20,
+  label = "More options",
+}: {
+  songs: Song[];
+  extra?: TrackMenuExtra[];
+  className?: string;
+  size?: number;
+  label?: string;
+}) {
   const open = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();

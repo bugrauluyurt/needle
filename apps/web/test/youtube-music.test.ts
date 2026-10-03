@@ -5,7 +5,7 @@ import { clearYouTubeMusicStatus, ytm, useYouTubeMusicStatus } from "../src/lib/
 
 const request = vi.hoisted(() => vi.fn());
 
-vi.mock("../src/lib/api.ts", async (importOriginal) => ({ ...await importOriginal<typeof ApiModule>(), request }));
+vi.mock("../src/lib/api.ts", async (importOriginal) => ({ ...(await importOriginal<typeof ApiModule>()), request }));
 
 beforeEach(() => {
   clearYouTubeMusicStatus();
@@ -23,7 +23,9 @@ it("normalizes YouTube Music IDs and forwards search cancellation", async () => 
 
   await ytm.search("Neon Harbor", { kind: "songs", limit: 100, signal: searchController.signal });
 
-  expect(request).toHaveBeenLastCalledWith("/youtube-music/search?q=Neon+Harbor&kind=songs&limit=100", { signal: searchController.signal });
+  expect(request).toHaveBeenLastCalledWith("/youtube-music/search?q=Neon+Harbor&kind=songs&limit=100", {
+    signal: searchController.signal,
+  });
 });
 
 it("pauses metadata requests after a quota response without calling upstream again", async () => {

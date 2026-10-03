@@ -63,12 +63,24 @@ test("aligns sidebar icons and labels at desktop widths", async ({ page }) => {
 
       iconCenterXs.push(iconBounds.centerX);
       labelLeftXs.push(labelBounds.left);
-      expect(Math.abs(iconBounds.centerY - labelBounds.centerY), `icon and label at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(iconBounds.centerY - labelBounds.centerY),
+        `icon and label at ${viewportWidth}px`,
+      ).toBeLessThanOrEqual(1);
     }
 
-    expect(Math.max(...iconCenterXs) - Math.min(...iconCenterXs), `icon centers at ${viewportWidth}px`).toBeLessThanOrEqual(1);
-    expect(Math.max(...labelLeftXs) - Math.min(...labelLeftXs), `label edges at ${viewportWidth}px`).toBeLessThanOrEqual(1);
-    await expect(sidebar.getByRole("link", { name: "Needle home", exact: true }).locator("svg")).toHaveCSS("width", "42px");
+    expect(
+      Math.max(...iconCenterXs) - Math.min(...iconCenterXs),
+      `icon centers at ${viewportWidth}px`,
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.max(...labelLeftXs) - Math.min(...labelLeftXs),
+      `label edges at ${viewportWidth}px`,
+    ).toBeLessThanOrEqual(1);
+    await expect(sidebar.getByRole("link", { name: "Needle home", exact: true }).locator("svg")).toHaveCSS(
+      "width",
+      "42px",
+    );
   }
 });
 
@@ -109,7 +121,9 @@ test("hides duplicate library actions and centers navigation in the medium rail"
         return { centerX: iconRect.x + iconRect.width / 2 };
       });
 
-      expect(Math.abs(iconBounds.centerX - sideBounds.centerX), `rail icon at ${viewportWidth}px`).toBeLessThanOrEqual(1);
+      expect(Math.abs(iconBounds.centerX - sideBounds.centerX), `rail icon at ${viewportWidth}px`).toBeLessThanOrEqual(
+        1,
+      );
     }
   }
 
@@ -123,7 +137,9 @@ test("fits the player bar's controls beside the seek bar", async ({ page }) => {
   for (const width of [768, 900, 1023]) {
     await page.setViewportSize({ width, height: 1000 });
     const seek = await bar(page).locator(".seek").boundingBox();
-    const controls = await bar(page).locator(".bar-r > *").evaluateAll((els) => Math.min(...els.map((el) => el.getBoundingClientRect().left)));
+    const controls = await bar(page)
+      .locator(".bar-r > *")
+      .evaluateAll((els) => Math.min(...els.map((el) => el.getBoundingClientRect().left)));
     expect(seek, `seek bar at ${width}px`).not.toBeNull();
     expect(controls, `controls at ${width}px`).toBeGreaterThanOrEqual((seek?.x ?? 0) + (seek?.width ?? 0));
   }

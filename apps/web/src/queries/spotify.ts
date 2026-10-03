@@ -1,8 +1,34 @@
-import { keepPreviousData, queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  queryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { Query } from "@tanstack/react-query";
 import type { Song } from "@needle/shared";
-import { albumSongs, image, isSpotify, nextSpotifySearchOffset, rawId, sp, SpotifyApiError, spotifySearchResults, uniqueSpotifyItems, useSpotifyStatus } from "../lib/spotify.ts";
-import type { SpAlbumRef, SpArtist, SpPage, SpPlaylist, SpotifySearchData, SpotifySearchKind, SpotifySearchType } from "../lib/spotify.ts";
+import {
+  albumSongs,
+  image,
+  isSpotify,
+  nextSpotifySearchOffset,
+  rawId,
+  sp,
+  SpotifyApiError,
+  spotifySearchResults,
+  uniqueSpotifyItems,
+  useSpotifyStatus,
+} from "../lib/spotify.ts";
+import type {
+  SpAlbumRef,
+  SpArtist,
+  SpPage,
+  SpPlaylist,
+  SpotifySearchData,
+  SpotifySearchKind,
+  SpotifySearchType,
+} from "../lib/spotify.ts";
 import { toast } from "../state/ui.ts";
 import { queryClient } from "./client.ts";
 import { useArtists, useCapabilities } from "./hooks.ts";
@@ -31,9 +57,15 @@ export const spKeys = {
   searchCategory: (q: string, category: SpotifySearchKind | undefined) => ["sp", "search", q, category] as const,
 };
 
-queryClient.setQueryDefaults(["sp"], { refetchOnWindowFocus: false, refetchOnReconnect: false, retry: false, staleTime: HOUR_MS });
+queryClient.setQueryDefaults(["sp"], {
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  retry: false,
+  staleTime: HOUR_MS,
+});
 
-const cacheKey = (key: readonly unknown[]) => `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(key)}`;
+const cacheKey = (key: readonly unknown[]) =>
+  `${CACHE_PREFIX}${useSession.getState().credentials?.user ?? ""}.${JSON.stringify(key)}`;
 
 queryClient.getQueryCache().subscribe((e) => {
   if (e.type !== "updated") return;
@@ -78,7 +110,13 @@ export function useSpotifyRequestsAllowed(): boolean {
 export const useSpotifyMe = () => {
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
-  return useQuery({ queryKey: spKeys.me, queryFn: sp.me, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.me, visible) });
+  return useQuery({
+    queryKey: spKeys.me,
+    queryFn: sp.me,
+    enabled: on,
+    staleTime: LIBRARY_STALE,
+    ...cached(spKeys.me, visible),
+  });
 };
 
 export type SpotifyPlaylistEntry = SpPlaylist & { mine: boolean };
@@ -89,24 +127,26 @@ export function useSpotifyPlaylists() {
   const me = useSpotifyMe();
   return useQuery({
     queryKey: spKeys.playlists,
-    queryFn: async (): Promise<SpotifyPlaylistEntry[]> => (await sp.playlists()).map((p) => ({ ...p, mine: p.owner.id === me.data?.id || p.collaborative })),
+    queryFn: async (): Promise<SpotifyPlaylistEntry[]> =>
+      (await sp.playlists()).map((p) => ({ ...p, mine: p.owner.id === me.data?.id || p.collaborative })),
     enabled: on && Boolean(me.data),
     staleTime: LIBRARY_STALE,
     ...cached<SpotifyPlaylistEntry[]>(spKeys.playlists, visible),
   });
 }
 
-export const spotifyPlaylistQuery = (id: string) => queryOptions({
-  queryKey: spKeys.playlist(id),
-  queryFn: async () => {
-    const meta = await sp.playlist(id);
-    const songs = await sp.playlistSongs(id).catch((e: unknown) => {
-      if (e instanceof SpotifyApiError && e.status === 403) return null;
-      throw e;
-    });
-    return { meta, songs };
-  },
-});
+export const spotifyPlaylistQuery = (id: string) =>
+  queryOptions({
+    queryKey: spKeys.playlist(id),
+    queryFn: async () => {
+      const meta = await sp.playlist(id);
+      const songs = await sp.playlistSongs(id).catch((e: unknown) => {
+        if (e instanceof SpotifyApiError && e.status === 403) return null;
+        throw e;
+      });
+      return { meta, songs };
+    },
+  });
 
 export function useSpotifyPlaylist(id: string | undefined) {
   const on = useSpotifyRequestsAllowed();
@@ -116,7 +156,13 @@ export function useSpotifyPlaylist(id: string | undefined) {
 export function useSpotifyLiked() {
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
-  return useQuery({ queryKey: spKeys.liked, queryFn: sp.liked, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.liked, visible) });
+  return useQuery({
+    queryKey: spKeys.liked,
+    queryFn: sp.liked,
+    enabled: on,
+    staleTime: LIBRARY_STALE,
+    ...cached(spKeys.liked, visible),
+  });
 }
 
 export function useSpotifySaved(): Set<string> {
@@ -127,13 +173,25 @@ export function useSpotifySaved(): Set<string> {
 export function useSpotifyAlbums() {
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
-  return useQuery({ queryKey: spKeys.albums, queryFn: sp.albums, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.albums, visible) });
+  return useQuery({
+    queryKey: spKeys.albums,
+    queryFn: sp.albums,
+    enabled: on,
+    staleTime: LIBRARY_STALE,
+    ...cached(spKeys.albums, visible),
+  });
 }
 
 export function useSpotifyFollowed() {
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
-  return useQuery({ queryKey: spKeys.followed, queryFn: sp.followed, enabled: on, staleTime: LIBRARY_STALE, ...cached(spKeys.followed, visible) });
+  return useQuery({
+    queryKey: spKeys.followed,
+    queryFn: sp.followed,
+    enabled: on,
+    staleTime: LIBRARY_STALE,
+    ...cached(spKeys.followed, visible),
+  });
 }
 
 function notifySpotifyFailure(message: string) {
@@ -150,10 +208,12 @@ export function useToggleSpotifyFollow() {
     onMutate: async ({ artist, on }) => {
       await qc.cancelQueries({ queryKey: spKeys.followed });
       const prev = qc.getQueryData<SpArtist[]>(spKeys.followed);
-      if (prev) qc.setQueryData<SpArtist[]>(spKeys.followed, on ? [artist, ...prev] : prev.filter((a) => a.id !== artist.id));
+      if (prev)
+        qc.setQueryData<SpArtist[]>(spKeys.followed, on ? [artist, ...prev] : prev.filter((a) => a.id !== artist.id));
       return { prev };
     },
-    onSuccess: (_d, { artist, on }) => toast(on ? `Following ${artist.name} on Spotify` : `Stopped following ${artist.name}`),
+    onSuccess: (_d, { artist, on }) =>
+      toast(on ? `Following ${artist.name} on Spotify` : `Stopped following ${artist.name}`),
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(spKeys.followed, ctx.prev);
       notifySpotifyFailure("Spotify didn’t take that. Reconnect Spotify in Settings if this keeps happening.");
@@ -161,39 +221,49 @@ export function useToggleSpotifyFollow() {
   });
 }
 
-export const spotifyAlbumQuery = (id: string) => queryOptions({
-  queryKey: spKeys.album(id),
-  queryFn: async () => {
-    const album = await sp.album(id);
-    return { album, songs: albumSongs(album) };
-  },
-});
+export const spotifyAlbumQuery = (id: string) =>
+  queryOptions({
+    queryKey: spKeys.album(id),
+    queryFn: async () => {
+      const album = await sp.album(id);
+      return { album, songs: albumSongs(album) };
+    },
+  });
 
 export function useSpotifyAlbum(id: string | undefined) {
   const on = useSpotifyRequestsAllowed();
   return useQuery({ ...spotifyAlbumQuery(id ?? ""), enabled: on && Boolean(id) });
 }
 
-export const spotifyArtistProfileQuery = (id: string) => queryOptions({
-  queryKey: spKeys.artistProfile(id),
-  queryFn: ({ signal }) => sp.artist(id, signal),
-  staleTime: LIBRARY_STALE,
-});
+export const spotifyArtistProfileQuery = (id: string) =>
+  queryOptions({
+    queryKey: spKeys.artistProfile(id),
+    queryFn: ({ signal }) => sp.artist(id, signal),
+    staleTime: LIBRARY_STALE,
+  });
 
 export function useSpotifyArtistProfile(id: string | undefined) {
   const visible = useSpotifyOn();
   const on = useSpotifyRequestsAllowed();
-  return useQuery({ ...spotifyArtistProfileQuery(id ?? ""), enabled: on && Boolean(id), ...cached<SpArtist>(spKeys.artistProfile(id ?? ""), visible) });
+  return useQuery({
+    ...spotifyArtistProfileQuery(id ?? ""),
+    enabled: on && Boolean(id),
+    ...cached<SpArtist>(spKeys.artistProfile(id ?? ""), visible),
+  });
 }
 
-export const spotifyArtistQuery = (id: string) => queryOptions({
-  queryKey: spKeys.artist(id),
-  queryFn: async ({ signal }) => {
-    const [artist, albumsPage] = await Promise.all([queryClient.fetchQuery(spotifyArtistProfileQuery(id)), sp.artistAlbumsPage(id, { signal })]);
+export const spotifyArtistQuery = (id: string) =>
+  queryOptions({
+    queryKey: spKeys.artist(id),
+    queryFn: async ({ signal }) => {
+      const [artist, albumsPage] = await Promise.all([
+        queryClient.fetchQuery(spotifyArtistProfileQuery(id)),
+        sp.artistAlbumsPage(id, { signal }),
+      ]);
 
-    return { artist, albums: albumsPage.items, albumsPage };
-  },
-});
+      return { artist, albums: albumsPage.items, albumsPage };
+    },
+  });
 
 export async function spotifyArtistSongs(id: string, songPageLimit = 1): Promise<{ artist: SpArtist; songs: Song[] }> {
   const artist = await queryClient.fetchQuery(spotifyArtistProfileQuery(id));
@@ -220,9 +290,12 @@ export function useSpotifyArtistAlbums(id: string, initialPage?: SpPage<SpAlbumR
 
   return useInfiniteQuery({
     queryKey: spKeys.artistAlbums(id, category),
-    queryFn: ({ pageParam, signal }) => pageParam === 0 && initialPage && !category ? Promise.resolve(initialPage) : sp.artistAlbumsPage(id, { offset: pageParam, signal, ...(category ? { category } : {}) }),
+    queryFn: ({ pageParam, signal }) =>
+      pageParam === 0 && initialPage && !category
+        ? Promise.resolve(initialPage)
+        : sp.artistAlbumsPage(id, { offset: pageParam, signal, ...(category ? { category } : {}) }),
     initialPageParam: 0,
-    getNextPageParam: (albumPage) => albumPage.next ? albumPage.offset + albumPage.limit : undefined,
+    getNextPageParam: (albumPage) => (albumPage.next ? albumPage.offset + albumPage.limit : undefined),
     enabled: on && Boolean(id),
   });
 }
@@ -251,14 +324,29 @@ export function useSpotifySearch(q: string) {
   });
 }
 
-const SEARCH_TYPES: Record<SpotifySearchKind, SpotifySearchType> = { songs: "track", albums: "album", artists: "artist", playlists: "playlist" };
+const SEARCH_TYPES: Record<SpotifySearchKind, SpotifySearchType> = {
+  songs: "track",
+  albums: "album",
+  artists: "artist",
+  playlists: "playlist",
+};
 
-export function useSpotifySearchCategory(q: string, category: SpotifySearchKind | undefined, firstPage: SpotifySearchData | undefined) {
+export function useSpotifySearchCategory(
+  q: string,
+  category: SpotifySearchKind | undefined,
+  firstPage: SpotifySearchData | undefined,
+) {
   const on = useSpotifyRequestsAllowed();
 
   return useInfiniteQuery({
     queryKey: spKeys.searchCategory(q, category),
-    queryFn: async ({ pageParam, signal }) => pageParam === 0 && firstPage ? firstPage : spotifySearchResults(await sp.search(q, signal, { offset: pageParam, ...(category ? { type: SEARCH_TYPES[category] } : {}) }), pageParam),
+    queryFn: async ({ pageParam, signal }) =>
+      pageParam === 0 && firstPage
+        ? firstPage
+        : spotifySearchResults(
+            await sp.search(q, signal, { offset: pageParam, ...(category ? { type: SEARCH_TYPES[category] } : {}) }),
+            pageParam,
+          ),
     initialPageParam: 0,
     getNextPageParam: (searchPage) => {
       const page = category ? searchPage.pagination[category] : undefined;
@@ -279,7 +367,11 @@ export function useToggleSpotifySave() {
     onMutate: async ({ song, on }) => {
       await qc.cancelQueries({ queryKey: spKeys.liked });
       const prev = qc.getQueryData<Song[]>(spKeys.liked);
-      if (prev) qc.setQueryData<Song[]>(spKeys.liked, on ? [{ ...song, starred: new Date().toISOString() }, ...prev] : prev.filter((s) => s.id !== song.id));
+      if (prev)
+        qc.setQueryData<Song[]>(
+          spKeys.liked,
+          on ? [{ ...song, starred: new Date().toISOString() }, ...prev] : prev.filter((s) => s.id !== song.id),
+        );
       return { prev };
     },
     onError: (_e, _v, ctx) => {
@@ -295,7 +387,8 @@ export function useSpotifyPlaylistEdits() {
     void qc.invalidateQueries({ queryKey: spKeys.playlist(id) });
     void qc.invalidateQueries({ queryKey: spKeys.playlists });
   };
-  const fail = () => notifySpotifyFailure("Spotify didn’t take that change. Reconnect Spotify in Settings if this keeps happening.");
+  const fail = () =>
+    notifySpotifyFailure("Spotify didn’t take that change. Reconnect Spotify in Settings if this keeps happening.");
   return {
     add: async (playlist: { id: string; name: string }, songs: Song[]) => {
       const uris = songs.map((s) => s.uri).filter((u): u is string => Boolean(u));
@@ -355,7 +448,7 @@ export function useArtistImage(id: string | undefined, name: string | undefined)
   const on = useSpotifyRequestsAllowed();
   const spotify = isSpotify(id);
   const youtubeMusic = isYouTubeMusic(id);
-  const youtubeMusicImage = useYouTubeMusicArtistImage(youtubeMusic ? id ?? "" : "");
+  const youtubeMusicImage = useYouTubeMusicArtistImage(youtubeMusic ? (id ?? "") : "");
   const { data: localArtists, isPending: localPending } = useArtists();
   const local = spotify ? undefined : localArtists?.find((artist) => artist.id === id)?.coverArt;
   const { data: artist } = useSpotifyArtistProfile(spotify ? rawId(id ?? "") : undefined);

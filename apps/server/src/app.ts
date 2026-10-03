@@ -5,7 +5,19 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { compress } from "hono/compress";
-import type { Capabilities, DiscoveryTrack, ImportedTrack, InternetRadioStation, LidarrAlbum, LidarrSearch, Period, PlayReport, RequestItem, SongCandidate, YouTubeMusicSearchKind } from "@needle/shared";
+import type {
+  Capabilities,
+  DiscoveryTrack,
+  ImportedTrack,
+  InternetRadioStation,
+  LidarrAlbum,
+  LidarrSearch,
+  Period,
+  PlayReport,
+  RequestItem,
+  SongCandidate,
+  YouTubeMusicSearchKind,
+} from "@needle/shared";
 import { songKey, trackCandidate } from "@needle/shared";
 import type { Config } from "./config.ts";
 import { DeviceHub } from "./devices.ts";
@@ -51,17 +63,37 @@ export function createApp(config: Config, db: DatabaseSync) {
   const musicbrainz = new MusicBrainz(config.musicbrainzUrl);
   const deezer = new Deezer(config.deezerUrl);
   const slskd = config.soulseek ? new Slskd(config.soulseek.url, config.soulseek.apiKey) : null;
-  const songs = config.soulseek && slskd
-    ? new SongDownloads({ slskd, requests, navidrome, downloadsDir: config.soulseek.downloadsDir, singlesDir: config.soulseek.singlesDir })
-    : null;
+  const songs =
+    config.soulseek && slskd
+      ? new SongDownloads({
+          slskd,
+          requests,
+          navidrome,
+          downloadsDir: config.soulseek.downloadsDir,
+          singlesDir: config.soulseek.singlesDir,
+        })
+      : null;
   const lidarr = config.lidarr ? new Lidarr(config.lidarr) : null;
   const people = new People(db);
   const listenbrainz = new ListenBrainz({ url: config.listenbrainzUrl, db, navidrome, library, requests });
-  const spotify = config.spotify && config.publicUrl
-    ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome, library })
+  const spotify =
+    config.spotify && config.publicUrl
+      ? new Spotify({ ...config.spotify, publicUrl: config.publicUrl, db, navidrome, library })
+      : null;
+  const youtubeMusic = config.youtubeMusic
+    ? new YouTubeMusic({ ...config.youtubeMusic, db, navidrome, library })
     : null;
-  const youtubeMusic = config.youtubeMusic ? new YouTubeMusic({ ...config.youtubeMusic, db, navidrome, library }) : null;
-  const status = new Status({ config, navidrome, library, lidarr, slskd, musicbrainz, deezer, listenbrainz, youtubeMusic });
+  const status = new Status({
+    config,
+    navidrome,
+    library,
+    lidarr,
+    slskd,
+    musicbrainz,
+    deezer,
+    listenbrainz,
+    youtubeMusic,
+  });
   const hub = new DeviceHub();
   const admins = new Map<string, { admin: boolean; until: number }>();
 
@@ -79,9 +111,16 @@ export function createApp(config: Config, db: DatabaseSync) {
 
   app.onError((err, c) => {
     if (err instanceof YouTubeMusicError) return c.json({ error: err.message, code: err.code }, err.status);
-    if (err instanceof SpotifyError) return c.json({ error: err.message }, err.status === 401 || err.status === 409 ? err.status : 502);
+    if (err instanceof SpotifyError)
+      return c.json({ error: err.message }, err.status === 401 || err.status === 409 ? err.status : 502);
     if (err instanceof ListenBrainzError) return c.json({ error: err.message }, err.status);
-    if (err instanceof LidarrError || err instanceof SubsonicFailure || err instanceof SlskdError || err instanceof MusicBrainzError) return c.json({ error: err.message }, 502);
+    if (
+      err instanceof LidarrError ||
+      err instanceof SubsonicFailure ||
+      err instanceof SlskdError ||
+      err instanceof MusicBrainzError
+    )
+      return c.json({ error: err.message }, 502);
     console.error(err);
     return c.json({ error: "Something went wrong on the Needle server" }, 500);
   });
@@ -118,7 +157,8 @@ export function createApp(config: Config, db: DatabaseSync) {
   };
   const needLidarrAdmin = async (c: Context<Env>) => {
     if (!lidarr) return { error: c.json({ error: "Lidarr isn't set up on the Needle server" }, 404) };
-    if (!(await isAdmin(c.get("auth")))) return { error: refuse(c, "Only Navidrome admins can manage Lidarr's downloads") };
+    if (!(await isAdmin(c.get("auth"))))
+      return { error: refuse(c, "Only Navidrome admins can manage Lidarr's downloads") };
     return { lidarr };
   };
   const needSongs = async (c: Context<Env>) => {
@@ -127,23 +167,44 @@ export function createApp(config: Config, db: DatabaseSync) {
     return { songs };
   };
   const recordAlbum = (user: string, a: LidarrAlbum) =>
-    requests.add({ user, kind: "album", ref: a.foreignAlbumId, title: a.title, artist: a.artist, cover_url: a.coverUrl, state: a.state });
+    requests.add({
+      user,
+      kind: "album",
+      ref: a.foreignAlbumId,
+      title: a.title,
+      artist: a.artist,
+      cover_url: a.coverUrl,
+      state: a.state,
+    });
   const mbidOf = (c: Context<Env>) => {
     const mbid = c.req.param("mbid") ?? "";
     return MBID.test(mbid) ? mbid.toLowerCase() : null;
   };
   const noPlaylist = (c: Context<Env>) => c.json({ error: "No such ListenBrainz playlist" }, 404);
-  const passwordOf = (body: { password?: unknown }) => (typeof body.password === "string" && body.password && body.password.length <= PASSWORD_MAX ? body.password : undefined);
-  const bodyOf = (c: Context<Env>) => c.req.json<{ token?: unknown; password?: unknown }>().catch(() => ({ token: undefined, password: undefined }));
+  const passwordOf = (body: { password?: unknown }) =>
+    typeof body.password === "string" && body.password && body.password.length <= PASSWORD_MAX
+      ? body.password
+      : undefined;
+  const bodyOf = (c: Context<Env>) =>
+    c.req.json<{ token?: unknown; password?: unknown }>().catch(() => ({ token: undefined, password: undefined }));
   const wanted = (t: DiscoveryTrack) => !t.song && (!t.request || t.request.state === "failed");
   const needSpotify = async (c: Context<Env>) => {
-    if (!spotify) return { error: c.json({ error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" }, 404) };
-    if (!(await can(c.get("auth"), "spotify"))) return { error: refuse(c, "Ask an admin to let you use Spotify in Needle") };
+    if (!spotify)
+      return {
+        error: c.json(
+          { error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" },
+          404,
+        ),
+      };
+    if (!(await can(c.get("auth"), "spotify")))
+      return { error: refuse(c, "Ask an admin to let you use Spotify in Needle") };
     return { spotify };
   };
   const youtubeMusicGuard = async (c: Context<Env>, next: () => Promise<void>) => {
-    if (!youtubeMusic) return c.json({ error: "Add YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to the Needle server" }, 404);
-    if (!(await can(c.get("auth"), "youtubeMusic"))) return refuse(c, "Ask an admin to let you use YouTube Music in Needle");
+    if (!youtubeMusic)
+      return c.json({ error: "Add YTMUSIC_CLIENT_ID and YTMUSIC_CLIENT_SECRET to the Needle server" }, 404);
+    if (!(await can(c.get("auth"), "youtubeMusic")))
+      return refuse(c, "Ask an admin to let you use YouTube Music in Needle");
 
     c.set("youtubeMusic", youtubeMusic);
 
@@ -174,10 +235,14 @@ export function createApp(config: Config, db: DatabaseSync) {
       spotifyPlayback: sp?.canPlay(auth.user) ?? false,
       spotifyReconnect: sp?.needsReconnect(auth.user) ?? false,
       spotifyEnabled: sp?.enabled(auth.user) ?? false,
-      ...(config.youtubeMusic ? {
-        youtubeMusic: Boolean(youtube), youtubeMusicConnected: youtube?.connected(auth.user) ?? false,
-        youtubeMusicEnabled: youtube?.enabled(auth.user) ?? false, youtubeMusicReconnect: youtube?.needsReconnect(auth.user) ?? false,
-      } : {}),
+      ...(config.youtubeMusic
+        ? {
+            youtubeMusic: Boolean(youtube),
+            youtubeMusicConnected: youtube?.connected(auth.user) ?? false,
+            youtubeMusicEnabled: youtube?.enabled(auth.user) ?? false,
+            youtubeMusicReconnect: youtube?.needsReconnect(auth.user) ?? false,
+          }
+        : {}),
       songs: Boolean(songs) && requests,
       publicUrl: config.publicUrl,
       listenbrainzUser: lb?.user ?? null,
@@ -238,10 +303,17 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (q.length < 2) return c.json({ albums: [] } satisfies LidarrSearch);
     const found = await r.lidarr.search(q);
     const match = r.lidarr.pickArtist(found.artists, q);
-    const discography = !match ? [] : match.id ? await r.lidarr.artistAlbums(match.id) : await musicbrainz.albumsBy(match.foreignArtistId, match.artistName).catch(() => []);
+    const discography = !match
+      ? []
+      : match.id
+        ? await r.lidarr.artistAlbums(match.id)
+        : await musicbrainz.albumsBy(match.foreignArtistId, match.artistName).catch(() => []);
     const seen = new Set(discography.map((a) => a.foreignAlbumId));
     return c.json({
-      albums: [...discography.filter((a) => a.state !== "available"), ...found.albums.filter((a) => !seen.has(a.foreignAlbumId))],
+      albums: [
+        ...discography.filter((a) => a.state !== "available"),
+        ...found.albums.filter((a) => !seen.has(a.foreignAlbumId)),
+      ],
     } satisfies LidarrSearch);
   });
 
@@ -265,14 +337,22 @@ export function createApp(config: Config, db: DatabaseSync) {
     if (r.error) return r.error;
     const q = c.req.query("q")?.trim() ?? "";
     if (q.length < 2) return c.json([]);
-    const [top, found, owned] = await Promise.all([deezer.topSongs(q), musicbrainz.recordings(q), library.songKeys(c.get("auth"))]);
+    const [top, found, owned] = await Promise.all([
+      deezer.topSongs(q),
+      musicbrainz.recordings(q),
+      library.songKeys(c.get("auth")),
+    ]);
     const seen = new Set<string>();
-    return c.json([...top, ...found].filter((s) => {
-      const key = songKey(s.artist, s.title);
-      if (owned.has(key) || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, SONG_RESULTS));
+    return c.json(
+      [...top, ...found]
+        .filter((s) => {
+          const key = songKey(s.artist, s.title);
+          if (owned.has(key) || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, SONG_RESULTS),
+    );
   });
 
   app.post("/api/songs", async (c) => {
@@ -303,10 +383,15 @@ export function createApp(config: Config, db: DatabaseSync) {
     const albumIds = rows.filter((r) => r.kind === "album").map((r) => r.ref);
     const live = lidarr && albumIds.length ? await lidarr.albumStates(albumIds).catch(() => []) : [];
     const byId = new Map(live.map((a) => [a.foreignAlbumId, a]));
-    return c.json(rows.map((row): RequestItem => {
-      const a = row.kind === "album" ? byId.get(row.ref) : undefined;
-      return { ...(everyone ? toItemFor(row) : toItem(row)), ...(a ? { state: a.state, progress: a.progress, coverUrl: a.coverUrl ?? row.cover_url } : {}) };
-    }));
+    return c.json(
+      rows.map((row): RequestItem => {
+        const a = row.kind === "album" ? byId.get(row.ref) : undefined;
+        return {
+          ...(everyone ? toItemFor(row) : toItem(row)),
+          ...(a ? { state: a.state, progress: a.progress, coverUrl: a.coverUrl ?? row.cover_url } : {}),
+        };
+      }),
+    );
   });
 
   app.post("/api/requests/:id/retry", async (c) => {
@@ -319,7 +404,19 @@ export function createApp(config: Config, db: DatabaseSync) {
     }
     const r = await needSongs(c);
     if (r.error) return r.error;
-    return c.json(toItem(r.songs.start(c.get("auth"), { id: row.ref, title: row.title, artist: row.artist, album: null, duration: null, year: null, coverUrl: row.cover_url })));
+    return c.json(
+      toItem(
+        r.songs.start(c.get("auth"), {
+          id: row.ref,
+          title: row.title,
+          artist: row.artist,
+          album: null,
+          duration: null,
+          year: null,
+          coverUrl: row.cover_url,
+        }),
+      ),
+    );
   });
 
   app.delete("/api/requests/:id", async (c) => {
@@ -331,7 +428,11 @@ export function createApp(config: Config, db: DatabaseSync) {
   app.get("/api/lidarr/artists", async (c) => {
     const r = await needLidarr(c);
     if (r.error) return r.error;
-    const names = (c.req.query("names") ?? "").split("|").map((n) => n.trim()).filter(Boolean).slice(0, 8);
+    const names = (c.req.query("names") ?? "")
+      .split("|")
+      .map((n) => n.trim())
+      .filter(Boolean)
+      .slice(0, 8);
     return c.json(await r.lidarr.lookupArtists(names));
   });
 
@@ -355,7 +456,9 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json(await listenbrainz.connect(c.get("auth"), token, passwordOf(body)));
   });
 
-  app.delete("/api/listenbrainz", async (c) => c.json(await listenbrainz.disconnect(c.get("auth"), passwordOf(await bodyOf(c)))));
+  app.delete("/api/listenbrainz", async (c) =>
+    c.json(await listenbrainz.disconnect(c.get("auth"), passwordOf(await bodyOf(c)))),
+  );
 
   app.get("/api/listenbrainz/playlists", async (c) => c.json(await listenbrainz.playlists(c.get("auth"))));
 
@@ -384,7 +487,11 @@ export function createApp(config: Config, db: DatabaseSync) {
     const ids = detail.tracks.flatMap((t) => (t.song ? [t.song.id] : []));
     if (!ids.length) return c.json({ error: "None of these songs are in your library yet" }, 409);
     const name = detail.date ? `${detail.name}, ${detail.date.slice(0, 10)}` : detail.name;
-    return c.json({ playlistId: await navidrome.upsertPlaylist(auth, name, ids), matched: ids.length, total: detail.total });
+    return c.json({
+      playlistId: await navidrome.upsertPlaylist(auth, name, ids),
+      matched: ids.length,
+      total: detail.total,
+    });
   });
 
   app.get("/api/spotify/login", async (c) => {
@@ -413,23 +520,69 @@ export function createApp(config: Config, db: DatabaseSync) {
   });
 
   app.get("/api/youtube-music/account", async (c) => c.json(await c.get("youtubeMusic").account(c.get("auth").user)));
-  app.get("/api/youtube-music/liked", async (c) => c.json(await c.get("youtubeMusic").liked(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/albums", async (c) => c.json(await c.get("youtubeMusic").albums(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/artists", async (c) => c.json(await c.get("youtubeMusic").artists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/playlists", async (c) => c.json(await c.get("youtubeMusic").playlists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/search", async (c) => c.json(await c.get("youtubeMusic").search(c.get("auth").user,
-    c.req.query("q") ?? "", c.req.query("kind") as YouTubeMusicSearchKind | undefined, YouTubeMusic.limit(c.req.query("limit"), 20, 100))));
+  app.get("/api/youtube-music/liked", async (c) =>
+    c.json(await c.get("youtubeMusic").liked(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))),
+  );
+  app.get("/api/youtube-music/albums", async (c) =>
+    c.json(await c.get("youtubeMusic").albums(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))),
+  );
+  app.get("/api/youtube-music/artists", async (c) =>
+    c.json(await c.get("youtubeMusic").artists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))),
+  );
+  app.get("/api/youtube-music/playlists", async (c) =>
+    c.json(await c.get("youtubeMusic").playlists(c.get("auth").user, YouTubeMusic.limit(c.req.query("limit")))),
+  );
+  app.get("/api/youtube-music/search", async (c) =>
+    c.json(
+      await c
+        .get("youtubeMusic")
+        .search(
+          c.get("auth").user,
+          c.req.query("q") ?? "",
+          c.req.query("kind") as YouTubeMusicSearchKind | undefined,
+          YouTubeMusic.limit(c.req.query("limit"), 20, 100),
+        ),
+    ),
+  );
 
-  app.get("/api/youtube-music/albums/:id", async (c) => c.json(await c.get("youtubeMusic").album(c.get("auth").user, c.req.param("id"))));
-  app.get("/api/youtube-music/artists/:id", async (c) => c.json(await c.get("youtubeMusic").artist(c.get("auth").user, c.req.param("id"))));
-  app.get("/api/youtube-music/artists/:id/songs", async (c) => c.json(await c.get("youtubeMusic").artistSongs(c.get("auth").user,
-    c.req.param("id"), YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/artists/:id/releases", async (c) => c.json(await c.get("youtubeMusic").artistReleases(c.get("auth").user,
-    c.req.param("id"), c.req.query("kind") as "albums" | "singles", YouTubeMusic.limit(c.req.query("limit")))));
-  app.get("/api/youtube-music/playlists/:id", async (c) => c.json(await c.get("youtubeMusic").playlist(c.get("auth").user,
-    c.req.param("id"), YouTubeMusic.limit(c.req.query("limit"), 3000))));
-  app.get("/api/youtube-music/songs/:id/lyrics", async (c) => c.json(await c.get("youtubeMusic").lyrics(c.get("auth").user, c.req.param("id"))));
-  app.get("/api/youtube-music/songs/:id/radio", async (c) => c.json(await c.get("youtubeMusic").radio(c.get("auth").user, c.req.param("id"))));
+  app.get("/api/youtube-music/albums/:id", async (c) =>
+    c.json(await c.get("youtubeMusic").album(c.get("auth").user, c.req.param("id"))),
+  );
+  app.get("/api/youtube-music/artists/:id", async (c) =>
+    c.json(await c.get("youtubeMusic").artist(c.get("auth").user, c.req.param("id"))),
+  );
+  app.get("/api/youtube-music/artists/:id/songs", async (c) =>
+    c.json(
+      await c
+        .get("youtubeMusic")
+        .artistSongs(c.get("auth").user, c.req.param("id"), YouTubeMusic.limit(c.req.query("limit"))),
+    ),
+  );
+  app.get("/api/youtube-music/artists/:id/releases", async (c) =>
+    c.json(
+      await c
+        .get("youtubeMusic")
+        .artistReleases(
+          c.get("auth").user,
+          c.req.param("id"),
+          c.req.query("kind") as "albums" | "singles",
+          YouTubeMusic.limit(c.req.query("limit")),
+        ),
+    ),
+  );
+  app.get("/api/youtube-music/playlists/:id", async (c) =>
+    c.json(
+      await c
+        .get("youtubeMusic")
+        .playlist(c.get("auth").user, c.req.param("id"), YouTubeMusic.limit(c.req.query("limit"), 3000)),
+    ),
+  );
+  app.get("/api/youtube-music/songs/:id/lyrics", async (c) =>
+    c.json(await c.get("youtubeMusic").lyrics(c.get("auth").user, c.req.param("id"))),
+  );
+  app.get("/api/youtube-music/songs/:id/radio", async (c) =>
+    c.json(await c.get("youtubeMusic").radio(c.get("auth").user, c.req.param("id"))),
+  );
 
   app.put("/api/youtube-music/songs/:id/like", async (c) => {
     await c.get("youtubeMusic").like(c.get("auth").user, c.req.param("id"), await youtubeMusicOn(c));
@@ -504,15 +657,23 @@ export function createApp(config: Config, db: DatabaseSync) {
     return c.json({ requested, notFound: albums.length - requested, skipped: groups.length - albums.length });
   });
 
-  app.all("/rest/*", (c) => proxyToNavidrome(c.req.raw, config.navidromeUrl).catch(() => c.json({ error: "Navidrome isn't responding" }, 502)));
+  app.all("/rest/*", (c) =>
+    proxyToNavidrome(c.req.raw, config.navidromeUrl).catch(() => c.json({ error: "Navidrome isn't responding" }, 502)),
+  );
 
   app.get("/radio/:id", async (c) => {
     const auth = authFromQuery(new URL(c.req.url));
     if (!auth || (await navidrome.verify(auth)) !== "ok") return c.text("Sign in again", 401);
-    const r = await navidrome.call<{ internetRadioStations: { internetRadioStation?: InternetRadioStation[] } }>(auth, "getInternetRadioStations");
+    const r = await navidrome.call<{ internetRadioStations: { internetRadioStation?: InternetRadioStation[] } }>(
+      auth,
+      "getInternetRadioStations",
+    );
     const station = r.internetRadioStations.internetRadioStation?.find((s) => s.id === c.req.param("id"));
     if (!station) return c.text("No such station", 404);
-    const upstream = await fetch(station.streamUrl, { headers: { "icy-metadata": "0", "user-agent": "Needle" }, signal: c.req.raw.signal }).catch(() => null);
+    const upstream = await fetch(station.streamUrl, {
+      headers: { "icy-metadata": "0", "user-agent": "Needle" },
+      signal: c.req.raw.signal,
+    }).catch(() => null);
     if (!upstream?.ok || !upstream.body) return c.text("The station isn't responding", 502);
     return new Response(upstream.body, {
       headers: { "content-type": upstream.headers.get("content-type") ?? "audio/mpeg", "cache-control": "no-store" },

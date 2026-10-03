@@ -7,7 +7,17 @@ import { useNavigate } from "react-router";
 import { toast } from "../state/ui.ts";
 import { Icon } from "./Icon.tsx";
 
-export function LikeButton({ kind, item, size = 28, className = "icon-btn big" }: { kind: "album" | "artist"; item: Album | Artist; size?: number; className?: string }) {
+export function LikeButton({
+  kind,
+  item,
+  size = 28,
+  className = "icon-btn big",
+}: {
+  kind: "album" | "artist";
+  item: Album | Artist;
+  size?: number;
+  className?: string;
+}) {
   const starred = useStarredIds();
   const star = useToggleStar();
   const on = kind === "album" ? starred.albums.has(item.id) : starred.artists.has(item.id);
@@ -30,7 +40,15 @@ export function LikeButton({ kind, item, size = 28, className = "icon-btn big" }
 
 type DownloadTarget = { id: string; kind: CollectionKind; name: string; subtitle: string; coverArt?: string };
 
-export function DownloadButton({ target, songs, size = 32 }: { target: DownloadTarget; songs: Song[] | undefined; size?: number }) {
+export function DownloadButton({
+  target,
+  songs,
+  size = 32,
+}: {
+  target: DownloadTarget;
+  songs: Song[] | undefined;
+  size?: number;
+}) {
   const navigate = useNavigate();
   const supported = useOffline((s) => s.supported);
   const done = useIsDownloaded(target.id);
@@ -53,7 +71,10 @@ export function DownloadButton({ target, songs, size = 32 }: { target: DownloadT
           toast(`Removed ${target.name} from this device`);
         } else {
           void download(target, songs);
-          toast(`Saving ${target.name} on this device for offline listening`, { label: "Downloads", run: () => void navigate("/downloads") });
+          toast(`Saving ${target.name} on this device for offline listening`, {
+            label: "Downloads",
+            run: () => void navigate("/downloads"),
+          });
         }
       }}
     >

@@ -68,7 +68,15 @@ export type LidarrArtist = {
   disambiguation: string | null;
 };
 
-export type DownloadItem = { id: number; title: string; artist: string; coverUrl: string | null; state: "queued" | "downloading" | "importing" | "failed"; progress: number | null; detail: string | null };
+export type DownloadItem = {
+  id: number;
+  title: string;
+  artist: string;
+  coverUrl: string | null;
+  state: "queued" | "downloading" | "importing" | "failed";
+  progress: number | null;
+  detail: string | null;
+};
 
 export type Capabilities = {
   admin: boolean;
@@ -151,7 +159,15 @@ export type ImportResult = {
   missing: ImportedTrack[];
 };
 
-export type SongCandidate = { id: string; title: string; artist: string; album: string | null; duration: number | null; year: number | null; coverUrl: string | null };
+export type SongCandidate = {
+  id: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  duration: number | null;
+  year: number | null;
+  coverUrl: string | null;
+};
 
 export type SongState = "searching" | "downloading" | "moving" | "available" | "failed";
 
@@ -201,10 +217,23 @@ export type ListenBrainzLink = { user: string; navidrome: boolean; navidromeErro
 export type ListenBrainzUnlink = { navidrome: boolean; navidromeError?: string };
 
 export const trackCandidate = (t: DiscoveryTrack): SongCandidate => ({
-  id: t.mbid, title: t.title, artist: t.artist, album: t.album, duration: t.duration, year: null, coverUrl: t.coverUrl,
+  id: t.mbid,
+  title: t.title,
+  artist: t.artist,
+  album: t.album,
+  duration: t.duration,
+  year: null,
+  coverUrl: t.coverUrl,
 });
 
-export type Person = { user: string; admin: boolean; canRequest: boolean; canSpotify: boolean; canYouTubeMusic?: boolean; lastSeen: number | null };
+export type Person = {
+  user: string;
+  admin: boolean;
+  canRequest: boolean;
+  canSpotify: boolean;
+  canYouTubeMusic?: boolean;
+  lastSeen: number | null;
+};
 
 export type Me = { user: string; photo: string | null };
 

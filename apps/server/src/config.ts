@@ -34,16 +34,29 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
   return {
     port: Number(env("PORT") ?? 4535),
     navidromeUrl: trimSlash(env("NAVIDROME_URL") ?? "http://127.0.0.1:4533"),
-    lidarr: lidarrUrl && lidarrKey
-      ? { url: trimSlash(lidarrUrl), apiKey: lidarrKey, qualityProfile: env("LIDARR_QUALITY_PROFILE") ?? null, rootFolder: env("LIDARR_ROOT_FOLDER") ?? null }
-      : null,
+    lidarr:
+      lidarrUrl && lidarrKey
+        ? {
+            url: trimSlash(lidarrUrl),
+            apiKey: lidarrKey,
+            qualityProfile: env("LIDARR_QUALITY_PROFILE") ?? null,
+            rootFolder: env("LIDARR_ROOT_FOLDER") ?? null,
+          }
+        : null,
     spotify: spotifyId && spotifySecret ? { clientId: spotifyId, clientSecret: spotifySecret } : null,
-    youtubeMusic: youtubeMusicId && youtubeMusicSecret
-      ? { clientId: youtubeMusicId, clientSecret: youtubeMusicSecret, python: env("YTMUSIC_PYTHON") ?? "python3" }
-      : null,
-    soulseek: slskdUrl && slskdKey
-      ? { url: trimSlash(slskdUrl), apiKey: slskdKey, downloadsDir: resolve(env("SOULSEEK_DIR") ?? "/soulseek"), singlesDir: resolve(env("SINGLES_DIR") ?? "/singles") }
-      : null,
+    youtubeMusic:
+      youtubeMusicId && youtubeMusicSecret
+        ? { clientId: youtubeMusicId, clientSecret: youtubeMusicSecret, python: env("YTMUSIC_PYTHON") ?? "python3" }
+        : null,
+    soulseek:
+      slskdUrl && slskdKey
+        ? {
+            url: trimSlash(slskdUrl),
+            apiKey: slskdKey,
+            downloadsDir: resolve(env("SOULSEEK_DIR") ?? "/soulseek"),
+            singlesDir: resolve(env("SINGLES_DIR") ?? "/singles"),
+          }
+        : null,
     publicUrl: publicUrl ? trimSlash(publicUrl) : null,
     musicbrainzUrl: trimSlash(env("MUSICBRAINZ_URL") ?? "https://musicbrainz.org/ws/2"),
     deezerUrl: trimSlash(env("DEEZER_URL") ?? "https://api.deezer.com"),

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isLocalSong, musicSource, songSource, youtubeMusicId, youtubeMusicLink, youtubeMusicRawId } from "../src/music-source.ts";
+import {
+  isLocalSong,
+  musicSource,
+  songSource,
+  youtubeMusicId,
+  youtubeMusicLink,
+  youtubeMusicRawId,
+} from "../src/music-source.ts";
 
 describe("music source identity", () => {
   it("recognizes persisted source prefixes without changing local ids", () => {

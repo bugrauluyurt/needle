@@ -239,7 +239,10 @@
   place-items: center;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.2s, transform 0.2s, background 0.15s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s,
+    background 0.15s;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -431,7 +434,9 @@
   font-size: 13.5px;
   font-weight: 500;
   white-space: nowrap;
-  transition: color 0.15s, background-color 0.15s;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
 }
 
 .coll-sort:hover,
@@ -611,7 +616,9 @@
 .th .sort-arrow {
   flex: none;
   opacity: 0;
-  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  transition:
+    opacity 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
 .th button:hover .sort-arrow,
@@ -677,7 +684,9 @@
 
 .tr .n > :is(.num, .eq),
 .tr .row-play {
-  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+  transition:
+    opacity 0.16s var(--ease-out),
+    transform 0.16s var(--ease-out);
 }
 
 .tr .row-play {
@@ -738,7 +747,9 @@
   background: var(--menu);
   color: var(--label);
   font-size: 13px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
   animation: pill-rise 0.2s var(--ease-out);
   transition: background-color 0.16s var(--ease-out);
 }
@@ -901,10 +912,15 @@
   background: var(--menu);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   font-size: 14px;
   animation: menu-in 0.12s ease;
-  transform-origin: var(--radix-dropdown-menu-content-transform-origin, var(--radix-context-menu-content-transform-origin, top left));
+  transform-origin: var(
+    --radix-dropdown-menu-content-transform-origin,
+    var(--radix-context-menu-content-transform-origin, top left)
+  );
 }
 
 @keyframes menu-in {
@@ -1016,7 +1032,9 @@
   background: #221f29;
   border-radius: 16px;
   padding: 28px 30px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
   animation: dialog-in 0.18s ease;
 }
 
@@ -1192,7 +1210,9 @@ kbd {
   background: var(--menu);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   animation: menu-in 0.12s ease;
 }
 
@@ -1498,7 +1518,9 @@ kbd {
   height: 52px;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
 }
 
 .top-card:hover .bigplay,
@@ -1973,7 +1995,12 @@ kbd {
   background: rgba(255, 255, 255, 0.07);
   color: var(--sleeve);
   overflow: hidden;
-  transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s, box-shadow 0.2s, color 0.2s, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s,
+    box-shadow 0.2s,
+    color 0.2s,
+    padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sf:hover {
@@ -1983,7 +2010,9 @@ kbd {
 .sf:focus-within {
   background: rgba(255, 255, 255, 0.12);
   color: var(--label);
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--amber) 80%, transparent), 0 0 0 4px color-mix(in oklab, var(--amber) 16%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in oklab, var(--amber) 80%, transparent),
+    0 0 0 4px color-mix(in oklab, var(--amber) 16%, transparent);
 }
 
 .sf-icon {
@@ -1994,7 +2023,9 @@ kbd {
 }
 
 .sf-icon svg {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s;
 }
 
 .sf:focus-within .sf-icon svg {
@@ -2038,7 +2069,10 @@ kbd {
   opacity: 0;
   transform: scale(0.5) rotate(-90deg);
   pointer-events: none;
-  transition: opacity 0.18s, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s;
+  transition:
+    opacity 0.18s,
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.15s;
 }
 
 .sf.has-value .sf-clear {
@@ -2162,7 +2196,9 @@ kbd {
   color: var(--sleeve);
   outline: none;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 
 .view-opt[data-highlighted] {
@@ -2287,7 +2323,9 @@ kbd {
   padding: 0 12px 0 8px;
   border-radius: 18px;
   background: color-mix(in oklab, var(--label) 4%, transparent);
-  transition: color 0.2s var(--ease-out), background-color 0.2s var(--ease-out);
+  transition:
+    color 0.2s var(--ease-out),
+    background-color 0.2s var(--ease-out);
   animation: artist-back-in 0.22s var(--ease-out);
 }
 

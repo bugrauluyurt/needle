@@ -4,9 +4,21 @@ import { useUi } from "../state/ui.ts";
 import { SEEK_STEP_S } from "../player/controller.ts";
 
 const KEYS: [string, string[]][] = [
-  ["Play or pause", ["Space"]], ["Next song", ["Shift", "→"]], ["Previous song", ["Shift", "←"]], [`Skip forward ${SEEK_STEP_S} s`, ["→"]],
-  [`Skip back ${SEEK_STEP_S} s`, ["←"]], ["Volume up or down", ["↑", "↓"]], ["Like the song", ["L"]], ["Show the playing song in the list", ["Shift", "L"]], ["Shuffle", ["S"]], ["Repeat", ["R"]],
-  ["Search", ["/"]], ["Queue", ["Q"]], ["Lyrics", ["Y"]], ["Full screen", ["F"]], ["These shortcuts", ["?"]],
+  ["Play or pause", ["Space"]],
+  ["Next song", ["Shift", "→"]],
+  ["Previous song", ["Shift", "←"]],
+  [`Skip forward ${SEEK_STEP_S} s`, ["→"]],
+  [`Skip back ${SEEK_STEP_S} s`, ["←"]],
+  ["Volume up or down", ["↑", "↓"]],
+  ["Like the song", ["L"]],
+  ["Show the playing song in the list", ["Shift", "L"]],
+  ["Shuffle", ["S"]],
+  ["Repeat", ["R"]],
+  ["Search", ["/"]],
+  ["Queue", ["Q"]],
+  ["Lyrics", ["Y"]],
+  ["Full screen", ["F"]],
+  ["These shortcuts", ["?"]],
 ];
 
 export default function ShortcutsDialog() {
@@ -26,7 +38,11 @@ export default function ShortcutsDialog() {
             {KEYS.map(([t, k]) => (
               <div key={t}>
                 <span>{t}</span>
-                <span>{k.map((x) => <kbd key={x}>{x}</kbd>)}</span>
+                <span>
+                  {k.map((x) => (
+                    <kbd key={x}>{x}</kbd>
+                  ))}
+                </span>
               </div>
             ))}
           </div>
@@ -35,4 +51,3 @@ export default function ShortcutsDialog() {
     </Dialog.Root>
   );
 }
-

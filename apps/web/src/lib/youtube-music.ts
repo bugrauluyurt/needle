@@ -1,5 +1,21 @@
 import { MINUTE_MS, youtubeMusicRawId } from "@needle/shared";
-import type { ImportResult, Song, YouTubeMusicAccount, YouTubeMusicAlbum, YouTubeMusicAlbumDetail, YouTubeMusicArtist, YouTubeMusicArtistDetail, YouTubeMusicLogin, YouTubeMusicLoginStatus, YouTubeMusicLyrics, YouTubeMusicPage, YouTubeMusicPlaylist, YouTubeMusicPlaylistDetail, YouTubeMusicSearch, YouTubeMusicSearchKind } from "@needle/shared";
+import type {
+  ImportResult,
+  Song,
+  YouTubeMusicAccount,
+  YouTubeMusicAlbum,
+  YouTubeMusicAlbumDetail,
+  YouTubeMusicArtist,
+  YouTubeMusicArtistDetail,
+  YouTubeMusicLogin,
+  YouTubeMusicLoginStatus,
+  YouTubeMusicLyrics,
+  YouTubeMusicPage,
+  YouTubeMusicPlaylist,
+  YouTubeMusicPlaylistDetail,
+  YouTubeMusicSearch,
+  YouTubeMusicSearchKind,
+} from "@needle/shared";
 import { create } from "zustand";
 import { ApiError, request } from "./api.ts";
 import { queryClient } from "../queries/client.ts";
@@ -21,7 +37,8 @@ async function metadata<T>(path: string, init: RequestInit = {}): Promise<T> {
   try {
     return await request<T>(`/youtube-music${path}`, init);
   } catch (requestError) {
-    if (requestError instanceof ApiError && [401, 403, 409].includes(requestError.status)) void queryClient.invalidateQueries({ queryKey: keys.capabilities });
+    if (requestError instanceof ApiError && [401, 403, 409].includes(requestError.status))
+      void queryClient.invalidateQueries({ queryKey: keys.capabilities });
 
     if (requestError instanceof ApiError && requestError.status === 429) {
       const until = Date.now() + 15 * MINUTE_MS;
@@ -54,19 +71,30 @@ export const ytm = {
   artists: (limit = 100) => libraryPage<YouTubeMusicArtist>("artists", limit),
   playlists: (limit = 100) => libraryPage<YouTubeMusicPlaylist>("playlists", limit),
   search: (query: string, options: { kind?: YouTubeMusicSearchKind; limit?: number; signal?: AbortSignal } = {}) => {
-    const searchParams = new URLSearchParams({ q: query, ...(options.kind ? { kind: options.kind } : {}), limit: String(options.limit ?? 20) });
+    const searchParams = new URLSearchParams({
+      q: query,
+      ...(options.kind ? { kind: options.kind } : {}),
+      limit: String(options.limit ?? 20),
+    });
 
     return metadata<YouTubeMusicSearch>(`/search?${searchParams}`, options.signal ? { signal: options.signal } : {});
   },
   album: (id: string) => metadata<YouTubeMusicAlbumDetail>(`/albums/${resourceId(id)}`),
   artist: (id: string) => metadata<YouTubeMusicArtistDetail>(`/artists/${resourceId(id)}`),
-  artistSongs: (id: string, limit: number) => metadata<YouTubeMusicPage<Song>>(`/artists/${resourceId(id)}/songs?limit=${limit}`),
-  artistReleases: (id: string, kind: "albums" | "singles", limit: number) => metadata<YouTubeMusicPage<YouTubeMusicAlbum>>(`/artists/${resourceId(id)}/releases?kind=${kind}&limit=${limit}`),
-  playlist: (id: string, limit = 100) => metadata<YouTubeMusicPlaylistDetail>(`/playlists/${resourceId(id)}?limit=${limit}`),
+  artistSongs: (id: string, limit: number) =>
+    metadata<YouTubeMusicPage<Song>>(`/artists/${resourceId(id)}/songs?limit=${limit}`),
+  artistReleases: (id: string, kind: "albums" | "singles", limit: number) =>
+    metadata<YouTubeMusicPage<YouTubeMusicAlbum>>(`/artists/${resourceId(id)}/releases?kind=${kind}&limit=${limit}`),
+  playlist: (id: string, limit = 100) =>
+    metadata<YouTubeMusicPlaylistDetail>(`/playlists/${resourceId(id)}?limit=${limit}`),
   lyrics: (id: string) => metadata<YouTubeMusicLyrics>(`/songs/${resourceId(id)}/lyrics`),
   radio: (id: string) => metadata<Song[]>(`/songs/${resourceId(id)}/radio`),
   like: (id: string, on: boolean) => put(`/songs/${resourceId(id)}/like`, on),
   saveAlbum: (id: string, on: boolean) => put(`/albums/${resourceId(id)}/saved`, on),
   follow: (id: string, on: boolean) => put(`/artists/${resourceId(id)}/follow`, on),
-  importPlaylist: (source: string) => metadata<ImportResult>("/import", { method: "POST", body: JSON.stringify({ source: source === "liked" ? source : youtubeMusicRawId(source) }) }),
+  importPlaylist: (source: string) =>
+    metadata<ImportResult>("/import", {
+      method: "POST",
+      body: JSON.stringify({ source: source === "liked" ? source : youtubeMusicRawId(source) }),
+    }),
 };

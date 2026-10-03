@@ -88,7 +88,9 @@ test("keeps release-date sorting available when phone rows hide metadata", async
   await expect(page.getByRole("button", { name: /^Sort: Release date, descending/ })).toBeVisible();
   await expect(page.locator(".tr").first()).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveCSS("font-size", "16px");
-  expect(await page.locator("#main").evaluate((mainElement) => mainElement.scrollWidth <= mainElement.clientWidth)).toBe(true);
+  expect(
+    await page.locator("#main").evaluate((mainElement) => mainElement.scrollWidth <= mainElement.clientWidth),
+  ).toBe(true);
 });
 
 test("animates caret dismissal and honors reduced motion without stopping playback", async ({ page }) => {
@@ -130,15 +132,25 @@ test("follows a downward gesture, settles a partial drag and animates swipe dism
   const touchPoint = { x: albumArtBounds.x + albumArtBounds.width / 2, y: albumArtBounds.y + 50 };
   const touchSession = await context.newCDPSession(page);
   await touchSession.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touchPoint] });
-  await touchSession.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...touchPoint, y: touchPoint.y + 30 }] });
-  await expect.poll(() => playerSheet.evaluate((sheetElement) => new DOMMatrixReadOnly(getComputedStyle(sheetElement).transform).m42)).toBeGreaterThan(0);
+  await touchSession.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ ...touchPoint, y: touchPoint.y + 30 }],
+  });
+  await expect
+    .poll(() =>
+      playerSheet.evaluate((sheetElement) => new DOMMatrixReadOnly(getComputedStyle(sheetElement).transform).m42),
+    )
+    .toBeGreaterThan(0);
   await page.waitForTimeout(150);
   await touchSession.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(playerSheet).toHaveCSS("transform", "none");
   await expect(playerSheet).toBeVisible();
 
   await touchSession.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touchPoint] });
-  await touchSession.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...touchPoint, y: touchPoint.y + 300 }] });
+  await touchSession.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ ...touchPoint, y: touchPoint.y + 300 }],
+  });
   await touchSession.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(playerSheet).toHaveAttribute("data-state", "closed");
   await expect(playerSheet).toBeAttached();
@@ -171,8 +183,10 @@ test("hides keyboard shortcuts from mobile settings and the account menu", async
   await expect(page.getByRole("menuitem", { name: "Keyboard shortcuts" })).toHaveCount(0);
 });
 
-
-for (const [path, label] of [["/search?focus", "Search"], ["/library", "Search in your library"]]) {
+for (const [path, label] of [
+  ["/search?focus", "Search"],
+  ["/library", "Search in your library"],
+]) {
   test(`submitting ${label} dismisses focus and preserves delayed results`, async ({ page }) => {
     await signIn(page, path);
     const search = page.getByRole("searchbox", { name: label, exact: true });
@@ -213,13 +227,13 @@ test("composition confirmation keeps mobile search focused and does not commit",
   await expect(page.getByRole("heading", { name: "Recent searches" })).toHaveCount(0);
 });
 
-
 test("mobile Spotify remains connected with a visible cooldown notice", async ({ page }) => {
   await mockSpotify(page);
   await page.addInitScript(() => localStorage.setItem("needle.spotifyBlockedUntil", String(Date.now() + 3_600_000)));
   let calls = 0;
   page.on("request", (request) => {
-    if (request.url().startsWith("https://api.spotify.com/") || request.url().startsWith("https://sdk.scdn.co/")) calls += 1;
+    if (request.url().startsWith("https://api.spotify.com/") || request.url().startsWith("https://sdk.scdn.co/"))
+      calls += 1;
   });
   await signIn(page, "/search?q=glass");
   await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();

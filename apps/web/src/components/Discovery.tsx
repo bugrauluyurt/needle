@@ -7,7 +7,11 @@ import { toast } from "../state/ui.ts";
 import { Collage } from "./Art.tsx";
 import { Card } from "./Cards.tsx";
 
-export const discoveryContext = (p: Pick<DiscoveryPlaylist, "id" | "name">): PlayContext => ({ kind: "playlist", id: `lb:${p.id}`, name: p.name });
+export const discoveryContext = (p: Pick<DiscoveryPlaylist, "id" | "name">): PlayContext => ({
+  kind: "playlist",
+  id: `lb:${p.id}`,
+  name: p.name,
+});
 
 export const librarySongs = (d: DiscoveryDetail) => d.tracks.flatMap((t) => (t.song ? [t.song] : []));
 
@@ -27,7 +31,15 @@ export async function playDiscovery(p: Pick<DiscoveryPlaylist, "id" | "name">, s
   player.playSongs(librarySongs(detail), 0, discoveryContext(p), { shuffle });
 }
 
-export function DiscoveryArt({ playlist, px, eager = false }: { playlist: Pick<DiscoveryPlaylist, "covers" | "coverArts">; px: number; eager?: boolean }) {
+export function DiscoveryArt({
+  playlist,
+  px,
+  eager = false,
+}: {
+  playlist: Pick<DiscoveryPlaylist, "covers" | "coverArts">;
+  px: number;
+  eager?: boolean;
+}) {
   return <Collage urls={playlist.covers} ids={playlist.coverArts} px={px} eager={eager} />;
 }
 

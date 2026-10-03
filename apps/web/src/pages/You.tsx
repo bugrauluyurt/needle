@@ -28,7 +28,9 @@ export default function YouPage() {
       <MobileHeader title="You" />
       <div className="pad you">
         <div className="you-card">
-          <span className="avatar big"><AvatarFace px={64} /></span>
+          <span className="avatar big">
+            <AvatarFace px={64} />
+          </span>
           <div>
             <b>{user}</b>
             <span>Listening on {device}</span>
@@ -49,7 +51,9 @@ export default function YouPage() {
             </li>
           ))}
         </ul>
-        <button type="button" className="btn ghost you-out" onClick={signOut}>Sign out</button>
+        <button type="button" className="btn ghost you-out" onClick={signOut}>
+          Sign out
+        </button>
       </div>
     </>
   );

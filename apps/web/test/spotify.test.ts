@@ -32,11 +32,16 @@ describe("Spotify search pagination", () => {
       requestedUrls.push(new URL(input));
       expect(request?.signal).toBe(controller.signal);
 
-      return Promise.resolve(Response.json({ tracks: { items: [spotifyTrack("11")], next: null, total: 11, offset: 10, limit: 10 } }));
+      return Promise.resolve(
+        Response.json({ tracks: { items: [spotifyTrack("11")], next: null, total: 11, offset: 10, limit: 10 } }),
+      );
     });
 
     const { sp, spotifySearchResults } = await import("../src/lib/spotify.ts");
-    const searchResults = spotifySearchResults(await sp.search("harbor", controller.signal, { type: "track", offset: 10 }), 10);
+    const searchResults = spotifySearchResults(
+      await sp.search("harbor", controller.signal, { type: "track", offset: 10 }),
+      10,
+    );
 
     expect(requestedUrls).toHaveLength(1);
     expect(requestedUrls[0]?.searchParams.get("type")).toBe("track");
@@ -52,9 +57,30 @@ describe("Spotify search pagination", () => {
     const secondPage = [spotifyTrack("1"), spotifyTrack("2")];
 
     expect(uniqueSpotifyItems([...firstPage, ...secondPage]).map((track) => track.id)).toEqual(["3", "1", "2"]);
-    expect(nextSpotifySearchOffset({ next: "https://api.spotify.com/v1/search?offset=10", total: 1100, offset: 0, limit: 10 })).toBe(10);
-    expect(nextSpotifySearchOffset({ next: "https://api.spotify.com/v1/search?offset=1000", total: 1100, offset: 990, limit: 10 })).toBe(1000);
-    expect(nextSpotifySearchOffset({ next: "https://api.spotify.com/v1/search?offset=1010", total: 1100, offset: 1000, limit: 10 })).toBeUndefined();
+    expect(
+      nextSpotifySearchOffset({
+        next: "https://api.spotify.com/v1/search?offset=10",
+        total: 1100,
+        offset: 0,
+        limit: 10,
+      }),
+    ).toBe(10);
+    expect(
+      nextSpotifySearchOffset({
+        next: "https://api.spotify.com/v1/search?offset=1000",
+        total: 1100,
+        offset: 990,
+        limit: 10,
+      }),
+    ).toBe(1000);
+    expect(
+      nextSpotifySearchOffset({
+        next: "https://api.spotify.com/v1/search?offset=1010",
+        total: 1100,
+        offset: 1000,
+        limit: 10,
+      }),
+    ).toBeUndefined();
     expect(nextSpotifySearchOffset({ next: null, total: 10, offset: 0, limit: 10 })).toBeUndefined();
   });
 
@@ -64,7 +90,17 @@ describe("Spotify search pagination", () => {
     vi.stubGlobal("fetch", (input: string) => {
       requestedUrls.push(new URL(input));
 
-      return Promise.resolve(Response.json({ tracks: { items: [spotifyTrack("1"), spotifyTrack("2", "namesake")], next: "https://api.spotify.com/v1/search?offset=10", total: 20, offset: 0, limit: 10 } }));
+      return Promise.resolve(
+        Response.json({
+          tracks: {
+            items: [spotifyTrack("1"), spotifyTrack("2", "namesake")],
+            next: "https://api.spotify.com/v1/search?offset=10",
+            total: 20,
+            offset: 0,
+            limit: 10,
+          },
+        }),
+      );
     });
 
     const { sp } = await import("../src/lib/spotify.ts");
@@ -80,10 +116,14 @@ describe("Spotify search pagination", () => {
 describe("Spotify cooldown", () => {
   const start = new Date("2026-10-02T10:00:00Z").getTime();
   let storage: Map<string, string>;
-  const limited = (retryAfter?: string) => Response.json({ error: { message: "Too many requests" } }, {
-    status: 429,
-    headers: retryAfter === undefined ? {} : { "retry-after": retryAfter },
-  });
+  const limited = (retryAfter?: string) =>
+    Response.json(
+      { error: { message: "Too many requests" } },
+      {
+        status: 429,
+        headers: retryAfter === undefined ? {} : { "retry-after": retryAfter },
+      },
+    );
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -102,7 +142,10 @@ describe("Spotify cooldown", () => {
   });
 
   it("honors a long Retry-After and resumes only when it expires", async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(limited("58577")).mockResolvedValue(Response.json({ id: "me" }));
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(limited("58577"))
+      .mockResolvedValue(Response.json({ id: "me" }));
     vi.stubGlobal("fetch", fetch);
     const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
     await expect(sp.me()).rejects.toMatchObject({ status: 429 });
@@ -151,7 +194,10 @@ describe("Spotify cooldown", () => {
 
   it("does not shorten a cooldown when another in-flight request fails", async () => {
     const responses: ((response: Response) => void)[] = [];
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve))),
+    );
     const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
     const pending = Promise.allSettled([sp.me(), sp.artist("artist")]);
     await vi.advanceTimersByTimeAsync(0);
@@ -165,7 +211,10 @@ describe("Spotify cooldown", () => {
   });
 
   it("retries a short limit once without issuing requests during the wait", async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(limited("2")).mockResolvedValue(Response.json({ id: "me" }));
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(limited("2"))
+      .mockResolvedValue(Response.json({ id: "me" }));
     vi.stubGlobal("fetch", fetch);
     const { sp, useSpotifyStatus } = await import("../src/lib/spotify.ts");
     const result = sp.me();

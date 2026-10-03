@@ -1,4 +1,15 @@
-export const OTHER_VERSIONS = ["live", "remix", "karaoke", "instrumental", "cover", "acoustic", "demo", "edit", "video", "excerpt"];
+export const OTHER_VERSIONS = [
+  "live",
+  "remix",
+  "karaoke",
+  "instrumental",
+  "cover",
+  "acoustic",
+  "demo",
+  "edit",
+  "video",
+  "excerpt",
+];
 
 export function fold(text: string): string {
   return text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/ı/g, "i").toLowerCase();

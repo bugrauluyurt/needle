@@ -2,7 +2,11 @@ import { youtubeMusicRawId } from "@needle/shared";
 import type { YouTubeMusicAlbum, YouTubeMusicArtist, YouTubeMusicPlaylist } from "@needle/shared";
 import { player } from "../player/controller.ts";
 import { queryClient } from "../queries/client.ts";
-import { youtubeMusicAlbumQuery, youtubeMusicArtistQuery, youtubeMusicPlaylistQuery } from "../queries/youtube-music.ts";
+import {
+  youtubeMusicAlbumQuery,
+  youtubeMusicArtistQuery,
+  youtubeMusicPlaylistQuery,
+} from "../queries/youtube-music.ts";
 import { toast } from "../state/ui.ts";
 import { Art } from "./Art.tsx";
 import { ItemCard } from "./Cards.tsx";
@@ -75,5 +79,9 @@ export function youtubeMusicPlaylistItem(playlist: YouTubeMusicPlaylist): Collec
   };
 }
 
-export const YouTubeMusicAlbumCard = ({ album }: { album: YouTubeMusicAlbum }) => <ItemCard item={youtubeMusicAlbumItem(album)} />;
-export const YouTubeMusicPlaylistCard = ({ playlist }: { playlist: YouTubeMusicPlaylist }) => <ItemCard item={youtubeMusicPlaylistItem(playlist)} />;
+export const YouTubeMusicAlbumCard = ({ album }: { album: YouTubeMusicAlbum }) => (
+  <ItemCard item={youtubeMusicAlbumItem(album)} />
+);
+export const YouTubeMusicPlaylistCard = ({ playlist }: { playlist: YouTubeMusicPlaylist }) => (
+  <ItemCard item={youtubeMusicPlaylistItem(playlist)} />
+);

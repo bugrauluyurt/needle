@@ -42,11 +42,23 @@ function Row({ title, hint, children }: { title: string; hint?: ReactNode; child
 function Toggle<K extends keyof S>({ k, label }: { k: K; label: string }) {
   const value = useSettings((s) => s[k]) as boolean;
   const set = useSettings((s) => s.set);
-  return <button type="button" className="toggle" role="switch" aria-checked={value} aria-label={label} onClick={() => set(k, !value as S[K])} />;
+  return (
+    <button
+      type="button"
+      className="toggle"
+      role="switch"
+      aria-checked={value}
+      aria-label={label}
+      onClick={() => set(k, !value as S[K])}
+    />
+  );
 }
 
-const QUALITY: [Quality, string][] = [["original", "Original"], ["320", "320 kbps"], ["192", "192 kbps"]];
-
+const QUALITY: [Quality, string][] = [
+  ["original", "Original"],
+  ["320", "320 kbps"],
+  ["192", "192 kbps"],
+];
 
 function Storage() {
   const bytes = useOffline((s) => bytesOf(s.songs));
@@ -54,21 +66,44 @@ function Storage() {
   const supported = useOffline((s) => s.supported);
   const { data: quota } = useStorageEstimate();
   if (!supported) {
-    return <Row title="Downloads aren’t available here" hint="Open Needle at its https:// address to keep music on this device." ><span /></Row>;
+    return (
+      <Row
+        title="Downloads aren’t available here"
+        hint="Open Needle at its https:// address to keep music on this device."
+      >
+        <span />
+      </Row>
+    );
   }
   const pct = quota?.quota ? Math.min(100, (bytes / quota.quota) * 100) : 0;
   const albums = collections.filter((c) => c.kind === "album").length;
   const playlists = collections.filter((c) => c.kind === "playlist").length;
   const liked = collections.some((c) => c.kind === "liked");
-  const parts = [albums ? plural(albums, "album") : null, playlists ? plural(playlists, "playlist") : null, liked ? "your liked songs" : null].filter(Boolean);
+  const parts = [
+    albums ? plural(albums, "album") : null,
+    playlists ? plural(playlists, "playlist") : null,
+    liked ? "your liked songs" : null,
+  ].filter(Boolean);
   return (
     <div className="set-row">
       <div>
         <b>{sizeLabel(bytes)} used by downloads</b>
-        <span>{parts.length ? `${parts.join(", ")}.` : "Nothing downloaded yet."}{quota?.quota ? ` Room for about ${sizeLabel(quota.quota - (quota.usage ?? 0))} more.` : ""}</span>
-        <div className="storage"><i style={{ width: `${Math.max(pct, bytes ? 2 : 0)}%` }} /></div>
+        <span>
+          {parts.length ? `${parts.join(", ")}.` : "Nothing downloaded yet."}
+          {quota?.quota ? ` Room for about ${sizeLabel(quota.quota - (quota.usage ?? 0))} more.` : ""}
+        </span>
+        <div className="storage">
+          <i style={{ width: `${Math.max(pct, bytes ? 2 : 0)}%` }} />
+        </div>
       </div>
-      <button type="button" className="btn ghost sm" disabled={!bytes} onClick={() => void removeAllDownloads().then(() => toast("Removed all downloads"))}>Remove all</button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        disabled={!bytes}
+        onClick={() => void removeAllDownloads().then(() => toast("Removed all downloads"))}
+      >
+        Remove all
+      </button>
     </div>
   );
 }
@@ -94,10 +129,28 @@ function PhotoSetting() {
   return (
     <Row title="Your photo" hint="Shown on every device. Stored on the server with Needle’s data.">
       <div className="photo-set">
-        <span className="avatar"><AvatarFace px={44} /></span>
-        <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
-        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Saving…" : me?.photo ? "Change" : "Choose photo"}</button>
-        {me?.photo ? <button type="button" className="btn ghost sm" onClick={() => void api.removePhoto().then(done)}>Remove</button> : null}
+        <span className="avatar">
+          <AvatarFace px={44} />
+        </span>
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void upload(f);
+          }}
+        />
+        <button type="button" className="btn ghost sm" disabled={busy} onClick={() => input.current?.click()}>
+          {busy ? "Saving…" : me?.photo ? "Change" : "Choose photo"}
+        </button>
+        {me?.photo ? (
+          <button type="button" className="btn ghost sm" onClick={() => void api.removePhoto().then(done)}>
+            Remove
+          </button>
+        ) : null}
       </div>
     </Row>
   );
@@ -129,7 +182,9 @@ function SpotifyImport() {
     setRequesting(true);
     try {
       const r = await api.spotifyMissing(result.missing);
-      toast(`Lidarr is fetching ${plural(r.requested, "album")}${r.notFound ? `; ${r.notFound} weren’t found` : ""}${r.skipped ? `; ${r.skipped} more next time` : ""}`);
+      toast(
+        `Lidarr is fetching ${plural(r.requested, "album")}${r.notFound ? `; ${r.notFound} weren’t found` : ""}${r.skipped ? `; ${r.skipped} more next time` : ""}`,
+      );
     } catch (e) {
       toast(e instanceof Error ? e.message : "Lidarr didn’t take the request");
     } finally {
@@ -138,33 +193,68 @@ function SpotifyImport() {
   };
   return (
     <>
-      <Row title="Copy playlists into your own library" hint="Optional. Makes a Navidrome playlist from a Spotify one, using only songs you already have. Lidarr can fetch the rest.">
-        <button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Choose playlists"}</button>
+      <Row
+        title="Copy playlists into your own library"
+        hint="Optional. Makes a Navidrome playlist from a Spotify one, using only songs you already have. Lidarr can fetch the rest."
+      >
+        <button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Hide" : "Choose playlists"}
+        </button>
       </Row>
       {open ? (
         <ul className="sp-list">
           <li>
-            <span><Icon name="heartFill" size={16} />Liked songs</span>
-            <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run("liked")}>{busy === "liked" ? "Copying…" : "Copy"}</button>
+            <span>
+              <Icon name="heartFill" size={16} />
+              Liked songs
+            </span>
+            <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run("liked")}>
+              {busy === "liked" ? "Copying…" : "Copy"}
+            </button>
           </li>
           {(lists.data ?? []).map((p) => (
             <li key={p.id}>
-              <span>{p.name}<em>{plural(p.trackCount, "song")}</em></span>
-              <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run(p.id)}>{busy === p.id ? "Copying…" : "Copy"}</button>
+              <span>
+                {p.name}
+                <em>{plural(p.trackCount, "song")}</em>
+              </span>
+              <button type="button" className="btn ghost sm" disabled={Boolean(busy)} onClick={() => void run(p.id)}>
+                {busy === p.id ? "Copying…" : "Copy"}
+              </button>
             </li>
           ))}
           {lists.isLoading ? <li className="muted">Loading your playlists…</li> : null}
-          {lists.isError ? <li className="muted">{lists.error instanceof Error ? lists.error.message : "Couldn’t load your Spotify playlists"}</li> : null}
+          {lists.isError ? (
+            <li className="muted">
+              {lists.error instanceof Error ? lists.error.message : "Couldn’t load your Spotify playlists"}
+            </li>
+          ) : null}
         </ul>
       ) : null}
       {result ? (
         <div className="sp-result" role="status">
-          <b>{result.source}: {result.matched} of {plural(result.total, "song")} are in your library.</b>
+          <b>
+            {result.source}: {result.matched} of {plural(result.total, "song")} are in your library.
+          </b>
           {result.missing.length ? (
             <>
-              <span>{plural(result.missing.length, "song")} aren’t, for example {result.missing.slice(0, 3).map((m) => `${m.title} by ${m.artist}`).join("; ")}.</span>
+              <span>
+                {plural(result.missing.length, "song")} aren’t, for example{" "}
+                {result.missing
+                  .slice(0, 3)
+                  .map((m) => `${m.title} by ${m.artist}`)
+                  .join("; ")}
+                .
+              </span>
               {caps.data?.lidarr ? (
-                <button type="button" className="btn light sm" disabled={requesting} onClick={() => void requestMissing()}>{requesting ? "Asking Lidarr…" : "Get the missing albums through Lidarr"}</button>
+                <button
+                  type="button"
+                  className="btn light sm"
+                  disabled={requesting}
+                  onClick={() => void requestMissing()}
+                >
+                  {requesting ? "Asking Lidarr…" : "Get the missing albums through Lidarr"}
+                </button>
               ) : null}
             </>
           ) : null}
@@ -177,33 +267,83 @@ function SpotifyImport() {
 function SpotifySettings() {
   const caps = useCapabilities();
   const qc = useQueryClient();
-  const connect = () => void api.spotifyLogin().then(({ url }) => { location.href = url; });
+  const connect = () =>
+    void api.spotifyLogin().then(({ url }) => {
+      location.href = url;
+    });
   if (!caps.data?.spotify) {
     return (
-      <Row title="Connect Spotify" hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s server settings to turn this on.">
-        <button type="button" className="btn ghost sm" disabled>Connect Spotify</button>
+      <Row
+        title="Connect Spotify"
+        hint="Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Needle’s server settings to turn this on."
+      >
+        <button type="button" className="btn ghost sm" disabled>
+          Connect Spotify
+        </button>
       </Row>
     );
   }
   if (!caps.data.spotifyConnected) {
     return (
-      <Row title="Connect Spotify" hint="Shows your Spotify playlists, liked songs and saved albums next to your own music, and plays them here. Playing needs Spotify Premium.">
-        <button type="button" className="btn light sm" onClick={connect}>Connect Spotify</button>
+      <Row
+        title="Connect Spotify"
+        hint="Shows your Spotify playlists, liked songs and saved albums next to your own music, and plays them here. Playing needs Spotify Premium."
+      >
+        <button type="button" className="btn light sm" onClick={connect}>
+          Connect Spotify
+        </button>
       </Row>
     );
   }
   return (
     <>
-      <Row title="Use Spotify in Needle" hint="When off, no device asks Spotify for anything and Spotify stays out of Home, Search and your library. You stay connected.">
-        <button type="button" className="toggle" role="switch" aria-checked={caps.data.spotifyEnabled} aria-label="Use Spotify in Needle" onClick={() => void api.spotifyEnabled(!caps.data?.spotifyEnabled).then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))} />
+      <Row
+        title="Use Spotify in Needle"
+        hint="When off, no device asks Spotify for anything and Spotify stays out of Home, Search and your library. You stay connected."
+      >
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={caps.data.spotifyEnabled}
+          aria-label="Use Spotify in Needle"
+          onClick={() =>
+            void api
+              .spotifyEnabled(!caps.data?.spotifyEnabled)
+              .then(() => qc.invalidateQueries({ queryKey: keys.capabilities }))
+          }
+        />
       </Row>
       {!caps.data.spotifyEnabled || !caps.data.spotifyReconnect ? (
-        <Row title="Spotify is connected" hint={caps.data.spotifyEnabled ? "Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium." : "Switched off above. Disconnect to remove Needle's access to your Spotify account."}>
-          <button type="button" className="btn ghost sm" onClick={() => void api.spotifyDisconnect().then(() => { clearSpotifyCache(); return qc.invalidateQueries({ queryKey: keys.capabilities }); })}>Disconnect</button>
+        <Row
+          title="Spotify is connected"
+          hint={
+            caps.data.spotifyEnabled
+              ? "Your Spotify library is in Your library, Home and Search. Spotify songs play here through Spotify Premium."
+              : "Switched off above. Disconnect to remove Needle's access to your Spotify account."
+          }
+        >
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() =>
+              void api.spotifyDisconnect().then(() => {
+                clearSpotifyCache();
+                return qc.invalidateQueries({ queryKey: keys.capabilities });
+              })
+            }
+          >
+            Disconnect
+          </button>
         </Row>
       ) : (
-        <Row title="Reconnect Spotify" hint="Needle needs a few more Spotify permissions, to play songs, edit playlists and follow artists. Reconnect once to grant them.">
-          <button type="button" className="btn light sm" onClick={connect}>Reconnect</button>
+        <Row
+          title="Reconnect Spotify"
+          hint="Needle needs a few more Spotify permissions, to play songs, edit playlists and follow artists. Reconnect once to grant them."
+        >
+          <button type="button" className="btn light sm" onClick={connect}>
+            Reconnect
+          </button>
         </Row>
       )}
       {caps.data.spotifyEnabled ? <SpotifyImport /> : null}
@@ -237,9 +377,63 @@ function YouTubeMusicImport() {
 
   return (
     <>
-      <Row title="Copy playlists into your own library" hint="Makes a Navidrome playlist using songs you already have. Your YouTube Music playlist stays as it is."><button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Hide" : "Choose playlists"}</button></Row>
-      {open ? <ul className="sp-list"><li><span><Icon name="heartFill" size={16} />Liked songs</span><button type="button" className="btn ghost sm" disabled={blocked || Boolean(busySource)} onClick={() => void copyPlaylist("liked")}>{busySource === "liked" ? "Copying…" : "Copy"}</button></li>{playlists.data?.map((playlist) => <li key={playlist.id}><span>{playlist.title}{playlist.songCount !== undefined ? <em>{plural(playlist.songCount, "song")}</em> : null}</span><button type="button" className="btn ghost sm" disabled={blocked || Boolean(busySource)} onClick={() => void copyPlaylist(playlist.id)}>{busySource === playlist.id ? "Copying…" : "Copy"}</button></li>)}{playlists.isLoading ? <li className="muted">Loading your playlists…</li> : null}{playlists.isError ? <li className="muted">Couldn’t load your YouTube Music playlists.</li> : null}</ul> : null}
-      {result ? <div className="sp-result" role="status"><b>{result.source}: {result.matched} of {plural(result.total, "song")} are in your library.</b>{result.missing.length ? <span>{plural(result.missing.length, "song")} could not be matched. Find them in Search to add them to your own library.</span> : null}</div> : null}
+      <Row
+        title="Copy playlists into your own library"
+        hint="Makes a Navidrome playlist using songs you already have. Your YouTube Music playlist stays as it is."
+      >
+        <button type="button" className="btn ghost sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Hide" : "Choose playlists"}
+        </button>
+      </Row>
+      {open ? (
+        <ul className="sp-list">
+          <li>
+            <span>
+              <Icon name="heartFill" size={16} />
+              Liked songs
+            </span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              disabled={blocked || Boolean(busySource)}
+              onClick={() => void copyPlaylist("liked")}
+            >
+              {busySource === "liked" ? "Copying…" : "Copy"}
+            </button>
+          </li>
+          {playlists.data?.map((playlist) => (
+            <li key={playlist.id}>
+              <span>
+                {playlist.title}
+                {playlist.songCount !== undefined ? <em>{plural(playlist.songCount, "song")}</em> : null}
+              </span>
+              <button
+                type="button"
+                className="btn ghost sm"
+                disabled={blocked || Boolean(busySource)}
+                onClick={() => void copyPlaylist(playlist.id)}
+              >
+                {busySource === playlist.id ? "Copying…" : "Copy"}
+              </button>
+            </li>
+          ))}
+          {playlists.isLoading ? <li className="muted">Loading your playlists…</li> : null}
+          {playlists.isError ? <li className="muted">Couldn’t load your YouTube Music playlists.</li> : null}
+        </ul>
+      ) : null}
+      {result ? (
+        <div className="sp-result" role="status">
+          <b>
+            {result.source}: {result.matched} of {plural(result.total, "song")} are in your library.
+          </b>
+          {result.missing.length ? (
+            <span>
+              {plural(result.missing.length, "song")} could not be matched. Find them in Search to add them to your own
+              library.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -251,7 +445,11 @@ function YouTubeMusicSettings() {
   const [login, setLogin] = useState<YouTubeMusicLogin | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const refresh = () => Promise.all([client.invalidateQueries({ queryKey: keys.capabilities }), client.invalidateQueries({ queryKey: keys.status })]);
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: keys.capabilities }),
+      client.invalidateQueries({ queryKey: keys.status }),
+    ]);
 
   useEffect(() => {
     if (!login) return;
@@ -288,7 +486,11 @@ function YouTubeMusicSettings() {
 
         if (loginStatus.state === "expired" || loginStatus.state === "denied") {
           setLogin(null);
-          setError(loginStatus.state === "denied" ? "Google sign-in was canceled. Connect again when you’re ready." : "The code expired. Connect again to get a new one.");
+          setError(
+            loginStatus.state === "denied"
+              ? "Google sign-in was canceled. Connect again when you’re ready."
+              : "The code expired. Connect again to get a new one.",
+          );
 
           return;
         }
@@ -297,7 +499,9 @@ function YouTubeMusicSettings() {
       } catch (loginError) {
         if (canceled) return;
 
-        setError(loginError instanceof Error ? loginError.message : "Couldn’t check Google sign-in. Try connecting again.");
+        setError(
+          loginError instanceof Error ? loginError.message : "Couldn’t check Google sign-in. Try connecting again.",
+        );
         setLogin(null);
       }
     };
@@ -319,7 +523,16 @@ function YouTubeMusicSettings() {
       const deviceLogin = await ytm.startLogin();
       const verificationUrl = new URL(deviceLogin.verificationUrl);
 
-      if (verificationUrl.protocol !== "https:" || verificationUrl.username || verificationUrl.password || verificationUrl.port || !["www.youtube.com", "youtube.com", "accounts.google.com", "www.google.com", "google.com"].includes(verificationUrl.hostname)) throw new Error("Google sign-in returned an unexpected address. Try again.");
+      if (
+        verificationUrl.protocol !== "https:" ||
+        verificationUrl.username ||
+        verificationUrl.password ||
+        verificationUrl.port ||
+        !["www.youtube.com", "youtube.com", "accounts.google.com", "www.google.com", "google.com"].includes(
+          verificationUrl.hostname,
+        )
+      )
+        throw new Error("Google sign-in returned an unexpected address. Try again.");
 
       setLogin(deviceLogin);
     } catch (loginError) {
@@ -334,7 +547,9 @@ function YouTubeMusicSettings() {
     setBusy(true);
     setError(null);
 
-    client.setQueryData<Capabilities>(keys.capabilities, (currentCapabilities) => currentCapabilities ? { ...currentCapabilities, youtubeMusicEnabled: on } : currentCapabilities);
+    client.setQueryData<Capabilities>(keys.capabilities, (currentCapabilities) =>
+      currentCapabilities ? { ...currentCapabilities, youtubeMusicEnabled: on } : currentCapabilities,
+    );
 
     try {
       await client.cancelQueries({ queryKey: ["ytm"] });
@@ -360,7 +575,9 @@ function YouTubeMusicSettings() {
 
       await refresh();
     } catch (disconnectError) {
-      setError(disconnectError instanceof Error ? disconnectError.message : "Couldn’t disconnect YouTube Music. Try again.");
+      setError(
+        disconnectError instanceof Error ? disconnectError.message : "Couldn’t disconnect YouTube Music. Try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -371,30 +588,110 @@ function YouTubeMusicSettings() {
     try {
       await ytm.cancelLogin();
     } catch (cancelError) {
-      setError(cancelError instanceof Error ? cancelError.message : "Couldn’t cancel sign-in. The code will expire shortly.");
+      setError(
+        cancelError instanceof Error ? cancelError.message : "Couldn’t cancel sign-in. The code will expire shortly.",
+      );
     }
   };
 
   return (
     <>
-      <p className="yt-experimental"><b>Experimental.</b> YouTube Music can stop working when YouTube changes. Your own library and Spotify keep working.</p>
-      {!capabilities.data?.youtubeMusic ? <Row title="Connect YouTube Music" hint="Ask your server admin to enable YouTube Music in Needle."><button type="button" className="btn ghost sm" disabled>Connect</button></Row> : login ? (
+      <p className="yt-experimental">
+        <b>Experimental.</b> YouTube Music can stop working when YouTube changes. Your own library and Spotify keep
+        working.
+      </p>
+      {!capabilities.data?.youtubeMusic ? (
+        <Row title="Connect YouTube Music" hint="Ask your server admin to enable YouTube Music in Needle.">
+          <button type="button" className="btn ghost sm" disabled>
+            Connect
+          </button>
+        </Row>
+      ) : login ? (
         <div className="yt-device-login" role="status">
           <h3>Connect with Google</h3>
           <p>Open Google’s device page and enter this code.</p>
-          <div className="yt-device-code"><code>{login.userCode}</code><button type="button" className="btn ghost sm" onClick={() => void navigator.clipboard.writeText(login.userCode).then(() => toast("Code copied"), () => toast("Couldn’t copy the code. Select it and copy it yourself."))}>Copy code</button></div>
-          <div className="yt-device-actions"><a className="btn primary sm" href={login.verificationUrl} target="_blank" rel="noopener noreferrer">Open Google</a><button type="button" className="btn ghost sm" onClick={() => void cancelLogin()}>Cancel</button></div>
-          <p className="muted"><span className="spin" />Waiting for Google. This code expires at {new Date(login.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</p>
+          <div className="yt-device-code">
+            <code>{login.userCode}</code>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() =>
+                void navigator.clipboard.writeText(login.userCode).then(
+                  () => toast("Code copied"),
+                  () => toast("Couldn’t copy the code. Select it and copy it yourself."),
+                )
+              }
+            >
+              Copy code
+            </button>
+          </div>
+          <div className="yt-device-actions">
+            <a className="btn primary sm" href={login.verificationUrl} target="_blank" rel="noopener noreferrer">
+              Open Google
+            </a>
+            <button type="button" className="btn ghost sm" onClick={() => void cancelLogin()}>
+              Cancel
+            </button>
+          </div>
+          <p className="muted">
+            <span className="spin" />
+            Waiting for Google. This code expires at{" "}
+            {new Date(login.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+          </p>
         </div>
       ) : capabilities.data.youtubeMusicConnected ? (
         <>
-          <Row title={account.data?.name ? `Connected as ${account.data.name}` : "YouTube Music is connected"} hint="Your YouTube Music account is connected to this Needle user."><button type="button" className="btn ghost sm" disabled={busy} onClick={() => void disconnect()}>Disconnect</button></Row>
-          <Row title="Use YouTube Music in Needle" hint="When off, YouTube Music stays out of Home, Search and your library. You stay connected."><button type="button" className="toggle" role="switch" aria-checked={capabilities.data.youtubeMusicEnabled} aria-label="Use YouTube Music in Needle" disabled={busy} onClick={() => void changeEnabled(!capabilities.data?.youtubeMusicEnabled)} /></Row>
-          {capabilities.data.youtubeMusicReconnect ? <Row title="Reconnect YouTube Music" hint="Google sign-in expired. Connect again to refresh Needle’s access."><button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>Reconnect</button></Row> : null}
-          {capabilities.data.youtubeMusicEnabled && !capabilities.data.youtubeMusicReconnect ? <YouTubeMusicImport /> : null}
+          <Row
+            title={account.data?.name ? `Connected as ${account.data.name}` : "YouTube Music is connected"}
+            hint="Your YouTube Music account is connected to this Needle user."
+          >
+            <button type="button" className="btn ghost sm" disabled={busy} onClick={() => void disconnect()}>
+              Disconnect
+            </button>
+          </Row>
+          <Row
+            title="Use YouTube Music in Needle"
+            hint="When off, YouTube Music stays out of Home, Search and your library. You stay connected."
+          >
+            <button
+              type="button"
+              className="toggle"
+              role="switch"
+              aria-checked={capabilities.data.youtubeMusicEnabled}
+              aria-label="Use YouTube Music in Needle"
+              disabled={busy}
+              onClick={() => void changeEnabled(!capabilities.data?.youtubeMusicEnabled)}
+            />
+          </Row>
+          {capabilities.data.youtubeMusicReconnect ? (
+            <Row
+              title="Reconnect YouTube Music"
+              hint="Google sign-in expired. Connect again to refresh Needle’s access."
+            >
+              <button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>
+                Reconnect
+              </button>
+            </Row>
+          ) : null}
+          {capabilities.data.youtubeMusicEnabled && !capabilities.data.youtubeMusicReconnect ? (
+            <YouTubeMusicImport />
+          ) : null}
         </>
-      ) : <Row title="Connect YouTube Music" hint="Shows your liked songs, saved albums, followed artists and playlists beside your own music."><button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>{busy ? "Connecting…" : "Connect"}</button></Row>}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      ) : (
+        <Row
+          title="Connect YouTube Music"
+          hint="Shows your liked songs, saved albums, followed artists and playlists beside your own music."
+        >
+          <button type="button" className="btn light sm" disabled={busy} onClick={() => void connect()}>
+            {busy ? "Connecting…" : "Connect"}
+          </button>
+        </Row>
+      )}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }
@@ -417,7 +714,11 @@ function ListenBrainzSettings() {
       const r = await api.listenbrainzConnect(token.trim(), password);
       setToken("");
       await refresh();
-      toast(r.navidrome ? "ListenBrainz connected. Navidrome now sends your listens." : `ListenBrainz connected as ${r.user}.${r.navidromeError ? ` ${r.navidromeError}.` : ""}`);
+      toast(
+        r.navidrome
+          ? "ListenBrainz connected. Navidrome now sends your listens."
+          : `ListenBrainz connected as ${r.user}.${r.navidromeError ? ` ${r.navidromeError}.` : ""}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "ListenBrainz didn’t answer. Try again in a moment.");
     } finally {
@@ -425,21 +726,35 @@ function ListenBrainzSettings() {
       setBusy(false);
     }
   };
-  const disconnect = () => void api.listenbrainzDisconnect("").then(refresh, (err: unknown) => toast(err instanceof Error ? err.message : "Couldn’t disconnect"));
+  const disconnect = () =>
+    void api
+      .listenbrainzDisconnect("")
+      .then(refresh, (err: unknown) => toast(err instanceof Error ? err.message : "Couldn’t disconnect"));
   const user = caps.data?.listenbrainzUser;
   if (user) {
     return (
       <>
-        <Row title={`Connected as ${user}`} hint="Home shows the playlists ListenBrainz makes for you. Needle never sends listens itself.">
-          <button type="button" className="btn ghost sm" onClick={disconnect}>Disconnect</button>
+        <Row
+          title={`Connected as ${user}`}
+          hint="Home shows the playlists ListenBrainz makes for you. Needle never sends listens itself."
+        >
+          <button type="button" className="btn ghost sm" onClick={disconnect}>
+            Disconnect
+          </button>
         </Row>
         <Row
           title="Your listens"
-          hint={caps.data?.listenbrainzNavidrome
-            ? "Navidrome sends what you play to ListenBrainz, so the playlists follow your listening. Disconnecting here doesn’t stop that; remove the token in Navidrome to stop it."
-            : "To send what you play, open Navidrome, go to Settings → Personal → ListenBrainz and paste the same token. Skip this if you already have."}
+          hint={
+            caps.data?.listenbrainzNavidrome
+              ? "Navidrome sends what you play to ListenBrainz, so the playlists follow your listening. Disconnecting here doesn’t stop that; remove the token in Navidrome to stop it."
+              : "To send what you play, open Navidrome, go to Settings → Personal → ListenBrainz and paste the same token. Skip this if you already have."
+          }
         >
-          {caps.data?.listenbrainzNavidrome ? <span className="ok">Navidrome sends them</span> : <span className="muted">Not from Navidrome yet</span>}
+          {caps.data?.listenbrainzNavidrome ? (
+            <span className="ok">Navidrome sends them</span>
+          ) : (
+            <span className="muted">Not from Navidrome yet</span>
+          )}
         </Row>
       </>
     );
@@ -447,33 +762,72 @@ function ListenBrainzSettings() {
   return (
     <form className="lb-form" onSubmit={(e) => void connect(e)}>
       <p className="lb-lede">
-        ListenBrainz makes playlists from what you play: new songs to discover every week and the ones you keep coming back to. Needle shows them on Home and fetches the songs you don’t have.
+        ListenBrainz makes playlists from what you play: new songs to discover every week and the ones you keep coming
+        back to. Needle shows them on Home and fetches the songs you don’t have.
       </p>
       <label className="field">
         <span>ListenBrainz user token</span>
-        <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} required />
-        <small>Copy it from <a href="https://listenbrainz.org/settings/" target="_blank" rel="noopener noreferrer">listenbrainz.org/settings</a>.</small>
+        <input
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          required
+        />
+        <small>
+          Copy it from{" "}
+          <a href="https://listenbrainz.org/settings/" target="_blank" rel="noopener noreferrer">
+            listenbrainz.org/settings
+          </a>
+          .
+        </small>
       </label>
       <label className="field">
         <span>Navidrome password (optional)</span>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-        <small>Used once to turn on scrobbling in Navidrome, never stored. Leave it empty to paste the token in Navidrome yourself.</small>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <small>
+          Used once to turn on scrobbling in Navidrome, never stored. Leave it empty to paste the token in Navidrome
+          yourself.
+        </small>
       </label>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <button type="submit" className="btn light sm" disabled={busy || !token.trim()}>{busy ? "Connecting…" : "Connect ListenBrainz"}</button>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button type="submit" className="btn light sm" disabled={busy || !token.trim()}>
+        {busy ? "Connecting…" : "Connect ListenBrainz"}
+      </button>
     </form>
   );
 }
 
-const CHECK_WORDS: Record<CheckState, string> = { ok: "Working", warn: "Needs a look", off: "Off", fail: "Not working" };
+const CHECK_WORDS: Record<CheckState, string> = {
+  ok: "Working",
+  warn: "Needs a look",
+  off: "Off",
+  fail: "Not working",
+};
 
 function Connections({ publicUrl }: { publicUrl: string | null }) {
   const qc = useQueryClient();
-  const { data, isFetching, dataUpdatedAt } = useQuery({ queryKey: keys.status, queryFn: () => api.status(false), staleTime: 30_000 });
+  const { data, isFetching, dataUpdatedAt } = useQuery({
+    queryKey: keys.status,
+    queryFn: () => api.status(false),
+    staleTime: 30_000,
+  });
   const local = browserChecks(publicUrl, location.origin, window.isSecureContext);
   const checks = [...local, ...(data?.checks ?? [])];
   const again = async () => {
-    const fresh = await qc.fetchQuery({ queryKey: keys.status, queryFn: () => api.status(true), staleTime: 0 }).catch(() => null);
+    const fresh = await qc
+      .fetchQuery({ queryKey: keys.status, queryFn: () => api.status(true), staleTime: 0 })
+      .catch(() => null);
     if (!fresh) {
       toast("Needle’s server didn’t answer. Try again in a moment.");
       return;
@@ -486,15 +840,36 @@ function Connections({ publicUrl }: { publicUrl: string | null }) {
       <div className="conn-head">
         <h2>Connections</h2>
         <button type="button" className="btn ghost sm" disabled={isFetching} onClick={() => void again()}>
-          {isFetching ? <><span className="spin" />Checking…</> : <><Icon name="refresh" size={15} />Check again</>}
+          {isFetching ? (
+            <>
+              <span className="spin" />
+              Checking…
+            </>
+          ) : (
+            <>
+              <Icon name="refresh" size={15} />
+              Check again
+            </>
+          )}
         </button>
       </div>
       <p className="conn-lede">
         What Needle and its server can reach. Only admins see this.
-        {dataUpdatedAt ? ` Checked at ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.` : ""}
+        {dataUpdatedAt
+          ? ` Checked at ${new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}.`
+          : ""}
       </p>
       {checks.map((c) => (
-        <Row key={c.id} title={c.label} hint={<>{c.detail}{c.fix && c.state !== "ok" ? <em className="conn-fix">{c.fix}</em> : null}</>}>
+        <Row
+          key={c.id}
+          title={c.label}
+          hint={
+            <>
+              {c.detail}
+              {c.fix && c.state !== "ok" ? <em className="conn-fix">{c.fix}</em> : null}
+            </>
+          }
+        >
           <span className={`conn-state ${c.state}`}>{CHECK_WORDS[c.state]}</span>
         </Row>
       ))}
@@ -512,20 +887,51 @@ function PersonRow({ p }: { p: Person }) {
   return (
     <div className="set-row person-row">
       <div>
-        <b>{p.user}{p.admin ? <span className="person-badge">Admin</span> : null}</b>
-        <span>{p.admin ? "Manages Navidrome, and can always request music." : p.lastSeen ? `Last here ${ago(new Date(p.lastSeen).toISOString())}.` : "Hasn’t opened Needle yet."}</span>
+        <b>
+          {p.user}
+          {p.admin ? <span className="person-badge">Admin</span> : null}
+        </b>
+        <span>
+          {p.admin
+            ? "Manages Navidrome, and can always request music."
+            : p.lastSeen
+              ? `Last here ${ago(new Date(p.lastSeen).toISOString())}.`
+              : "Hasn’t opened Needle yet."}
+        </span>
       </div>
       <label className="person-switch">
         <span>Request music</span>
-        <button type="button" className="toggle" role="switch" aria-checked={p.canRequest} aria-label={`${p.user} can request music`} disabled={p.admin} onClick={() => set({ canRequest: !p.canRequest })} />
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={p.canRequest}
+          aria-label={`${p.user} can request music`}
+          disabled={p.admin}
+          onClick={() => set({ canRequest: !p.canRequest })}
+        />
       </label>
       <label className="person-switch">
         <span>Spotify</span>
-        <button type="button" className="toggle" role="switch" aria-checked={p.canSpotify} aria-label={`${p.user} can use Spotify`} onClick={() => set({ canSpotify: !p.canSpotify })} />
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={p.canSpotify}
+          aria-label={`${p.user} can use Spotify`}
+          onClick={() => set({ canSpotify: !p.canSpotify })}
+        />
       </label>
       <label className="person-switch">
         <span>YouTube Music</span>
-        <button type="button" className="toggle" role="switch" aria-checked={p.canYouTubeMusic ?? p.admin} aria-label={`${p.user} can use YouTube Music`} onClick={() => set({ canYouTubeMusic: !(p.canYouTubeMusic ?? p.admin) })} />
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={p.canYouTubeMusic ?? p.admin}
+          aria-label={`${p.user} can use YouTube Music`}
+          onClick={() => set({ canYouTubeMusic: !(p.canYouTubeMusic ?? p.admin) })}
+        />
       </label>
     </div>
   );
@@ -536,8 +942,18 @@ function People() {
   return (
     <>
       <h2>People</h2>
-      <p className="conn-lede">Everyone with a Navidrome account can sign in to Needle, and shows up here once they have. Create accounts in Navidrome (or with add-viewer.py); switch on what each person may do here.</p>
-      {isPending ? <p className="muted source-note"><span className="spin" />Loading people…</p> : people.map((p) => <PersonRow key={p.user} p={p} />)}
+      <p className="conn-lede">
+        Everyone with a Navidrome account can sign in to Needle, and shows up here once they have. Create accounts in
+        Navidrome (or with add-viewer.py); switch on what each person may do here.
+      </p>
+      {isPending ? (
+        <p className="muted source-note">
+          <span className="spin" />
+          Loading people…
+        </p>
+      ) : (
+        people.map((p) => <PersonRow key={p.user} p={p} />)
+      )}
     </>
   );
 }
@@ -573,10 +989,25 @@ export default function SettingsPage() {
       <div className="set">
         {!mobile ? <h1>Settings</h1> : null}
         <h2>Playback</h2>
-        <Row title="Crossfade" hint={canCrossfade ? "Blend the end of one song into the next. Off for albums played in order." : "iPhone and iPad play one song at a time, so crossfade isn’t available here."}>
+        <Row
+          title="Crossfade"
+          hint={
+            canCrossfade
+              ? "Blend the end of one song into the next. Off for albums played in order."
+              : "iPhone and iPad play one song at a time, so crossfade isn’t available here."
+          }
+        >
           <div className="slider-row">
             <span>0 s</span>
-            <Slider value={canCrossfade ? s.crossfade : 0} max={12} step={1} label="Crossfade seconds" valueText={(v) => `${Math.round(v)} seconds`} onChange={(v) => s.set("crossfade", Math.round(v))} needle />
+            <Slider
+              value={canCrossfade ? s.crossfade : 0}
+              max={12}
+              step={1}
+              label="Crossfade seconds"
+              valueText={(v) => `${Math.round(v)} seconds`}
+              onChange={(v) => s.set("crossfade", Math.round(v))}
+              needle
+            />
             <span>{canCrossfade ? `${s.crossfade} s` : "Off"}</span>
           </div>
         </Row>
@@ -584,7 +1015,16 @@ export default function SettingsPage() {
           <Toggle k="gapless" label="Gapless playback" />
         </Row>
         <Row title="Even out volume" hint="Uses the ReplayGain values in your files.">
-          <Seg label="Even out volume" value={s.normalize} options={[["off", "Off"], ["track", "Per song"], ["album", "Per album"]]} onChange={(v) => s.set("normalize", v)} />
+          <Seg
+            label="Even out volume"
+            value={s.normalize}
+            options={[
+              ["off", "Off"],
+              ["track", "Per song"],
+              ["album", "Per album"],
+            ]}
+            onChange={(v) => s.set("normalize", v)}
+          />
         </Row>
         <Row title="Keep playing similar songs" hint="When the queue ends, carry on with songs like the last one.">
           <Toggle k="autoplay" label="Keep playing similar songs" />
@@ -592,13 +1032,31 @@ export default function SettingsPage() {
 
         <h2>Sound quality</h2>
         <Row title="On Wi-Fi" hint="Original is the file as it is, with no conversion.">
-          <Seg label="Quality on Wi-Fi" value={s.wifiQuality} options={QUALITY} onChange={(v) => s.set("wifiQuality", v)} />
+          <Seg
+            label="Quality on Wi-Fi"
+            value={s.wifiQuality}
+            options={QUALITY}
+            onChange={(v) => s.set("wifiQuality", v)}
+          />
         </Row>
-        <Row title="On mobile data" hint="Converted by Navidrome to Opus, or AAC on iPhone, which sound good at small sizes.">
-          <Seg label="Quality on mobile data" value={s.cellularQuality} options={QUALITY} onChange={(v) => s.set("cellularQuality", v)} />
+        <Row
+          title="On mobile data"
+          hint="Converted by Navidrome to Opus, or AAC on iPhone, which sound good at small sizes."
+        >
+          <Seg
+            label="Quality on mobile data"
+            value={s.cellularQuality}
+            options={QUALITY}
+            onChange={(v) => s.set("cellularQuality", v)}
+          />
         </Row>
         <Row title="Downloads" hint="Quality of songs kept on this device.">
-          <Seg label="Download quality" value={s.downloadQuality} options={QUALITY} onChange={(v) => s.set("downloadQuality", v)} />
+          <Seg
+            label="Download quality"
+            value={s.downloadQuality}
+            options={QUALITY}
+            onChange={(v) => s.set("downloadQuality", v)}
+          />
         </Row>
 
         <h2>On this device</h2>
@@ -607,7 +1065,15 @@ export default function SettingsPage() {
           <Toggle k="downloadOnCellular" label="Download on mobile data" />
         </Row>
         <Row title="Device name" hint="How this device appears on your other devices.">
-          <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => rename(name)} onKeyDown={(e) => e.key === "Enter" && rename(name)} aria-label="Device name" maxLength={40} />
+          <input
+            className="text-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => rename(name)}
+            onKeyDown={(e) => e.key === "Enter" && rename(name)}
+            aria-label="Device name"
+            maxLength={40}
+          />
         </Row>
 
         <h2>Appearance</h2>
@@ -616,7 +1082,10 @@ export default function SettingsPage() {
         </Row>
 
         <h2>Your server</h2>
-        <Row title={`Navidrome ${ping?.serverVersion ? ping.serverVersion.split(" ")[0] : ""}`.trim()} hint={`Signed in as ${user ?? ""}.${lastScan !== null ? ` Library last scanned ${lastScan < 1 ? "just now" : lastScan < 60 ? `${lastScan} minutes ago` : `${Math.round(lastScan / 60)} hours ago`}.` : ""}${scan?.count !== undefined ? ` ${plural(scan.count, "song")}.` : ""}`}>
+        <Row
+          title={`Navidrome ${ping?.serverVersion ? ping.serverVersion.split(" ")[0] : ""}`.trim()}
+          hint={`Signed in as ${user ?? ""}.${lastScan !== null ? ` Library last scanned ${lastScan < 1 ? "just now" : lastScan < 60 ? `${lastScan} minutes ago` : `${Math.round(lastScan / 60)} hours ago`}.` : ""}${scan?.count !== undefined ? ` ${plural(scan.count, "song")}.` : ""}`}
+        >
           <span className="ok">Connected</span>
         </Row>
         <PhotoSetting />
@@ -626,7 +1095,14 @@ export default function SettingsPage() {
             <People />
           </>
         ) : (
-          <Row title="Request music" hint={canRequest ? "Search offers albums and songs you don’t have, and gets them for you." : "Ask an admin to let you request albums and songs."}>
+          <Row
+            title="Request music"
+            hint={
+              canRequest
+                ? "Search offers albums and songs you don’t have, and gets them for you."
+                : "Ask an admin to let you request albums and songs."
+            }
+          >
             {canRequest ? <span className="ok">On</span> : <span className="muted">Off</span>}
           </Row>
         )}
@@ -638,19 +1114,36 @@ export default function SettingsPage() {
             <SpotifySettings />
           </>
         ) : null}
-        {caps.data?.youtubeMusic || admin ? <><h2>YouTube Music</h2><YouTubeMusicSettings /></> : null}
+        {caps.data?.youtubeMusic || admin ? (
+          <>
+            <h2>YouTube Music</h2>
+            <YouTubeMusicSettings />
+          </>
+        ) : null}
 
         <h2>This app</h2>
-        <Row title="Version" hint={health?.version && health.version !== VERSION ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.` : undefined}>
+        <Row
+          title="Version"
+          hint={
+            health?.version && health.version !== VERSION
+              ? `The server runs ${health.version}. Choose Update Needle in the account menu to load it.`
+              : undefined
+          }
+        >
           <span className="muted tabular">Needle {VERSION}</span>
         </Row>
         {!mobile ? (
           <Row title="Keyboard shortcuts">
-            <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}><Icon name="keyboard" size={16} />Show shortcuts</button>
+            <button type="button" className="btn ghost sm" onClick={() => useUi.setState({ shortcutsOpen: true })}>
+              <Icon name="keyboard" size={16} />
+              Show shortcuts
+            </button>
           </Row>
         ) : null}
         <Row title="Sign out" hint="Downloads stay on this device.">
-          <button type="button" className="btn ghost sm" onClick={signOut}>Sign out</button>
+          <button type="button" className="btn ghost sm" onClick={signOut}>
+            Sign out
+          </button>
         </Row>
       </div>
     </>

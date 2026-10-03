@@ -3,10 +3,24 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type {
-  ImportResult, ImportedTrack, NamedRef, RemoteImage, Song, YouTubeMusicAccount, YouTubeMusicAlbum,
-  YouTubeMusicAlbumDetail, YouTubeMusicArtist, YouTubeMusicArtistDetail, YouTubeMusicLogin,
-  YouTubeMusicLoginStatus, YouTubeMusicLyrics, YouTubeMusicPage, YouTubeMusicPlaylist,
-  YouTubeMusicPlaylistDetail, YouTubeMusicSearch, YouTubeMusicSearchKind,
+  ImportResult,
+  ImportedTrack,
+  NamedRef,
+  RemoteImage,
+  Song,
+  YouTubeMusicAccount,
+  YouTubeMusicAlbum,
+  YouTubeMusicAlbumDetail,
+  YouTubeMusicArtist,
+  YouTubeMusicArtistDetail,
+  YouTubeMusicLogin,
+  YouTubeMusicLoginStatus,
+  YouTubeMusicLyrics,
+  YouTubeMusicPage,
+  YouTubeMusicPlaylist,
+  YouTubeMusicPlaylistDetail,
+  YouTubeMusicSearch,
+  YouTubeMusicSearchKind,
 } from "@needle/shared";
 import { youtubeMusicId, youtubeMusicRawId } from "@needle/shared";
 import type { Auth, Navidrome } from "./navidrome.ts";
@@ -22,8 +36,24 @@ const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const PROVIDER_ID = /^[A-Za-z0-9_-]{1,200}$/;
 const SEARCH_KINDS = new Set<YouTubeMusicSearchKind>(["songs", "albums", "artists", "playlists"]);
 const BRIDGE_OPERATIONS = new Set([
-  "health", "resolve", "account", "liked", "albums", "artists", "playlists", "search", "album",
-  "artist", "artistSongs", "artistReleases", "playlist", "lyrics", "radio", "like", "saveAlbum", "follow",
+  "health",
+  "resolve",
+  "account",
+  "liked",
+  "albums",
+  "artists",
+  "playlists",
+  "search",
+  "album",
+  "artist",
+  "artistSongs",
+  "artistReleases",
+  "playlist",
+  "lyrics",
+  "radio",
+  "like",
+  "saveAlbum",
+  "follow",
 ]);
 const CACHE_TTL = 60_000;
 const STALE_TTL = 6 * 60 * 60_000;
@@ -33,10 +63,20 @@ const BRIDGE_MAX_BYTES = 8 * 1024 * 1024;
 
 type ProviderObject = Record<string, unknown>;
 type TokenRow = {
-  access_token: string; refresh_token: string; expires_at: number; scope: string; enabled: number; reconnect: number;
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  scope: string;
+  enabled: number;
+  reconnect: number;
 };
 type LoginRow = {
-  device_code: string; user_code: string; verification_url: string; expires_at: number; interval: number; next_poll: number;
+  device_code: string;
+  user_code: string;
+  verification_url: string;
+  expires_at: number;
+  interval: number;
+  next_poll: number;
 };
 type ProviderToken = { access_token: string; refresh_token: string; expires_in: number; scope: string };
 export type YouTubeMusicBridgeRequest = {
@@ -44,11 +84,23 @@ export type YouTubeMusicBridgeRequest = {
   parameters?: ProviderObject;
   component?: "metadata" | "resolver";
   credentials?: { clientId: string; clientSecret: string };
-  token?: { access_token: string; refresh_token: string; expires_at: number; expires_in: number; scope: string; token_type: "Bearer" };
+  token?: {
+    access_token: string;
+    refresh_token: string;
+    expires_at: number;
+    expires_in: number;
+    scope: string;
+    token_type: "Bearer";
+  };
   node?: string;
 };
 type Options = {
-  clientId: string; clientSecret: string; python: string; db: DatabaseSync; navidrome: Navidrome; library: LibrarySearch;
+  clientId: string;
+  clientSecret: string;
+  python: string;
+  db: DatabaseSync;
+  navidrome: Navidrome;
+  library: LibrarySearch;
   bridge?: (request: YouTubeMusicBridgeRequest) => Promise<unknown>;
 };
 type CachedMetadata = { data: unknown; at: number };
@@ -92,7 +144,6 @@ export class YouTubeMusic {
     this.cancelUser(user);
     this.cancelLogin(user);
     this.options.db.prepare("DELETE FROM youtube_music_tokens WHERE user = ?").run(user);
-
   }
 
   cancelLogin(user: string): void {
@@ -134,7 +185,11 @@ export class YouTubeMusic {
     const name = YouTubeMusic.text(account.accountName);
     if (!name) throw new YouTubeMusicError(502, "YouTube Music returned an invalid account");
 
-    return { name, handle: YouTubeMusic.text(account.channelHandle) ?? null, photo: YouTubeMusic.imageUrl(account.accountPhotoUrl) ?? null };
+    return {
+      name,
+      handle: YouTubeMusic.text(account.channelHandle) ?? null,
+      photo: YouTubeMusic.imageUrl(account.accountPhotoUrl) ?? null,
+    };
   }
 
   async liked(user: string, limit = 100): Promise<YouTubeMusicPage<Song>> {
@@ -148,38 +203,49 @@ export class YouTubeMusic {
   }
 
   async artists(user: string, limit = 100): Promise<YouTubeMusicPage<YouTubeMusicArtist>> {
-    const artists = YouTubeMusic.list(await this.metadata(user, "artists", { limit: limit + 1 })).flatMap((rawArtist) => {
-      const artist = YouTubeMusic.artist(rawArtist);
+    const artists = YouTubeMusic.list(await this.metadata(user, "artists", { limit: limit + 1 })).flatMap(
+      (rawArtist) => {
+        const artist = YouTubeMusic.artist(rawArtist);
 
-      return artist ? [{ ...artist, subscribed: true }] : [];
-    });
+        return artist ? [{ ...artist, subscribed: true }] : [];
+      },
+    );
 
     return YouTubeMusic.page(artists, limit);
   }
 
   async playlists(user: string, limit = 100): Promise<YouTubeMusicPage<YouTubeMusicPlaylist>> {
-    const playlists = YouTubeMusic.list(await this.metadata(user, "playlists", { limit: limit + 1 })).flatMap((rawPlaylist) => {
-      const playlist = YouTubeMusic.playlist(rawPlaylist);
+    const playlists = YouTubeMusic.list(await this.metadata(user, "playlists", { limit: limit + 1 })).flatMap(
+      (rawPlaylist) => {
+        const playlist = YouTubeMusic.playlist(rawPlaylist);
 
-      return playlist ? [playlist] : [];
-    });
+        return playlist ? [playlist] : [];
+      },
+    );
 
     return YouTubeMusic.page(playlists, limit);
   }
 
   async search(user: string, query: string, kind?: YouTubeMusicSearchKind, limit = 20): Promise<YouTubeMusicSearch> {
     const trimmedQuery = query.trim();
-    if (trimmedQuery.length > 200 || (kind && !SEARCH_KINDS.has(kind))) throw new YouTubeMusicError(400, "Use a valid YouTube Music search");
+    if (trimmedQuery.length > 200 || (kind && !SEARCH_KINDS.has(kind)))
+      throw new YouTubeMusicError(400, "Use a valid YouTube Music search");
 
     this.requireEnabled(user);
     if (trimmedQuery.length < 2) return { songs: [], albums: [], artists: [], playlists: [], limit, hasMore: false };
 
-    const rawResults = YouTubeMusic.list(await this.metadata(user, "search", { query: trimmedQuery, kind, limit: limit + 1 }));
+    const rawResults = YouTubeMusic.list(
+      await this.metadata(user, "search", { query: trimmedQuery, kind, limit: limit + 1 }),
+    );
     const results: YouTubeMusicSearch = { songs: [], albums: [], artists: [], playlists: [], limit, hasMore: false };
 
     for (const rawResult of rawResults) {
       const providerResult = YouTubeMusic.object(rawResult);
-      const resultKind = kind ?? ({ song: "songs", album: "albums", artist: "artists", playlist: "playlists" } as const)[YouTubeMusic.text(providerResult.resultType) as "song"];
+      const resultKind =
+        kind ??
+        ({ song: "songs", album: "albums", artist: "artists", playlist: "playlists" } as const)[
+          YouTubeMusic.text(providerResult.resultType) as "song"
+        ];
 
       if (resultKind === "songs") {
         const song = YouTubeMusic.song(providerResult);
@@ -239,46 +305,76 @@ export class YouTubeMusic {
   }
 
   async artistSongs(user: string, id: string, limit = 100): Promise<YouTubeMusicPage<Song>> {
-    const providerPlaylist = YouTubeMusic.providerObject(await this.metadata(user, "artistSongs", { id: YouTubeMusic.validId(id, "artist"), limit: limit + 1 }));
+    const providerPlaylist = YouTubeMusic.providerObject(
+      await this.metadata(user, "artistSongs", { id: YouTubeMusic.validId(id, "artist"), limit: limit + 1 }),
+    );
 
-    return YouTubeMusic.page(YouTubeMusic.songs(providerPlaylist.tracks), limit, YouTubeMusic.number(providerPlaylist.trackCount));
+    return YouTubeMusic.page(
+      YouTubeMusic.songs(providerPlaylist.tracks),
+      limit,
+      YouTubeMusic.number(providerPlaylist.trackCount),
+    );
   }
 
-  async artistReleases(user: string, id: string, kind: "albums" | "singles", limit = 100): Promise<YouTubeMusicPage<YouTubeMusicAlbum>> {
+  async artistReleases(
+    user: string,
+    id: string,
+    kind: "albums" | "singles",
+    limit = 100,
+  ): Promise<YouTubeMusicPage<YouTubeMusicAlbum>> {
     if (kind !== "albums" && kind !== "singles") throw new YouTubeMusicError(400, "Choose albums or singles");
 
-    const releases = await this.metadata(user, "artistReleases", { id: YouTubeMusic.validId(id, "artist"), kind, limit: limit + 1 });
+    const releases = await this.metadata(user, "artistReleases", {
+      id: YouTubeMusic.validId(id, "artist"),
+      kind,
+      limit: limit + 1,
+    });
 
     return YouTubeMusic.page(YouTubeMusic.albums(releases), limit);
   }
 
   async playlist(user: string, id: string, limit = 3000): Promise<YouTubeMusicPlaylistDetail> {
     const rawId = YouTubeMusic.validId(id);
-    const providerPlaylist = YouTubeMusic.providerObject(await this.metadata(user, "playlist", { id: rawId, limit: limit + 1 }));
+    const providerPlaylist = YouTubeMusic.providerObject(
+      await this.metadata(user, "playlist", { id: rawId, limit: limit + 1 }),
+    );
     const playlist = YouTubeMusic.playlist({ ...providerPlaylist, playlistId: rawId });
     if (!playlist) throw new YouTubeMusicError(502, "YouTube Music returned an invalid playlist");
 
-    return { playlist, songs: YouTubeMusic.page(YouTubeMusic.songs(providerPlaylist.tracks), limit, playlist.songCount) };
+    return {
+      playlist,
+      songs: YouTubeMusic.page(YouTubeMusic.songs(providerPlaylist.tracks), limit, playlist.songCount),
+    };
   }
 
   async lyrics(user: string, id: string): Promise<YouTubeMusicLyrics> {
-    const providerLyrics = YouTubeMusic.object(await this.metadata(user, "lyrics", { id: YouTubeMusic.validId(id, "song") }));
+    const providerLyrics = YouTubeMusic.object(
+      await this.metadata(user, "lyrics", { id: YouTubeMusic.validId(id, "song") }),
+    );
     const timed = providerLyrics.hasTimestamps === true;
     const lines = timed
       ? YouTubeMusic.list(providerLyrics.lyrics).flatMap((rawLine) => {
-        const lyricLine = YouTubeMusic.object(rawLine);
-        const value = YouTubeMusic.text(lyricLine.text);
-        const start = YouTubeMusic.number(lyricLine.start_time);
+          const lyricLine = YouTubeMusic.object(rawLine);
+          const value = YouTubeMusic.text(lyricLine.text);
+          const start = YouTubeMusic.number(lyricLine.start_time);
 
-        return value ? [{ value, ...(start !== undefined ? { start } : {}) }] : [];
-      })
-      : (YouTubeMusic.text(providerLyrics.lyrics) ?? "").split("\n").filter(Boolean).map((value) => ({ value }));
+          return value ? [{ value, ...(start !== undefined ? { start } : {}) }] : [];
+        })
+      : (YouTubeMusic.text(providerLyrics.lyrics) ?? "")
+          .split("\n")
+          .filter(Boolean)
+          .map((value) => ({ value }));
 
-    return { lyrics: lines.length ? [{ synced: timed, line: lines }] : [], source: YouTubeMusic.text(providerLyrics.source) ?? null };
+    return {
+      lyrics: lines.length ? [{ synced: timed, line: lines }] : [],
+      source: YouTubeMusic.text(providerLyrics.source) ?? null,
+    };
   }
 
   async radio(user: string, id: string): Promise<Song[]> {
-    const providerPlaylist = YouTubeMusic.providerObject(await this.metadata(user, "radio", { id: YouTubeMusic.validId(id, "song"), limit: 50 }));
+    const providerPlaylist = YouTubeMusic.providerObject(
+      await this.metadata(user, "radio", { id: YouTubeMusic.validId(id, "song"), limit: 50 }),
+    );
 
     return YouTubeMusic.songs(providerPlaylist.tracks);
   }
@@ -298,11 +394,16 @@ export class YouTubeMusic {
   async import(auth: Auth, source: string): Promise<ImportResult> {
     const generation = this.userGenerations.get(auth.user) ?? 0;
     const sourcePlaylist = source === "liked" ? null : await this.playlist(auth.user, source);
-    const collection = sourcePlaylist?.songs ?? await this.liked(auth.user, 3000);
-    if (collection.hasMore) throw new YouTubeMusicError(409, "This playlist is too large to import. Use a playlist with at most 3000 songs.");
+    const collection = sourcePlaylist?.songs ?? (await this.liked(auth.user, 3000));
+    if (collection.hasMore)
+      throw new YouTubeMusicError(409, "This playlist is too large to import. Use a playlist with at most 3000 songs.");
 
     const sourceName = sourcePlaylist?.playlist.title ?? "Liked on YouTube Music";
-    const tracks: ImportedTrack[] = collection.items.map((song) => ({ title: song.title, artist: song.artist ?? "", album: song.album ?? "" }));
+    const tracks: ImportedTrack[] = collection.items.map((song) => ({
+      title: song.title,
+      artist: song.artist ?? "",
+      album: song.album ?? "",
+    }));
     const matcher = await this.options.library.matcher(auth);
     const songIds: string[] = [];
     const missing: ImportedTrack[] = [];
@@ -315,9 +416,12 @@ export class YouTubeMusic {
     }
 
     this.requireEnabled(auth.user);
-    if (generation !== (this.userGenerations.get(auth.user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
+    if (generation !== (this.userGenerations.get(auth.user) ?? 0))
+      throw new YouTubeMusicError(409, "YouTube Music connection changed");
 
-    const playlistId = songIds.length ? await this.options.navidrome.upsertPlaylist(auth, `${sourceName} (from YouTube Music)`, songIds) : null;
+    const playlistId = songIds.length
+      ? await this.options.navidrome.upsertPlaylist(auth, `${sourceName} (from YouTube Music)`, songIds)
+      : null;
 
     return { source: sourceName, total: tracks.length, matched: songIds.length, playlistId, missing };
   }
@@ -358,7 +462,8 @@ export class YouTubeMusic {
       }
 
       const upstreamType = upstream.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-      const validType = !upstreamType || upstreamType.startsWith("audio/") || upstreamType === "application/octet-stream";
+      const validType =
+        !upstreamType || upstreamType.startsWith("audio/") || upstreamType === "application/octet-stream";
       const responseHeaders = new Headers({ "content-type": stream.type, "cache-control": "private, no-store" });
       for (const header of ["content-length", "content-range", "accept-ranges"]) {
         const value = upstream.headers.get(header);
@@ -374,7 +479,11 @@ export class YouTubeMusic {
       }
       if (!upstream.ok || !upstream.body || !validType) {
         await upstream.body?.cancel();
-        throw new YouTubeMusicError(502, "This song cannot play in Needle. Open it in YouTube Music.", "playback_unavailable");
+        throw new YouTubeMusicError(
+          502,
+          "This song cannot play in Needle. Open it in YouTube Music.",
+          "playback_unavailable",
+        );
       }
 
       const reader = upstream.body.getReader();
@@ -409,13 +518,16 @@ export class YouTubeMusic {
       controller.abort();
       cleanup();
 
-      throw error instanceof YouTubeMusicError ? error : new YouTubeMusicError(502, "YouTube Music playback was interrupted", "playback_unavailable");
+      throw error instanceof YouTubeMusicError
+        ? error
+        : new YouTubeMusicError(502, "YouTube Music playback was interrupted", "playback_unavailable");
     }
   }
 
   static limit(value: string | undefined, fallback = 100, maximum = 3000): number {
     const limit = value === undefined ? fallback : Number(value);
-    if (!Number.isInteger(limit) || limit < 1 || limit > maximum) throw new YouTubeMusicError(400, `Choose a limit from 1 to ${maximum}`);
+    if (!Number.isInteger(limit) || limit < 1 || limit > maximum)
+      throw new YouTubeMusicError(400, `Choose a limit from 1 to ${maximum}`);
 
     return limit;
   }
@@ -437,7 +549,8 @@ export class YouTubeMusic {
   private cooldownUntil = 0;
 
   private tokenRow(user: string): TokenRow | undefined {
-    return this.options.db.prepare("SELECT * FROM youtube_music_tokens WHERE user = ?").get(user) as TokenRow | undefined;
+    return this.options.db.prepare("SELECT * FROM youtube_music_tokens WHERE user = ?").get(user) as
+      TokenRow | undefined;
   }
 
   private requireEnabled(user: string): TokenRow {
@@ -471,7 +584,8 @@ export class YouTubeMusic {
 
   private async startLogin(user: string): Promise<YouTubeMusicLogin> {
     const attempts = (this.loginAttempts.get(user) ?? []).filter((attempt) => attempt > Date.now() - COOLDOWN_MS);
-    if (attempts.length >= 10) throw new YouTubeMusicError(429, "Too many connection attempts. Try again in 15 minutes.", "login_limited");
+    if (attempts.length >= 10)
+      throw new YouTubeMusicError(429, "Too many connection attempts. Try again in 15 minutes.", "login_limited");
 
     attempts.push(Date.now());
     this.loginAttempts.set(user, attempts);
@@ -485,38 +599,52 @@ export class YouTubeMusic {
     if (!deviceCode || !userCode || !verificationUrl || !expiresIn || !YouTubeMusic.verificationUrl(verificationUrl)) {
       throw new YouTubeMusicError(502, "Google returned an invalid connection code");
     }
-    if (generation !== (this.loginGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "The connection was cancelled");
+    if (generation !== (this.loginGenerations.get(user) ?? 0))
+      throw new YouTubeMusicError(409, "The connection was cancelled");
 
     const expiresAt = Date.now() + expiresIn * 1000;
-    this.options.db.prepare(`INSERT INTO youtube_music_logins (user, device_code, user_code, verification_url, expires_at, interval, next_poll)
+    this.options.db
+      .prepare(
+        `INSERT INTO youtube_music_logins (user, device_code, user_code, verification_url, expires_at, interval, next_poll)
       VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user) DO UPDATE SET device_code = excluded.device_code, user_code = excluded.user_code,
-      verification_url = excluded.verification_url, expires_at = excluded.expires_at, interval = excluded.interval, next_poll = excluded.next_poll`)
+      verification_url = excluded.verification_url, expires_at = excluded.expires_at, interval = excluded.interval, next_poll = excluded.next_poll`,
+      )
       .run(user, deviceCode, userCode, verificationUrl, expiresAt, interval, Date.now() + interval * 1000);
 
     return { userCode, verificationUrl, expiresAt, interval };
   }
 
   private async pollLogin(user: string): Promise<YouTubeMusicLoginStatus> {
-    const login = this.options.db.prepare("SELECT * FROM youtube_music_logins WHERE user = ?").get(user) as LoginRow | undefined;
+    const login = this.options.db.prepare("SELECT * FROM youtube_music_logins WHERE user = ?").get(user) as
+      LoginRow | undefined;
     if (!login) return { state: this.connected(user) && !this.needsReconnect(user) ? "connected" : "expired" };
     if (login.expires_at <= Date.now()) {
       this.cancelLogin(user);
 
       return { state: "expired" };
     }
-    if (login.next_poll > Date.now()) return { state: "pending", retryAfter: Math.ceil((login.next_poll - Date.now()) / 1000) };
+    if (login.next_poll > Date.now())
+      return { state: "pending", retryAfter: Math.ceil((login.next_poll - Date.now()) / 1000) };
 
-    this.options.db.prepare("UPDATE youtube_music_logins SET next_poll = ? WHERE user = ?").run(Date.now() + login.interval * 1000, user);
+    this.options.db
+      .prepare("UPDATE youtube_music_logins SET next_poll = ? WHERE user = ?")
+      .run(Date.now() + login.interval * 1000, user);
     const providerToken = await this.oauth(TOKEN_URL, {
-      client_id: this.options.clientId, client_secret: this.options.clientSecret,
-      grant_type: "http://oauth.net/grant_type/device/1.0", code: login.device_code,
+      client_id: this.options.clientId,
+      client_secret: this.options.clientSecret,
+      grant_type: "http://oauth.net/grant_type/device/1.0",
+      code: login.device_code,
     });
-    const activeLogin = this.options.db.prepare("SELECT device_code FROM youtube_music_logins WHERE user = ?").get(user) as { device_code: string } | undefined;
+    const activeLogin = this.options.db
+      .prepare("SELECT device_code FROM youtube_music_logins WHERE user = ?")
+      .get(user) as { device_code: string } | undefined;
     if (activeLogin?.device_code !== login.device_code) return { state: "expired" };
 
     if (providerToken.error === "authorization_pending" || providerToken.error === "slow_down") {
       const interval = login.interval + (providerToken.error === "slow_down" ? 5 : 0);
-      this.options.db.prepare("UPDATE youtube_music_logins SET interval = ?, next_poll = ? WHERE user = ?").run(interval, Date.now() + interval * 1000, user);
+      this.options.db
+        .prepare("UPDATE youtube_music_logins SET interval = ?, next_poll = ? WHERE user = ?")
+        .run(interval, Date.now() + interval * 1000, user);
 
       return { state: "pending", retryAfter: interval };
     }
@@ -537,23 +665,32 @@ export class YouTubeMusic {
   private async oauth(url: string, fields: Record<string, string>): Promise<ProviderObject> {
     try {
       const response = await fetch(url, {
-        method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": OAUTH_AGENT },
-        body: new URLSearchParams(fields), signal: AbortSignal.timeout(15_000), redirect: "error",
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": OAUTH_AGENT },
+        body: new URLSearchParams(fields),
+        signal: AbortSignal.timeout(15_000),
+        redirect: "error",
       });
       const data = YouTubeMusic.providerObject(await response.json());
-      if (response.status === 429) throw new YouTubeMusicError(429, "Google is limiting connection attempts. Try again later.", "quota");
+      if (response.status === 429)
+        throw new YouTubeMusicError(429, "Google is limiting connection attempts. Try again later.", "quota");
       if (!response.ok && !data.error) throw new YouTubeMusicError(502, "Google refused the YouTube Music connection");
 
       return data;
     } catch (error) {
-      throw error instanceof YouTubeMusicError ? error : new YouTubeMusicError(502, "Google is not responding to the YouTube Music connection");
+      throw error instanceof YouTubeMusicError
+        ? error
+        : new YouTubeMusicError(502, "Google is not responding to the YouTube Music connection");
     }
   }
 
   private saveToken(user: string, token: ProviderToken): void {
-    this.options.db.prepare(`INSERT INTO youtube_music_tokens (user, access_token, refresh_token, expires_at, scope)
+    this.options.db
+      .prepare(
+        `INSERT INTO youtube_music_tokens (user, access_token, refresh_token, expires_at, scope)
       VALUES (?, ?, ?, ?, ?) ON CONFLICT(user) DO UPDATE SET access_token = excluded.access_token, refresh_token = excluded.refresh_token,
-      expires_at = excluded.expires_at, scope = excluded.scope, reconnect = 0`)
+      expires_at = excluded.expires_at, scope = excluded.scope, reconnect = 0`,
+      )
       .run(user, token.access_token, token.refresh_token, Date.now() + token.expires_in * 1000, token.scope);
   }
 
@@ -575,10 +712,14 @@ export class YouTubeMusic {
   private async refreshToken(user: string, token: TokenRow): Promise<TokenRow> {
     const generation = this.userGenerations.get(user) ?? 0;
     const freshToken = await this.oauth(TOKEN_URL, {
-      client_id: this.options.clientId, client_secret: this.options.clientSecret, grant_type: "refresh_token", refresh_token: token.refresh_token,
+      client_id: this.options.clientId,
+      client_secret: this.options.clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: token.refresh_token,
     });
 
-    if (generation !== (this.userGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
+    if (generation !== (this.userGenerations.get(user) ?? 0))
+      throw new YouTubeMusicError(409, "YouTube Music connection changed");
     this.requireEnabled(user);
 
     if (freshToken.error === "invalid_grant" || freshToken.error === "unauthorized_client") {
@@ -586,12 +727,24 @@ export class YouTubeMusic {
       throw new YouTubeMusicError(409, "Reconnect YouTube Music in Settings", "auth_reconnect");
     }
 
-    this.saveToken(user, YouTubeMusic.providerToken({ ...freshToken, refresh_token: freshToken.refresh_token ?? token.refresh_token, scope: freshToken.scope ?? token.scope }));
+    this.saveToken(
+      user,
+      YouTubeMusic.providerToken({
+        ...freshToken,
+        refresh_token: freshToken.refresh_token ?? token.refresh_token,
+        scope: freshToken.scope ?? token.scope,
+      }),
+    );
 
     return this.requireEnabled(user);
   }
 
-  private async metadata(user: string, operation: string, parameters: ProviderObject = {}, cache = true): Promise<unknown> {
+  private async metadata(
+    user: string,
+    operation: string,
+    parameters: ProviderObject = {},
+    cache = true,
+  ): Promise<unknown> {
     this.requireEnabled(user);
     const generation = this.userGenerations.get(user) ?? 0;
     const cacheKey = `${user}\0${operation}\0${JSON.stringify(parameters)}`;
@@ -606,23 +759,34 @@ export class YouTubeMusic {
     const pending = cache ? this.metadataPending.get(cacheKey) : undefined;
     if (pending) return pending;
 
-    const request: Promise<unknown> = this.fetchMetadata(user, operation, parameters).then((data) => {
-      this.requireEnabled(user);
-      if (generation !== (this.userGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
-      if (cache) YouTubeMusic.boundedSet(this.metadataCache, cacheKey, { data, at: Date.now() });
+    const request: Promise<unknown> = this.fetchMetadata(user, operation, parameters)
+      .then((data) => {
+        this.requireEnabled(user);
+        if (generation !== (this.userGenerations.get(user) ?? 0))
+          throw new YouTubeMusicError(409, "YouTube Music connection changed");
+        if (cache) YouTubeMusic.boundedSet(this.metadataCache, cacheKey, { data, at: Date.now() });
 
-      return data;
-    }).catch((error: unknown) => {
-      this.requireEnabled(user);
-      if (generation !== (this.userGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
-      if (error instanceof YouTubeMusicError && error.code === "quota") this.cooldownUntil = Date.now() + COOLDOWN_MS;
-      if (error instanceof YouTubeMusicError && error.status >= 429 && cached && this.metadataCache.get(cacheKey) === cached
-        && Date.now() - cached.at < STALE_TTL) return cached.data;
+        return data;
+      })
+      .catch((error: unknown) => {
+        this.requireEnabled(user);
+        if (generation !== (this.userGenerations.get(user) ?? 0))
+          throw new YouTubeMusicError(409, "YouTube Music connection changed");
+        if (error instanceof YouTubeMusicError && error.code === "quota") this.cooldownUntil = Date.now() + COOLDOWN_MS;
+        if (
+          error instanceof YouTubeMusicError &&
+          error.status >= 429 &&
+          cached &&
+          this.metadataCache.get(cacheKey) === cached &&
+          Date.now() - cached.at < STALE_TTL
+        )
+          return cached.data;
 
-      throw error;
-    }).finally(() => {
-      if (this.metadataPending.get(cacheKey) === request) this.metadataPending.delete(cacheKey);
-    });
+        throw error;
+      })
+      .finally(() => {
+        if (this.metadataPending.get(cacheKey) === request) this.metadataPending.delete(cacheKey);
+      });
     if (cache) this.metadataPending.set(cacheKey, request);
 
     return request;
@@ -632,22 +796,38 @@ export class YouTubeMusic {
     const generation = this.userGenerations.get(user) ?? 0;
     const token = await this.access(user);
     this.requireEnabled(user);
-    if (generation !== (this.userGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
+    if (generation !== (this.userGenerations.get(user) ?? 0))
+      throw new YouTubeMusicError(409, "YouTube Music connection changed");
 
     try {
-      const data = await this.runBridge({
-        operation, parameters,
-        credentials: { clientId: this.options.clientId, clientSecret: this.options.clientSecret },
-        token: { access_token: token.access_token, refresh_token: token.refresh_token, expires_at: Math.floor(token.expires_at / 1000),
-          expires_in: Math.max(0, Math.floor((token.expires_at - Date.now()) / 1000)), scope: token.scope, token_type: "Bearer" },
-      }, user);
+      const data = await this.runBridge(
+        {
+          operation,
+          parameters,
+          credentials: { clientId: this.options.clientId, clientSecret: this.options.clientSecret },
+          token: {
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+            expires_at: Math.floor(token.expires_at / 1000),
+            expires_in: Math.max(0, Math.floor((token.expires_at - Date.now()) / 1000)),
+            scope: token.scope,
+            token_type: "Bearer",
+          },
+        },
+        user,
+      );
 
       this.requireEnabled(user);
-      if (generation !== (this.userGenerations.get(user) ?? 0)) throw new YouTubeMusicError(409, "YouTube Music connection changed");
+      if (generation !== (this.userGenerations.get(user) ?? 0))
+        throw new YouTubeMusicError(409, "YouTube Music connection changed");
 
       return data;
     } catch (error) {
-      if (error instanceof YouTubeMusicError && error.code === "auth_reconnect" && generation === (this.userGenerations.get(user) ?? 0)) {
+      if (
+        error instanceof YouTubeMusicError &&
+        error.code === "auth_reconnect" &&
+        generation === (this.userGenerations.get(user) ?? 0)
+      ) {
         this.options.db.prepare("UPDATE youtube_music_tokens SET reconnect = 1 WHERE user = ?").run(user);
       }
 
@@ -675,31 +855,49 @@ export class YouTubeMusic {
     const pending = this.streamPending.get(videoId);
     if (pending) return pending;
 
-    const resolution = this.runBridge({ operation: "resolve", parameters: { id: videoId }, node: process.execPath }).then((data) => {
-      const providerStream = YouTubeMusic.providerObject(data);
-      const url = YouTubeMusic.streamUrl(providerStream.url);
-      const mimeTypes: Record<string, string> = { m4a: "audio/mp4", webm: "audio/webm", ogg: "audio/ogg", opus: "audio/ogg", mp3: "audio/mpeg" };
-      const type = typeof providerStream.ext === "string" ? mimeTypes[providerStream.ext] : undefined;
-      const codec = YouTubeMusic.text(providerStream.codec);
-      if (!type || !codec || !/^(?:mp4a(?:\.\d+)*|aac|opus|vorbis|mp3|flac)$/.test(codec)) {
-        throw new YouTubeMusicError(502, "YouTube Music returned an unsupported audio format");
-      }
+    const resolution = this.runBridge({ operation: "resolve", parameters: { id: videoId }, node: process.execPath })
+      .then((data) => {
+        const providerStream = YouTubeMusic.providerObject(data);
+        const url = YouTubeMusic.streamUrl(providerStream.url);
+        const mimeTypes: Record<string, string> = {
+          m4a: "audio/mp4",
+          webm: "audio/webm",
+          ogg: "audio/ogg",
+          opus: "audio/ogg",
+          mp3: "audio/mpeg",
+        };
+        const type = typeof providerStream.ext === "string" ? mimeTypes[providerStream.ext] : undefined;
+        const codec = YouTubeMusic.text(providerStream.codec);
+        if (!type || !codec || !/^(?:mp4a(?:\.\d+)*|aac|opus|vorbis|mp3|flac)$/.test(codec)) {
+          throw new YouTubeMusicError(502, "YouTube Music returned an unsupported audio format");
+        }
 
-      const expiresAt = Number(new URL(url).searchParams.get("expire")) * 1000;
-      const stream = { url, type,
-        until: Number.isFinite(expiresAt) && expiresAt > Date.now() ? expiresAt - 5 * 60_000 : Date.now() + 60_000 };
+        const expiresAt = Number(new URL(url).searchParams.get("expire")) * 1000;
+        const stream = {
+          url,
+          type,
+          until: Number.isFinite(expiresAt) && expiresAt > Date.now() ? expiresAt - 5 * 60_000 : Date.now() + 60_000,
+        };
 
-      YouTubeMusic.boundedSet(this.streamCache, videoId, stream);
-      this.streamFailures.delete(videoId);
+        YouTubeMusic.boundedSet(this.streamCache, videoId, stream);
+        this.streamFailures.delete(videoId);
 
-      return stream;
-    }).catch((error: unknown) => {
-      const playbackError = error instanceof YouTubeMusicError && error.status === 503 ? error
-        : new YouTubeMusicError(502, "This song cannot play in Needle. Open it in YouTube Music.", "playback_unavailable");
-      YouTubeMusic.boundedSet(this.streamFailures, videoId, { error: playbackError, until: Date.now() + 60_000 });
+        return stream;
+      })
+      .catch((error: unknown) => {
+        const playbackError =
+          error instanceof YouTubeMusicError && error.status === 503
+            ? error
+            : new YouTubeMusicError(
+                502,
+                "This song cannot play in Needle. Open it in YouTube Music.",
+                "playback_unavailable",
+              );
+        YouTubeMusic.boundedSet(this.streamFailures, videoId, { error: playbackError, until: Date.now() + 60_000 });
 
-      throw playbackError;
-    }).finally(() => this.streamPending.delete(videoId));
+        throw playbackError;
+      })
+      .finally(() => this.streamPending.delete(videoId));
     this.streamPending.set(videoId, resolution);
 
     return resolution;
@@ -710,7 +908,11 @@ export class YouTubeMusic {
     const timeout = setTimeout(() => controller.abort(), 20_000);
 
     try {
-      return await fetch(YouTubeMusic.streamUrl(url), { headers, signal: AbortSignal.any([signal, controller.signal]), redirect: "error" });
+      return await fetch(YouTubeMusic.streamUrl(url), {
+        headers,
+        signal: AbortSignal.any([signal, controller.signal]),
+        redirect: "error",
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -722,7 +924,10 @@ export class YouTubeMusic {
     if (this.children.size >= 8) throw new YouTubeMusicError(503, "YouTube Music is busy. Try again shortly.", "busy");
 
     return new Promise<unknown>((resolve, reject) => {
-      const child = spawn(this.options.python, ["-I", BRIDGE_PATH], { stdio: ["pipe", "pipe", "pipe"], env: YouTubeMusic.bridgeEnvironment() });
+      const child = spawn(this.options.python, ["-I", BRIDGE_PATH], {
+        stdio: ["pipe", "pipe", "pipe"],
+        env: YouTubeMusic.bridgeEnvironment(),
+      });
       this.children.set(child, user);
       const output: Buffer[] = [];
       let bytes = 0;
@@ -750,7 +955,9 @@ export class YouTubeMusic {
           complete(new YouTubeMusicError(502, "YouTube Music returned too much data"));
         } else output.push(chunk);
       });
-      child.once("error", () => complete(new YouTubeMusicError(503, "YouTube Music's Python runtime is unavailable", "runtime_missing")));
+      child.once("error", () =>
+        complete(new YouTubeMusicError(503, "YouTube Music's Python runtime is unavailable", "runtime_missing")),
+      );
       child.once("close", (code) => {
         if (finished) return;
         if (code !== 0) return complete(new YouTubeMusicError(502, "YouTube Music bridge stopped responding"));
@@ -758,7 +965,8 @@ export class YouTubeMusic {
         try {
           const response = YouTubeMusic.providerObject(JSON.parse(Buffer.concat(output).toString("utf8")) as unknown);
           if (response.error) return complete(YouTubeMusic.bridgeError(response.error));
-          if (!("data" in response)) return complete(new YouTubeMusicError(502, "YouTube Music returned an invalid response"));
+          if (!("data" in response))
+            return complete(new YouTubeMusicError(502, "YouTube Music returned an invalid response"));
 
           complete(undefined, response.data);
         } catch {
@@ -773,7 +981,8 @@ export class YouTubeMusic {
   private static bridgeError(code: unknown): YouTubeMusicError {
     if (code === "quota") return new YouTubeMusicError(429, "YouTube Music is limiting requests", code);
     if (code === "auth_reconnect") return new YouTubeMusicError(409, "Reconnect YouTube Music in Settings", code);
-    if (code === "runtime_missing") return new YouTubeMusicError(503, "Install the YouTube Music Python dependencies on the Needle server", code);
+    if (code === "runtime_missing")
+      return new YouTubeMusicError(503, "Install the YouTube Music Python dependencies on the Needle server", code);
 
     return new YouTubeMusicError(502, "YouTube Music is not responding");
   }
@@ -781,8 +990,24 @@ export class YouTubeMusic {
   private static bridgeEnvironment(): NodeJS.ProcessEnv {
     const environment: NodeJS.ProcessEnv = {};
 
-    for (const name of ["PATH", "LANG", "LC_ALL", "TZ", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
-      "http_proxy", "https_proxy", "all_proxy", "no_proxy", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"]) {
+    for (const name of [
+      "PATH",
+      "LANG",
+      "LC_ALL",
+      "TZ",
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "ALL_PROXY",
+      "NO_PROXY",
+      "http_proxy",
+      "https_proxy",
+      "all_proxy",
+      "no_proxy",
+      "SSL_CERT_FILE",
+      "SSL_CERT_DIR",
+      "REQUESTS_CA_BUNDLE",
+      "CURL_CA_BUNDLE",
+    ]) {
       const value = process.env[name];
       if (value !== undefined) environment[name] = value;
     }
@@ -791,11 +1016,12 @@ export class YouTubeMusic {
   }
 
   private static object(value: unknown): ProviderObject {
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value as ProviderObject : {};
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as ProviderObject) : {};
   }
 
   private static providerObject(value: unknown): ProviderObject {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) throw new YouTubeMusicError(502, "YouTube Music returned an invalid response");
+    if (typeof value !== "object" || value === null || Array.isArray(value))
+      throw new YouTubeMusicError(502, "YouTube Music returned an invalid response");
 
     return value as ProviderObject;
   }
@@ -805,7 +1031,12 @@ export class YouTubeMusic {
   }
 
   private static number(value: unknown): number | undefined {
-    const parsed = typeof value === "number" ? value : typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : NaN;
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value)
+          ? Number(value)
+          : NaN;
 
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   }
@@ -818,8 +1049,13 @@ export class YouTubeMusic {
 
   private static validId(id: string, kind?: "song" | "album" | "artist"): string {
     const rawId = youtubeMusicRawId(id);
-    if (!PROVIDER_ID.test(rawId) || (kind === "song" && !VIDEO_ID.test(rawId)) || (kind === "album" && !rawId.startsWith("MPRE"))
-      || (kind === "artist" && !/^(?:MPLA)?UC/.test(rawId))) throw new YouTubeMusicError(400, "Use a valid YouTube Music ID");
+    if (
+      !PROVIDER_ID.test(rawId) ||
+      (kind === "song" && !VIDEO_ID.test(rawId)) ||
+      (kind === "album" && !rawId.startsWith("MPRE")) ||
+      (kind === "artist" && !/^(?:MPLA)?UC/.test(rawId))
+    )
+      throw new YouTubeMusicError(400, "Use a valid YouTube Music ID");
 
     return rawId;
   }
@@ -828,8 +1064,13 @@ export class YouTubeMusic {
     try {
       const url = new URL(value);
 
-      return url.protocol === "https:" && !url.username && !url.password && !url.port
-        && ["www.youtube.com", "youtube.com", "accounts.google.com", "www.google.com", "google.com"].includes(url.hostname);
+      return (
+        url.protocol === "https:" &&
+        !url.username &&
+        !url.password &&
+        !url.port &&
+        ["www.youtube.com", "youtube.com", "accounts.google.com", "www.google.com", "google.com"].includes(url.hostname)
+      );
     } catch {
       return false;
     }
@@ -850,7 +1091,14 @@ export class YouTubeMusic {
   private static streamUrl(value: unknown): string {
     try {
       const url = new URL(typeof value === "string" ? value : "");
-      if (url.protocol === "https:" && url.hostname.endsWith(".googlevideo.com") && !url.username && !url.password && !url.port) return url.href;
+      if (
+        url.protocol === "https:" &&
+        url.hostname.endsWith(".googlevideo.com") &&
+        !url.username &&
+        !url.password &&
+        !url.port
+      )
+        return url.href;
     } catch {
       throw new YouTubeMusicError(502, "YouTube Music returned an unsafe audio address");
     }
@@ -892,24 +1140,39 @@ export class YouTubeMusic {
     const artistRefs = YouTubeMusic.references(providerSong.artists);
     const artists = artistRefs.length ? artistRefs : album?.artists.length ? album.artists : artist ? [artist] : [];
     const artistNames = Array.isArray(providerSong.artists)
-      ? (providerSong.artists as unknown[]).flatMap((artist) => YouTubeMusic.text(YouTubeMusic.object(artist).name) ?? []) : [];
+      ? (providerSong.artists as unknown[]).flatMap(
+          (artist) => YouTubeMusic.text(YouTubeMusic.object(artist).name) ?? [],
+        )
+      : [];
     const images = YouTubeMusic.images(providerSong.thumbnails);
     const coverArt = images.at(-1)?.url ?? album?.images.at(-1)?.url;
     const durationParts = (YouTubeMusic.text(providerSong.duration) ?? "").split(":");
-    const duration = YouTubeMusic.number(providerSong.duration_seconds)
-      ?? (durationParts.length >= 2 && durationParts.every((part) => /^\d+$/.test(part)) ? durationParts.reduce((seconds, part) => seconds * 60 + Number(part), 0) : undefined);
+    const duration =
+      YouTubeMusic.number(providerSong.duration_seconds) ??
+      (durationParts.length >= 2 && durationParts.every((part) => /^\d+$/.test(part))
+        ? durationParts.reduce((seconds, part) => seconds * 60 + Number(part), 0)
+        : undefined);
     const albumId = YouTubeMusic.text(songAlbum.id);
 
     const artistNamesText = artistNames.join(", ");
     const artistsText = artists.map((artist) => artist.name).join(", ");
 
     return {
-      id: youtubeMusicId(rawId), title, source: "youtubeMusic", uri: `https://music.youtube.com/watch?v=${rawId}`,
-      artist: artistNamesText ? artistNamesText : YouTubeMusic.text(providerSong.artist) ?? (artistsText ? artistsText : undefined),
-      artistId: artists[0]?.id, artists,
+      id: youtubeMusicId(rawId),
+      title,
+      source: "youtubeMusic",
+      uri: `https://music.youtube.com/watch?v=${rawId}`,
+      artist: artistNamesText
+        ? artistNamesText
+        : (YouTubeMusic.text(providerSong.artist) ?? (artistsText ? artistsText : undefined)),
+      artistId: artists[0]?.id,
+      artists,
       album: YouTubeMusic.text(songAlbum.name) ?? YouTubeMusic.text(providerSong.album) ?? album?.title,
       albumId: albumId && PROVIDER_ID.test(albumId) ? youtubeMusicId(albumId) : album?.id,
-      coverArt, duration, track: YouTubeMusic.number(providerSong.trackNumber), year: album?.year,
+      coverArt,
+      duration,
+      track: YouTubeMusic.number(providerSong.trackNumber),
+      year: album?.year,
       isAvailable: providerSong.isAvailable !== false,
     };
   }
@@ -931,10 +1194,14 @@ export class YouTubeMusic {
     const artists = YouTubeMusic.references(providerAlbum.artists);
 
     return {
-      id: youtubeMusicId(rawId), title, artists: artists.length ? artists : artist ? [artist] : [],
-      images: YouTubeMusic.images(providerAlbum.thumbnails), year: YouTubeMusic.number(providerAlbum.year),
+      id: youtubeMusicId(rawId),
+      title,
+      artists: artists.length ? artists : artist ? [artist] : [],
+      images: YouTubeMusic.images(providerAlbum.thumbnails),
+      year: YouTubeMusic.number(providerAlbum.year),
       playlistId: YouTubeMusic.text(providerAlbum.audioPlaylistId) ?? YouTubeMusic.text(providerAlbum.playlistId),
-      songCount: YouTubeMusic.number(providerAlbum.trackCount), duration: YouTubeMusic.number(providerAlbum.duration_seconds),
+      songCount: YouTubeMusic.number(providerAlbum.trackCount),
+      duration: YouTubeMusic.number(providerAlbum.duration_seconds),
       description: YouTubeMusic.text(providerAlbum.description),
     };
   }
@@ -950,12 +1217,18 @@ export class YouTubeMusic {
   private static artist(value: unknown): YouTubeMusicArtist | null {
     const providerArtist = YouTubeMusic.object(value);
     const rawId = YouTubeMusic.text(providerArtist.browseId);
-    const name = YouTubeMusic.text(providerArtist.name) ?? YouTubeMusic.text(providerArtist.artist) ?? YouTubeMusic.text(providerArtist.title);
+    const name =
+      YouTubeMusic.text(providerArtist.name) ??
+      YouTubeMusic.text(providerArtist.artist) ??
+      YouTubeMusic.text(providerArtist.title);
     if (!rawId || !PROVIDER_ID.test(rawId) || !name) return null;
 
     return {
-      id: youtubeMusicId(rawId), name, images: YouTubeMusic.images(providerArtist.thumbnails),
-      description: YouTubeMusic.text(providerArtist.description), subscribers: YouTubeMusic.text(providerArtist.subscribers),
+      id: youtubeMusicId(rawId),
+      name,
+      images: YouTubeMusic.images(providerArtist.thumbnails),
+      description: YouTubeMusic.text(providerArtist.description),
+      subscribers: YouTubeMusic.text(providerArtist.subscribers),
       subscribed: typeof providerArtist.subscribed === "boolean" ? providerArtist.subscribed : undefined,
       subscriptionId: YouTubeMusic.text(providerArtist.channelId),
     };
@@ -970,7 +1243,9 @@ export class YouTubeMusic {
     const author = YouTubeMusic.object(providerPlaylist.author);
 
     return {
-      id: youtubeMusicId(rawId), title, images: YouTubeMusic.images(providerPlaylist.thumbnails),
+      id: youtubeMusicId(rawId),
+      title,
+      images: YouTubeMusic.images(providerPlaylist.thumbnails),
       author: YouTubeMusic.text(author.name) ?? YouTubeMusic.text(providerPlaylist.author),
       description: YouTubeMusic.text(providerPlaylist.description),
       songCount: YouTubeMusic.number(providerPlaylist.trackCount) ?? YouTubeMusic.number(providerPlaylist.count),
@@ -980,7 +1255,12 @@ export class YouTubeMusic {
   }
 
   private static page<T>(items: T[], limit: number, total?: number): YouTubeMusicPage<T> {
-    return { items: items.slice(0, limit), total: total ?? (items.length <= limit ? items.length : null), hasMore: (total ?? items.length) > limit, limit };
+    return {
+      items: items.slice(0, limit),
+      total: total ?? (items.length <= limit ? items.length : null),
+      hasMore: (total ?? items.length) > limit,
+      limit,
+    };
   }
 
   private static providerToken(value: ProviderObject): ProviderToken {
@@ -988,7 +1268,8 @@ export class YouTubeMusic {
     const refreshToken = YouTubeMusic.text(value.refresh_token);
     const expiresIn = YouTubeMusic.number(value.expires_in);
     const scope = YouTubeMusic.text(value.scope) ?? SCOPE;
-    if (!accessToken || !refreshToken || !expiresIn || !scope.split(" ").some((grantedScope) => grantedScope === SCOPE)) throw new YouTubeMusicError(502, "Google refused the YouTube Music connection");
+    if (!accessToken || !refreshToken || !expiresIn || !scope.split(" ").some((grantedScope) => grantedScope === SCOPE))
+      throw new YouTubeMusicError(502, "Google refused the YouTube Music connection");
 
     return { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn, scope };
   }

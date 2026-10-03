@@ -44,7 +44,12 @@ class FakeSdkPlayer {
   }
 }
 
-const sdkState = (position: number, paused = false) => ({ paused, position, duration: 200_000, track_window: { current_track: { uri: "spotify:track:1" }, previous_tracks: [] } });
+const sdkState = (position: number, paused = false) => ({
+  paused,
+  position,
+  duration: 200_000,
+  track_window: { current_track: { uri: "spotify:track:1" }, previous_tracks: [] },
+});
 
 async function playing() {
   vi.stubGlobal("window", { Spotify: { Player: FakeSdkPlayer }, setTimeout, clearTimeout });

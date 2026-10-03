@@ -30,15 +30,31 @@ export default function FullScreenPlayer() {
   const upNext = remote ? [] : items.slice(index + 1, index + 4);
   const close = () => setFullScreen(false);
   return (
-    <div className="full" style={{ "--tone": tone } as React.CSSProperties} role="dialog" aria-modal="true" aria-label="Full screen player">
+    <div
+      className="full"
+      style={{ "--tone": tone } as React.CSSProperties}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Full screen player"
+    >
       <div className="full-top">
         <Logo size={26} />
         <div className="from">
-          {remote ? "Playing on" : station ? "Internet radio" : `Playing from ${context?.kind === "playlist" ? "playlist" : context?.kind === "album" ? "album" : ""}`}
+          {remote
+            ? "Playing on"
+            : station
+              ? "Internet radio"
+              : `Playing from ${context?.kind === "playlist" ? "playlist" : context?.kind === "album" ? "album" : ""}`}
           <b>{remote?.name ?? station?.name ?? context?.name ?? song?.album}</b>
         </div>
         <div className="full-top-r">
-          <button type="button" className="icon-btn" aria-pressed={lyrics} aria-label="Lyrics" onClick={() => setLyrics(!lyrics)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={lyrics}
+            aria-label="Lyrics"
+            onClick={() => setLyrics(!lyrics)}
+          >
             <Icon name="mic" />
           </button>
           <button type="button" className="icon-btn" aria-label="Exit full screen" onClick={close}>
@@ -47,13 +63,21 @@ export default function FullScreenPlayer() {
         </div>
       </div>
       <div className="full-mid">
-        {station ? <div className="art station-art"><Icon name="radio" size={96} /></div> : <Art id={song?.coverArt} px={520} eager />}
+        {station ? (
+          <div className="art station-art">
+            <Icon name="radio" size={96} />
+          </div>
+        ) : (
+          <Art id={song?.coverArt} px={520} eager />
+        )}
         <div className="full-info">
           <h2>{station?.name ?? song?.title}</h2>
           <div className="by">{station ? <LiveLabel /> : song ? artistName(song) : ""}</div>
           {!remote ? <YouTubeMusicPlaybackError song={song} /> : null}
           {lyrics && song ? (
-            <div className="full-lyrics"><LyricsView song={song} variant="panel" /></div>
+            <div className="full-lyrics">
+              <LyricsView song={song} variant="panel" />
+            </div>
           ) : upNext.length ? (
             <div className="upnext">
               <h6>Up next</h6>

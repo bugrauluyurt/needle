@@ -38,19 +38,19 @@ rejects a summary that doesn't follow it.
 
 - **Type** says what kind of change it is:
 
-  | Type | Use it for |
-  |---|---|
-  | `feat` | A new capability for the people using Needle |
-  | `fix` | A bug fix |
-  | `docs` | Documentation only |
-  | `refactor` | Code that changes shape but not behaviour |
-  | `perf` | Faster or lighter, same behaviour |
-  | `test` | Tests only, unit or e2e |
-  | `build` | The Docker image, dependencies, the build |
-  | `ci` | GitHub workflows |
-  | `chore` | Upkeep that fits nothing above, such as releases |
-  | `style` | Formatting only |
-  | `revert` | Undoing an earlier commit |
+  | Type       | Use it for                                       |
+  | ---------- | ------------------------------------------------ |
+  | `feat`     | A new capability for the people using Needle     |
+  | `fix`      | A bug fix                                        |
+  | `docs`     | Documentation only                               |
+  | `refactor` | Code that changes shape but not behaviour        |
+  | `perf`     | Faster or lighter, same behaviour                |
+  | `test`     | Tests only, unit or e2e                          |
+  | `build`    | The Docker image, dependencies, the build        |
+  | `ci`       | GitHub workflows                                 |
+  | `chore`    | Upkeep that fits nothing above, such as releases |
+  | `style`    | Formatting only                                  |
+  | `revert`   | Undoing an earlier commit                        |
 
 - **Scope** is optional: the area touched, in lowercase, such as `web`, `server`, `shared`,
   `player`, `spotify`, `remote`, `offline`, `docker`, `e2e`, `docs`, `deps` or `release`.

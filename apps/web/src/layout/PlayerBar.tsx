@@ -19,7 +19,13 @@ import { useIsWide } from "./Shell.tsx";
 
 export const LiveLabel = () => <span className="live">Live radio</span>;
 
-export function SeekBar({ className = "seek", times = "side" }: { className?: string; times?: "side" | "below" | "remaining" }) {
+export function SeekBar({
+  className = "seek",
+  times = "side",
+}: {
+  className?: string;
+  times?: "side" | "below" | "remaining";
+}) {
   const { remote, station, controls } = usePlayback();
   const position = useShownProgress(remote, (p) => Math.floor(p.position * 4) / 4);
   const duration = useShownProgress(remote, (p) => p.duration);
@@ -58,7 +64,9 @@ export function SeekBar({ className = "seek", times = "side" }: { className?: st
     <div className={className}>
       <span className="time">{clock(shown)}</span>
       {slider}
-      <span className="time">{times === "remaining" ? `-${clock(Math.max(0, duration - shown))}` : clock(duration)}</span>
+      <span className="time">
+        {times === "remaining" ? `-${clock(Math.max(0, duration - shown))}` : clock(duration)}
+      </span>
     </div>
   );
 }
@@ -81,16 +89,45 @@ export function Transport({ big = false }: { big?: boolean }) {
   }
   return (
     <div className="ctl-btns">
-      <button type="button" className="icon-btn" data-key="S" aria-pressed={shuffle} aria-label={shuffle ? "Turn off shuffle" : "Shuffle"} disabled={empty || Boolean(remote)} onClick={() => player.setShuffle(!shuffle)}>
+      <button
+        type="button"
+        className="icon-btn"
+        data-key="S"
+        aria-pressed={shuffle}
+        aria-label={shuffle ? "Turn off shuffle" : "Shuffle"}
+        disabled={empty || Boolean(remote)}
+        onClick={() => player.setShuffle(!shuffle)}
+      >
         <Icon name="shuffle" size={big ? 22 : size} />
       </button>
-      <button type="button" className="icon-btn" data-key="Shift ←" aria-label="Previous" disabled={empty} onClick={controls.previous}>
+      <button
+        type="button"
+        className="icon-btn"
+        data-key="Shift ←"
+        aria-label="Previous"
+        disabled={empty}
+        onClick={controls.previous}
+      >
         <Icon name="prev" size={big ? 30 : size} />
       </button>
-      <button type="button" className={`pp ${buffering && playing ? "buffering" : ""}`} data-key="Space" aria-label={playing ? "Pause" : "Play"} disabled={empty} onClick={controls.toggle}>
+      <button
+        type="button"
+        className={`pp ${buffering && playing ? "buffering" : ""}`}
+        data-key="Space"
+        aria-label={playing ? "Pause" : "Play"}
+        disabled={empty}
+        onClick={controls.toggle}
+      >
         <Icon name={playing ? "pause" : "play"} size={big ? 26 : 16} />
       </button>
-      <button type="button" className="icon-btn" data-key="Shift →" aria-label="Next" disabled={empty} onClick={controls.next}>
+      <button
+        type="button"
+        className="icon-btn"
+        data-key="Shift →"
+        aria-label="Next"
+        disabled={empty}
+        onClick={controls.next}
+      >
         <Icon name="next" size={big ? 30 : size} />
       </button>
       <button
@@ -114,10 +151,23 @@ export function Volume() {
   const { volume, controls } = usePlayback();
   return (
     <>
-      <button type="button" className="icon-btn" aria-label={volume === 0 ? "Unmute" : "Mute"} onClick={controls.toggleMute}>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={volume === 0 ? "Unmute" : "Mute"}
+        onClick={controls.toggleMute}
+      >
         <Icon name={volumeIcon(volume)} size={18} />
       </button>
-      <Slider className="vol" value={volume} max={1} step={0.05} label="Volume" valueText={(v) => `${Math.round(v * 100)}%`} onChange={controls.setVolume} />
+      <Slider
+        className="vol"
+        value={volume}
+        max={1}
+        step={0.05}
+        label="Volume"
+        valueText={(v) => `${Math.round(v * 100)}%`}
+        onChange={controls.setVolume}
+      />
     </>
   );
 }
@@ -128,17 +178,39 @@ export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: numb
   if (!song) return null;
   const on = likes.isLiked(song);
   return (
-    <button type="button" className={className} aria-pressed={on} aria-label={on ? "Remove from liked songs" : "Add to liked songs"} onClick={() => likes.setLiked(song, !on)}>
+    <button
+      type="button"
+      className={className}
+      aria-pressed={on}
+      aria-label={on ? "Remove from liked songs" : "Add to liked songs"}
+      onClick={() => likes.setLiked(song, !on)}
+    >
       <Icon name={on ? "heartFill" : "heart"} size={size} />
     </button>
   );
 }
 
-type BarAction = { label: string; icon: IconName; size: number; keyHint?: string; pressed?: boolean; disabled?: boolean; run: () => void };
+type BarAction = {
+  label: string;
+  icon: IconName;
+  size: number;
+  keyHint?: string;
+  pressed?: boolean;
+  disabled?: boolean;
+  run: () => void;
+};
 
 function BarButton({ action: a }: { action: BarAction }) {
   return (
-    <button type="button" className="icon-btn" aria-pressed={a.pressed} data-key={a.keyHint} aria-label={a.label} disabled={a.disabled} onClick={a.run}>
+    <button
+      type="button"
+      className="icon-btn"
+      aria-pressed={a.pressed}
+      data-key={a.keyHint}
+      aria-label={a.label}
+      disabled={a.disabled}
+      onClick={a.run}
+    >
       <Icon name={a.icon} size={a.size} />
     </button>
   );
@@ -249,19 +321,50 @@ function Bar() {
   const navigate = useNavigate();
   const wide = useIsWide();
   const fmt = station ? null : formatLabel(song);
-  const nowPanel: BarAction = { label: "Now playing panel", icon: "album", size: 18, pressed: panel === "now", run: () => toggleRightPanel("now") };
-  const queue: BarAction = { label: "Queue", icon: "queue", size: 18, keyHint: "Q", pressed: panel === "queue", run: () => toggleRightPanel("queue") };
-  const lyrics: BarAction = { label: "Lyrics", icon: "mic", size: 18, keyHint: "Y", pressed: pathname === "/lyrics", run: () => void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")) };
-  const full: BarAction = { label: "Full screen", icon: "expand", size: 17, keyHint: "F", disabled: !song && !station, run: () => setFullScreen(true) };
+  const nowPanel: BarAction = {
+    label: "Now playing panel",
+    icon: "album",
+    size: 18,
+    pressed: panel === "now",
+    run: () => toggleRightPanel("now"),
+  };
+  const queue: BarAction = {
+    label: "Queue",
+    icon: "queue",
+    size: 18,
+    keyHint: "Q",
+    pressed: panel === "queue",
+    run: () => toggleRightPanel("queue"),
+  };
+  const lyrics: BarAction = {
+    label: "Lyrics",
+    icon: "mic",
+    size: 18,
+    keyHint: "Y",
+    pressed: pathname === "/lyrics",
+    run: () => void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")),
+  };
+  const full: BarAction = {
+    label: "Full screen",
+    icon: "expand",
+    size: 17,
+    keyHint: "F",
+    disabled: !song && !station,
+    run: () => setFullScreen(true),
+  };
   return (
     <footer className="bar" aria-label="Player">
       <div className="np">
         {station ? (
           <>
-            <div className="art station-art"><Icon name="radio" size={24} /></div>
+            <div className="art station-art">
+              <Icon name="radio" size={24} />
+            </div>
             <div className="np-text">
               <div className="np-t">{station.name}</div>
-              <div className="np-a"><LiveLabel /></div>
+              <div className="np-a">
+                <LiveLabel />
+              </div>
             </div>
           </>
         ) : song ? (
@@ -270,15 +373,23 @@ function Bar() {
               <Art id={song.coverArt} px={56} />
             </Link>
             <div className="np-text">
-              <div className="np-t"><SongTitle song={song} locatable={locatable} /></div>
-              <div className="np-a">{song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}</div>
+              <div className="np-t">
+                <SongTitle song={song} locatable={locatable} />
+              </div>
+              <div className="np-a">
+                {song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}
+              </div>
             </div>
             <LikeCurrent />
           </>
         ) : (
           <>
-            <div className="art station-art"><Icon name="album" size={24} /></div>
-            <div className="np-text"><div className="np-t muted">Nothing playing</div></div>
+            <div className="art station-art">
+              <Icon name="album" size={24} />
+            </div>
+            <div className="np-text">
+              <div className="np-t muted">Nothing playing</div>
+            </div>
           </>
         )}
       </div>

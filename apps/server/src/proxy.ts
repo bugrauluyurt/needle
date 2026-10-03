@@ -31,7 +31,10 @@ export async function proxyToNavidrome(req: Request, navidromeUrl: string): Prom
     out.delete("content-length");
     out.set("content-encoding", "gzip");
     out.append("vary", "accept-encoding");
-    return new Response(upstream.body.pipeThrough(new CompressionStream("gzip")), { status: upstream.status, headers: out });
+    return new Response(upstream.body.pipeThrough(new CompressionStream("gzip")), {
+      status: upstream.status,
+      headers: out,
+    });
   }
   return new Response(upstream.body, { status: upstream.status, headers: out });
 }

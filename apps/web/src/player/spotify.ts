@@ -1,7 +1,12 @@
 import { sp, spotifyToken } from "../lib/spotify.ts";
 
 type SdkTrack = { uri: string };
-type SdkState = { paused: boolean; position: number; duration: number; track_window: { current_track: SdkTrack | null; previous_tracks: SdkTrack[] } };
+type SdkState = {
+  paused: boolean;
+  position: number;
+  duration: number;
+  track_window: { current_track: SdkTrack | null; previous_tracks: SdkTrack[] };
+};
 type SdkPlayer = {
   connect(): Promise<boolean>;
   disconnect(): void;
@@ -15,7 +20,10 @@ type SdkPlayer = {
 };
 type SdkOptions = { name: string; getOAuthToken: (cb: (token: string) => void) => void; volume?: number };
 
-const sdkWindow = window as Window & { Spotify?: { Player: new (options: SdkOptions) => SdkPlayer }; onSpotifyWebPlaybackSDKReady?: () => void };
+const sdkWindow = window as Window & {
+  Spotify?: { Player: new (options: SdkOptions) => SdkPlayer };
+  onSpotifyWebPlaybackSDKReady?: () => void;
+};
 
 export type SpotifyEvents = {
   state: (s: { position: number; duration: number; paused: boolean }) => void;
@@ -79,8 +87,12 @@ function onState(payload: unknown) {
   const prev = last?.state;
   last = { state, at: performance.now() };
   const uri = state.track_window.current_track?.uri ?? null;
-  const finished = Boolean(current) && state.paused && state.position === 0
-    && (state.track_window.previous_tracks.some((t) => t.uri === current) || (uri === current && prev !== undefined && !prev.paused && prev.position > prev.duration - 3000));
+  const finished =
+    Boolean(current) &&
+    state.paused &&
+    state.position === 0 &&
+    (state.track_window.previous_tracks.some((t) => t.uri === current) ||
+      (uri === current && prev !== undefined && !prev.paused && prev.position > prev.duration - 3000));
   if (finished) {
     current = null;
     events?.ended();

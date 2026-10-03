@@ -177,14 +177,20 @@ export class AudioEngine {
     this.active = to;
     const incoming = this.els[to];
     incoming.currentTime = 0;
-    void incoming.play().then(() => {
-      this.setGain(to, gain, seconds);
-      this.setGain(from, MIN_GAIN, seconds);
-    }).catch(() => undefined);
-    this.fadeTimer = window.setTimeout(() => {
-      this.fadeTimer = null;
-      this.releaseSlot(from);
-    }, seconds * 1000 + 150);
+    void incoming
+      .play()
+      .then(() => {
+        this.setGain(to, gain, seconds);
+        this.setGain(from, MIN_GAIN, seconds);
+      })
+      .catch(() => undefined);
+    this.fadeTimer = window.setTimeout(
+      () => {
+        this.fadeTimer = null;
+        this.releaseSlot(from);
+      },
+      seconds * 1000 + 150,
+    );
   }
 
   get fading(): boolean {

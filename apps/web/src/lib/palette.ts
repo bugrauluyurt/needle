@@ -13,7 +13,20 @@ export const PALETTES: [string, string, string][] = [
   ["#4A4A52", "#A7A0B1", "#F3EFE8"],
 ];
 
-export const TILE_COLORS = ["#1E3C78", "#B03A6E", "#1E4A6B", "#8A4B14", "#5B2A86", "#2E6B5E", "#7A1F1F", "#6B4A1A", "#0F5750", "#3A2A6B", "#9A4A14", "#4A4A52"];
+export const TILE_COLORS = [
+  "#1E3C78",
+  "#B03A6E",
+  "#1E4A6B",
+  "#8A4B14",
+  "#5B2A86",
+  "#2E6B5E",
+  "#7A1F1F",
+  "#6B4A1A",
+  "#0F5750",
+  "#3A2A6B",
+  "#9A4A14",
+  "#4A4A52",
+];
 
 export function hashPalette(s: string): [string, string, string] {
   let h = 2166136261;

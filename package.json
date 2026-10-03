@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "pnpm --parallel --filter ./apps/* dev",
     "build": "pnpm --filter './packages/*' --filter './apps/*' build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck && tsc -p . && tsc -p e2e",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
@@ -26,6 +28,7 @@
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.0.0",
     "globals": "^17.12.0",
+    "prettier": "3.9.9",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.2",

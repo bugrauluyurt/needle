@@ -45,7 +45,9 @@ export function ago(iso: string | undefined, now = Date.now()): string {
   return then.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function formatLabel(song: Pick<Song, "suffix" | "bitDepth" | "samplingRate" | "bitRate"> | null | undefined): string | null {
+export function formatLabel(
+  song: Pick<Song, "suffix" | "bitDepth" | "samplingRate" | "bitRate"> | null | undefined,
+): string | null {
   if (!song?.suffix) return null;
   const codec = song.suffix.toUpperCase();
   const lossless = ["FLAC", "ALAC", "WAV", "AIFF", "APE", "WV"].includes(codec);
@@ -63,7 +65,8 @@ export function formatLong(song: Song): string {
   return parts.filter(Boolean).join(", ");
 }
 
-export const artistName = (s: Pick<Song, "displayArtist" | "artist">) => s.displayArtist ?? s.artist ?? "Unknown artist";
+export const artistName = (s: Pick<Song, "displayArtist" | "artist">) =>
+  s.displayArtist ?? s.artist ?? "Unknown artist";
 
 export function releaseDateLabel(song: Pick<Song, "year" | "releaseDate">): string {
   const releaseDate = song.releaseDate ?? String(song.year ?? "");
@@ -75,7 +78,12 @@ export function releaseDateLabel(song: Pick<Song, "year" | "releaseDate">): stri
 
   if (Number.isNaN(parsedReleaseDate.getTime())) return releaseDate;
 
-  return parsedReleaseDate.toLocaleDateString("en-GB", { ...(releaseDate.length > 7 ? { day: "numeric" } : {}), month: "short", year: "numeric", timeZone: "UTC" });
+  return parsedReleaseDate.toLocaleDateString("en-GB", {
+    ...(releaseDate.length > 7 ? { day: "numeric" } : {}),
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function hoursSince(iso: string, now = Date.now()): number {
@@ -106,13 +114,25 @@ export function sizeLabel(bytes: number): string {
 }
 
 export function plain(html: string | null | undefined): string | undefined {
-  const text = html?.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "’").replace(/&quot;/g, "\"").trim();
+  const text = html
+    ?.replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;|&#39;/g, "’")
+    .replace(/&quot;/g, '"')
+    .trim();
   return text === "" ? undefined : text;
 }
 
-export const plainBio = (html: string | undefined) => html?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() ?? "";
+export const plainBio = (html: string | undefined) =>
+  html
+    ?.replace(/<a [^>]*>.*?<\/a>\.?/gs, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim() ?? "";
 
 export function paragraphs(text: string, sentences = 3): string[] {
   const all = text.split(/(?<=[.!?])\s+(?=[\p{Lu}\p{N}“"‘'])/u);
-  return Array.from({ length: Math.ceil(all.length / sentences) }, (_, i) => all.slice(i * sentences, (i + 1) * sentences).join(" "));
+  return Array.from({ length: Math.ceil(all.length / sentences) }, (_, i) =>
+    all.slice(i * sentences, (i + 1) * sentences).join(" "),
+  );
 }

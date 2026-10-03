@@ -59,12 +59,18 @@ test("downloads an album and plays it with no connection", async ({ page, contex
   await page.goto("/downloads");
   await expect(page.locator(".dl-row", { hasText: "Salt & Signal" })).toContainText("5 songs");
   await context.setOffline(true);
-  await page.locator(".dl-row", { hasText: "Salt & Signal" }).getByRole("button", { name: "Play Salt & Signal" }).click();
+  await page
+    .locator(".dl-row", { hasText: "Salt & Signal" })
+    .getByRole("button", { name: "Play Salt & Signal" })
+    .click();
   await expect(bar(page).locator(".np-t")).toHaveText("Salt & Signal");
   await expect.poll(() => position(page), { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
   await context.setOffline(false);
 
-  await page.locator(".dl-row", { hasText: "Salt & Signal" }).getByRole("button", { name: "Remove Salt & Signal from this device" }).click();
+  await page
+    .locator(".dl-row", { hasText: "Salt & Signal" })
+    .getByRole("button", { name: "Remove Salt & Signal from this device" })
+    .click();
   await expect(page.locator(".dl-row", { hasText: "Salt & Signal" })).toHaveCount(0);
 });
 
@@ -84,7 +90,11 @@ test("changes settings and keeps them", async ({ page }) => {
 test("admins see what the server can reach", async ({ page }) => {
   await signIn(page, "/settings");
   await expect(page.getByRole("heading", { name: "Connections" })).toBeVisible();
-  const connectionState = (name: string) => page.locator(".set-row").filter({ has: page.getByText(name, { exact: true }) }).locator(".conn-state");
+  const connectionState = (name: string) =>
+    page
+      .locator(".set-row")
+      .filter({ has: page.getByText(name, { exact: true }) })
+      .locator(".conn-state");
   for (const name of ["Navidrome", "Lidarr (albums)", "slskd (single songs)", "Song folders"]) {
     await expect(connectionState(name)).toHaveText("Working");
   }

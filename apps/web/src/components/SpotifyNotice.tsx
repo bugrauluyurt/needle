@@ -9,7 +9,13 @@ export function SpotifyNotice() {
   return (
     <aside className="spotify-notice" role="status" aria-live="polite" aria-label="Spotify status">
       <strong>Spotify requests are paused</strong>
-      <p>Previously loaded Spotify items are still shown. Requests resume automatically at <time dateTime={retryAt.toISOString()}>{retryAt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>.</p>
+      <p>
+        Previously loaded Spotify items are still shown. Requests resume automatically at{" "}
+        <time dateTime={retryAt.toISOString()}>
+          {retryAt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        </time>
+        .
+      </p>
     </aside>
   );
 }

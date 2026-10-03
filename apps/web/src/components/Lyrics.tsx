@@ -10,7 +10,15 @@ import { Icon } from "./Icon.tsx";
 
 const USER_SCROLL_PAUSE = 4_000;
 
-export function LyricsView({ song, variant, limit }: { song: Song; variant: "page" | "panel" | "mobile" | "peek"; limit?: number }) {
+export function LyricsView({
+  song,
+  variant,
+  limit,
+}: {
+  song: Song;
+  variant: "page" | "panel" | "mobile" | "peek";
+  limit?: number;
+}) {
   const source = songSource(song);
   const localLyrics = useLyrics(source === "library" ? song.id : undefined);
   const youtubeMusicLyrics = useYouTubeMusicLyrics(source === "youtubeMusic" ? song.id : undefined);
@@ -33,7 +41,9 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
   if (isLoading) {
     return (
       <div className={`lyrics ${variant}`} aria-busy="true">
-        {[70, 55, 80, 62].map((w, i) => <div key={i} className="skeleton lyric-skel" style={{ width: `${w}%` }} />)}
+        {[70, 55, 80, 62].map((w, i) => (
+          <div key={i} className="skeleton lyric-skel" style={{ width: `${w}%` }} />
+        ))}
       </div>
     );
   }
@@ -41,7 +51,15 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
     return (
       <div className={`lyrics ${variant} none`}>
         <p className="lyrics-none">No lyrics for this song</p>
-        {variant !== "peek" ? <p className="lyrics-hint">{source === "spotify" ? "Spotify doesn’t share lyrics with other apps." : source === "youtubeMusic" ? "YouTube Music has no lyrics available for this song." : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}</p> : null}
+        {variant !== "peek" ? (
+          <p className="lyrics-hint">
+            {source === "spotify"
+              ? "Spotify doesn’t share lyrics with other apps."
+              : source === "youtubeMusic"
+                ? "YouTube Music has no lyrics available for this song."
+                : "Needle shows the words saved in the song’s file, or in a .lrc file next to it."}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -57,7 +75,11 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
       {variant === "page" ? (
         <p className="lyrics-src">
           <Icon name="mic" size={15} />
-          {source === "youtubeMusic" ? `Lyrics from ${youtubeMusicLyrics.data?.source ?? "YouTube Music"}${synced ? ", timed" : ". These aren’t timed, so they don’t follow along."}` : synced ? "Lyrics, timed, from the song’s file" : "Lyrics from the song’s file. These aren’t timed, so they don’t follow along."}
+          {source === "youtubeMusic"
+            ? `Lyrics from ${youtubeMusicLyrics.data?.source ?? "YouTube Music"}${synced ? ", timed" : ". These aren’t timed, so they don’t follow along."}`
+            : synced
+              ? "Lyrics, timed, from the song’s file"
+              : "Lyrics from the song’s file. These aren’t timed, so they don’t follow along."}
         </p>
       ) : null}
       {shown.map((l, i) => {
@@ -68,7 +90,14 @@ export function LyricsView({ song, variant, limit }: { song: Song; variant: "pag
             key={idx}
             data-line={idx}
             className={`lyric ${state}`}
-            {...(synced && l.start !== undefined ? { role: "button", tabIndex: 0, onClick: () => player.seek((l.start ?? 0) / 1000), onKeyDown: (e) => e.key === "Enter" && player.seek((l.start ?? 0) / 1000) } : {})}
+            {...(synced && l.start !== undefined
+              ? {
+                  role: "button",
+                  tabIndex: 0,
+                  onClick: () => player.seek((l.start ?? 0) / 1000),
+                  onKeyDown: (e) => e.key === "Enter" && player.seek((l.start ?? 0) / 1000),
+                }
+              : {})}
           >
             {l.value || "♪"}
           </p>

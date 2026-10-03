@@ -41,14 +41,17 @@ const SpotifyPlaylist = spotifyPage("SpotifyPlaylistPage");
 const SpotifyAlbum = spotifyPage("SpotifyAlbumPage");
 const SpotifyArtist = spotifyPage("SpotifyArtistPage");
 
-const youtubeMusicPage = (name: "YouTubeMusicLikedPage" | "YouTubeMusicPlaylistPage" | "YouTubeMusicAlbumPage" | "YouTubeMusicArtistPage") =>
-  lazy(() => import("./pages/YouTubeMusic.tsx").then((module) => ({ default: module[name] })));
+const youtubeMusicPage = (
+  name: "YouTubeMusicLikedPage" | "YouTubeMusicPlaylistPage" | "YouTubeMusicAlbumPage" | "YouTubeMusicArtistPage",
+) => lazy(() => import("./pages/YouTubeMusic.tsx").then((module) => ({ default: module[name] })));
 const YouTubeMusicLiked = youtubeMusicPage("YouTubeMusicLikedPage");
 const YouTubeMusicPlaylist = youtubeMusicPage("YouTubeMusicPlaylistPage");
 const YouTubeMusicAlbum = youtubeMusicPage("YouTubeMusicAlbumPage");
 const YouTubeMusicArtist = youtubeMusicPage("YouTubeMusicArtistPage");
 
-const page = (el: React.ReactNode) => <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{el}</Suspense>;
+const page = (el: React.ReactNode) => (
+  <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{el}</Suspense>
+);
 
 const router = createBrowserRouter([
   {
@@ -105,7 +108,11 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {signedIn ? <RouterProvider router={router} /> : <Login />}
-      {details ? <Suspense fallback={null}><SongDetailsDialog /></Suspense> : null}
+      {details ? (
+        <Suspense fallback={null}>
+          <SongDetailsDialog />
+        </Suspense>
+      ) : null}
     </QueryClientProvider>
   );
 }
