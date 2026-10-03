@@ -137,10 +137,13 @@ export function CollectionTools<K extends string, S extends string = string>({
   const showLabel =
     show && show.value !== show.options[0]?.[0] ? show.options.find(([v]) => v === show.value)?.[1] : undefined;
   const label = [showLabel, sortLabel].filter(Boolean).join(", ") || (show?.options[0]?.[1] ?? "");
-  const direction = directed && sorting ? (sorting.order.desc ? ", descending" : ", ascending") : "";
+  const direction =
+    directed && sorting ? `, ${translate(sorting.order.desc ? "sort.descending" : "sort.ascending")}` : "";
   const views = Boolean(view && onView);
   if (!sorting && !views && !show) return null;
-  const icon = viewOptions().find(([collectionView]) => collectionView === view)?.[2] ?? "sort";
+  const selectedView = viewOptions().find(([collectionView]) => collectionView === view);
+  const icon = selectedView?.[2] ?? "sort";
+  const viewLabel = selectedView?.[1] ?? "";
   return (
     <div className="coll-tools">
       <DM.Root modal={false}>
@@ -148,7 +151,7 @@ export function CollectionTools<K extends string, S extends string = string>({
           <button
             type="button"
             className="coll-sort"
-            aria-label={`${translate(show ? "collection.showSort" : "collection.sort")}: ${label}${direction}${views ? `, ${translate("collection.viewAs")} ${view ?? ""}` : ""}`}
+            aria-label={`${translate(show ? "collection.showSort" : "collection.sort")}: ${label}${direction}${views ? `, ${translate("collection.viewAs")} ${viewLabel}` : ""}`}
             data-no-tip
           >
             <span>{label}</span>
