@@ -1,1 +1,0 @@
-- Restrict Needle database and backup files to the server account and refuse symlinked credential storage paths.

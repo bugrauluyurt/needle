@@ -8,6 +8,24 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.10.0 - 2026-10-03
+
+### Added
+- Add a Turkish interface that can be selected manually in Settings and stays selected on that device.
+
+### Changed
+- Protect existing Needle data with versioned SQLite migrations, schema checks and a one-time pre-migration backup.
+
+### Fixed
+- Restore browser zoom, keyboard radio navigation and predictable focus for lyrics and mobile action sheets.
+
+### Security
+- Bind Spotify sign-ins to their browser and protect Navidrome API, media, proxy and remote-device verification with shared brute-force and concurrency limits.
+- Keep credentials, downloads, queues, provider state, pending playback, cover caches and recent searches isolated between signed-in users, including late requests and Spotify devices.
+- Restrict Needle database and backup files to the server account and refuse symlinked credential storage paths.
+- Soulseek downloads use stable directory handles, safely finish identical retries, stay inside the configured download and singles folders, and never overwrite a different file during directory swaps.
+- Update the YouTube Music bridge HTTP stack to close known resource-exhaustion and proxy-isolation vulnerabilities.
+
 ## 1.9.0 - 2026-10-03
 
 ### Added
