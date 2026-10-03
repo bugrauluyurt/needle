@@ -15,7 +15,11 @@ const ARTIST = "UCexample";
 const ALBUM = "MPREexample";
 const SCOPE = "https://www.googleapis.com/auth/youtube";
 const auth = { user: "alex", token: "token", salt: "salt" };
-const headers = { "x-needle-user": auth.user, "x-needle-token": auth.token, "x-needle-salt": auth.salt };
+const headers = {
+  "x-needle-user": auth.user,
+  "x-needle-token": auth.token,
+  "x-needle-salt": auth.salt,
+};
 const databases: Database[] = [];
 const rawSong = {
   videoId: VIDEO,
@@ -120,7 +124,11 @@ describe("YouTube Music metadata", () => {
     });
     expect(songs.items[0]).not.toHaveProperty("starred");
     expect(songs.items[0]).not.toHaveProperty("likeStatus");
-    expect(songs.items[1]).toMatchObject({ isAvailable: false, artist: "Unlinked artist", artists: [] });
+    expect(songs.items[1]).toMatchObject({
+      isAvailable: false,
+      artist: "Unlinked artist",
+      artists: [],
+    });
     expect(songs.items[1]?.coverArt).toBeUndefined();
   });
 
@@ -151,7 +159,11 @@ describe("YouTube Music metadata", () => {
 
     const detail = await youtube.album(auth.user, `ytm:${ALBUM}`);
 
-    expect(detail.album).toMatchObject({ id: `ytm:${ALBUM}`, playlistId: "OLAKexample", year: 2001 });
+    expect(detail.album).toMatchObject({
+      id: `ytm:${ALBUM}`,
+      playlistId: "OLAKexample",
+      year: 2001,
+    });
     expect(detail.songs[0]).toMatchObject({
       albumId: `ytm:${ALBUM}`,
       artist: "Glass Harbor",
@@ -172,7 +184,10 @@ describe("YouTube Music metadata", () => {
           thumbnails: null,
           subscribed: true,
           songs: { results: [rawSong], browseId: "VLPLsongs" },
-          albums: { results: [{ browseId: ALBUM, title: "Tidal Lines" }], params: "more" },
+          albums: {
+            results: [{ browseId: ALBUM, title: "Tidal Lines" }],
+            params: "more",
+          },
         }),
       db,
     );
@@ -200,7 +215,12 @@ describe("YouTube Music metadata", () => {
           { ...rawSong, resultType: "song" },
           { browseId: ALBUM, title: "Tidal Lines", resultType: "album" },
           { browseId: ARTIST, artist: "Glass Harbor", resultType: "artist" },
-          { playlistId: "PLexample", title: "Night music", count: "3", resultType: "playlist" },
+          {
+            playlistId: "PLexample",
+            title: "Night music",
+            count: "3",
+            resultType: "playlist",
+          },
           { ...rawSong, resultType: "video" },
           { ...rawSong, resultType: "podcast" },
         ]),
@@ -212,7 +232,10 @@ describe("YouTube Music metadata", () => {
     expect([result.songs.length, result.albums.length, result.artists.length, result.playlists.length]).toEqual([
       1, 1, 1, 1,
     ]);
-    expect(result.playlists[0]).toMatchObject({ id: "ytm:PLexample", songCount: 3 });
+    expect(result.playlists[0]).toMatchObject({
+      id: "ytm:PLexample",
+      songCount: 3,
+    });
     await expect(youtube.search(auth.user, "x".repeat(201))).rejects.toMatchObject({ status: 400 });
   });
 
@@ -241,9 +264,13 @@ describe("YouTube Music metadata", () => {
     const bridge = vi.fn(() => Promise.resolve({ songs: "invalid" }));
     const youtube = client(bridge, db);
 
-    await expect(youtube.liked(auth.user)).rejects.toMatchObject({ status: 502 });
+    await expect(youtube.liked(auth.user)).rejects.toMatchObject({
+      status: 502,
+    });
     await expect(youtube.radio(auth.user, "https://internal/secret")).rejects.toMatchObject({ status: 400 });
-    await expect(youtube.album(auth.user, "../private")).rejects.toMatchObject({ status: 400 });
+    await expect(youtube.album(auth.user, "../private")).rejects.toMatchObject({
+      status: 400,
+    });
     expect(bridge).toHaveBeenCalledTimes(1);
   });
 
@@ -252,17 +279,29 @@ describe("YouTube Music metadata", () => {
     seed(db);
     seed(db, "sam", { enabled: false });
     const bridge = vi.fn((request: YouTubeMusicBridgeRequest) =>
-      Promise.resolve({ accountName: request.token?.access_token, channelHandle: null, accountPhotoUrl: null }),
+      Promise.resolve({
+        accountName: request.token?.access_token,
+        channelHandle: null,
+        accountPhotoUrl: null,
+      }),
     );
     const youtube = client(bridge, db);
 
     expect((await youtube.account("alex")).name).toBe("alex-access");
-    await expect(youtube.account("sam")).rejects.toMatchObject({ status: 409, code: "disabled" });
-    await expect(youtube.account("stranger")).rejects.toMatchObject({ status: 409, code: "not_connected" });
+    await expect(youtube.account("sam")).rejects.toMatchObject({
+      status: 409,
+      code: "disabled",
+    });
+    await expect(youtube.account("stranger")).rejects.toMatchObject({
+      status: 409,
+      code: "not_connected",
+    });
     youtube.setEnabled("sam", true);
     expect((await youtube.account("sam")).name).toBe("sam-access");
     youtube.disconnect("alex");
-    await expect(youtube.account("alex")).rejects.toMatchObject({ status: 409 });
+    await expect(youtube.account("alex")).rejects.toMatchObject({
+      status: 409,
+    });
     expect(bridge).toHaveBeenCalledTimes(2);
     expect(youtube.connected("sam")).toBe(true);
   });
@@ -306,9 +345,17 @@ describe("YouTube Music OAuth", () => {
     seed(db, auth.user, { expiresAt: Date.now() - 1 });
 
     const youtube = client(() => Promise.resolve({ accountName: "Needle listener" }), db);
-    providerFetch(() => Response.json({ access_token: "refreshed-access", expires_in: 3600, scope: grantedScopes }));
+    providerFetch(() =>
+      Response.json({
+        access_token: "refreshed-access",
+        expires_in: 3600,
+        scope: grantedScopes,
+      }),
+    );
 
-    await expect(youtube.account(auth.user)).resolves.toMatchObject({ name: "Needle listener" });
+    await expect(youtube.account(auth.user)).resolves.toMatchObject({
+      name: "Needle listener",
+    });
     expect(db.prepare("SELECT scope FROM youtube_music_tokens WHERE user = ?").get(auth.user)).toEqual({
       scope: grantedScopes,
     });
@@ -321,7 +368,13 @@ describe("YouTube Music OAuth", () => {
       seed(db, auth.user, { expiresAt: Date.now() - 1 });
 
       const youtube = client(() => Promise.resolve({ accountName: "Needle listener" }), db);
-      providerFetch(() => Response.json({ access_token: "refreshed-access", expires_in: 3600, scope: grantedScopes }));
+      providerFetch(() =>
+        Response.json({
+          access_token: "refreshed-access",
+          expires_in: 3600,
+          scope: grantedScopes,
+        }),
+      );
 
       await expect(youtube.account(auth.user)).rejects.toMatchObject({
         status: 502,
@@ -352,19 +405,32 @@ describe("YouTube Music OAuth", () => {
 
       return polls === 1
         ? Response.json({ error: "slow_down" }, { status: 400 })
-        : Response.json({ access_token: "access", refresh_token: "refresh", expires_in: 3600, scope: SCOPE });
+        : Response.json({
+            access_token: "access",
+            refresh_token: "refresh",
+            expires_in: 3600,
+            scope: SCOPE,
+          });
     });
 
     const login = await youtube.login(auth.user);
     expect(login).toMatchObject({ userCode: "ABCD-EFGH", interval: 5 });
     expect(login).not.toHaveProperty("device_code");
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "pending", retryAfter: 5 });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "pending",
+      retryAfter: 5,
+    });
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "pending", retryAfter: 10 });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "pending",
+      retryAfter: 10,
+    });
     await youtube.loginStatus(auth.user);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(10_000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "connected" });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "connected",
+    });
     expect(youtube.connected(auth.user)).toBe(true);
     expect(youtube.connected("sam")).toBe(false);
     expect(youtube.enabled(auth.user)).toBe(true);
@@ -410,7 +476,9 @@ describe("YouTube Music OAuth", () => {
       });
     }
 
-    await expect(youtube.login(auth.user)).rejects.toMatchObject({ status: 429 });
+    await expect(youtube.login(auth.user)).rejects.toMatchObject({
+      status: 429,
+    });
   });
 
   it("refreshes once for concurrent calls and requests reconnect without signing out Navidrome", async () => {
@@ -418,7 +486,13 @@ describe("YouTube Music OAuth", () => {
     seed(db, auth.user, { expiresAt: Date.now() - 1 });
     const youtube = client(() => Promise.resolve({ tracks: [] }), db);
     const fetchMock = providerFetch(() =>
-      Response.json({ error: "invalid_grant", error_description: "do not expose refresh token" }, { status: 400 }),
+      Response.json(
+        {
+          error: "invalid_grant",
+          error_description: "do not expose refresh token",
+        },
+        { status: 400 },
+      ),
     );
 
     const results = await Promise.allSettled([youtube.liked(auth.user), youtube.liked(auth.user)]);
@@ -458,14 +532,21 @@ describe("YouTube Music OAuth", () => {
             verification_url: "https://www.google.com/device",
             expires_in: 900,
           })
-        : Response.json({ access_token: "new-account", refresh_token: "new-refresh", expires_in: 3600, scope: SCOPE }),
+        : Response.json({
+            access_token: "new-account",
+            refresh_token: "new-refresh",
+            expires_in: 3600,
+            scope: SCOPE,
+          }),
     );
 
     const oldAccount = youtube.account(auth.user);
     await Promise.resolve();
     await youtube.login(auth.user);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "connected" });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "connected",
+    });
     expect((await youtube.account(auth.user)).name).toBe("new-account");
     resolveAccount({ accountName: "previous-account" });
 
@@ -506,13 +587,24 @@ describe("YouTube Music OAuth", () => {
     await Promise.resolve();
     await youtube.login(auth.user);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "connected" });
-    resolveRefresh(Response.json({ access_token: "old-refreshed-access", expires_in: 3600, scope: SCOPE }));
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "connected",
+    });
+    resolveRefresh(
+      Response.json({
+        access_token: "old-refreshed-access",
+        expires_in: 3600,
+        scope: SCOPE,
+      }),
+    );
 
     await expect(oldAccount).rejects.toMatchObject({ status: 409 });
     expect(
       db.prepare("SELECT access_token, refresh_token FROM youtube_music_tokens WHERE user = ?").get(auth.user),
-    ).toMatchObject({ access_token: "new-account", refresh_token: "new-refresh" });
+    ).toMatchObject({
+      access_token: "new-account",
+      refresh_token: "new-refresh",
+    });
   });
 
   it("cannot return captured stale metadata after its account is replaced", async () => {
@@ -538,7 +630,12 @@ describe("YouTube Music OAuth", () => {
             verification_url: "https://www.google.com/device",
             expires_in: 900,
           })
-        : Response.json({ access_token: "new-account", refresh_token: "new-refresh", expires_in: 3600, scope: SCOPE }),
+        : Response.json({
+            access_token: "new-account",
+            refresh_token: "new-refresh",
+            expires_in: 3600,
+            scope: SCOPE,
+          }),
     );
 
     expect((await youtube.account(auth.user)).name).toBe("alex-access");
@@ -547,7 +644,9 @@ describe("YouTube Music OAuth", () => {
     await Promise.resolve();
     await youtube.login(auth.user);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "connected" });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "connected",
+    });
     rejectAccount(new YouTubeMusicError(502, "The old account's bridge was terminated"));
 
     await expect(staleAccount).rejects.toMatchObject({ status: 409 });
@@ -591,14 +690,21 @@ describe("YouTube Music OAuth", () => {
             verification_url: "https://www.google.com/device",
             expires_in: 900,
           })
-        : Response.json({ access_token: "new-account", refresh_token: "new-refresh", expires_in: 3600, scope: SCOPE }),
+        : Response.json({
+            access_token: "new-account",
+            refresh_token: "new-refresh",
+            expires_in: 3600,
+            scope: SCOPE,
+          }),
     );
 
     const importPlaylist = youtube.import(auth, "liked");
     await matcherRequested;
     await youtube.login(auth.user);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await youtube.loginStatus(auth.user)).toEqual({ state: "connected" });
+    expect(await youtube.loginStatus(auth.user)).toEqual({
+      state: "connected",
+    });
     resolveMatcher({
       byMbid: new Map(),
       byKey: new Map([
@@ -613,7 +719,9 @@ describe("YouTube Music OAuth", () => {
 
 describe("YouTube Music streaming", () => {
   const streamRequest = (range?: string) =>
-    new Request("http://needle.test/youtube-music/stream/abcdefghijk", { headers: range ? { range } : {} });
+    new Request("http://needle.test/youtube-music/stream/abcdefghijk", {
+      headers: range ? { range } : {},
+    });
   const resolution = () => ({
     url: `https://rr1.googlevideo.com/videoplayback?expire=${Math.floor(Date.now() / 1000) + 3600}`,
     ext: "m4a",
@@ -703,7 +811,13 @@ describe("YouTube Music streaming", () => {
     const db = database();
     seed(db);
     const youtube = client(() => Promise.resolve(resolution()), db);
-    providerFetch(() => new Response(null, { status: 416, headers: { "content-range": "bytes */1234" } }));
+    providerFetch(
+      () =>
+        new Response(null, {
+          status: 416,
+          headers: { "content-range": "bytes */1234" },
+        }),
+    );
 
     const response = await youtube.stream(auth.user, VIDEO, streamRequest("bytes=9999-"));
 
@@ -718,7 +832,11 @@ describe("YouTube Music streaming", () => {
     seed(db);
     const youtube = client(() => Promise.resolve(resolution()), db);
     providerFetch(
-      () => new Response("error", { status: 416, headers: { "content-range": "bytes */1234", "content-length": "5" } }),
+      () =>
+        new Response("error", {
+          status: 416,
+          headers: { "content-range": "bytes */1234", "content-length": "5" },
+        }),
     );
 
     const response = await youtube.stream(auth.user, VIDEO, streamRequest("bytes=9999-"));
@@ -766,7 +884,10 @@ describe("YouTube Music streaming", () => {
     const bridge = vi.fn(() => Promise.resolve(resolution()));
     const youtube = client(bridge, db);
     const fetchMock = providerFetch(
-      () => new Response("<html>Provider error</html>", { headers: { "content-type": "text/html" } }),
+      () =>
+        new Response("<html>Provider error</html>", {
+          headers: { "content-type": "text/html" },
+        }),
     );
 
     await expect(youtube.stream(auth.user, VIDEO, streamRequest())).rejects.toMatchObject({
@@ -837,7 +958,11 @@ describe("YouTube Music permissions and routes", () => {
     );
     const app = createApp(
       loadConfig({
-        youtubeMusic: { clientId: "client", clientSecret: "secret", python: "missing-python" },
+        youtubeMusic: {
+          clientId: "client",
+          clientSecret: "secret",
+          python: "missing-python",
+        },
         navidromeUrl: "http://navidrome.test",
         dataDir: ":memory:",
         webDist: "/nonexistent",
@@ -847,21 +972,33 @@ describe("YouTube Music permissions and routes", () => {
 
     expect((await app.request("/api/youtube-music/account")).status).toBe(401);
     expect(
-      (await app.request("/api/youtube-music/account", { headers: { ...headers, "x-needle-user": "sam" } })).status,
-    ).toBe(403);
-    const response = await app.request("/api/youtube-music/account", { headers });
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ code: "auth_reconnect" });
-    expect(
       (
-        await app.request("/api/youtube-music/enabled", {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ on: "false" }),
+        await app.request("/api/youtube-music/account", {
+          headers: { ...headers, "x-needle-user": "sam" },
         })
       ).status,
-    ).toBe(400);
-    expect((await app.request("/api/youtube-music/liked?limit=90000", { headers })).status).toBe(400);
+    ).toBe(403);
+    const response = await app.request("/api/youtube-music/account", {
+      headers,
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "auth_reconnect" });
+    const invalidMutation = await app.request("/api/youtube-music/enabled", {
+      method: "PUT",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ on: "false" }),
+    });
+    const invalidLimit = await app.request("/api/youtube-music/liked?limit=90000", { headers });
+
+    expect(invalidMutation.status).toBe(400);
+    expect(await invalidMutation.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(invalidLimit.status).toBe(400);
+    expect(await invalidLimit.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect((await app.request("/youtube-music/stream/bad?u=alex&t=token&s=salt")).status).toBe(400);
     expect((await app.request(`/youtube-music/stream/${VIDEO}?u=sam&t=token&s=salt`)).status).toBe(403);
     expect((await app.request("/api/youtube-music", { method: "DELETE", headers })).status).toBe(204);
     expect(db.prepare("SELECT * FROM youtube_music_tokens WHERE user = 'alex'").get()).toBeUndefined();
@@ -879,6 +1016,9 @@ describe("YouTube Music permissions and routes", () => {
       library: new LibrarySearch(navidrome),
     });
 
-    await expect(youtube.health("metadata")).rejects.toMatchObject({ status: 503, code: "runtime_missing" });
+    await expect(youtube.health("metadata")).rejects.toMatchObject({
+      status: 503,
+      code: "runtime_missing",
+    });
   });
 });
