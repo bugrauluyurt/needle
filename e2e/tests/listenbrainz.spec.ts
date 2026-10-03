@@ -1,22 +1,10 @@
-import { createHash } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { AUTH_HEADERS } from "@needle/shared";
-import type { RequestItem, SongCandidate } from "@needle/shared";
 import { expect, test } from "@playwright/test";
-import { LB_TOKEN, LB_USER, UNDERTOW_MBID } from "../fixtures/listenbrainz.ts";
+import { LB_TOKEN, LB_USER } from "../fixtures/listenbrainz.ts";
 import { bar, PASSWORD, signIn, USER } from "./helpers.ts";
 
 const NAVIDROME = "http://127.0.0.1:14533";
-const NEEDLE = "http://127.0.0.1:14536";
-const CLEANUP_SALT = "listenbrainz-cleanup";
-const CLEANUP_AUTH_HEADERS = {
-  [AUTH_HEADERS.user]: USER,
-  [AUTH_HEADERS.token]: createHash("md5")
-    .update(PASSWORD + CLEANUP_SALT)
-    .digest("hex"),
-  [AUTH_HEADERS.salt]: CLEANUP_SALT,
-};
 
 function navidromeUrl(method: string, parameters: Record<string, string> = {}): string {
   return `${NAVIDROME}/rest/${method}.view?${new URLSearchParams({
@@ -29,40 +17,29 @@ function navidromeUrl(method: string, parameters: Record<string, string> = {}): 
   })}`;
 }
 
-async function undertowCanBeRequested(): Promise<boolean> {
-  const response = await fetch(`${NEEDLE}/api/songs/search?q=undertow`, { headers: CLEANUP_AUTH_HEADERS });
-  if (!response.ok) return false;
+test.afterEach(async ({ page }) => {
+  await page.goto("/requests");
+  const undertowRequestRow = page.locator(".requests-page > .req-list .req-row", { hasText: "Undertow" });
+  await expect(undertowRequestRow).toBeVisible();
 
-  const candidates = (await response.json()) as SongCandidate[];
-
-  return candidates.some(
-    (songCandidate) => songCandidate.title === "Undertow" && songCandidate.artist === "Glass Harbor",
+  const removalResponse = page.waitForResponse(
+    (response) => response.request().method() === "DELETE" && /\/api\/requests\/\d+$/u.test(response.url()),
   );
-}
-
-async function getUndertowRequest(): Promise<RequestItem | undefined> {
-  const response = await fetch(`${NEEDLE}/api/requests`, { headers: CLEANUP_AUTH_HEADERS });
-  if (!response.ok) return undefined;
-
-  const requestItems = (await response.json()) as RequestItem[];
-
-  return requestItems.find((requestItem) => requestItem.kind === "song" && requestItem.ref === UNDERTOW_MBID);
-}
-
-test.afterEach(async () => {
-  const undertowRequest = await getUndertowRequest();
-  if (undertowRequest) {
-    await fetch(`${NEEDLE}/api/requests/${undertowRequest.id}`, {
-      method: "DELETE",
-      headers: CLEANUP_AUTH_HEADERS,
-    });
-  }
-
-  await expect.poll(getUndertowRequest, { timeout: 5_000 }).toBeUndefined();
+  await undertowRequestRow.getByRole("button", { name: "Remove Undertow from this list" }).click();
+  expect((await removalResponse).ok()).toBe(true);
+  await expect(undertowRequestRow).toHaveCount(0);
 
   await rm(join(import.meta.dirname, "../.singles/Glass Harbor/Glass Harbor - Undertow.flac"), { force: true });
   await fetch(navidromeUrl("startScan", { fullScan: "true" }));
-  await expect.poll(undertowCanBeRequested, { timeout: 20_000 }).toBe(true);
+
+  await page.goto("/search?q=undertow");
+  await page
+    .getByRole("group", { name: "Filter results" })
+    .getByRole("button", { name: "Get music", exact: true })
+    .click();
+  await expect(
+    page.locator(".get-card", { hasText: "Undertow" }).getByRole("button", { name: "Get song" }),
+  ).toBeVisible({ timeout: 20_000 });
 });
 
 test("connects ListenBrainz, opens its weekly playlist, fetches the missing song and saves it", async ({ page }) => {
