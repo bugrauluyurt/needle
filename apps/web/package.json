@@ -16,8 +16,10 @@
     "@radix-ui/react-popover": "^1.1.23",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-virtual": "^3.14.13",
+    "i18next": "26.4.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-i18next": "17.0.15",
     "react-router": "^8.4.0",
     "zustand": "^5.0.15"
   },
