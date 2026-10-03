@@ -246,16 +246,6 @@ export function useYouTubeMusicLyrics(id: string | undefined) {
   });
 }
 
-export function useYouTubeMusicRadio(id: string | undefined) {
-  const enabled = useYouTubeMusicRequestsAllowed();
-
-  return useQuery({
-    queryKey: ["ytm", "radio", id, currentUser()],
-    queryFn: () => ytm.radio(id ?? ""),
-    enabled: enabled && Boolean(id),
-  });
-}
-
 function useLibraryMutation<T extends { id: string }>(
   queryKey: readonly string[],
   update: (item: T, on: boolean) => Promise<void>,

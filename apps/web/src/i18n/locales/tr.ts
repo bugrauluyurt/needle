@@ -15,7 +15,6 @@ export const turkish = {
   "common.clear": "Temizle",
   "common.connect": "Bağlan",
   "common.continueHere": "Bu cihazda devam et",
-  "common.delete": "Sil",
   "common.downloads": "İndirilenler",
   "common.edit": "Düzenle",
   "common.goBack": "Geri git",
@@ -335,7 +334,6 @@ export const turkish = {
   "player.label": "Oynatıcı",
   "player.liveRadio": "Canlı radyo",
   "player.lyrics": "Şarkı sözleri",
-  "player.more": "Daha fazla",
   "player.mute": "Sesi kapat",
   "player.next": "Sonraki",
   "player.nothingPlaying": "Çalan bir şey yok",
@@ -569,7 +567,6 @@ export const turkish = {
   "settings.reconnect": "Yeniden bağlan",
   "settings.remove": "Kaldır",
   "settings.removeAll": "Tümünü kaldır",
-  "settings.requestMusicShort": "Müzik iste",
   "settings.saving": "Kaydediliyor…",
   "settings.spotifyConnected": "Spotify bağlı",
   "settings.spotifyConfigHint":
@@ -968,7 +965,6 @@ export const turkish = {
   "discovery.saveFailed": "Çalma listesi kaydedilemedi",
   "discovery.skippedDetail": "; {{count}} sonraki sefere kaldı",
   "discovery.soulseekHint": "Seçtiğiniz şarkıları Soulseek sağlar. Hazır olduklarında arşivinizde görünürler.",
-  "home.artistPlays": "{{plays}}",
   "library.albumsHint":
     "Arşivinizdeki ve Spotify'da kaydettiğiniz albümler burada görünür. Arama'dan daha fazlasını alın.",
   "library.artistsHint": "Arşivinizdeki ve Spotify'da takip ettiğiniz sanatçılar burada görünür.",

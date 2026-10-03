@@ -8,7 +8,7 @@ import { Icon } from "../../../components/Icon.tsx";
 import { SearchField } from "../../../components/SearchField.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
 import { ago, longDuration, plain, plural } from "../../../lib/format.ts";
-import { AS_GIVEN, shownSongs, songSorts } from "../../../lib/songs.ts";
+import { AS_GIVEN, shownSongs, songSorts, totalSongDuration } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { useTone } from "../../../lib/tone.ts";
 import { image, spId, spotifyLink } from "../api/client.ts";
@@ -17,7 +17,7 @@ import { player } from "../../../player/controller.ts";
 import type { PlayContext } from "../../../player/store.ts";
 import { useSpotifyOn, useSpotifyPlaylist, useSpotifyPlaylistEdits, useSpotifyPlaylists } from "../hooks/useSpotify.ts";
 import { translate } from "../../../i18n/index.ts";
-import { duration, NotConnected, OpenInSpotify, SpotifyError } from "./SpotifyRouteState.tsx";
+import { NotConnected, OpenInSpotify, SpotifyError } from "./SpotifyRouteState.tsx";
 
 export function SpotifyPlaylistPage() {
   const { id = "" } = useParams();
@@ -54,7 +54,7 @@ export function SpotifyPlaylistPage() {
             <b>{meta.owner.display_name ?? meta.owner.id}</b>
             <span>
               {plural(total, "song")}
-              {songs?.length ? `, ${longDuration(duration(songs))}` : ""}
+              {songs?.length ? `, ${longDuration(totalSongDuration(songs))}` : ""}
             </span>
           </>
         }

@@ -17,7 +17,7 @@ import {
   spotifyPlaylistItem,
 } from "../../spotify/components/SpotifyCards.tsx";
 import { useSpotifyPlaylists, useSpotifySearch, useSpotifySearchCategory } from "../../spotify/hooks/useSpotify.ts";
-import { SPOTIFY_SEARCH_KINDS } from "../constants/search.ts";
+import { SEARCH_KINDS } from "../constants/search.ts";
 
 type SpotifySearchSourceProps = {
   filter: Filter;
@@ -32,7 +32,7 @@ export function SpotifySearchSource({ q, filter, setFilter, onShowAll }: Spotify
   const search = useSpotifySearch(debouncedQuery);
   const { isError } = search;
   const data = blocked && search.isPlaceholderData ? undefined : search.data;
-  const category = filter !== "All" && filter !== "Get music" ? SPOTIFY_SEARCH_KINDS[filter] : undefined;
+  const category = filter !== "All" && filter !== "Get music" ? SEARCH_KINDS[filter] : undefined;
   const pagination = useSpotifySearchCategory(debouncedQuery, category, search.isPlaceholderData ? undefined : data);
   const { data: ownPlaylists = [] } = useSpotifyPlaylists();
   const resultPages = pagination.data?.pages;

@@ -6,7 +6,6 @@ import type { TranslationKey } from "./locales/en.ts";
 import { turkish } from "./locales/tr.ts";
 
 type TranslationValues = Record<string, number | string>;
-type Translate = (key: TranslationKey, values?: TranslationValues) => string;
 
 const resources = {
   en: { translation: english },
@@ -23,8 +22,6 @@ void i18next.use(initReactI18next).init({
   resources,
 });
 
-const translateValue = i18next.t.bind(i18next) as Translate;
-
 function applyDocumentLanguage(language: Language) {
   if (typeof document === "undefined" || !document.documentElement) return;
 
@@ -40,7 +37,7 @@ function applyDocumentLanguage(language: Language) {
 }
 
 export function translate(key: TranslationKey, values: TranslationValues = {}): string {
-  return translateValue(key, values);
+  return i18next.t(key, values);
 }
 
 export async function changeLanguage(language: Language): Promise<void> {

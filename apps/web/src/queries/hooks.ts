@@ -7,19 +7,47 @@ import { api } from "../lib/api.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
 import { toast } from "../state/ui.ts";
+import { useSession } from "../state/session.ts";
 import { keys } from "./keys.ts";
 import { queryClient } from "./client.ts";
 import { translate } from "../i18n/index.ts";
-import { useCapabilities } from "../features/settings/hooks/useSettingsQueries.ts";
 
-export {
-  useCanRequest,
-  useCapabilities,
-  useIsAdmin,
-  useMe,
-  usePeople,
-  useStorageEstimate,
-} from "../features/settings/hooks/useSettingsQueries.ts";
+export const useStorageEstimate = () =>
+  useQuery({
+    queryKey: keys.storage,
+    queryFn: async () => (await navigator.storage?.estimate?.()) ?? null,
+    staleTime: 60_000,
+  });
+
+export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: HOUR_MS });
+
+export const usePeople = (enabled: boolean) => useQuery({ queryKey: keys.people, queryFn: api.people, enabled });
+
+export const useCapabilities = () =>
+  useQuery({
+    queryKey: keys.capabilities,
+    queryFn: api.capabilities,
+    staleTime: 5 * 60_000,
+  });
+
+export function useCanRequest(): boolean {
+  const capabilities = useCapabilities().data;
+
+  return capabilities ? capabilities.lidarr || capabilities.songs : false;
+}
+
+export function useIsAdmin(): boolean {
+  const user = useSession((sessionState) => sessionState.credentials?.user ?? "");
+
+  return (
+    useQuery({
+      queryKey: keys.user(user),
+      queryFn: () => sub.user(user),
+      enabled: Boolean(user),
+      staleTime: HOUR_MS,
+    }).data?.adminRole ?? false
+  );
+}
 
 export const useAlbum = (id: string | undefined) =>
   useQuery({
@@ -177,11 +205,6 @@ async function allAlbums(): Promise<Album[]> {
 
 export const useAllAlbums = () => useQuery({ queryKey: keys.allAlbums, queryFn: allAlbums, staleTime: 60_000 });
 
-export function useArtistCover(id: string | undefined): string | undefined {
-  const { data } = useArtists();
-  return id ? data?.find((a) => a.id === id)?.coverArt : undefined;
-}
-
 const navidromeId = (id: string | undefined) => Boolean(id) && musicSource(id) === "library";
 
 export const useArtistInfo = (id: string | undefined) =>
@@ -189,14 +212,6 @@ export const useArtistInfo = (id: string | undefined) =>
     queryKey: keys.artistInfo(id ?? ""),
     queryFn: () => sub.artistInfo(id ?? "", 12, true),
     enabled: navidromeId(id),
-    staleTime: HOUR_MS,
-  });
-
-export const useTopSongs = (name: string | undefined) =>
-  useQuery({
-    queryKey: keys.topSongs(name ?? ""),
-    queryFn: () => sub.topSongs(name ?? "", 10),
-    enabled: Boolean(name),
     staleTime: HOUR_MS,
   });
 
@@ -212,13 +227,6 @@ export const usePlaylist = (id: string | undefined) =>
 export const useStarred = () => useQuery({ queryKey: keys.starred, queryFn: sub.starred, staleTime: 60_000 });
 
 export const useGenres = () => useQuery(genresOptions);
-
-export const useGenreSongs = (genre: string | undefined) =>
-  useQuery({
-    queryKey: keys.genreSongs(genre ?? ""),
-    queryFn: () => sub.songsByGenre(genre ?? "", 500),
-    enabled: Boolean(genre),
-  });
 
 const SEARCH_FRESH_MS = 5_000;
 

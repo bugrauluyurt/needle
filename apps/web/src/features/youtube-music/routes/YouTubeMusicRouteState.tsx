@@ -11,9 +11,6 @@ import { useCapabilities } from "../../../queries/hooks.ts";
 import { useYouTubeMusicOn } from "../hooks/useYouTubeMusic.ts";
 import { translate } from "../../../i18n/index.ts";
 
-export const totalDuration = (songs: Song[]) =>
-  songs.reduce((durationSeconds, song) => durationSeconds + (song.duration ?? 0), 0);
-
 export const EMPTY_SONGS: Song[] = [];
 
 export const youtubeMusicSorts = () =>

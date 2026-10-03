@@ -1,4 +1,3 @@
-import type { Song } from "@needle/shared";
 import { Link } from "react-router";
 import { Icon } from "../../../components/Icon.tsx";
 import { localeCode } from "../../../lib/format.ts";
@@ -7,9 +6,6 @@ import { MobileBack } from "../../../layout/Mobile.tsx";
 import { TopBar } from "../../../layout/TopBar.tsx";
 import { spotifyLink, useSpotifyStatus } from "../api/client.ts";
 import { translate } from "../../../i18n/index.ts";
-
-export const duration = (songs: Song[]) =>
-  songs.reduce((durationSeconds, song) => durationSeconds + (song.duration ?? 0), 0);
 
 export function OpenInSpotify({ kind, id }: { kind: "album" | "artist" | "playlist"; id: string }) {
   return (

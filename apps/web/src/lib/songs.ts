@@ -11,6 +11,9 @@ export type SongOrder = Order<SongSort>;
 export const AS_GIVEN: SongOrder = { key: "custom", desc: false };
 export const RECENT_FIRST: SongOrder = naturalOrder("added");
 
+export const totalSongDuration = (songs: Song[]) =>
+  songs.reduce((durationSeconds, song) => durationSeconds + (song.duration ?? 0), 0);
+
 export const songSorts = (): [SongSort, string][] => [
   ["custom", translate("sort.custom")],
   ["added", translate("sort.dateAdded")],
