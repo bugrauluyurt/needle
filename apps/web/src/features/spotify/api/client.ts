@@ -300,6 +300,9 @@ async function req<T>(path: string, init: RequestInit = {}, retry = true): Promi
     );
   }
   const text = await res.text();
+
+  if (!accountContextIsCurrent(requestAccount)) throw new SpotifyApiError(401, translate("spotify.signInRefused"));
+
   return (text ? JSON.parse(text) : undefined) as T;
 }
 

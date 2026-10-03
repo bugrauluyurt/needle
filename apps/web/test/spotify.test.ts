@@ -166,6 +166,39 @@ describe("Spotify account isolation", () => {
     await expect(pendingAliceToken).rejects.toMatchObject({ status: 401 });
     await expect(spotify.spotifyToken()).resolves.toBe("bob-token");
   });
+
+  it("rejects a successful response body that finishes after switching accounts", async () => {
+    let resolveAliceBody: (body: string) => void = () => undefined;
+    let markBodyRead: () => void = () => undefined;
+    const bodyRead = new Promise<void>((resolve) => {
+      markBodyRead = resolve;
+    });
+    const aliceBody = new Promise<string>((resolve) => {
+      resolveAliceBody = resolve;
+    });
+    const response = {
+      headers: new Headers(),
+      ok: true,
+      status: 200,
+      text: () => {
+        markBodyRead();
+
+        return aliceBody;
+      },
+    } as Response;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    const spotify = await import("../src/features/spotify/api/client.ts");
+    spotify.activateSpotifyAccount("Alice");
+    const aliceRequest = spotify.sp.me();
+
+    await bodyRead;
+    spotify.clearSpotifyClient();
+    spotify.activateSpotifyAccount("Bob");
+    resolveAliceBody(JSON.stringify({ id: "alice" }));
+
+    await expect(aliceRequest).rejects.toMatchObject({ status: 401 });
+  });
 });
 
 describe("Spotify cooldown", () => {
