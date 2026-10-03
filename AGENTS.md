@@ -43,7 +43,8 @@ runs and another person's approval; maintainers merge their own through the admi
   most 72 characters, lowercase, imperative); the body says why. `CONTRIBUTING.md` has the
   types and scopes, and `.githooks/commit-msg` checks them
   (`git config core.hooksPath .githooks`).
-- `type`, never `interface`; never `any`; `??` over `||`.
+- Prefer `type`. Use `interface` only when declaration merging requires it. Never
+  use `any`; prefer `??` over `||` when nullish fallback is intended.
 - Relative imports only (no `~/` or `@/` aliases). Other packages by name
   (`@needle/shared`).
 - No comments unless something is genuinely non-obvious.
