@@ -1,0 +1,1 @@
+- Protect existing Needle data with versioned SQLite migrations, schema checks and a one-time pre-migration backup.
