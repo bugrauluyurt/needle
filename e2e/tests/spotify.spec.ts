@@ -350,11 +350,10 @@ test("resumes search automatically after a persisted cooldown expires", async ({
   page.on("request", (request) => {
     if (request.url().startsWith("https://api.spotify.com/v1/search")) searches += 1;
   });
-  await signIn(page);
-  await page.evaluate((accountUser) => {
+  await page.addInitScript((accountUser) => {
     localStorage.setItem(`needle.spotifyBlockedUntil.${encodeURIComponent(accountUser)}`, String(Date.now() + 60_000));
   }, USER);
-  await page.goto("/search?q=glass");
+  await signIn(page, "/search?q=glass");
   await expect(page.getByRole("status", { name: "Spotify status" })).toBeVisible();
   await expect(page.getByRole("region", { name: "On Spotify", exact: true })).toContainText("Search will resume");
   expect(searches).toBe(0);
