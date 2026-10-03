@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App, AppEnv } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
-import { validate } from "../http/validation.ts";
+import { jsonBodyLimit, validate } from "../http/validation.ts";
 import { YouTubeMusic } from "../youtube-music.ts";
 
 const youtubeMusicPermissionMessage = "Ask an admin to let you use YouTube Music in Needle";
@@ -69,7 +69,7 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
     return context.body(null, 204);
   });
 
-  app.put("/api/youtube-music/enabled", validate("json", toggleBodySchema), (context) => {
+  app.put("/api/youtube-music/enabled", jsonBodyLimit, validate("json", toggleBodySchema), (context) => {
     context.get("youtubeMusic").setEnabled(context.get("auth").user, context.req.valid("json").on);
 
     return context.body(null, 204);
@@ -181,6 +181,7 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
   app.put(
     "/api/youtube-music/songs/:id/like",
     validate("param", providerIdParamsSchema),
+    jsonBodyLimit,
     validate("json", toggleBodySchema),
     async (context) => {
       await context
@@ -194,6 +195,7 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
   app.put(
     "/api/youtube-music/albums/:id/saved",
     validate("param", providerIdParamsSchema),
+    jsonBodyLimit,
     validate("json", toggleBodySchema),
     async (context) => {
       await context
@@ -207,6 +209,7 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
   app.put(
     "/api/youtube-music/artists/:id/follow",
     validate("param", providerIdParamsSchema),
+    jsonBodyLimit,
     validate("json", toggleBodySchema),
     async (context) => {
       await context
@@ -217,7 +220,7 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
     },
   );
 
-  app.post("/api/youtube-music/import", validate("json", importBodySchema), async (context) => {
+  app.post("/api/youtube-music/import", jsonBodyLimit, validate("json", importBodySchema), async (context) => {
     return context.json(
       await context.get("youtubeMusic").import(context.get("auth"), context.req.valid("json").source),
     );

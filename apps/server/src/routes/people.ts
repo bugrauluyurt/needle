@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
-import { validate } from "../http/validation.ts";
+import { jsonBodyLimit, validate } from "../http/validation.ts";
 import type { People } from "../people.ts";
 
 const personParamsSchema = z.object({
@@ -29,6 +29,7 @@ export function registerPeopleRoutes(app: App, { authorization, people }: People
     "/api/people/:user",
     authorization.requireAdmin("Only Navidrome admins can change people"),
     validate("param", personParamsSchema),
+    jsonBodyLimit,
     validate("json", personPatchSchema),
     (context) => {
       const { user } = context.req.valid("param");
