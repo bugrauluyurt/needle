@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
+import type * as FileSystem from "node:fs";
 import { chmod, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,12 +9,55 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDatabase, openDatabaseWithBackup } from "../src/db/database.ts";
 
-const { TEMPORARY_BACKUP_ID, temporaryBackupModes } = vi.hoisted(() => ({
+const { TEMPORARY_BACKUP_ID, temporaryBackupModes, vanishingDatabaseFiles } = vi.hoisted(() => ({
   TEMPORARY_BACKUP_ID: "00000000-0000-4000-8000-000000000000",
   temporaryBackupModes: [] as number[],
+  vanishingDatabaseFiles: new Set<string>(),
 }));
 
 vi.mock("node:crypto", () => ({ randomUUID: () => TEMPORARY_BACKUP_ID }));
+vi.mock("node:fs", async (importOriginal) => {
+  const fileSystem = await importOriginal<typeof FileSystem>();
+  const missingFileError = (filePath: string): NodeJS.ErrnoException => {
+    const error = new Error(`ENOENT: no such file or directory, chmod '${filePath}'`) as NodeJS.ErrnoException;
+    error.code = "ENOENT";
+    error.path = filePath;
+
+    return error;
+  };
+
+  return {
+    ...fileSystem,
+    chmodSync: (...chmodArguments: Parameters<typeof fileSystem.chmodSync>) => {
+      const [filePath] = chmodArguments;
+
+      if (typeof filePath === "string" && vanishingDatabaseFiles.delete(filePath)) {
+        fileSystem.unlinkSync(filePath);
+
+        throw missingFileError(filePath);
+      }
+
+      return fileSystem.chmodSync(...chmodArguments);
+    },
+    openSync: (...openArguments: Parameters<typeof fileSystem.openSync>) => {
+      const [filePath, flags] = openArguments;
+
+      if (
+        typeof filePath === "string" &&
+        typeof flags === "number" &&
+        (flags & fileSystem.constants.O_NOFOLLOW) !== 0 &&
+        (flags & fileSystem.constants.O_NONBLOCK) !== 0 &&
+        vanishingDatabaseFiles.delete(filePath)
+      ) {
+        fileSystem.unlinkSync(filePath);
+
+        throw missingFileError(filePath);
+      }
+
+      return fileSystem.openSync(...openArguments);
+    },
+  };
+});
 vi.mock("node:sqlite", async (importOriginal) => {
   const sqlite = await importOriginal<{ backup: typeof backup; DatabaseSync: typeof DatabaseSync }>();
 
@@ -158,6 +202,7 @@ function fileMode(filePath: string): number {
 
 afterEach(async () => {
   temporaryBackupModes.length = 0;
+  vanishingDatabaseFiles.clear();
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
@@ -200,6 +245,24 @@ describe("database migrations", () => {
 
     database.close();
     initialDatabase.close();
+  });
+
+  it("continues when a transient database sidecar disappears before permissions are restricted", async () => {
+    const directory = await temporaryDirectory();
+    const initialDatabase = await openDatabaseWithBackup(directory);
+    initialDatabase.close();
+
+    const databasePath = join(directory, "needle.db");
+    const journalPath = `${databasePath}-journal`;
+    await writeFile(journalPath, "transient journal");
+    vanishingDatabaseFiles.add(journalPath);
+
+    const database = openDatabase(directory);
+
+    expect(database.prepare("SELECT COUNT(*) AS count FROM needle_migrations").get()).toEqual({ count: 4 });
+    expect(existsSync(journalPath)).toBe(false);
+
+    database.close();
   });
 
   it("adopts an older database, preserves rows and creates one backup", async () => {

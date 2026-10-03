@@ -1,0 +1,1 @@
+- Prevent concurrent server startups from failing when SQLite removes a transient journal during permission hardening.
