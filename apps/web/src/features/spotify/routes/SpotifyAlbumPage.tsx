@@ -9,7 +9,7 @@ import { TrackList } from "../../../components/tracks/TrackList.tsx";
 import { api } from "../../../lib/api.ts";
 import { longDuration, plural, releaseKind } from "../../../lib/format.ts";
 import { artistPath } from "../../../lib/paths.ts";
-import { AS_GIVEN, shownSongs } from "../../../lib/songs.ts";
+import { AS_GIVEN, shownSongs, totalSongDuration } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { useTone } from "../../../lib/tone.ts";
 import { image, sp, spId } from "../api/client.ts";
@@ -20,7 +20,7 @@ import { useCapabilities } from "../../../queries/hooks.ts";
 import { spKeys, useSpotifyAlbum, useSpotifyAlbums, useSpotifyOn } from "../hooks/useSpotify.ts";
 import { toast } from "../../../state/ui.ts";
 import { translate } from "../../../i18n/index.ts";
-import { duration, NotConnected, OpenInSpotify, SpotifyError } from "./SpotifyRouteState.tsx";
+import { NotConnected, OpenInSpotify, SpotifyError } from "./SpotifyRouteState.tsx";
 
 export function SpotifyAlbumPage() {
   const { id = "" } = useParams();
@@ -87,7 +87,7 @@ export function SpotifyAlbumPage() {
               ? translate("catalog.album")
               : album.album_type === "compilation"
                 ? translate("catalog.compilation")
-                : releaseKind(songs.length, duration(songs)),
+                : releaseKind(songs.length, totalSongDuration(songs)),
         })}
         title={album.name}
         meta={
@@ -99,7 +99,7 @@ export function SpotifyAlbumPage() {
             ))}
             {year ? <span>{year}</span> : null}
             <span>
-              {plural(songs.length, "song")}, {longDuration(duration(songs))}
+              {plural(songs.length, "song")}, {longDuration(totalSongDuration(songs))}
             </span>
           </>
         }

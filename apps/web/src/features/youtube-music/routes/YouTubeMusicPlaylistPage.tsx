@@ -7,7 +7,7 @@ import { SearchField } from "../../../components/SearchField.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
 import { YouTubeMusicNotice } from "../components/YouTubeMusicNotice.tsx";
 import { longDuration, plural } from "../../../lib/format.ts";
-import { AS_GIVEN, shownSongs } from "../../../lib/songs.ts";
+import { AS_GIVEN, shownSongs, totalSongDuration } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { image } from "../../spotify/api/client.ts";
 import { useTone } from "../../../lib/tone.ts";
@@ -21,7 +21,6 @@ import {
   EMPTY_SONGS,
   LoadMore,
   OpenInYouTubeMusic,
-  totalDuration,
   YouTubeMusicUnavailable,
   youtubeMusicSorts,
 } from "./YouTubeMusicRouteState.tsx";
@@ -64,7 +63,7 @@ export function YouTubeMusicPlaylistPage() {
             <b>{playlist.author}</b>
             <span>
               {plural(playlist.songCount ?? songPage.total ?? songs.length, "song")}
-              {songs.length ? `, ${longDuration(totalDuration(songs))}` : ""}
+              {songs.length ? `, ${longDuration(totalSongDuration(songs))}` : ""}
             </span>
           </>
         }

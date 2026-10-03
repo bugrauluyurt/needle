@@ -7,16 +7,9 @@ export const GET_MUSIC_FILTERS: Record<"albums" | "songs", Filter[]> = {
   songs: ["All", "Songs", "Get music"],
 };
 
-export const SPOTIFY_SEARCH_KINDS: Record<SearchKind, SpotifySearchKind> = {
+export const SEARCH_KINDS = {
   Songs: "songs",
   Albums: "albums",
   Artists: "artists",
   Playlists: "playlists",
-};
-
-export const YOUTUBE_MUSIC_SEARCH_KINDS: Record<SearchKind, YouTubeMusicSearchKind> = {
-  Songs: "songs",
-  Albums: "albums",
-  Artists: "artists",
-  Playlists: "playlists",
-};
+} as const satisfies Record<SearchKind, SpotifySearchKind & YouTubeMusicSearchKind>;

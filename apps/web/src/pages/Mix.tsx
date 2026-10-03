@@ -7,7 +7,7 @@ import { SearchField } from "../components/SearchField.tsx";
 import { TrackMoreButton } from "../components/tracks/TrackMenu.tsx";
 import { TrackList } from "../components/tracks/TrackList.tsx";
 import { longDuration, plural } from "../lib/format.ts";
-import { AS_GIVEN, librarySongSorts, shownSongs } from "../lib/songs.ts";
+import { AS_GIVEN, librarySongSorts, shownSongs, totalSongDuration } from "../lib/songs.ts";
 import type { SongOrder } from "../lib/songs.ts";
 import { usePageTone } from "../layout/pageTone.ts";
 import { useMixes } from "../queries/hooks.ts";
@@ -26,7 +26,7 @@ export default function MixPage() {
   usePageTone(mix?.palette[0] ?? null);
   if (isLoading) return <PageSkeleton />;
   if (!mix) return <NotFoundState what="mix" />;
-  const duration = mix.songs.reduce((n, s) => n + (s.duration ?? 0), 0);
+  const duration = totalSongDuration(mix.songs);
   const context = { kind: "mix" as const, id: mix.id, name: mix.name };
   return (
     <div className="tinted">

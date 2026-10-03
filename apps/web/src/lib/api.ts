@@ -97,8 +97,6 @@ export const api = {
   search: (q: string, signal?: AbortSignal) =>
     request<SearchResult3>(`/search?q=${encodeURIComponent(q)}`, signal ? { signal } : {}),
   lidarrSearch: (q: string) => request<LidarrSearch>(`/lidarr/search?q=${encodeURIComponent(q)}`),
-  lidarrAlbums: (ids: string[]) =>
-    request<LidarrAlbum[]>(`/lidarr/albums?ids=${ids.map(encodeURIComponent).join(",")}`),
   lidarrGet: (foreignAlbumId: string) => post<LidarrAlbum>(`/lidarr/albums/${encodeURIComponent(foreignAlbumId)}`),
   lidarrArtists: (names: string[]) =>
     request<LidarrArtist[]>(`/lidarr/artists?names=${names.map(encodeURIComponent).join("|")}`),

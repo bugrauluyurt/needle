@@ -9,7 +9,7 @@ import { YouTubeMusicNotice } from "../components/YouTubeMusicNotice.tsx";
 import { api } from "../../../lib/api.ts";
 import { longDuration, plural } from "../../../lib/format.ts";
 import { artistPath } from "../../../lib/paths.ts";
-import { AS_GIVEN, shownSongs } from "../../../lib/songs.ts";
+import { AS_GIVEN, shownSongs, totalSongDuration } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { image } from "../../spotify/api/client.ts";
 import { useTone } from "../../../lib/tone.ts";
@@ -26,7 +26,7 @@ import {
 } from "../hooks/useYouTubeMusic.ts";
 import { toast } from "../../../state/ui.ts";
 import { translate } from "../../../i18n/index.ts";
-import { EMPTY_SONGS, OpenInYouTubeMusic, totalDuration, YouTubeMusicUnavailable } from "./YouTubeMusicRouteState.tsx";
+import { EMPTY_SONGS, OpenInYouTubeMusic, YouTubeMusicUnavailable } from "./YouTubeMusicRouteState.tsx";
 
 export function YouTubeMusicAlbumPage() {
   const { id = "" } = useParams();
@@ -94,7 +94,7 @@ export function YouTubeMusicAlbumPage() {
             ))}
             {album.year ? <span>{album.year}</span> : null}
             <span>
-              {plural(songs.length, "song")}, {longDuration(totalDuration(songs))}
+              {plural(songs.length, "song")}, {longDuration(totalSongDuration(songs))}
             </span>
           </>
         }

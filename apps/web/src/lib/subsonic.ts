@@ -140,28 +140,16 @@ export const sub = {
       count,
       includeNotPresent,
     }).then((r) => r.artistInfo2),
-  topSongs: (artist: string, count = 10) =>
-    call<{ topSongs: { song?: Song[] } }>("getTopSongs", {
-      artist,
-      count,
-    }).then((r) => r.topSongs.song ?? []),
   similarSongs: (id: string, count = 50) =>
     call<{ similarSongs2: { song?: Song[] } }>("getSimilarSongs2", {
       id,
       count,
     }).then((r) => r.similarSongs2.song ?? []),
-  song: (id: string) => call<{ song: Song }>("getSong", { id }).then((r) => r.song),
   randomSongs: (size = 50, genre?: string) =>
     call<{ randomSongs: { song?: Song[] } }>("getRandomSongs", {
       size,
       genre,
     }).then((r) => r.randomSongs.song ?? []),
-  songsByGenre: (genre: string, count = 100, offset = 0) =>
-    call<{ songsByGenre: { song?: Song[] } }>("getSongsByGenre", {
-      genre,
-      count,
-      offset,
-    }).then((r) => r.songsByGenre.song ?? []),
   genres: () => call<{ genres: { genre?: Genre[] } }>("getGenres").then((r) => r.genres.genre ?? []),
 
   playlists: () =>

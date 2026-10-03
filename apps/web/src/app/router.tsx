@@ -24,32 +24,46 @@ const AlbumGrid = lazy(() => import("../features/catalog/routes/AlbumGridPage.ts
 const NotFound = lazy(() => import("../pages/NotFound.tsx"));
 const Requests = lazy(() => import("../pages/Requests.tsx"));
 const LikedArtists = lazy(() => import("../features/catalog/routes/LikedArtistsPage.tsx"));
-
-function spotifyPage(name: "SpotifyLikedPage" | "SpotifyPlaylistPage" | "SpotifyAlbumPage" | "SpotifyArtistPage") {
-  return lazy(() =>
-    import("../features/spotify/routes/SpotifyRoutes.tsx").then((spotifyModule) => ({ default: spotifyModule[name] })),
-  );
-}
-
-const SpotifyLiked = spotifyPage("SpotifyLikedPage");
-const SpotifyPlaylist = spotifyPage("SpotifyPlaylistPage");
-const SpotifyAlbum = spotifyPage("SpotifyAlbumPage");
-const SpotifyArtist = spotifyPage("SpotifyArtistPage");
-
-function youtubeMusicPage(
-  name: "YouTubeMusicLikedPage" | "YouTubeMusicPlaylistPage" | "YouTubeMusicAlbumPage" | "YouTubeMusicArtistPage",
-) {
-  return lazy(() =>
-    import("../features/youtube-music/routes/YouTubeMusicRoutes.tsx").then((youtubeMusicModule) => ({
-      default: youtubeMusicModule[name],
-    })),
-  );
-}
-
-const YouTubeMusicLiked = youtubeMusicPage("YouTubeMusicLikedPage");
-const YouTubeMusicPlaylist = youtubeMusicPage("YouTubeMusicPlaylistPage");
-const YouTubeMusicAlbum = youtubeMusicPage("YouTubeMusicAlbumPage");
-const YouTubeMusicArtist = youtubeMusicPage("YouTubeMusicArtistPage");
+const SpotifyLiked = lazy(() =>
+  import("../features/spotify/routes/SpotifyLikedPage.tsx").then((spotifyModule) => ({
+    default: spotifyModule.SpotifyLikedPage,
+  })),
+);
+const SpotifyPlaylist = lazy(() =>
+  import("../features/spotify/routes/SpotifyPlaylistPage.tsx").then((spotifyModule) => ({
+    default: spotifyModule.SpotifyPlaylistPage,
+  })),
+);
+const SpotifyAlbum = lazy(() =>
+  import("../features/spotify/routes/SpotifyAlbumPage.tsx").then((spotifyModule) => ({
+    default: spotifyModule.SpotifyAlbumPage,
+  })),
+);
+const SpotifyArtist = lazy(() =>
+  import("../features/spotify/routes/SpotifyArtistPage.tsx").then((spotifyModule) => ({
+    default: spotifyModule.SpotifyArtistPage,
+  })),
+);
+const YouTubeMusicLiked = lazy(() =>
+  import("../features/youtube-music/routes/YouTubeMusicLikedPage.tsx").then((youtubeMusicModule) => ({
+    default: youtubeMusicModule.YouTubeMusicLikedPage,
+  })),
+);
+const YouTubeMusicPlaylist = lazy(() =>
+  import("../features/youtube-music/routes/YouTubeMusicPlaylistPage.tsx").then((youtubeMusicModule) => ({
+    default: youtubeMusicModule.YouTubeMusicPlaylistPage,
+  })),
+);
+const YouTubeMusicAlbum = lazy(() =>
+  import("../features/youtube-music/routes/YouTubeMusicAlbumPage.tsx").then((youtubeMusicModule) => ({
+    default: youtubeMusicModule.YouTubeMusicAlbumPage,
+  })),
+);
+const YouTubeMusicArtist = lazy(() =>
+  import("../features/youtube-music/routes/YouTubeMusicArtistPage.tsx").then((youtubeMusicModule) => ({
+    default: youtubeMusicModule.YouTubeMusicArtistPage,
+  })),
+);
 
 function LocalizedPage({ page }: { page: ReactElement }) {
   const { i18n } = useTranslation();

@@ -13,7 +13,6 @@ export const english = {
   "common.clear": "Clear",
   "common.connect": "Connect",
   "common.continueHere": "Continue on this device",
-  "common.delete": "Delete",
   "common.downloads": "Downloads",
   "common.edit": "Edit",
   "common.goBack": "Go back",
@@ -329,7 +328,6 @@ export const english = {
   "player.label": "Player",
   "player.liveRadio": "Live radio",
   "player.lyrics": "Lyrics",
-  "player.more": "More",
   "player.mute": "Mute",
   "player.next": "Next",
   "player.nothingPlaying": "Nothing playing",
@@ -561,7 +559,6 @@ export const english = {
   "settings.reconnect": "Reconnect",
   "settings.remove": "Remove",
   "settings.removeAll": "Remove all",
-  "settings.requestMusicShort": "Request music",
   "settings.saving": "Saving…",
   "settings.spotifyConnected": "Spotify is connected",
   "settings.spotifyConfigHint":
@@ -955,7 +952,6 @@ export const english = {
   "discovery.saveFailed": "Couldn’t save the playlist",
   "discovery.skippedDetail": "; {{count}} more next time",
   "discovery.soulseekHint": "Soulseek provides the songs you pick. They show up in your library when they’re ready.",
-  "home.artistPlays": "{{plays}}",
   "library.albumsHint": "Albums in your library, and ones you save on Spotify, show up here. Get more from Search.",
   "library.artistsHint": "Artists in your library, and ones you follow on Spotify, show up here.",
   "library.downloadsHint":

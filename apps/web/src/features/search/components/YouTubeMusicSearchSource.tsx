@@ -18,7 +18,7 @@ import {
 } from "../../youtube-music/components/YouTubeMusicCards.tsx";
 import { YouTubeMusicNotice } from "../../youtube-music/components/YouTubeMusicNotice.tsx";
 import { useYouTubeMusicSearch } from "../../youtube-music/hooks/useYouTubeMusic.ts";
-import { YOUTUBE_MUSIC_SEARCH_KINDS } from "../constants/search.ts";
+import { SEARCH_KINDS } from "../constants/search.ts";
 
 type YouTubeMusicSearchSourceProps = {
   filter: Filter;
@@ -29,7 +29,7 @@ type YouTubeMusicSearchSourceProps = {
 
 export function YouTubeMusicSearchSource({ q, filter, setFilter, onShowAll }: YouTubeMusicSearchSourceProps) {
   const [limit, setLimit] = useState(20);
-  const category = filter !== "All" && filter !== "Get music" ? YOUTUBE_MUSIC_SEARCH_KINDS[filter] : undefined;
+  const category = filter !== "All" && filter !== "Get music" ? SEARCH_KINDS[filter] : undefined;
   const search = useYouTubeMusicSearch(q, category, limit);
   const blocked = useYouTubeMusicStatus((status) => status.blocked);
   const songs = search.data?.songs ?? [];
