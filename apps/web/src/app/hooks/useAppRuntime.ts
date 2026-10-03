@@ -9,8 +9,10 @@ import { clearYouTubeMusicCache } from "../../features/youtube-music/hooks/useYo
 import { startRemote, stopRemote } from "../../features/remote/client.ts";
 import { useDetails } from "../../components/songDetailsStore.ts";
 import { registerAccountResetHandler } from "../../state/accountLifecycle.ts";
+import { clearCredentialedCoverCache } from "../../state/credentialedCaches.ts";
 
 export function resetAccountRuntime(): void {
+  clearCredentialedCoverCache();
   stopRemote();
   queryClient.clear();
   clearSpotifyCache();
@@ -22,14 +24,20 @@ export function resetAccountRuntime(): void {
 
 registerAccountResetHandler(resetAccountRuntime);
 
-export function useAppRuntime(accountUser: string | null) {
-  useEffect(() => {
-    if (!accountUser) return;
+export function startAccountRuntime(accountUser: string | null): void {
+  if (!accountUser) {
+    clearCredentialedCoverCache();
 
-    activateSpotifyAccount(accountUser);
-    prefetchStart(queryClient);
-    startPlayer();
-    startRemote();
-    void loadOffline();
-  }, [accountUser]);
+    return;
+  }
+
+  activateSpotifyAccount(accountUser);
+  prefetchStart(queryClient);
+  startPlayer();
+  startRemote();
+  void loadOffline();
+}
+
+export function useAppRuntime(accountUser: string | null) {
+  useEffect(() => startAccountRuntime(accountUser), [accountUser]);
 }

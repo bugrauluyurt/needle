@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 const runtimeMocks = vi.hoisted(() => ({
   activateSpotify: vi.fn(),
   clearQueries: vi.fn(),
+  clearCoverCache: vi.fn(),
   clearSpotify: vi.fn(),
   clearYouTubeMusic: vi.fn(),
   registerReset: vi.fn(),
@@ -53,6 +54,10 @@ vi.mock("../src/state/accountLifecycle.ts", () => ({
   registerAccountResetHandler: runtimeMocks.registerReset,
 }));
 
+vi.mock("../src/state/credentialedCaches.ts", () => ({
+  clearCredentialedCoverCache: runtimeMocks.clearCoverCache,
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -63,10 +68,19 @@ it("clears every account-bound runtime before another account starts", async () 
   resetAccountRuntime();
 
   expect(runtimeMocks.stopRemote).toHaveBeenCalledOnce();
+  expect(runtimeMocks.clearCoverCache).toHaveBeenCalledOnce();
   expect(runtimeMocks.clearQueries).toHaveBeenCalledOnce();
   expect(runtimeMocks.clearSpotify).toHaveBeenCalledOnce();
   expect(runtimeMocks.clearYouTubeMusic).toHaveBeenCalledOnce();
   expect(runtimeMocks.resetOffline).toHaveBeenCalledOnce();
   expect(runtimeMocks.resetPlayer).toHaveBeenCalledOnce();
   expect(runtimeMocks.resetDetails).toHaveBeenCalledWith({ song: null });
+});
+
+it("clears credentialed covers when the app starts signed out", async () => {
+  const { startAccountRuntime } = await import("../src/app/hooks/useAppRuntime.ts");
+
+  startAccountRuntime(null);
+
+  expect(runtimeMocks.clearCoverCache).toHaveBeenCalledOnce();
 });
