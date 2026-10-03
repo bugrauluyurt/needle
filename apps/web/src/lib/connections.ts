@@ -1,31 +1,49 @@
 import type { ConnectionCheck } from "@needle/shared";
+import { translate } from "../i18n/index.ts";
 
-export function browserChecks(publicUrl: string | null, origin: string, secure: boolean): ConnectionCheck[] {
+export function browserChecks(
+  publicUrl: string | null,
+  origin: string,
+  secure: boolean,
+): ConnectionCheck[] {
   const https: ConnectionCheck = secure
-    ? { id: "https", label: "Secure address", state: "ok", detail: `Opened at ${origin}` }
+    ? {
+        id: "https",
+        label: translate("connections.secureTitle"),
+        state: "ok",
+        detail: translate("connections.httpsDetail", { origin }),
+      }
     : {
         id: "https",
-        label: "Secure address",
+        label: translate("connections.secureTitle"),
         state: "warn",
-        detail: `Opened at ${origin}, without HTTPS`,
-        fix: "Offline downloads, Spotify and installing the app need an https:// address. Put Needle behind Tailscale Serve, Caddy or another reverse proxy.",
+        detail: translate("connections.httpsInsecureDetail", { origin }),
+        fix: translate("connections.httpsFix"),
       };
   const address: ConnectionCheck = !publicUrl
     ? {
         id: "public-url",
-        label: "Public address",
+        label: translate("connections.publicTitle"),
         state: "off",
-        detail: "PUBLIC_URL isn't set",
-        fix: "Only Spotify sign-in needs it: set PUBLIC_URL to the address people open.",
+        detail: translate("connections.publicDetailMissing"),
+        fix: translate("connections.publicFixMissing"),
       }
     : publicUrl === origin
-      ? { id: "public-url", label: "Public address", state: "ok", detail: publicUrl }
+      ? {
+          id: "public-url",
+          label: translate("connections.publicTitle"),
+          state: "ok",
+          detail: publicUrl,
+        }
       : {
           id: "public-url",
-          label: "Public address",
+          label: translate("connections.publicTitle"),
           state: "warn",
-          detail: `PUBLIC_URL is ${publicUrl}, but this page is ${origin}`,
-          fix: "Set PUBLIC_URL to the address people open, or Spotify sign-in returns to the wrong place.",
+          detail: translate("connections.publicMismatch", {
+            publicUrl,
+            origin,
+          }),
+          fix: translate("connections.publicMismatchFix"),
         };
   return [https, address];
 }

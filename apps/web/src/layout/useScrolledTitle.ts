@@ -31,7 +31,11 @@ export function useScrolledTitle(
         ([e]) =>
           bar.classList.toggle(
             "titled",
-            Boolean(e && !e.isIntersecting && e.boundingClientRect.top < (e.rootBounds?.top ?? 0)),
+            Boolean(
+              e &&
+              !e.isIntersecting &&
+              e.boundingClientRect.top < (e.rootBounds?.top ?? 0),
+            ),
           ),
         {
           root: main,

@@ -18,7 +18,14 @@ import { toneFromPixels } from "../src/lib/tone.ts";
 import { dbToGain } from "../src/player/engine.ts";
 import { albumPath, artistPath } from "../src/lib/paths.ts";
 import { browserChecks } from "../src/lib/connections.ts";
-import { image, isSpotify, rawId, sizedCover, spotifyLink, toSong } from "../src/lib/spotify.ts";
+import {
+  image,
+  isSpotify,
+  rawId,
+  sizedCover,
+  spotifyLink,
+  toSong,
+} from "../src/features/spotify/api/client.ts";
 import { naturalOrder, nextOrder, pickOrder } from "../src/lib/order.ts";
 import { shownSongs } from "../src/lib/songs.ts";
 import { useSession } from "../src/state/session.ts";
@@ -26,19 +33,26 @@ import type { Song } from "@needle/shared";
 import { releaseDateString } from "@needle/shared";
 
 describe("md5", () => {
-  it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])("matches node for %j", (s) => {
-    expect(md5(s)).toBe(createHash("md5").update(s).digest("hex"));
-  });
+  it.each(["", "a", "needle-testabc123", "ğüşİöç ♪", "x".repeat(200)])(
+    "matches node for %j",
+    (s) => {
+      expect(md5(s)).toBe(createHash("md5").update(s).digest("hex"));
+    },
+  );
 });
 
 describe("format", () => {
   it("preserves the supplied precision of native album release dates", () => {
-    expect(releaseDateString({ year: 2024, month: 10, day: 1 })).toBe("2024-10-01");
+    expect(releaseDateString({ year: 2024, month: 10, day: 1 })).toBe(
+      "2024-10-01",
+    );
     expect(releaseDateString({ year: 2024, month: 10 })).toBe("2024-10");
     expect(releaseDateString({ year: 2024 })).toBe("2024");
     expect(releaseDateString({})).toBeUndefined();
     expect(releaseDateString({ year: 2024, month: 15 })).toBeUndefined();
-    expect(releaseDateString({ year: 2024, month: 2, day: 30 })).toBeUndefined();
+    expect(
+      releaseDateString({ year: 2024, month: 2, day: 30 }),
+    ).toBeUndefined();
   });
 
   it("formats clock times", () => {
@@ -68,14 +82,20 @@ describe("format", () => {
     expect(ago(new Date(now - day).toISOString(), now)).toBe("Yesterday");
     expect(ago(new Date(now - 3 * day).toISOString(), now)).toBe("3 days ago");
     expect(ago(new Date(now - 9 * day).toISOString(), now)).toBe("Last week");
-    expect(ago(new Date(now - 20 * day).toISOString(), now)).toBe("2 weeks ago");
+    expect(ago(new Date(now - 20 * day).toISOString(), now)).toBe(
+      "2 weeks ago",
+    );
     expect(ago(new Date(now - 40 * day).toISOString(), now)).toBe("Last month");
     expect(ago(undefined, now)).toBe("");
   });
 
   it("labels formats the way the design shows them", () => {
-    expect(formatLabel({ suffix: "flac", bitDepth: 16, samplingRate: 44100 })).toBe("FLAC 16/44.1");
-    expect(formatLabel({ suffix: "flac", bitDepth: 24, samplingRate: 96000 })).toBe("FLAC 24/96");
+    expect(
+      formatLabel({ suffix: "flac", bitDepth: 16, samplingRate: 44100 }),
+    ).toBe("FLAC 16/44.1");
+    expect(
+      formatLabel({ suffix: "flac", bitDepth: 24, samplingRate: 96000 }),
+    ).toBe("FLAC 24/96");
     expect(formatLabel({ suffix: "mp3", bitRate: 320 })).toBe("MP3 320 kbps");
     expect(formatLabel(null)).toBeNull();
   });
@@ -91,14 +111,17 @@ describe("format", () => {
 
 describe("artist bio", () => {
   it("drops links and tags", () => {
-    expect(plainBio('Great band.  <a href="https://last.fm">Read more on Last.fm</a>.')).toBe("Great band.");
+    expect(
+      plainBio(
+        'Great band.  <a href="https://last.fm">Read more on Last.fm</a>.',
+      ),
+    ).toBe("Great band.");
   });
 
   it("groups sentences into paragraphs", () => {
-    expect(paragraphs("One. Two! Three? Four. Five 2.0 rocks. “Six” said.")).toEqual([
-      "One. Two! Three?",
-      "Four. Five 2.0 rocks. “Six” said.",
-    ]);
+    expect(
+      paragraphs("One. Two! Three? Four. Five 2.0 rocks. “Six” said."),
+    ).toEqual(["One. Two! Three?", "Four. Five 2.0 rocks. “Six” said."]);
   });
 });
 
@@ -133,7 +156,9 @@ describe("tone", () => {
     return px;
   };
   const lightness = (hex: string) => {
-    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+    const [r, g, b] = [1, 3, 5].map(
+      (i) => parseInt(hex.slice(i, i + 2), 16) / 255,
+    ) as [number, number, number];
     return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
   };
 
@@ -141,7 +166,9 @@ describe("tone", () => {
     const pink = toneFromPixels(fill([224, 69, 123]));
     expect(pink).toMatch(/^#[0-9a-f]{6}$/);
     expect(lightness(pink)).toBeLessThanOrEqual(0.41);
-    expect(parseInt(pink.slice(1, 3), 16)).toBeGreaterThan(parseInt(pink.slice(5, 7), 16));
+    expect(parseInt(pink.slice(1, 3), 16)).toBeGreaterThan(
+      parseInt(pink.slice(5, 7), 16),
+    );
   });
 
   it("falls back to a quiet violet for grey covers", () => {
@@ -216,10 +243,16 @@ describe("spotify", () => {
 
   it("asks Spotify's CDN for an album cover sized to the tile", () => {
     const cover = "https://i.scdn.co/image/ab67616d0000b273aaaa";
-    expect(sizedCover(cover, 64)).toBe("https://i.scdn.co/image/ab67616d00004851aaaa");
-    expect(sizedCover(cover, 256)).toBe("https://i.scdn.co/image/ab67616d00001e02aaaa");
+    expect(sizedCover(cover, 64)).toBe(
+      "https://i.scdn.co/image/ab67616d00004851aaaa",
+    );
+    expect(sizedCover(cover, 256)).toBe(
+      "https://i.scdn.co/image/ab67616d00001e02aaaa",
+    );
     expect(sizedCover(cover, 600)).toBe(cover);
-    expect(sizedCover("https://mosaic.scdn.co/640/abc", 64)).toBe("https://mosaic.scdn.co/640/abc");
+    expect(sizedCover("https://mosaic.scdn.co/640/abc", 64)).toBe(
+      "https://mosaic.scdn.co/640/abc",
+    );
   });
 
   it("routes Spotify ids to Spotify pages", () => {
@@ -230,7 +263,9 @@ describe("spotify", () => {
     expect(albumPath("nd1")).toBe("/album/nd1");
     expect(artistPath("sp:ar1")).toBe("/spotify/artist/ar1");
     expect(artistPath("nd2")).toBe("/artist/nd2");
-    expect(spotifyLink("track", "sp:t1")).toBe("https://open.spotify.com/track/t1");
+    expect(spotifyLink("track", "sp:t1")).toBe(
+      "https://open.spotify.com/track/t1",
+    );
   });
 });
 
@@ -238,7 +273,9 @@ describe("responsive artwork", () => {
   it("builds every local cover size with the matching width descriptor", () => {
     const previousCredentials = useSession.getState().credentials;
 
-    useSession.setState({ credentials: { user: "listener", token: "token", salt: "salt" } });
+    useSession.setState({
+      credentials: { user: "listener", token: "token", salt: "salt" },
+    });
 
     let coverSources: string | undefined;
 
@@ -250,9 +287,14 @@ describe("responsive artwork", () => {
 
     const coverCandidates = coverSources?.split(", ").map((coverCandidate) => {
       const [coverSource, coverWidth] = coverCandidate.split(" ");
-      const coverParams = new URL(coverSource ?? "", "https://needle.test").searchParams;
+      const coverParams = new URL(coverSource ?? "", "https://needle.test")
+        .searchParams;
 
-      return { size: coverParams.get("size"), width: coverWidth, version: coverParams.get("changed") };
+      return {
+        size: coverParams.get("size"),
+        width: coverWidth,
+        version: coverParams.get("changed"),
+      };
     });
 
     expect(coverCandidates).toEqual(
@@ -278,18 +320,33 @@ describe("responsive artwork", () => {
     })?.split(", ");
 
     expect(
-      spotifyCandidates?.map((spotifyCandidate) => Number(spotifyCandidate.split(" ").at(-1)?.replace("w", ""))),
+      spotifyCandidates?.map((spotifyCandidate) =>
+        Number(spotifyCandidate.split(" ").at(-1)?.replace("w", "")),
+      ),
     ).toEqual([64, 300, 600]);
-    expect(spotifyCandidates?.filter((spotifyCandidate) => spotifyCandidate.endsWith(" 300w"))).toHaveLength(1);
+    expect(
+      spotifyCandidates?.filter((spotifyCandidate) =>
+        spotifyCandidate.endsWith(" 300w"),
+      ),
+    ).toHaveLength(1);
     expect(spotifyCandidates?.join(" ")).not.toMatch(/missing|zero|invalid/);
   });
 
   it("leaves direct URLs and incomplete Spotify metadata on their fallback source", () => {
-    expect(artSrcSet({ id: "https://images.example/artist.jpg" })).toBeUndefined();
-    expect(artSrcSet({ images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }] })).toBeUndefined();
+    expect(
+      artSrcSet({ id: "https://images.example/artist.jpg" }),
+    ).toBeUndefined();
     expect(
       artSrcSet({
-        images: [{ url: "https://i.scdn.co/image/artist-a" }, { url: "https://i.scdn.co/image/artist-b", width: null }],
+        images: [{ url: "https://i.scdn.co/image/artist-300", width: 300 }],
+      }),
+    ).toBeUndefined();
+    expect(
+      artSrcSet({
+        images: [
+          { url: "https://i.scdn.co/image/artist-a" },
+          { url: "https://i.scdn.co/image/artist-b", width: null },
+        ],
       }),
     ).toBeUndefined();
   });
@@ -297,20 +354,30 @@ describe("responsive artwork", () => {
 
 describe("browser connection checks", () => {
   it("warns without HTTPS and when PUBLIC_URL differs from the page", () => {
-    const [https, address] = browserChecks("https://music.example.com", "http://192.168.1.5:4535", false);
+    const [https, address] = browserChecks(
+      "https://music.example.com",
+      "http://192.168.1.5:4535",
+      false,
+    );
     expect(https?.state).toBe("warn");
     expect(address).toMatchObject({
       state: "warn",
-      detail: "PUBLIC_URL is https://music.example.com, but this page is http://192.168.1.5:4535",
+      detail:
+        "PUBLIC_URL is https://music.example.com, but this page is http://192.168.1.5:4535",
     });
   });
 
   it("is happy on the public HTTPS address, and off without PUBLIC_URL", () => {
-    expect(browserChecks("https://music.example.com", "https://music.example.com", true).map((c) => c.state)).toEqual([
-      "ok",
-      "ok",
-    ]);
-    expect(browserChecks(null, "https://music.example.com", true)[1]?.state).toBe("off");
+    expect(
+      browserChecks(
+        "https://music.example.com",
+        "https://music.example.com",
+        true,
+      ).map((c) => c.state),
+    ).toEqual(["ok", "ok"]);
+    expect(
+      browserChecks(null, "https://music.example.com", true)[1]?.state,
+    ).toBe("off");
   });
 });
 
@@ -330,27 +397,38 @@ describe("sort order", () => {
     const second = nextOrder(first, "title", custom);
     expect(second).toEqual({ key: "title", desc: true });
     expect(nextOrder(second, "title", custom)).toEqual(custom);
-    expect(nextOrder(nextOrder(custom, "added", custom), "added", custom)).toEqual({ key: "added", desc: false });
+    expect(
+      nextOrder(nextOrder(custom, "added", custom), "added", custom),
+    ).toEqual({ key: "added", desc: false });
   });
 
   it("switches to another column in its natural direction", () => {
-    expect(nextOrder({ key: "title", desc: true }, "album", custom)).toEqual({ key: "album", desc: false });
+    expect(nextOrder({ key: "title", desc: true }, "album", custom)).toEqual({
+      key: "album",
+      desc: false,
+    });
   });
 
   it("flips the direction when the menu picks the current sort again", () => {
-    expect(pickOrder({ key: "title", desc: false }, "title")).toEqual({ key: "title", desc: true });
-    expect(pickOrder({ key: "title", desc: true }, "added")).toEqual({ key: "added", desc: true });
+    expect(pickOrder({ key: "title", desc: false }, "title")).toEqual({
+      key: "title",
+      desc: true,
+    });
+    expect(pickOrder({ key: "title", desc: true }, "added")).toEqual({
+      key: "added",
+      desc: true,
+    });
   });
 });
 
 describe("shownSongs", () => {
-  const song = (id: string, title: string, duration: number, playCount: number, starred: string): Song => ({
-    id,
-    title,
-    duration,
-    playCount,
-    starred,
-  });
+  const song = (
+    id: string,
+    title: string,
+    duration: number,
+    playCount: number,
+    starred: string,
+  ): Song => ({ id, title, duration, playCount, starred });
   const songs = [
     song("1", "Bravo", 200, 3, "2026-01-02"),
     song("2", "alpha", 100, 9, "2026-01-03"),
@@ -359,22 +437,46 @@ describe("shownSongs", () => {
   const ids = (list: Song[]) => list.map((s) => s.id);
 
   it("keeps the given order for custom, whatever the direction", () => {
-    expect(ids(shownSongs(songs, { key: "custom", desc: true }, ""))).toEqual(["1", "2", "3"]);
+    expect(ids(shownSongs(songs, { key: "custom", desc: true }, ""))).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
   });
 
   it("sorts titles both ways, ignoring case", () => {
-    expect(ids(shownSongs(songs, { key: "title", desc: false }, ""))).toEqual(["2", "1", "3"]);
-    expect(ids(shownSongs(songs, { key: "title", desc: true }, ""))).toEqual(["3", "1", "2"]);
+    expect(ids(shownSongs(songs, { key: "title", desc: false }, ""))).toEqual([
+      "2",
+      "1",
+      "3",
+    ]);
+    expect(ids(shownSongs(songs, { key: "title", desc: true }, ""))).toEqual([
+      "3",
+      "1",
+      "2",
+    ]);
   });
 
   it("sorts by date added, plays and duration", () => {
-    expect(ids(shownSongs(songs, { key: "added", desc: true }, ""))).toEqual(["2", "1", "3"]);
-    expect(ids(shownSongs(songs, { key: "plays", desc: true }, ""))).toEqual(["2", "1", "3"]);
-    expect(ids(shownSongs(songs, { key: "duration", desc: false }, ""))).toEqual(["2", "1", "3"]);
+    expect(ids(shownSongs(songs, { key: "added", desc: true }, ""))).toEqual([
+      "2",
+      "1",
+      "3",
+    ]);
+    expect(ids(shownSongs(songs, { key: "plays", desc: true }, ""))).toEqual([
+      "2",
+      "1",
+      "3",
+    ]);
+    expect(
+      ids(shownSongs(songs, { key: "duration", desc: false }, "")),
+    ).toEqual(["2", "1", "3"]);
   });
 
   it("filters before sorting", () => {
-    expect(ids(shownSongs(songs, { key: "title", desc: false }, "char"))).toEqual(["3"]);
+    expect(
+      ids(shownSongs(songs, { key: "title", desc: false }, "char")),
+    ).toEqual(["3"]);
   });
 
   it("sorts release dates at their supplied precision with unknown dates last", () => {
@@ -385,18 +487,16 @@ describe("shownSongs", () => {
       { id: "autumn", title: "Autumn release", releaseDate: "2024-10-01" },
     ];
 
-    expect(shownSongs(releasedSongs, { key: "year", desc: true }, "").map((releasedSong) => releasedSong.id)).toEqual([
-      "autumn",
-      "spring",
-      "year",
-      "unknown",
-    ]);
-    expect(shownSongs(releasedSongs, { key: "year", desc: false }, "").map((releasedSong) => releasedSong.id)).toEqual([
-      "year",
-      "spring",
-      "autumn",
-      "unknown",
-    ]);
+    expect(
+      shownSongs(releasedSongs, { key: "year", desc: true }, "").map(
+        (releasedSong) => releasedSong.id,
+      ),
+    ).toEqual(["autumn", "spring", "year", "unknown"]);
+    expect(
+      shownSongs(releasedSongs, { key: "year", desc: false }, "").map(
+        (releasedSong) => releasedSong.id,
+      ),
+    ).toEqual(["year", "spring", "autumn", "unknown"]);
     expect(releasedSongs[0]?.id).toBe("unknown");
   });
 });

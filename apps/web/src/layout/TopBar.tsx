@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { SearchField } from "../components/SearchField.tsx";
+import { translate } from "../i18n/index.ts";
 import { useSession } from "../state/session.ts";
 import { useUpdate } from "../state/update.ts";
-import { image } from "../lib/spotify.ts";
+import { image } from "../features/spotify/api/client.ts";
 import { useIsMobile } from "../lib/media.ts";
-import { useSpotifyMe } from "../queries/spotify.ts";
+import { useSpotifyMe } from "../features/spotify/hooks/useSpotify.ts";
 import { useCanRequest, useMe } from "../queries/hooks.ts";
 import { useUi } from "../state/ui.ts";
 import { useScrolledTitle } from "./useScrolledTitle.ts";
@@ -48,58 +49,90 @@ export function AccountMenu({ size = 32 }: { size?: number }) {
           type="button"
           className="avatar"
           style={{ width: size, height: size }}
-          aria-label={update ? `Account, signed in as ${user}, update ready` : `Account, signed in as ${user}`}
+          aria-label={translate(
+            update ? "account.labelUpdate" : "account.label",
+            { user },
+          )}
         >
           <AvatarFace px={size} />
           {update ? <span className="update-dot" aria-hidden="true" /> : null}
         </button>
       </DM.Trigger>
       <DM.Portal>
-        <DM.Content className="menu" align="end" sideOffset={8} collisionPadding={12}>
-          <DM.Label className="menu-heading">Signed in as {user}</DM.Label>
+        <DM.Content
+          className="menu"
+          align="end"
+          sideOffset={8}
+          collisionPadding={12}
+        >
+          <DM.Label className="menu-heading">
+            {translate("account.signedInAs", { user })}
+          </DM.Label>
           {update ? (
             <>
               <DM.Item className="menu-item update-item" onSelect={update}>
                 <Icon name="refresh" size={18} />
                 <span className="menu-label">
-                  Update Needle<small>A new version is ready. Reloads the page.</small>
+                  {translate("account.update")}
+                  <small>{translate("account.updateHint")}</small>
                 </span>
               </DM.Item>
               <DM.Separator className="menu-sep" />
             </>
           ) : null}
-          <DM.Item className="menu-item" onSelect={() => void navigate("/stats")}>
+          <DM.Item
+            className="menu-item"
+            onSelect={() => void navigate("/stats")}
+          >
             <Icon name="chart" size={18} />
-            <span className="menu-label">Your listening</span>
+            <span className="menu-label">
+              {translate("common.yourListening")}
+            </span>
           </DM.Item>
           {canRequest ? (
-            <DM.Item className="menu-item" onSelect={() => void navigate("/requests")}>
+            <DM.Item
+              className="menu-item"
+              onSelect={() => void navigate("/requests")}
+            >
               <Icon name="import" size={18} />
-              <span className="menu-label">Requests</span>
+              <span className="menu-label">{translate("common.requests")}</span>
             </DM.Item>
           ) : null}
-          <DM.Item className="menu-item" onSelect={() => void navigate("/downloads")}>
+          <DM.Item
+            className="menu-item"
+            onSelect={() => void navigate("/downloads")}
+          >
             <Icon name="download" size={18} />
-            <span className="menu-label">Downloads</span>
+            <span className="menu-label">{translate("common.downloads")}</span>
           </DM.Item>
-          <DM.Item className="menu-item" onSelect={() => void navigate("/settings")}>
+          <DM.Item
+            className="menu-item"
+            onSelect={() => void navigate("/settings")}
+          >
             <Icon name="settings" size={18} />
-            <span className="menu-label">Settings</span>
+            <span className="menu-label">{translate("common.settings")}</span>
           </DM.Item>
           {!mobile ? (
-            <DM.Item className="menu-item" onSelect={() => useUi.setState({ shortcutsOpen: true })}>
+            <DM.Item
+              className="menu-item"
+              onSelect={() => useUi.setState({ shortcutsOpen: true })}
+            >
               <Icon name="keyboard" size={18} />
-              <span className="menu-label">Keyboard shortcuts</span>
+              <span className="menu-label">
+                {translate("common.keyboardShortcuts")}
+              </span>
             </DM.Item>
           ) : null}
           <DM.Item className="menu-item" onSelect={() => location.reload()}>
             <Icon name="refresh" size={18} />
-            <span className="menu-label">Refresh page</span>
+            <span className="menu-label">
+              {translate("common.refreshPage")}
+            </span>
           </DM.Item>
           <DM.Separator className="menu-sep" />
           <DM.Item className="menu-item" onSelect={signOut}>
             <Icon name="logout" size={18} />
-            <span className="menu-label">Sign out</span>
+            <span className="menu-label">{translate("common.signOut")}</span>
           </DM.Item>
         </DM.Content>
       </DM.Portal>
@@ -111,7 +144,14 @@ const SEARCH_PROXY = "search-focus-proxy";
 
 export function SearchFocusProxy() {
   return (
-    <input id={SEARCH_PROXY} className="search-proxy" type="text" tabIndex={-1} aria-hidden="true" autoComplete="off" />
+    <input
+      id={SEARCH_PROXY}
+      className="search-proxy"
+      type="text"
+      tabIndex={-1}
+      aria-hidden="true"
+      autoComplete="off"
+    />
   );
 }
 
@@ -131,13 +171,19 @@ function OpenSearchField() {
       value=""
       onChange={openSearch}
       onFocusChange={(focused) => focused && openSearch()}
-      label="Search"
-      placeholder="What do you want to listen to?"
+      label={translate("navigation.search")}
+      placeholder={translate("search.placeholder")}
     />
   );
 }
 
-export function TopBar({ children, extra }: { children?: ReactNode; extra?: ReactNode }) {
+export function TopBar({
+  children,
+  extra,
+}: {
+  children?: ReactNode;
+  extra?: ReactNode;
+}) {
   const navigate = useNavigate();
   const idx = historyIdx();
   const bar = useRef<HTMLElement>(null);
@@ -151,7 +197,7 @@ export function TopBar({ children, extra }: { children?: ReactNode; extra?: Reac
           <button
             type="button"
             className="circle"
-            aria-label="Go back"
+            aria-label={translate("common.goBack")}
             disabled={idx === 0}
             onClick={() => void navigate(-1)}
           >
@@ -160,7 +206,7 @@ export function TopBar({ children, extra }: { children?: ReactNode; extra?: Reac
           <button
             type="button"
             className="circle"
-            aria-label="Go forward"
+            aria-label={translate("common.goForward")}
             disabled={idx >= maxIdx}
             onClick={() => void navigate(1)}
           >

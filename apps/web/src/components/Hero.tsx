@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { MobileBack } from "../layout/Mobile.tsx";
-import { useIsMobile } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { usePlayer } from "../player/store.ts";
 import { player } from "../player/controller.ts";
 import { Icon } from "./Icon.tsx";
+import { translate } from "../i18n/index.ts";
 import { SubsonicError } from "../lib/subsonic.ts";
 
 export function titleSize(title: string): number {
@@ -38,7 +39,13 @@ export function Hero({
         <div className="hero-art">{art}</div>
         <div className="hero-text">
           <div className="kind">{kind}</div>
-          <h1 style={{ "--title": `${titleSize(title)}px` } as React.CSSProperties}>{title}</h1>
+          <h1
+            style={
+              { "--title": `${titleSize(title)}px` } as React.CSSProperties
+            }
+          >
+            {title}
+          </h1>
           {description ? <p className="desc">{description}</p> : null}
           <div className="meta">{meta}</div>
         </div>
@@ -66,7 +73,9 @@ export function PlayContextButton({
       type="button"
       className="bigplay"
       disabled={disabled}
-      aria-label={on ? `Pause ${label}` : `Play ${label}`}
+      aria-label={translate(on ? "track.pause" : "track.play", {
+        title: label,
+      })}
       onClick={() => (active ? player.toggle() : onPlay())}
     >
       <Icon name={on ? "pause" : "play"} size={22} />
@@ -88,7 +97,7 @@ export function ShuffleButton({
       type="button"
       className="icon-btn big"
       disabled={disabled}
-      aria-label={`Shuffle ${label}`}
+      aria-label={translate("player.shuffleNamed", { name: label })}
       onClick={onShuffle}
     >
       <Icon name="shuffle" size={26} />
@@ -96,7 +105,13 @@ export function ShuffleButton({
   );
 }
 
-export function ActBar({ children, end }: { children: ReactNode; end?: ReactNode }) {
+export function ActBar({
+  children,
+  end,
+}: {
+  children: ReactNode;
+  end?: ReactNode;
+}) {
   return (
     <div className="actbar">
       {children}
@@ -133,10 +148,15 @@ export function NotFoundState({
 }) {
   const mobile = useIsMobile();
   const navigate = useNavigate();
-  const missing = !error || (error instanceof SubsonicError && error.code === 70);
+  const missing =
+    !error || (error instanceof SubsonicError && error.code === 70);
   const back = (
-    <button type="button" className="btn ghost" onClick={() => void navigate(-1)}>
-      Go back
+    <button
+      type="button"
+      className="btn ghost"
+      onClick={() => void navigate(-1)}
+    >
+      {translate("common.goBack")}
     </button>
   );
   return (
@@ -146,37 +166,39 @@ export function NotFoundState({
         <div className="empty-in">
           {!missing ? (
             <>
-              <h1>Couldn’t reach your music</h1>
-              <p>Navidrome didn’t answer. Check that it’s running and that Needle’s server can reach it.</p>
+              <h1>{translate("empty.musicConnectionHeading")}</h1>
+              <p>{translate("empty.musicConnectionText")}</p>
               {retry ? (
                 <div className="acts">
                   <button type="button" className="btn primary" onClick={retry}>
                     <Icon name="refresh" size={16} />
-                    Try again
+                    {translate("common.retry")}
                   </button>
                 </div>
               ) : null}
             </>
           ) : name ? (
             <>
-              <h1>{name} isn’t in your library</h1>
-              <p>None of their music is in your library. Search for them to find their albums and songs.</p>
+              <h1>{translate("empty.artistMissing", { name })}</h1>
+              <p>{translate("empty.searchArtist")}</p>
               <div className="acts">
                 <button
                   type="button"
                   className="btn primary"
-                  onClick={() => void navigate(`/search?q=${encodeURIComponent(name)}`)}
+                  onClick={() =>
+                    void navigate(`/search?q=${encodeURIComponent(name)}`)
+                  }
                 >
                   <Icon name="search" size={16} />
-                  Search for {name}
+                  {translate("empty.searchFor", { name })}
                 </button>
                 {back}
               </div>
             </>
           ) : (
             <>
-              <h1>This {what} isn’t here</h1>
-              <p>It may have been removed from Navidrome, or the link is wrong.</p>
+              <h1>{translate("empty.itemMissing", { item: what })}</h1>
+              <p>{translate("empty.notFoundText")}</p>
               <div className="acts">{back}</div>
             </>
           )}

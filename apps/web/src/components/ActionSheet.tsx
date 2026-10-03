@@ -6,7 +6,10 @@ const FLICK_PX_PER_MS = 0.6;
 const CLOSE_SHARE = 0.25;
 const CLOSE_PX = 110;
 
-export function useDragToClose(onClose: () => void, { follow = false }: { follow?: boolean } = {}) {
+export function useDragToClose(
+  onClose: () => void,
+  { follow = false }: { follow?: boolean } = {},
+) {
   const ref = useRef<HTMLDivElement>(null);
   const start = useRef<{ y: number; t: number } | null>(null);
   const place = (dy: number | null) => {
@@ -20,7 +23,10 @@ export function useDragToClose(onClose: () => void, { follow = false }: { follow
     onTouchStart: (e: TouchEvent) => {
       const scroller = (e.target as HTMLElement).closest(".as-scroll");
       const y = e.touches[0]?.clientY;
-      start.current = y === undefined || (scroller && scroller.scrollTop > 0) ? null : { y, t: e.timeStamp };
+      start.current =
+        y === undefined || (scroller && scroller.scrollTop > 0)
+          ? null
+          : { y, t: e.timeStamp };
     },
     onTouchMove: (e: TouchEvent) => {
       const s = start.current;
@@ -32,7 +38,11 @@ export function useDragToClose(onClose: () => void, { follow = false }: { follow
       start.current = null;
       if (!s) return;
       const dy = (e.changedTouches[0]?.clientY ?? s.y) - s.y;
-      const far = dy > (follow && ref.current ? ref.current.offsetHeight * CLOSE_SHARE : CLOSE_PX);
+      const far =
+        dy >
+        (follow && ref.current
+          ? ref.current.offsetHeight * CLOSE_SHARE
+          : CLOSE_PX);
       const flick = dy / Math.max(1, e.timeStamp - s.t) > FLICK_PX_PER_MS;
       if (dy > 0 && (far || flick)) onClose();
       else place(null);
@@ -46,7 +56,13 @@ export function useDragToClose(onClose: () => void, { follow = false }: { follow
   return { ref, handlers };
 }
 
-type Props = { open: boolean; onClose: () => void; label: string; tone?: string; children: ReactNode };
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  label: string;
+  tone?: string;
+  children: ReactNode;
+};
 
 export function ActionSheet({ open, onClose, label, tone, children }: Props) {
   const { ref, handlers } = useDragToClose(onClose, { follow: true });

@@ -1,5 +1,11 @@
 import type { InternetRadioStation, Song } from "@needle/shared";
-import { DAY_MS, isLocalSong, musicSource, songSource, youtubeMusicRawId } from "@needle/shared";
+import {
+  DAY_MS,
+  isLocalSong,
+  musicSource,
+  songSource,
+  youtubeMusicRawId,
+} from "@needle/shared";
 import { api } from "../lib/api.ts";
 import { isIOS } from "../lib/device.ts";
 import { artistName } from "../lib/format.ts";
@@ -10,14 +16,15 @@ import { useSession } from "../state/session.ts";
 import type { Quality } from "../state/settings.ts";
 import { AudioEngine, dbToGain } from "./engine.ts";
 import { prepareSpotify, spotifyPlayer } from "./spotify.ts";
-import { rawId } from "../lib/spotify.ts";
-import { ytm } from "../lib/youtube-music.ts";
-import { spotifyArtistSongs } from "../queries/spotify.ts";
+import { rawId } from "../features/spotify/api/client.ts";
+import { ytm } from "../features/youtube-music/api/client.ts";
+import { spotifyArtistSongs } from "../features/spotify/hooks/useSpotify.ts";
 import { toast } from "../state/ui.ts";
 import { progress } from "./progress.ts";
 import * as Q from "./queue.ts";
 import type { PlayContext, PlayerState, ResumeOffer } from "./store.ts";
 import { current, usePlayer } from "./store.ts";
+import { translate } from "../i18n/index.ts";
 
 const PRELOAD_AT = 30;
 export const MIN_REPORT_MS = 30_000;
@@ -53,9 +60,12 @@ const resolved = new Map<string, string>();
 const objectUrls = new Set<string>();
 
 const set = (patch: Partial<PlayerState>) => usePlayer.setState(patch);
-const onSpotify = (song: Song | null | undefined) => Boolean(song && songSource(song) === "spotify");
-const onYouTubeMusic = (song: Song | null | undefined) => Boolean(song && songSource(song) === "youtubeMusic");
-const position = () => (backend === "spotify" ? spotifyPlayer.position() : (engine?.position() ?? 0));
+const onSpotify = (song: Song | null | undefined) =>
+  Boolean(song && songSource(song) === "spotify");
+const onYouTubeMusic = (song: Song | null | undefined) =>
+  Boolean(song && songSource(song) === "youtubeMusic");
+const position = () =>
+  backend === "spotify" ? spotifyPlayer.position() : (engine?.position() ?? 0);
 const get = () => usePlayer.getState();
 
 function codecFor(): string {
@@ -67,34 +77,47 @@ function codecFor(): string {
 let codec: string | null = null;
 
 function quality(): Quality {
-  const conn = (navigator as Navigator & { connection?: { type?: string } }).connection;
+  const conn = (navigator as Navigator & { connection?: { type?: string } })
+    .connection;
   const s = settings();
   return conn?.type === "cellular" ? s.cellularQuality : s.wifiQuality;
 }
 
 export function streamUrl(song: Song, q: Quality = quality()): string {
   if (onYouTubeMusic(song)) {
-    if (!youtubeMusicAllowed) throw new Error("YouTube Music is switched off or unavailable in Needle.");
+    if (!youtubeMusicAllowed)
+      throw new Error(translate("player.youtubeUnavailable"));
 
     const credentials = useSession.getState().credentials;
-    if (!credentials) throw new Error("Sign in to play YouTube Music.");
+    if (!credentials) throw new Error(translate("player.signInYouTube"));
 
-    const query = new URLSearchParams({ u: credentials.user, t: credentials.token, s: credentials.salt });
+    const query = new URLSearchParams({
+      u: credentials.user,
+      t: credentials.token,
+      s: credentials.salt,
+    });
 
     return `/youtube-music/stream/${encodeURIComponent(youtubeMusicRawId(song.id))}?${query.toString()}`;
   }
 
-  if (!isLocalSong(song)) throw new Error("Spotify songs play through the Spotify player.");
+  if (!isLocalSong(song)) throw new Error(translate("player.spotifyOnly"));
 
   if (q === "original") return subsonicUrl("stream", { id: song.id });
   codec ??= codecFor();
-  return subsonicUrl("stream", { id: song.id, format: codec, maxBitRate: Number(q), estimateContentLength: true });
+  return subsonicUrl("stream", {
+    id: song.id,
+    format: codec,
+    maxBitRate: Number(q),
+    estimateContentLength: true,
+  });
 }
 
 async function sourceFor(item: Q.QueueItem): Promise<string> {
   const cached = resolved.get(item.uid);
   if (cached) return cached;
-  const offline = isLocalSong(item.song) ? await offlineSource(item.song.id) : null;
+  const offline = isLocalSong(item.song)
+    ? await offlineSource(item.song.id)
+    : null;
   const src = offline ?? streamUrl(item.song);
   if (offline) objectUrls.add(offline);
   resolved.set(item.uid, src);
@@ -155,7 +178,8 @@ function beginListen(item: Q.QueueItem, announce: boolean) {
   scrobbled = false;
   reported = false;
   updateMediaSession(item.song);
-  if (announce && isLocalSong(item.song)) void sub.scrobble(item.song.id, false).catch(() => undefined);
+  if (announce && isLocalSong(item.song))
+    void sub.scrobble(item.song.id, false).catch(() => undefined);
 }
 
 async function loadCurrent(autoplay: boolean, startAt = 0) {
@@ -175,7 +199,10 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
 
   finishListen();
 
-  if (item.song.isAvailable === false || (onYouTubeMusic(item.song) && !youtubeMusicAllowed)) {
+  if (
+    item.song.isAvailable === false ||
+    (onYouTubeMusic(item.song) && !youtubeMusicAllowed)
+  ) {
     if (backend === "spotify") leaveSpotify();
 
     engine.stop();
@@ -185,10 +212,11 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
     set({
       playing: false,
       buffering: false,
-      error:
+      error: translate(
         item.song.isAvailable === false
-          ? "This song is unavailable. Open it in YouTube Music."
-          : "YouTube Music is switched off or unavailable in Needle.",
+          ? "player.unavailableYouTube"
+          : "player.youtubeUnavailable",
+      ),
     });
 
     return;
@@ -199,7 +227,11 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   if (onSpotify(item.song)) {
     engine.stop();
     backend = "spotify";
-    progress.set({ position: startAt, duration: item.song.duration ?? 0, buffered: 0 });
+    progress.set({
+      position: startAt,
+      duration: item.song.duration ?? 0,
+      buffered: 0,
+    });
     if (autoplay) await startSpotify(item, startAt);
     scheduleSave();
     return;
@@ -207,7 +239,11 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
   if (backend === "spotify") leaveSpotify();
   const src = await sourceFor(item).catch((error: unknown) => {
     if (get().items[get().index]?.uid === item.uid)
-      onError(error instanceof Error ? error.message : "The stream could not be loaded.");
+      onError(
+        error instanceof Error
+          ? error.message
+          : translate("player.streamFailed"),
+      );
 
     return null;
   });
@@ -217,7 +253,12 @@ async function loadCurrent(autoplay: boolean, startAt = 0) {
 
   engine.load(src, { autoplay, startAt, gain: gainFor(item.song) });
   const nextIdx = Q.nextIndex(get(), get().repeat);
-  releaseSources(new Set([item.uid, ...(nextIdx !== null ? [get().items[nextIdx]?.uid ?? ""] : [])]));
+  releaseSources(
+    new Set([
+      item.uid,
+      ...(nextIdx !== null ? [get().items[nextIdx]?.uid ?? ""] : []),
+    ]),
+  );
   scheduleSave();
 }
 
@@ -231,17 +272,23 @@ function spotifyEvents() {
       if (backend === "spotify") onEnded();
     },
     error: (message: string) => {
-      if (backend === "spotify") set({ error: message, playing: false, buffering: false });
+      if (backend === "spotify")
+        set({ error: message, playing: false, buffering: false });
     },
     lost: () => {
       if (backend !== "spotify") return;
       stopSpotifyTicker();
-      set({ playing: false, buffering: false, lastPosition: spotifyPlayer.position() });
+      set({
+        playing: false,
+        buffering: false,
+        lastPosition: spotifyPlayer.position(),
+      });
     },
   };
 }
 
-const connectSpotify = () => prepareSpotify(`Needle ${useSession.getState().deviceName}`, spotifyEvents());
+const connectSpotify = () =>
+  prepareSpotify(`Needle ${useSession.getState().deviceName}`, spotifyEvents());
 
 export function warmSpotify() {
   void connectSpotify().catch(() => undefined);
@@ -265,8 +312,11 @@ export function allowYouTubeMusic(on: boolean) {
   const nextIndex = Q.nextIndex(playerState, playerState.repeat);
   const previousIndex = Q.previousIndex(playerState, playerState.repeat);
   if (
-    (nextIndex !== null && onYouTubeMusic(playerState.items[nextIndex]?.song)) ||
-    (engine?.fading && previousIndex !== null && onYouTubeMusic(playerState.items[previousIndex]?.song))
+    (nextIndex !== null &&
+      onYouTubeMusic(playerState.items[nextIndex]?.song)) ||
+    (engine?.fading &&
+      previousIndex !== null &&
+      onYouTubeMusic(playerState.items[previousIndex]?.song))
   )
     engine?.clearPreload();
 
@@ -291,11 +341,11 @@ export function allowSpotify(on: boolean) {
 
 async function startSpotify(item: Q.QueueItem, startAt: number) {
   if (!spotifyAllowed) {
-    onError("Spotify is switched off or unavailable in Needle.");
+    onError(translate("player.spotifyUnavailable"));
     return;
   }
   if (!item.song.uri) {
-    onError("This song has no Spotify link.");
+    onError(translate("player.noSpotifyLink"));
     return;
   }
   try {
@@ -308,7 +358,7 @@ async function startSpotify(item: Q.QueueItem, startAt: number) {
     set({
       playing: false,
       buffering: false,
-      error: e instanceof Error ? e.message : "Spotify couldn’t play that song",
+      error: e instanceof Error ? e.message : translate("player.spotifyFailed"),
     });
   }
 }
@@ -338,7 +388,11 @@ function onTime(position: number, duration: number, buffered: number) {
 
   const song = current(s);
   if (!song) return;
-  if (!scrobbled && isLocalSong(song) && listenedMs >= Math.min((song.duration ?? duration) * 500, SCROBBLE_CAP_MS)) {
+  if (
+    !scrobbled &&
+    isLocalSong(song) &&
+    listenedMs >= Math.min((song.duration ?? duration) * 500, SCROBBLE_CAP_MS)
+  ) {
     scrobbled = true;
     void sub.scrobble(song.id, true).catch(() => undefined);
   }
@@ -367,7 +421,8 @@ function onTime(position: number, duration: number, buffered: number) {
     if (remaining < PRELOAD_AT && !resolved.has(next.uid))
       void sourceFor(next)
         .then((src) => {
-          if (!onYouTubeMusic(next.song) || youtubeMusicAllowed) engine?.preload(src);
+          if (!onYouTubeMusic(next.song) || youtubeMusicAllowed)
+            engine?.preload(src);
         })
         .catch(() => undefined);
     return;
@@ -387,7 +442,10 @@ function onTime(position: number, duration: number, buffered: number) {
   if (remaining < PRELOAD_AT && !resolved.has(next.uid)) {
     void sourceFor(next)
       .then((src) => {
-        if ((!onYouTubeMusic(next.song) || youtubeMusicAllowed) && (settings().gapless || crossfadeSeconds() > 0))
+        if (
+          (!onYouTubeMusic(next.song) || youtubeMusicAllowed) &&
+          (settings().gapless || crossfadeSeconds() > 0)
+        )
           engine?.preload(src);
       })
       .catch(() => undefined);
@@ -415,12 +473,19 @@ function onEnded() {
 function onError(message: string) {
   const s = get();
   if (s.station) {
-    set({ error: `${s.station.name} isn't responding`, playing: false });
+    set({
+      error: translate("player.stationFailed", { name: s.station.name }),
+      playing: false,
+    });
     return;
   }
   const song = current(s);
-  const detail = message.trim() || "The file couldn’t be played.";
-  set({ error: song ? `Couldn’t play “${song.title}”. ${detail}` : detail });
+  const detail = message.trim() || translate("player.fileFailed");
+  set({
+    error: song
+      ? translate("player.playFailed", { title: song.title, detail })
+      : detail,
+  });
   if (onYouTubeMusic(song)) {
     engine?.stop();
     loadedUid = null;
@@ -438,9 +503,13 @@ async function appendSimilar(): Promise<boolean> {
   const song = current();
   if (!song || !isLocalSong(song)) return false;
   const have = new Set(get().items.map((i) => i.song.id));
-  let songs = (await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])).filter((x) => !have.has(x.id));
+  let songs = (
+    await sub.similarSongs(song.id, AUTOPLAY_BATCH).catch(() => [])
+  ).filter((x) => !have.has(x.id));
   if (songs.length < 5)
-    songs = (await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])).filter((x) => !have.has(x.id));
+    songs = (
+      await sub.randomSongs(AUTOPLAY_BATCH, song.genre).catch(() => [])
+    ).filter((x) => !have.has(x.id));
   if (!songs.length) return false;
   set({ items: [...get().items, ...songs.map((x) => Q.makeItem(x))] });
   return true;
@@ -450,7 +519,8 @@ export async function next() {
   const s = get();
   if (s.station) return;
   let n = Q.nextIndex(s, s.repeat);
-  if (n === null && settings().autoplay && (await appendSimilar())) n = get().index + 1;
+  if (n === null && settings().autoplay && (await appendSimilar()))
+    n = get().index + 1;
   if (n === null) {
     finishListen();
     engine?.pause();
@@ -494,22 +564,34 @@ export function playSongs(
       : 0
     : Math.max(0, Math.min(startIndex, songs.length - 1));
   const selectedSong = songs[selectedIndex];
-  if (!selectedSong || selectedSong.isAvailable === false || (onYouTubeMusic(selectedSong) && !youtubeMusicAllowed)) {
+  if (
+    !selectedSong ||
+    selectedSong.isAvailable === false ||
+    (onYouTubeMusic(selectedSong) && !youtubeMusicAllowed)
+  ) {
     toast(
-      selectedSong?.isAvailable === false
-        ? "This song is unavailable. Open it in YouTube Music."
-        : "YouTube Music is switched off or unavailable in Needle.",
+      translate(
+        selectedSong?.isAvailable === false
+          ? "player.unavailableYouTube"
+          : "player.youtubeUnavailable",
+      ),
     );
 
     return;
   }
 
   const playableSongs = songs.filter(
-    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+    (song) =>
+      song.isAvailable !== false &&
+      (!onYouTubeMusic(song) || youtubeMusicAllowed),
   );
   const playableIndex = songs
     .slice(0, selectedIndex)
-    .filter((song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed)).length;
+    .filter(
+      (song) =>
+        song.isAvailable !== false &&
+        (!onYouTubeMusic(song) || youtubeMusicAllowed),
+    ).length;
 
   spotifyPlayer.activate();
   const at = opts.at ?? 0;
@@ -547,7 +629,10 @@ export function toggle() {
   const item = s.items[s.index];
   if (!item) return;
 
-  if (item.song.isAvailable === false || (onYouTubeMusic(item.song) && !youtubeMusicAllowed)) {
+  if (
+    item.song.isAvailable === false ||
+    (onYouTubeMusic(item.song) && !youtubeMusicAllowed)
+  ) {
     void loadCurrent(true, s.lastPosition);
 
     return;
@@ -555,7 +640,11 @@ export function toggle() {
 
   spotifyPlayer.activate();
   if (onSpotify(item.song)) {
-    if (backend === "spotify" && loadedUid === item.uid && spotifyPlayer.playingUri === item.song.uri) {
+    if (
+      backend === "spotify" &&
+      loadedUid === item.uid &&
+      spotifyPlayer.playingUri === item.song.uri
+    ) {
       set({ playing: true });
       lastTick = performance.now();
       spotifyPlayer.resume();
@@ -569,7 +658,8 @@ export function toggle() {
   set({ playing: true });
   lastTick = performance.now();
   void engine.play();
-  if (!scrobbled && isLocalSong(item.song)) void sub.scrobble(item.song.id, false).catch(() => undefined);
+  if (!scrobbled && isLocalSong(item.song))
+    void sub.scrobble(item.song.id, false).catch(() => undefined);
 }
 
 export function play() {
@@ -624,7 +714,9 @@ export function cycleRepeat() {
 
 export function addToQueue(songs: Song[]) {
   const playableSongs = songs.filter(
-    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+    (song) =>
+      song.isAvailable !== false &&
+      (!onYouTubeMusic(song) || youtubeMusicAllowed),
   );
   if (!playableSongs.length) return;
 
@@ -637,7 +729,9 @@ export function addToQueue(songs: Song[]) {
 
 export function playNext(songs: Song[]) {
   const playableSongs = songs.filter(
-    (song) => song.isAvailable !== false && (!onYouTubeMusic(song) || youtubeMusicAllowed),
+    (song) =>
+      song.isAvailable !== false &&
+      (!onYouTubeMusic(song) || youtubeMusicAllowed),
   );
   if (!playableSongs.length) return;
 
@@ -680,49 +774,70 @@ export function playStation(station: InternetRadioStation) {
   if ("mediaSession" in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
-      artist: "Internet radio",
+      artist: translate("player.internetRadio"),
       album: "Needle",
     });
   }
 }
 
-async function similarTo(id: string, genre: string | undefined): Promise<Song[]> {
+async function similarTo(
+  id: string,
+  genre: string | undefined,
+): Promise<Song[]> {
   const similar = await sub.similarSongs(id, 60).catch(() => [] as Song[]);
-  return similar.length < 5 && genre ? sub.randomSongs(60, genre).catch(() => []) : similar;
+  return similar.length < 5 && genre
+    ? sub.randomSongs(60, genre).catch(() => [])
+    : similar;
 }
 
 async function spotifyRadio(artistId: string): Promise<Song[]> {
-  const { songs } = await spotifyArtistSongs(rawId(artistId), RADIO_ALBUMS).catch(() => ({ songs: [] as Song[] }));
+  const { songs } = await spotifyArtistSongs(
+    rawId(artistId),
+    RADIO_ALBUMS,
+  ).catch(() => ({ songs: [] as Song[] }));
   return Q.shuffleArray(songs);
 }
 
-export async function startRadio(seed: { song?: Song; artistId?: string; name: string }) {
+export async function startRadio(seed: {
+  song?: Song;
+  artistId?: string;
+  name: string;
+}) {
   const id = seed.song?.id ?? seed.artistId;
   if (!id) return;
   const artistId = seed.artistId ?? seed.song?.artistId;
   const source = seed.song ? songSource(seed.song) : musicSource(id);
   if (source === "youtubeMusic" && !youtubeMusicAllowed) {
-    toast("YouTube Music is switched off or unavailable in Needle.");
+    toast(translate("player.youtubeUnavailable"));
 
     return;
   }
 
   const pool =
     source === "youtubeMusic"
-      ? await (seed.song ? ytm.radio(id) : ytm.artist(id).then((artistDetail) => artistDetail.songs)).catch(
-          () => [] as Song[],
-        )
+      ? await (
+          seed.song
+            ? ytm.radio(id)
+            : ytm.artist(id).then((artistDetail) => artistDetail.songs)
+        ).catch(() => [] as Song[])
       : source === "spotify"
         ? artistId
           ? await spotifyRadio(artistId)
           : []
         : await similarTo(id, seed.song?.genre);
-  const songs = seed.song ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)] : pool;
+  const songs = seed.song
+    ? [seed.song, ...pool.filter((x) => x.id !== seed.song?.id)]
+    : pool;
   if (songs.length < 2) {
-    toast(`Couldn’t find songs for ${seed.name} radio`);
+    toast(translate("player.radioNotFound", { name: seed.name }));
     return;
   }
-  playSongs(songs, 0, { kind: "radio", name: `${seed.name} radio` }, { shuffle: false });
+  playSongs(
+    songs,
+    0,
+    { kind: "radio", name: translate("player.radioName", { name: seed.name }) },
+    { shuffle: false },
+  );
 }
 
 export function acceptResume() {
@@ -731,7 +846,7 @@ export function acceptResume() {
   set({
     ...Q.start(offer.songs, offer.index, false),
     shuffle: false,
-    context: { kind: "queue", name: "Your queue" },
+    context: { kind: "queue", name: translate("player.queueName") },
     resume: null,
   });
   void loadCurrent(true, offer.position);
@@ -759,24 +874,34 @@ function saveNow() {
     .slice(Math.max(0, s.index - 100), s.index + 400)
     .filter((queueItem) => isLocalSong(queueItem.song))
     .map((queueItem) => queueItem.song.id);
-  void sub.savePlayQueue(ids, song.id, Math.round((engine?.position() ?? s.lastPosition) * 1000)).then(
-    () => {
-      try {
-        localStorage.setItem(SAVED_AT, String(Date.now()));
-      } catch {
-        return;
-      }
-    },
-    () => {
-      dirty = true;
-    },
-  );
+  void sub
+    .savePlayQueue(
+      ids,
+      song.id,
+      Math.round((engine?.position() ?? s.lastPosition) * 1000),
+    )
+    .then(
+      () => {
+        try {
+          localStorage.setItem(SAVED_AT, String(Date.now()));
+        } catch {
+          return;
+        }
+      },
+      () => {
+        dirty = true;
+      },
+    );
 }
 
 function updateMediaSession(song: Song) {
   if (!("mediaSession" in navigator)) return;
   const art = [96, 192, 256, 512]
-    .map((size) => ({ src: coverUrl(song.coverArt, size) ?? "", sizes: `${size}x${size}`, type: "image/jpeg" }))
+    .map((size) => ({
+      src: coverUrl(song.coverArt, size) ?? "",
+      sizes: `${size}x${size}`,
+      type: "image/jpeg",
+    }))
     .filter((a) => a.src);
   navigator.mediaSession.metadata = new MediaMetadata({
     title: song.title,
@@ -787,9 +912,14 @@ function updateMediaSession(song: Song) {
 }
 
 function setPositionState(position: number, duration: number) {
-  if (!("mediaSession" in navigator) || !duration || !Number.isFinite(duration)) return;
+  if (!("mediaSession" in navigator) || !duration || !Number.isFinite(duration))
+    return;
   try {
-    navigator.mediaSession.setPositionState({ duration, position: Math.min(position, duration), playbackRate: 1 });
+    navigator.mediaSession.setPositionState({
+      duration,
+      position: Math.min(position, duration),
+      playbackRate: 1,
+    });
   } catch {
     return;
   }
@@ -816,7 +946,8 @@ function bindMediaSession() {
     }
   }
   usePlayer.subscribe((s, prev) => {
-    if (s.playing !== prev.playing) ms.playbackState = s.playing ? "playing" : "paused";
+    if (s.playing !== prev.playing)
+      ms.playbackState = s.playing ? "playing" : "paused";
   });
 }
 
@@ -832,7 +963,11 @@ async function offerResume() {
   const s = get();
   const position = (q.position ?? 0) / 1000;
   if (!s.items.length) {
-    set({ ...Q.start(q.entry, index, false), lastPosition: position, context: { kind: "queue", name: "Your queue" } });
+    set({
+      ...Q.start(q.entry, index, false),
+      lastPosition: position,
+      context: { kind: "queue", name: translate("player.queueName") },
+    });
     return;
   }
   const changed = q.changed ? Date.parse(q.changed) : 0;
@@ -845,14 +980,22 @@ async function offerResume() {
       }
     })() ?? 0,
   );
-  if (changed <= savedHere + CLOCK_SLACK_MS || Date.now() - changed > RESUME_WINDOW_MS || q.changed === dismissed)
+  if (
+    changed <= savedHere + CLOCK_SLACK_MS ||
+    Date.now() - changed > RESUME_WINDOW_MS ||
+    q.changed === dismissed
+  )
     return;
-  if (current(s)?.id === q.current && Math.abs(s.lastPosition - position) < 5) return;
+  if (current(s)?.id === q.current && Math.abs(s.lastPosition - position) < 5)
+    return;
   const offer: ResumeOffer = {
     songs: q.entry,
     index,
     position,
-    changedBy: (q.changedBy ?? "another device").replace(/^Needle /, ""),
+    changedBy: (q.changedBy ?? translate("player.anotherDevice")).replace(
+      /^Needle /,
+      "",
+    ),
     changed: q.changed ?? "",
   };
   set({ resume: offer });
@@ -864,7 +1007,8 @@ export function startPlayer() {
     {
       time: onTime,
       ended: onEnded,
-      playing: (playing) => set({ playing, ...(playing ? { buffering: false } : {}) }),
+      playing: (playing) =>
+        set({ playing, ...(playing ? { buffering: false } : {}) }),
       waiting: (buffering) => set({ buffering }),
       error: onError,
     },

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Icon } from "./Icon.tsx";
+import { translate } from "../i18n/index.ts";
 
 const KEY = "needle.installHintSeen";
 
@@ -24,14 +25,14 @@ export function InstallHint({ inline = false }: { inline?: boolean }) {
   };
   const body = (
     <>
-      <h3>Put Needle on your home screen</h3>
-      <p>It opens full screen like an app, keeps playing when the phone locks, and keeps your downloads.</p>
+      <h3>{translate("install.heading")}</h3>
+      <p>{translate("install.hint")}</p>
       <ol>
         <li>
-          Tap <Icon name="share" size={18} /> Share in Safari’s toolbar
+          <Icon name="share" size={18} /> {translate("install.share")}
         </li>
-        <li>Choose Add to Home Screen</li>
-        <li>Tap Add</li>
+        <li>{translate("install.choose")}</li>
+        <li>{translate("install.add")}</li>
       </ol>
     </>
   );
@@ -39,11 +40,16 @@ export function InstallHint({ inline = false }: { inline?: boolean }) {
   return (
     <>
       <div className="dim-bg" onClick={close} aria-hidden="true" />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="Put Needle on your home screen">
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={translate("install.heading")}
+      >
         <div className="grab" />
         {body}
         <button type="button" className="btn light" onClick={close}>
-          Got it
+          {translate("install.gotIt")}
         </button>
       </div>
     </>

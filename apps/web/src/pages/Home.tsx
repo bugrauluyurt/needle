@@ -2,37 +2,62 @@ import { Link, useNavigate } from "react-router";
 import { DAY_MS } from "@needle/shared";
 import type { Album, Mix } from "@needle/shared";
 import { Art, LikedArt } from "../components/Art.tsx";
-import { AlbumCard, ArtistCard, Card, CardRow, CardSkeletons, playAlbum, RowHeader } from "../components/Cards.tsx";
+import {
+  AlbumCard,
+  ArtistCard,
+  Card,
+  CardRow,
+  CardSkeletons,
+  playAlbum,
+  RowHeader,
+} from "../components/Cards.tsx";
 import { EmptyLibrary } from "../components/EmptyLibrary.tsx";
 import { Eq, Icon } from "../components/Icon.tsx";
-import { clock, greeting, hoursSince } from "../lib/format.ts";
+import { clock, greeting, hoursSince, plural } from "../lib/format.ts";
 import { useDelayed } from "../lib/useDelayed.ts";
 import { useTone } from "../lib/tone.ts";
 import { MixArt, playMix } from "../components/MixArt.tsx";
 import { player } from "../player/controller.ts";
 import { useContextPlaying, usePlayer } from "../player/store.ts";
-import { useAlbumList, useDiscoveries, useMixes, useStarred, useStats } from "../queries/hooks.ts";
+import {
+  useAlbumList,
+  useDiscoveries,
+  useMixes,
+  useStarred,
+  useStats,
+} from "../queries/hooks.ts";
 import { DiscoveryCard } from "../components/Discovery.tsx";
-import { usePageTone, useIsMobile } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileHeader } from "../layout/Mobile.tsx";
-import { spId } from "../lib/spotify.ts";
-import { useSpotifyAlbums, useSpotifyLiked, useSpotifyOn, useSpotifyPlaylists } from "../queries/spotify.ts";
-import { playSpotifyPlaylist, SpotifyAlbumCard, SpotifyPlaylistCard } from "../components/SpotifyCards.tsx";
+import { spId } from "../features/spotify/api/client.ts";
+import {
+  useSpotifyAlbums,
+  useSpotifyLiked,
+  useSpotifyOn,
+  useSpotifyPlaylists,
+} from "../features/spotify/hooks/useSpotify.ts";
+import {
+  playSpotifyPlaylist,
+  SpotifyAlbumCard,
+  SpotifyPlaylistCard,
+} from "../features/spotify/components/SpotifyCards.tsx";
 import {
   useYouTubeMusicAlbums,
   useYouTubeMusicLiked,
   useYouTubeMusicOn,
   useYouTubeMusicPlaylists,
-} from "../queries/youtube-music.ts";
+} from "../features/youtube-music/hooks/useYouTubeMusic.ts";
 import {
   playYouTubeMusicPlaylist,
   YouTubeMusicAlbumCard,
   YouTubeMusicPlaylistCard,
-} from "../components/YouTubeMusicCards.tsx";
-import { YouTubeMusicNotice } from "../components/YouTubeMusicNotice.tsx";
+} from "../features/youtube-music/components/YouTubeMusicCards.tsx";
+import { YouTubeMusicNotice } from "../features/youtube-music/components/YouTubeMusicNotice.tsx";
 import { youtubeMusicRawId } from "@needle/shared";
 import { toast } from "../state/ui.ts";
+import { translate } from "../i18n/index.ts";
 
 const YEAR_MS = 365 * DAY_MS;
 
@@ -61,7 +86,9 @@ function QuickTile({
         <button
           type="button"
           className="q-play"
-          aria-label={playing ? `Pause ${title}` : `Play ${title}`}
+          aria-label={translate(playing ? "track.pause" : "track.play", {
+            title,
+          })}
           onClick={current ? player.toggle : onPlay}
         >
           <Icon name={playing ? "pause" : "play"} size={16} />
@@ -76,41 +103,69 @@ function Resume() {
   const song = offer?.songs[offer.index];
   const tone = useTone(song?.coverArt);
   if (!offer || !song) return null;
-  const pct = song.duration ? Math.min(100, (offer.position / song.duration) * 100) : 0;
+  const pct = song.duration
+    ? Math.min(100, (offer.position / song.duration) * 100)
+    : 0;
   const hours = hoursSince(offer.changed);
   const when =
-    hours < 1 ? "a few minutes ago" : hours === 1 ? "an hour ago" : hours < 24 ? `${hours} hours ago` : "recently";
+    hours < 1
+      ? translate("home.fewMinutesAgo")
+      : hours === 1
+        ? translate("home.hourAgo")
+        : hours < 24
+          ? translate("home.hoursAgo", { count: hours })
+          : translate("home.recently");
   return (
     <section
       className="resume"
       style={{ "--tone": tone } as React.CSSProperties}
-      aria-label="Pick up where you left off"
+      aria-label={translate("home.pickUp")}
     >
       <Art id={song.coverArt} px={112} />
       <div className="resume-text">
         <div className="k">
           <Icon name="devices" size={15} />
-          Stopped on {offer.changedBy}, {when}
+          {translate("home.stoppedOn", { device: offer.changedBy, time: when })}
         </div>
-        <div className="h">Pick up {song.album ?? song.title} where you left it</div>
+        <div className="h">
+          {translate("home.resumeHeading", { name: song.album ?? song.title })}
+        </div>
         <div className="prog">
           <span className="ellipsis">
-            Track {offer.index + 1}, {song.title}
+            {translate("home.resumePosition", {
+              track: offer.index + 1,
+              title: song.title,
+            })}
           </span>
-          <div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}>
+          <div
+            className="line static"
+            style={{ "--p": `${pct}%` } as React.CSSProperties}
+          >
             <i />
           </div>
           <span className="tabular">
-            {clock(offer.position)} of {clock(song.duration)}
+            {translate("home.positionOf", {
+              position: clock(offer.position),
+              duration: clock(song.duration),
+            })}
           </span>
         </div>
       </div>
       <div className="actions">
-        <button type="button" className="btn primary" onClick={player.acceptResume}>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={player.acceptResume}
+        >
           <Icon name="play" size={16} />
-          Resume here
+          {translate("home.resume")}
         </button>
-        <button type="button" className="icon-btn" aria-label="Dismiss" onClick={player.dismissResume}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={translate("home.dismiss")}
+          onClick={player.dismissResume}
+        >
           <Icon name="close" size={18} />
         </button>
       </div>
@@ -120,29 +175,41 @@ function Resume() {
 
 function SpotifyLikedTile() {
   const { data: liked = [] } = useSpotifyLiked();
-  const context = { kind: "liked" as const, id: "sp:liked", name: "Liked on Spotify" };
+  const context = {
+    kind: "liked" as const,
+    id: "sp:liked",
+    name: translate("home.likedSpotify"),
+  };
   return (
     <QuickTile
       to="/spotify/liked"
       art={<LikedArt className="sp-liked" />}
-      title="Liked on Spotify"
+      title={translate("home.likedSpotify")}
       playingId="sp:liked"
-      {...(liked.length ? { onPlay: () => player.playSongs(liked, 0, context) } : {})}
+      {...(liked.length
+        ? { onPlay: () => player.playSongs(liked, 0, context) }
+        : {})}
     />
   );
 }
 
 function YouTubeMusicLikedTile() {
   const { data: likedSongs = [] } = useYouTubeMusicLiked();
-  const context = { kind: "liked" as const, id: "ytm:liked", name: "Liked on YouTube Music" };
+  const context = {
+    kind: "liked" as const,
+    id: "ytm:liked",
+    name: translate("home.likedYouTube"),
+  };
 
   return (
     <QuickTile
       to="/youtube-music/liked"
       art={<LikedArt className="yt-liked" />}
-      title="Liked on YouTube Music"
+      title={translate("home.likedYouTube")}
       playingId="ytm:liked"
-      {...(likedSongs.length ? { onPlay: () => player.playSongs(likedSongs, 0, context) } : {})}
+      {...(likedSongs.length
+        ? { onPlay: () => player.playSongs(likedSongs, 0, context) }
+        : {})}
     />
   );
 }
@@ -162,24 +229,31 @@ function YouTubeMusicRows() {
       />
       {playlists.isLoading || playlists.data?.length ? (
         <>
-          <RowHeader title="Your YouTube Music playlists" to="/library" />
+          <RowHeader title={translate("home.playlistsYouTube")} to="/library" />
           <CardRow>
             {playlists.isLoading ? (
               <CardSkeletons />
             ) : (
-              playlists.data?.map((playlist) => <YouTubeMusicPlaylistCard key={playlist.id} playlist={playlist} />)
+              playlists.data?.map((playlist) => (
+                <YouTubeMusicPlaylistCard
+                  key={playlist.id}
+                  playlist={playlist}
+                />
+              ))
             )}
           </CardRow>
         </>
       ) : null}
       {albums.isLoading || albums.data?.length ? (
         <>
-          <RowHeader title="Albums you saved on YouTube Music" to="/library" />
+          <RowHeader title={translate("home.albumsYouTube")} to="/library" />
           <CardRow>
             {albums.isLoading ? (
               <CardSkeletons />
             ) : (
-              albums.data?.map((album) => <YouTubeMusicAlbumCard key={album.id} album={album} />)
+              albums.data?.map((album) => (
+                <YouTubeMusicAlbumCard key={album.id} album={album} />
+              ))
             )}
           </CardRow>
         </>
@@ -191,22 +265,32 @@ function YouTubeMusicRows() {
 function SpotifyRows() {
   const playlists = useSpotifyPlaylists();
   const albums = useSpotifyAlbums();
-  const mine = (playlists.data ?? []).toSorted((a, b) => Number(b.mine) - Number(a.mine));
+  const mine = (playlists.data ?? []).toSorted(
+    (a, b) => Number(b.mine) - Number(a.mine),
+  );
   return (
     <>
       {playlists.isLoading || mine.length ? (
         <>
-          <RowHeader title="Your Spotify playlists" to="/library" />
+          <RowHeader title={translate("home.playlistsSpotify")} to="/library" />
           <CardRow>
-            {playlists.isLoading ? <CardSkeletons /> : mine.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />)}
+            {playlists.isLoading ? (
+              <CardSkeletons />
+            ) : (
+              mine.map((p) => <SpotifyPlaylistCard key={p.id} playlist={p} />)
+            )}
           </CardRow>
         </>
       ) : null}
       {albums.isLoading || albums.data?.length ? (
         <>
-          <RowHeader title="Albums you saved on Spotify" to="/library" />
+          <RowHeader title={translate("home.albumsSpotify")} to="/library" />
           <CardRow>
-            {albums.data ? albums.data.map((a) => <SpotifyAlbumCard key={a.id} album={a} />) : <CardSkeletons />}
+            {albums.data ? (
+              albums.data.map((a) => <SpotifyAlbumCard key={a.id} album={a} />)
+            ) : (
+              <CardSkeletons />
+            )}
           </CardRow>
         </>
       ) : null}
@@ -247,7 +331,7 @@ function ConnectedHome({ header }: { header: React.ReactNode }) {
               playingId={playlist.id}
               onPlay={() =>
                 void playYouTubeMusicPlaylist(playlist.id).catch(() =>
-                  toast("YouTube Music didn’t answer. Try again in a moment."),
+                  toast(translate("youtube.answerFailedHint")),
                 )
               }
             />
@@ -280,7 +364,10 @@ function DiscoveryRow() {
   if (!data?.length) return null;
   return (
     <>
-      <RowHeader title="Made for you by ListenBrainz" subtitle="Playlists ListenBrainz makes from what you play" />
+      <RowHeader
+        title={translate("home.listenBrainz")}
+        subtitle={translate("home.listenBrainzHint")}
+      />
       <CardRow>
         {data.map((p) => (
           <DiscoveryCard key={p.id} playlist={p} />
@@ -294,13 +381,20 @@ function HomeSkeleton() {
   const show = useDelayed(true);
   if (!show) return null;
   return (
-    <div className="pad" aria-busy="true" aria-label="Loading">
+    <div
+      className="pad"
+      aria-busy="true"
+      aria-label={translate("home.loading")}
+    >
       <div className="quick">
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="q skeleton" />
         ))}
       </div>
-      <div className="skeleton line-skel" style={{ width: 240, height: 22, marginTop: 34 }} />
+      <div
+        className="skeleton line-skel"
+        style={{ width: 240, height: 22, marginTop: 34 }}
+      />
       <CardRow>
         <CardSkeletons />
       </CardRow>
@@ -310,7 +404,9 @@ function HomeSkeleton() {
 
 function forgotten(albums: Album[] | undefined): Album[] {
   const cutoff = Date.now() - YEAR_MS / 2;
-  return (albums ?? []).filter((a) => a.played && Date.parse(a.played) < cutoff).slice(0, 12);
+  return (albums ?? [])
+    .filter((a) => a.played && Date.parse(a.played) < cutoff)
+    .slice(0, 12);
 }
 
 export default function Home() {
@@ -324,7 +420,10 @@ export default function Home() {
   const stats = useStats("month");
   const starred = useStarred();
   const current = usePlayer((s) => s.items[s.index]?.song);
-  const headerCover = current?.coverArt ?? recent.data?.[0]?.coverArt ?? newest.data?.[0]?.coverArt;
+  const headerCover =
+    current?.coverArt ??
+    recent.data?.[0]?.coverArt ??
+    newest.data?.[0]?.coverArt;
   const tone = useTone(headerCover);
   const spotifyOn = useSpotifyOn();
   const youtubeMusicOn = useYouTubeMusicOn();
@@ -366,10 +465,17 @@ export default function Home() {
           <QuickTile
             to="/liked"
             art={<LikedArt />}
-            title="Liked songs"
+            title={translate("library.likedSongs")}
             playingId="liked"
             {...(liked.length
-              ? { onPlay: () => player.playSongs(liked, 0, { kind: "liked", id: "liked", name: "Liked songs" }) }
+              ? {
+                  onPlay: () =>
+                    player.playSongs(liked, 0, {
+                      kind: "liked",
+                      id: "liked",
+                      name: translate("library.likedSongs"),
+                    }),
+                }
               : {})}
           />
           {spotifyOn ? <SpotifyLikedTile /> : null}
@@ -389,8 +495,8 @@ export default function Home() {
         {mixes.data?.length ? (
           <>
             <RowHeader
-              title="Mixes from your library"
-              subtitle="Made from what you play most, refreshed every morning"
+              title={translate("home.mixes")}
+              subtitle={translate("home.mixesHint")}
             />
             <CardRow>
               {mixes.data.map((m) => (
@@ -400,7 +506,10 @@ export default function Home() {
           </>
         ) : null}
         <DiscoveryRow />
-        <RowHeader title="Recently added" to="/albums/newest" />
+        <RowHeader
+          title={translate("home.recentlyAdded")}
+          to="/albums/newest"
+        />
         <CardRow>
           {newest.data.map((a) => (
             <AlbumCard key={a.id} album={a} />
@@ -411,8 +520,8 @@ export default function Home() {
         {old.length ? (
           <>
             <RowHeader
-              title="You haven’t played these in a while"
-              subtitle="Albums you played a lot, and not for six months"
+              title={translate("home.unplayed")}
+              subtitle={translate("home.unplayedHint")}
             />
             <CardRow>
               {old.map((a) => (
@@ -424,10 +533,14 @@ export default function Home() {
         {stats.data?.topArtists.length ? (
           <>
             <RowHeader
-              title="Your top artists this month"
+              title={translate("home.topArtists")}
               action={
-                <button type="button" className="show-all" onClick={() => void navigate("/stats")}>
-                  See your listening
+                <button
+                  type="button"
+                  className="show-all"
+                  onClick={() => void navigate("/stats")}
+                >
+                  {translate("home.seeListening")}
                 </button>
               }
             />
@@ -436,7 +549,7 @@ export default function Home() {
                 <ArtistCard
                   key={artist.id}
                   artist={{ id: artist.id, name: artist.name }}
-                  subtitle={`${artist.plays} ${artist.plays === 1 ? "play" : "plays"}`}
+                  subtitle={plural(artist.plays, "play")}
                 />
               ))}
             </CardRow>
@@ -444,7 +557,10 @@ export default function Home() {
         ) : null}
         {frequent.data?.length ? (
           <>
-            <RowHeader title="Most played" to="/albums/frequent" />
+            <RowHeader
+              title={translate("home.mostPlayed")}
+              to="/albums/frequent"
+            />
             <CardRow>
               {frequent.data.slice(0, 12).map((a) => (
                 <AlbumCard key={a.id} album={a} />
@@ -452,9 +568,17 @@ export default function Home() {
             </CardRow>
           </>
         ) : null}
-        <RowHeader title="Something different" subtitle="Picked at random from your library" to="/albums/random" />
+        <RowHeader
+          title={translate("home.somethingDifferent")}
+          subtitle={translate("home.somethingDifferentHint")}
+          to="/albums/random"
+        />
         <CardRow>
-          {random.data ? random.data.map((a) => <AlbumCard key={a.id} album={a} />) : <CardSkeletons />}
+          {random.data ? (
+            random.data.map((a) => <AlbumCard key={a.id} album={a} />)
+          ) : (
+            <CardSkeletons />
+          )}
         </CardRow>
       </div>
     </div>

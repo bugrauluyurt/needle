@@ -17,7 +17,12 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   if (max === min) return [0, 0, l];
   const d = max - min;
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  const h =
+    max === r
+      ? (g - b) / d + (g < b ? 6 : 0)
+      : max === g
+        ? (b - r) / d + 2
+        : (r - g) / d + 4;
   return [h * 60, s, l];
 }
 
@@ -34,11 +39,18 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 export function toneFromPixels(data: Uint8ClampedArray): string {
-  const buckets = new Map<number, { w: number; h: number; s: number; l: number }>();
+  const buckets = new Map<
+    number,
+    { w: number; h: number; s: number; l: number }
+  >();
   let grey = { w: 0, l: 0 };
   for (let i = 0; i < data.length; i += 4) {
     if ((data[i + 3] ?? 0) < 128) continue;
-    const [h, s, l] = rgbToHsl(data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0);
+    const [h, s, l] = rgbToHsl(
+      data[i] ?? 0,
+      data[i + 1] ?? 0,
+      data[i + 2] ?? 0,
+    );
     if (s < 0.12 || l < 0.08 || l > 0.94) {
       grey = { w: grey.w + 1, l: grey.l + l };
       continue;
@@ -46,11 +58,20 @@ export function toneFromPixels(data: Uint8ClampedArray): string {
     const bucket = Math.round(h / 20) % 18;
     const weight = s * (1 - Math.abs(l - 0.5));
     const b = buckets.get(bucket) ?? { w: 0, h: 0, s: 0, l: 0 };
-    buckets.set(bucket, { w: b.w + weight, h: b.h + h * weight, s: b.s + s * weight, l: b.l + l * weight });
+    buckets.set(bucket, {
+      w: b.w + weight,
+      h: b.h + h * weight,
+      s: b.s + s * weight,
+      l: b.l + l * weight,
+    });
   }
   const best = [...buckets.values()].sort((a, b) => b.w - a.w)[0];
   if (!best || best.w < 0.6)
-    return hslToHex(260, 0.12, grey.w ? Math.min(0.32, Math.max(0.2, (grey.l / grey.w) * 0.5)) : 0.26);
+    return hslToHex(
+      260,
+      0.12,
+      grey.w ? Math.min(0.32, Math.max(0.2, (grey.l / grey.w) * 0.5)) : 0.26,
+    );
   const h = best.h / best.w;
   const s = Math.min(0.62, Math.max(0.28, best.s / best.w));
   const l = Math.min(0.4, Math.max(0.26, (best.l / best.w) * 0.72));
@@ -92,7 +113,10 @@ function extract(id: string): Promise<string> {
   return p;
 }
 
-export function useTone(coverArt: string | undefined, fallback = DEFAULT_TONE): string {
+export function useTone(
+  coverArt: string | undefined,
+  fallback = DEFAULT_TONE,
+): string {
   const enabled = useSettings((s) => s.artColor);
   const [resolved, setResolved] = useState<string | null>(null);
   useEffect(() => {

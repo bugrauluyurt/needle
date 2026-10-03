@@ -2,8 +2,10 @@ import { LyricsView } from "../components/Lyrics.tsx";
 import { useTone } from "../lib/tone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { MobileBack } from "../layout/Mobile.tsx";
-import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { useCurrentSong } from "../player/store.ts";
+import { translate } from "../i18n/index.ts";
 
 export default function LyricsPage() {
   const song = useCurrentSong();
@@ -17,7 +19,7 @@ export default function LyricsPage() {
         <LyricsView song={song} variant="page" />
       ) : (
         <div className="lyrics page none">
-          <p className="lyrics-none">Play a song to see its lyrics here</p>
+          <p className="lyrics-none">{translate("lyrics.playSong")}</p>
         </div>
       )}
     </div>

@@ -1,22 +1,29 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import type { QueryClient } from "@tanstack/react-query";
 import type * as QueryModule from "@tanstack/react-query";
-import type { Song, YouTubeMusicArtist, YouTubeMusicArtistDetail, YouTubeMusicPage } from "@needle/shared";
+import type {
+  Song,
+  YouTubeMusicArtist,
+  YouTubeMusicArtistDetail,
+  YouTubeMusicPage,
+} from "@needle/shared";
 import { queryClient } from "../src/queries/client.ts";
 import {
   clearYouTubeMusicCache,
   useToggleYouTubeMusicFollow,
   useToggleYouTubeMusicSave,
   ytmKeys,
-} from "../src/queries/youtube-music.ts";
+} from "../src/features/youtube-music/hooks/useYouTubeMusic.ts";
 import { ApiError } from "../src/lib/api.ts";
-import { ytm } from "../src/lib/youtube-music.ts";
+import { ytm } from "../src/features/youtube-music/api/client.ts";
 
-const mutationHarness = vi.hoisted((): { options: unknown; client: QueryClient | null; user: string } => ({
-  options: null,
-  client: null,
-  user: "listener-a",
-}));
+const mutationHarness = vi.hoisted(
+  (): { options: unknown; client: QueryClient | null; user: string } => ({
+    options: null,
+    client: null,
+    user: "listener-a",
+  }),
+);
 
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
   ...(await importOriginal<typeof QueryModule>()),
@@ -29,7 +36,9 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
 }));
 
 vi.mock("../src/state/session.ts", () => ({
-  useSession: { getState: () => ({ credentials: { user: mutationHarness.user } }) },
+  useSession: {
+    getState: () => ({ credentials: { user: mutationHarness.user } }),
+  },
 }));
 vi.mock("../src/state/ui.ts", () => ({ toast: vi.fn() }));
 
@@ -43,12 +52,27 @@ type RollbackContext<T> = {
 
 type LibraryMutationCallbacks<T> = {
   mutationFn: (variables: { item: T; on: boolean }) => Promise<void>;
-  onMutate: (variables: { item: T; on: boolean }) => Promise<RollbackContext<T>>;
-  onError: (error: Error, variables: { item: T; on: boolean }, context: RollbackContext<T> | undefined) => void;
+  onMutate: (variables: {
+    item: T;
+    on: boolean;
+  }) => Promise<RollbackContext<T>>;
+  onError: (
+    error: Error,
+    variables: { item: T; on: boolean },
+    context: RollbackContext<T> | undefined,
+  ) => void;
 };
 
-const firstAccountSong: Song = { id: "ytm:video000001", title: "Account A song", source: "youtubeMusic" };
-const secondAccountSong: Song = { id: "ytm:video000002", title: "Account B song", source: "youtubeMusic" };
+const firstAccountSong: Song = {
+  id: "ytm:video000001",
+  title: "Account A song",
+  source: "youtubeMusic",
+};
+const secondAccountSong: Song = {
+  id: "ytm:video000002",
+  title: "Account B song",
+  source: "youtubeMusic",
+};
 const songPage = (songs: Song[]): YouTubeMusicPage<Song> => ({
   items: songs,
   total: songs.length,
@@ -60,7 +84,11 @@ beforeEach(() => {
   mutationHarness.client = queryClient;
   mutationHarness.user = "listener-a";
 
-  vi.stubGlobal("localStorage", { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() });
+  vi.stubGlobal("localStorage", {
+    getItem: () => null,
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  });
 
   clearYouTubeMusicCache();
 });
@@ -80,9 +108,15 @@ it("does not restore another Google account's library when an old mutation fails
 
   queryClient.setQueryData(likedKey, songPage([secondAccountSong]));
 
-  callbacks.onError(new ApiError(409, "YouTube Music connection changed"), variables, context);
+  callbacks.onError(
+    new ApiError(409, "YouTube Music connection changed"),
+    variables,
+    context,
+  );
 
-  expect(queryClient.getQueryData(likedKey)).toEqual(songPage([secondAccountSong]));
+  expect(queryClient.getQueryData(likedKey)).toEqual(
+    songPage([secondAccountSong]),
+  );
 });
 
 it("does not restore a signed-out Navidrome user's library", async () => {
@@ -126,14 +160,19 @@ it("does not send an old mutation when reconnect happens during query cancellati
 
   const callbacks = mutationHarness.options as LibraryMutationCallbacks<Song>;
   const mutation = queryClient.getMutationCache().build(queryClient, callbacks);
-  const mutationResult = mutation.execute({ item: firstAccountSong, on: false });
+  const mutationResult = mutation.execute({
+    item: firstAccountSong,
+    on: false,
+  });
 
   await cancellationEntered;
 
   clearYouTubeMusicCache();
   releaseCancellation();
 
-  await expect(mutationResult).rejects.toThrow("YouTube Music connection changed");
+  await expect(mutationResult).rejects.toThrow(
+    "YouTube Music connection changed",
+  );
 
   expect(providerWrite).not.toHaveBeenCalled();
 });
@@ -149,15 +188,24 @@ it("restores a failed mutation when the account remains the same", async () => {
   const variables = { item: firstAccountSong, on: false };
   const context = await callbacks.onMutate(variables);
 
-  expect(queryClient.getQueryData<YouTubeMusicPage<Song>>(likedKey)?.items).toEqual([]);
+  expect(
+    queryClient.getQueryData<YouTubeMusicPage<Song>>(likedKey)?.items,
+  ).toEqual([]);
 
   callbacks.onError(new Error("Request failed"), variables, context);
 
-  expect(queryClient.getQueryData(likedKey)).toEqual(songPage([firstAccountSong]));
+  expect(queryClient.getQueryData(likedKey)).toEqual(
+    songPage([firstAccountSong]),
+  );
 });
 
 it("updates and restores authoritative artist membership beyond the loaded library page", async () => {
-  const artist: YouTubeMusicArtist = { id: "ytm:UC_artist101", name: "Artist 101", images: [], subscribed: true };
+  const artist: YouTubeMusicArtist = {
+    id: "ytm:UC_artist101",
+    name: "Artist 101",
+    images: [],
+    subscribed: true,
+  };
   const artistDetail: YouTubeMusicArtistDetail = {
     artist,
     songs: [],
@@ -170,17 +218,29 @@ it("updates and restores authoritative artist membership beyond the loaded libra
   const artistDetailKey = ytmKeys.artist(artist.id);
 
   queryClient.setQueryData(artistDetailKey, artistDetail);
-  queryClient.setQueryData([...ytmKeys.artists, 100], { items: [], total: 101, hasMore: true, limit: 100 });
+  queryClient.setQueryData([...ytmKeys.artists, 100], {
+    items: [],
+    total: 101,
+    hasMore: true,
+    limit: 100,
+  });
 
   useToggleYouTubeMusicFollow();
 
-  const callbacks = mutationHarness.options as LibraryMutationCallbacks<YouTubeMusicArtist>;
+  const callbacks =
+    mutationHarness.options as LibraryMutationCallbacks<YouTubeMusicArtist>;
   const variables = { item: artist, on: false };
   const context = await callbacks.onMutate(variables);
 
-  expect(queryClient.getQueryData<YouTubeMusicArtistDetail>(artistDetailKey)?.artist.subscribed).toBe(false);
+  expect(
+    queryClient.getQueryData<YouTubeMusicArtistDetail>(artistDetailKey)?.artist
+      .subscribed,
+  ).toBe(false);
 
   callbacks.onError(new Error("Request failed"), variables, context);
 
-  expect(queryClient.getQueryData<YouTubeMusicArtistDetail>(artistDetailKey)?.artist.subscribed).toBe(true);
+  expect(
+    queryClient.getQueryData<YouTubeMusicArtistDetail>(artistDetailKey)?.artist
+      .subscribed,
+  ).toBe(true);
 });

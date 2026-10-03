@@ -1,7 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-type Tip = { text: string; key: string | null; x: number; y: number; below: boolean };
+type Tip = {
+  text: string;
+  key: string | null;
+  x: number;
+  y: number;
+  below: boolean;
+};
 
 const DELAY = 450;
 const EDGE = 8;
@@ -12,9 +18,16 @@ function tipFor(el: HTMLElement): Tip | null {
 
   const styles = getComputedStyle(el);
   const clipped =
-    (styles.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) ||
-    (styles.webkitLineClamp !== "none" && styles.webkitLineClamp !== "" && el.scrollHeight > el.clientHeight + 1);
-  const text = clipped ? el.textContent?.trim() : el.innerText.trim() ? null : el.getAttribute("aria-label");
+    (styles.textOverflow === "ellipsis" &&
+      el.scrollWidth > el.clientWidth + 1) ||
+    (styles.webkitLineClamp !== "none" &&
+      styles.webkitLineClamp !== "" &&
+      el.scrollHeight > el.clientHeight + 1);
+  const text = clipped
+    ? el.textContent?.trim()
+    : el.innerText.trim()
+      ? null
+      : el.getAttribute("aria-label");
 
   if (!text) return null;
 
@@ -33,7 +46,8 @@ function getTooltipTarget(target: EventTarget | null): HTMLElement | null {
   let tooltipElement = target instanceof Element ? target : null;
 
   while (tooltipElement && tooltipElement !== document.body) {
-    if (tooltipElement instanceof HTMLElement && tipFor(tooltipElement)) return tooltipElement;
+    if (tooltipElement instanceof HTMLElement && tipFor(tooltipElement))
+      return tooltipElement;
 
     tooltipElement = tooltipElement.parentElement;
   }
@@ -46,7 +60,8 @@ export function Tooltips() {
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
+      return;
     let timer = 0;
     let current: Element | null = null;
     const hide = () => {
@@ -68,7 +83,9 @@ export function Tooltips() {
 
       const tooltipElement =
         getTooltipTarget(el) ??
-        Array.from(el.querySelectorAll<HTMLElement>("*")).find((textElement) => tipFor(textElement));
+        Array.from(el.querySelectorAll<HTMLElement>("*")).find((textElement) =>
+          tipFor(textElement),
+        );
 
       if (tooltipElement) setTip(tipFor(tooltipElement));
     };
@@ -93,13 +110,21 @@ export function Tooltips() {
     const el = box.current;
     if (!el || !tip) return;
     const w = el.offsetWidth;
-    const left = Math.min(Math.max(tip.x - w / 2, EDGE), window.innerWidth - w - EDGE);
+    const left = Math.min(
+      Math.max(tip.x - w / 2, EDGE),
+      window.innerWidth - w - EDGE,
+    );
     el.style.left = `${left}px`;
   }, [tip]);
 
   if (!tip) return null;
   return createPortal(
-    <div ref={box} role="tooltip" className={`tooltip ${tip.below ? "below" : ""}`} style={{ top: tip.y }}>
+    <div
+      ref={box}
+      role="tooltip"
+      className={`tooltip ${tip.below ? "below" : ""}`}
+      style={{ top: tip.y }}
+    >
       {tip.text}
       {tip.key ? <kbd>{tip.key}</kbd> : null}
     </div>,

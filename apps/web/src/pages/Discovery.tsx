@@ -3,23 +3,37 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { trackCandidate } from "@needle/shared";
 import type { DiscoveryDetail, DiscoveryTrack } from "@needle/shared";
-import { discoveryContext, DiscoveryArt, librarySongs } from "../components/Discovery.tsx";
+import {
+  discoveryContext,
+  DiscoveryArt,
+  librarySongs,
+} from "../components/Discovery.tsx";
 import { GetSongCard } from "../components/GetCard.tsx";
-import { ActBar, Hero, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
+import {
+  ActBar,
+  Hero,
+  NotFoundState,
+  PageSkeleton,
+  PlayContextButton,
+  ShuffleButton,
+} from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
-import { TrackList } from "../components/TrackList.tsx";
+import { TrackList } from "../components/tracks/TrackList.tsx";
 import { api, ApiError } from "../lib/api.ts";
 import { plain, plural } from "../lib/format.ts";
 import { useTone } from "../lib/tone.ts";
 import { MobileBack } from "../layout/Mobile.tsx";
-import { useIsMobile, usePageTone } from "../layout/Shell.tsx";
+import { useIsMobile } from "../lib/media.ts";
+import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
 import { player } from "../player/controller.ts";
 import { keys } from "../queries/keys.ts";
 import { useCapabilities, useDiscovery } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
+import { translate } from "../i18n/index.ts";
 
-const wanted = (t: DiscoveryTrack) => !t.request || t.request.state === "failed";
+const wanted = (t: DiscoveryTrack) =>
+  !t.request || t.request.state === "failed";
 
 function Actions({ playlist }: { playlist: DiscoveryDetail }) {
   const qc = useQueryClient();
@@ -29,7 +43,11 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
   const songs = librarySongs(playlist);
   const missing = playlist.tracks.filter((t) => !t.song && wanted(t)).length;
   const context = discoveryContext(playlist);
-  const run = async (what: "get" | "save", job: () => Promise<void>, failed: string) => {
+  const run = async (
+    what: "get" | "save",
+    job: () => Promise<void>,
+    failed: string,
+  ) => {
     setBusy(what);
     try {
       await job();
@@ -49,11 +67,19 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
           qc.invalidateQueries({ queryKey: keys.requests }),
         ]);
         toast(
-          `Looking for ${plural(r.started, "song")} on Soulseek${r.skipped ? `; ${r.skipped} more next time` : ""}`,
-          { label: "Requests", run: () => void navigate("/requests") },
+          translate("discovery.lookingSoulseek", {
+            songs: plural(r.started, "song"),
+            details: r.skipped
+              ? translate("discovery.skippedDetail", { count: r.skipped })
+              : "",
+          }),
+          {
+            label: translate("common.requests"),
+            run: () => void navigate("/requests"),
+          },
         );
       },
-      "Couldn’t start the downloads",
+      translate("discovery.downloadFailed"),
     );
   const save = () =>
     run(
@@ -61,12 +87,17 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
       async () => {
         const r = await api.discoverySave(playlist.id);
         await qc.invalidateQueries({ queryKey: keys.playlists });
-        toast(`Saved ${plural(r.matched, "song")} as a playlist`, {
-          label: "Open",
-          run: () => void navigate(`/playlist/${r.playlistId}`),
-        });
+        toast(
+          translate("discovery.savedPlaylist", {
+            songs: plural(r.matched, "song"),
+          }),
+          {
+            label: translate("common.open"),
+            run: () => void navigate(`/playlist/${r.playlistId}`),
+          },
+        );
       },
-      "Couldn’t save the playlist",
+      translate("discovery.saveFailed"),
     );
   return (
     <ActBar>
@@ -79,26 +110,39 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
           />
           <ShuffleButton
             label={playlist.name}
-            onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })}
+            onShuffle={() =>
+              player.playSongs(songs, 0, context, { shuffle: true })
+            }
           />
         </>
       ) : null}
       {canGet && missing ? (
-        <button type="button" className="btn light sm" disabled={busy !== null} onClick={() => void getMissing()}>
+        <button
+          type="button"
+          className="btn light sm"
+          disabled={busy !== null}
+          onClick={() => void getMissing()}
+        >
           <Icon name="download" size={15} />
-          {busy === "get" ? "Starting…" : `Get ${missing} missing`}
+          {busy === "get"
+            ? translate("discovery.starting")
+            : translate("discovery.getMissing", { count: missing })}
         </button>
       ) : null}
       {songs.length ? (
         <button
           type="button"
           className="btn ghost sm"
-          aria-label="Save as playlist"
+          aria-label={translate("discovery.savePlaylist")}
           disabled={busy !== null}
           onClick={() => void save()}
         >
           <Icon name="plus" size={15} />
-          <span className="act-label">{busy === "save" ? "Saving…" : "Save as playlist"}</span>
+          <span className="act-label">
+            {translate(
+              busy === "save" ? "discovery.saving" : "discovery.savePlaylist",
+            )}
+          </span>
         </button>
       ) : null}
       <a
@@ -106,7 +150,7 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
         href={`https://listenbrainz.org/playlist/${playlist.id}`}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Open on ListenBrainz"
+        aria-label={translate("discovery.openListenBrainz")}
       >
         <Icon name="link" size={22} />
       </a>
@@ -118,18 +162,26 @@ function Missing({ tracks }: { tracks: DiscoveryTrack[] }) {
   const canGet = useCapabilities().data?.songs ?? false;
   if (!tracks.length) return null;
   return (
-    <section className="res-source pad" aria-label="Not in your library yet">
+    <section
+      className="res-source pad"
+      aria-label={translate("discovery.notInLibrary")}
+    >
       <div className="source-h">
-        <h2>Not in your library yet</h2>
+        <h2>{translate("discovery.notInLibrary")}</h2>
         <p className="sub">
           {canGet
-            ? "Soulseek provides the songs you pick. They show up in your library when they’re ready."
-            : "Ask an admin to let you request songs."}
+            ? translate("discovery.soulseekHint")
+            : translate("discovery.adminNeeded")}
         </p>
       </div>
       <div className="get">
         {tracks.map((t) => (
-          <GetSongCard key={t.mbid} song={trackCandidate(t)} request={t.request ?? undefined} canGet={canGet} />
+          <GetSongCard
+            key={t.mbid}
+            song={trackCandidate(t)}
+            request={t.request ?? undefined}
+            canGet={canGet}
+          />
         ))}
       </div>
     </section>
@@ -144,23 +196,25 @@ function LoadError({ error, retry }: { error: unknown; retry: () => void }) {
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="empty">
         <div className="empty-in">
-          <h1>{connect ? "Connect ListenBrainz first" : "Couldn’t load this playlist"}</h1>
+          <h1>
+            {translate(connect ? "discovery.connect" : "discovery.loadFailed")}
+          </h1>
           <p>
             {connect
-              ? "Add your ListenBrainz token in Settings to see the playlists it makes for you."
+              ? translate("discovery.connectHint")
               : error instanceof Error
                 ? error.message
-                : "ListenBrainz didn’t answer."}
+                : translate("discovery.loadFailed")}
           </p>
           <div className="acts">
             {connect ? (
               <Link to="/settings" className="btn primary">
-                Go to Settings
+                {translate("empty.goSettings")}
               </Link>
             ) : (
               <button type="button" className="btn primary" onClick={retry}>
                 <Icon name="refresh" size={16} />
-                Try again
+                {translate("common.retry")}
               </button>
             )}
           </div>
@@ -186,17 +240,22 @@ export default function DiscoveryPage() {
     <div className="tinted">
       <Hero
         art={<DiscoveryArt playlist={data} px={232} eager />}
-        kind="Made for you by ListenBrainz"
+        kind={translate("discovery.madeForYou")}
         title={data.name}
         description={plain(data.description)}
         meta={
           <span>
-            {plural(data.total, "song")}, {data.inLibrary} in your library
+            {translate("discovery.libraryTotal", {
+              songs: plural(data.total, "song"),
+              count: data.inLibrary,
+            })}
           </span>
         }
       />
       <Actions playlist={data} />
-      {songs.length ? <TrackList songs={songs} context={discoveryContext(data)} art album /> : null}
+      {songs.length ? (
+        <TrackList songs={songs} context={discoveryContext(data)} art album />
+      ) : null}
       <Missing tracks={data.tracks.filter((t) => !t.song)} />
     </div>
   );
