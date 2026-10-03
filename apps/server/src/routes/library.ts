@@ -1,12 +1,34 @@
-import type { Period, PlayReport } from "@needle/shared";
+import { ApiErrorCode } from "@needle/shared";
 import { compress } from "hono/compress";
+import { z } from "zod";
 import type { App } from "../http/context.ts";
+import { appError } from "../http/errors.ts";
+import { validate } from "../http/validation.ts";
 import type { LibrarySearch } from "../search.ts";
 import type { Mixes } from "../mixes.ts";
 import { PHOTO_MAX_BYTES, PHOTO_TYPES, type Profiles } from "../profiles.ts";
 import type { PlayLog } from "../stats.ts";
 
-const PERIODS = new Set<Period>(["month", "quarter", "year", "all"]);
+const playReportSchema = z.object({
+  songId: z.string().min(1).max(500),
+  title: z.string().min(1).max(1000),
+  artist: z.string().max(1000),
+  artistId: z.string().max(500).optional(),
+  album: z.string().max(1000),
+  albumId: z.string().max(500).optional(),
+  genre: z.string().max(500).optional(),
+  coverArt: z.string().max(2048).optional(),
+  duration: z.number().finite().nonnegative(),
+  msPlayed: z.number().finite().nonnegative(),
+  device: z.string().max(500),
+});
+const statsQuerySchema = z.object({
+  period: z.enum(["month", "quarter", "year", "all"]).optional(),
+});
+const searchQuerySchema = z.object({ q: z.string().max(500).optional() });
+const photoHeadersSchema = z.object({
+  "content-type": z.string().refine((contentType) => PHOTO_TYPES.has(contentType), "Use a JPEG, PNG or WebP image"),
+});
 
 type LibraryRouteDependencies = {
   library: LibrarySearch;
@@ -16,28 +38,24 @@ type LibraryRouteDependencies = {
 };
 
 export function registerLibraryRoutes(app: App, { library, log, mixes, profiles }: LibraryRouteDependencies) {
-  app.post("/api/plays", async (context) => {
-    const play = await context.req.json<PlayReport>();
-
-    if (!play.songId || !play.title || typeof play.msPlayed !== "number") {
-      return context.json({ error: "Missing play fields" }, 400);
-    }
+  app.post("/api/plays", validate("json", playReportSchema), (context) => {
+    const play = context.req.valid("json");
 
     log.record(context.get("auth").user, play);
 
     return context.body(null, 204);
   });
 
-  app.get("/api/stats", (context) => {
-    const period = (context.req.query("period") ?? "month") as Period;
-
-    if (!PERIODS.has(period)) return context.json({ error: "Unknown period" }, 400);
+  app.get("/api/stats", validate("query", statsQuerySchema), (context) => {
+    const period = context.req.valid("query").period ?? "month";
 
     return context.json(log.stats(context.get("auth").user, period));
   });
 
-  app.get("/api/search", async (context) => {
-    return context.json(await library.search(context.get("auth"), context.req.query("q") ?? ""));
+  app.get("/api/search", validate("query", searchQuerySchema), async (context) => {
+    const query = context.req.valid("query").q ?? "";
+
+    return context.json(await library.search(context.get("auth"), query));
   });
 
   app.get("/api/library/songs", compress(), async (context) => {
@@ -50,12 +68,13 @@ export function registerLibraryRoutes(app: App, { library, log, mixes, profiles 
     return context.json({ user, photo: profiles.photo(user) });
   });
 
-  app.put("/api/me/photo", async (context) => {
-    const contentType = context.req.header("content-type") ?? "";
+  app.put("/api/me/photo", validate("header", photoHeadersSchema), async (context) => {
+    const contentType = context.req.valid("header")["content-type"];
     const photo = new Uint8Array(await context.req.arrayBuffer());
 
-    if (!PHOTO_TYPES.has(contentType)) return context.json({ error: "Use a JPEG, PNG or WebP image" }, 415);
-    if (!photo.length || photo.length > PHOTO_MAX_BYTES) return context.json({ error: "That image is too large" }, 413);
+    if (!photo.length || photo.length > PHOTO_MAX_BYTES) {
+      throw appError(413, ApiErrorCode.PAYLOAD_TOO_LARGE, "That image is too large");
+    }
 
     profiles.setPhoto(context.get("auth").user, photo, contentType);
 

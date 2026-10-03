@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "node:events";
 import { gunzipSync } from "node:zlib";
-import type { ServerMessage } from "@needle/shared";
+import { ClientMessageSchema, type ServerMessage } from "@needle/shared";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase } from "../src/db.ts";
@@ -10,7 +10,18 @@ import { DeviceHub } from "../src/devices.ts";
 const ND = "http://navidrome.test";
 const LB = "http://lb.test";
 const MBID = "11111111-1111-4111-8111-111111111111";
-const good = { "x-needle-user": "alex", "x-needle-token": "tok", "x-needle-salt": "salt" };
+const good = {
+  "x-needle-user": "alex",
+  "x-needle-token": "tok",
+  "x-needle-salt": "salt",
+};
+
+type ApiErrorBody = {
+  error: string;
+  code: string;
+  requestId: string;
+  issues?: { path: string; message: string }[];
+};
 
 function fakeNavidrome() {
   vi.stubGlobal(
@@ -33,7 +44,14 @@ function fakeNavidrome() {
             JSON.stringify({
               "subsonic-response": {
                 status: authed ? "ok" : "failed",
-                ...(authed ? body : { error: { code: 40, message: "Wrong username or password" } }),
+                ...(authed
+                  ? body
+                  : {
+                      error: {
+                        code: 40,
+                        message: "Wrong username or password",
+                      },
+                    }),
               },
             }),
             { headers: { "content-type": "application/json" } },
@@ -43,7 +61,9 @@ function fakeNavidrome() {
       if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: true } });
       if (url.pathname.startsWith("/rest/getCoverArt"))
         return Promise.resolve(
-          new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/jpeg", etag: "x" } }),
+          new Response(new Uint8Array([1, 2, 3]), {
+            headers: { "content-type": "image/jpeg", etag: "x" },
+          }),
         );
       if (url.pathname.startsWith("/rest/getAlbumList2"))
         return json({ albumList2: { album: [{ id: "a", name: "Album" }] } });
@@ -61,8 +81,21 @@ function fakeNavidrome() {
                 genres: [{ name: "Synthwave" }],
                 created: "2026-09-01",
               },
-              { id: "a2", name: "Pulse Theory", coverArt: "c2", year: 2005, genre: "Synthwave", created: "2026-09-02" },
-              { id: "a3", name: "Blue Minutes", year: 1998, genre: "Jazz", created: "2026-09-03" },
+              {
+                id: "a2",
+                name: "Pulse Theory",
+                coverArt: "c2",
+                year: 2005,
+                genre: "Synthwave",
+                created: "2026-09-02",
+              },
+              {
+                id: "a3",
+                name: "Blue Minutes",
+                year: 1998,
+                genre: "Jazz",
+                created: "2026-09-03",
+              },
             ],
           },
         });
@@ -72,7 +105,10 @@ function fakeNavidrome() {
         return Promise.resolve(
           new Response("abcdef".slice(range ? 2 : 0), {
             status: range ? 206 : 200,
-            headers: { "content-type": "audio/flac", ...(range ? { "content-range": "bytes 2-5/6" } : {}) },
+            headers: {
+              "content-type": "audio/flac",
+              ...(range ? { "content-range": "bytes 2-5/6" } : {}),
+            },
           }),
         );
       }
@@ -101,19 +137,114 @@ describe("server", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("answers health checks without signing in", async () => {
-    expect(await (await app.request("/api/health")).json()).toEqual({
+    const response = await app.request("/api/health");
+
+    expect(await response.json()).toEqual({
       ok: true,
       version: expect.any(String) as string,
     });
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it("turns away requests without valid Navidrome credentials", async () => {
-    expect((await app.request("/api/stats")).status).toBe(401);
-    expect((await app.request("/api/stats", { headers: { ...good, "x-needle-token": "nope" } })).status).toBe(401);
+    const response = await app.request("/api/stats");
+    const body = (await response.json()) as ApiErrorBody;
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({
+      error: "Sign in again",
+      code: "UNAUTHORIZED",
+      requestId: response.headers.get("x-request-id"),
+    });
+    expect(
+      (
+        await app.request("/api/stats", {
+          headers: { ...good, "x-needle-token": "nope" },
+        })
+      ).status,
+    ).toBe(401);
+  });
+
+  it("returns sanitized validation errors for malformed JSON", async () => {
+    const response = await app.request("/api/plays", {
+      method: "POST",
+      headers: { ...good, "content-type": "application/json" },
+      body: '{"secret":"hunter2"',
+    });
+    const body = (await response.json()) as ApiErrorBody;
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("VALIDATION_ERROR");
+    expect(body.requestId).toBe(response.headers.get("x-request-id"));
+    expect(body.issues).toEqual(expect.arrayContaining([{ path: "json", message: expect.any(String) as string }]));
+    expect(JSON.stringify(body)).not.toContain("hunter2");
+  });
+
+  it("validates query and path parameters before route logic", async () => {
+    const periodResponse = await app.request("/api/stats?period=decade", {
+      headers: good,
+    });
+    const periodBody = (await periodResponse.json()) as ApiErrorBody;
+    const requestResponse = await app.request("/api/requests/not-a-number/retry", { method: "POST", headers: good });
+    const requestBody = (await requestResponse.json()) as ApiErrorBody;
+
+    expect(periodResponse.status).toBe(400);
+    expect(periodBody).toMatchObject({
+      code: "VALIDATION_ERROR",
+      issues: [{ path: "period", message: expect.any(String) as string }],
+    });
+    expect(requestResponse.status).toBe(400);
+    expect(requestBody).toMatchObject({
+      code: "VALIDATION_ERROR",
+      issues: [{ path: "id", message: expect.any(String) as string }],
+    });
+  });
+
+  it("serializes integration and provider errors consistently", async () => {
+    const integrationResponse = await app.request("/api/songs/search?q=one", {
+      headers: good,
+    });
+    const integrationBody = (await integrationResponse.json()) as ApiErrorBody;
+    const providerResponse = await app.request("/api/listenbrainz/playlists", {
+      headers: good,
+    });
+    const providerBody = (await providerResponse.json()) as ApiErrorBody;
+
+    expect(integrationResponse.status).toBe(404);
+    expect(integrationBody).toMatchObject({
+      error: "slskd isn't set up on the Needle server",
+      code: "INTEGRATION_NOT_CONFIGURED",
+      requestId: integrationResponse.headers.get("x-request-id"),
+    });
+    expect(providerResponse.status).toBe(409);
+    expect(providerBody).toMatchObject({
+      error: "Connect ListenBrainz in Settings first",
+      code: "CONFLICT",
+      requestId: providerResponse.headers.get("x-request-id"),
+    });
+  });
+
+  it("serializes unknown routes through the same error contract", async () => {
+    const response = await app.request("/api/not-a-route", { headers: good });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "Not found",
+      code: "NOT_FOUND",
+      requestId: response.headers.get("x-request-id"),
+    });
   });
 
   it("records plays and reports them in stats", async () => {
-    const play = { songId: "s", title: "T", artist: "A", album: "B", duration: 100, msPlayed: 60_000, device: "Mac" };
+    const play = {
+      songId: "s",
+      title: "T",
+      artist: "A",
+      album: "B",
+      duration: 100,
+      msPlayed: 60_000,
+      device: "Mac",
+    };
     expect(
       (
         await app.request("/api/plays", {
@@ -132,11 +263,22 @@ describe("server", () => {
 
   it("keeps an account photo for every device", async () => {
     const me = async () =>
-      (await (await app.request("/api/me", { headers: good })).json()) as { user: string; photo: string | null };
+      (await (await app.request("/api/me", { headers: good })).json()) as {
+        user: string;
+        photo: string | null;
+      };
     expect(await me()).toEqual({ user: "alex", photo: null });
     const put = (type: string, body: Uint8Array<ArrayBuffer>) =>
-      app.request("/api/me/photo", { method: "PUT", headers: { ...good, "content-type": type }, body });
-    expect((await put("image/gif", new Uint8Array([1]))).status).toBe(415);
+      app.request("/api/me/photo", {
+        method: "PUT",
+        headers: { ...good, "content-type": type },
+        body,
+      });
+    const invalidType = await put("image/gif", new Uint8Array([1]));
+    expect(invalidType.status).toBe(400);
+    expect(await invalidType.json()).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
     expect((await put("image/webp", new Uint8Array(500_000))).status).toBe(413);
     expect((await put("image/webp", new Uint8Array([1, 2, 3]))).status).toBe(204);
     expect((await me()).photo).toBe("data:image/webp;base64,AQID");
@@ -185,23 +327,49 @@ describe("server", () => {
         headers: { ...good, "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-    const notYet = await app.request("/api/listenbrainz/playlists", { headers: good });
+    const notYet = await app.request("/api/listenbrainz/playlists", {
+      headers: good,
+    });
     expect(notYet.status).toBe(409);
-    expect(await notYet.json()).toEqual({ error: "Connect ListenBrainz in Settings first" });
+    expect(await notYet.json()).toMatchObject({
+      error: "Connect ListenBrainz in Settings first",
+      code: "CONFLICT",
+    });
     expect((await put({ token: "  " })).status).toBe(400);
     const bad = await put({ token: "not-a-token", password: "hunter2" });
     expect(bad.status).toBe(400);
     expect(JSON.stringify(await bad.json())).not.toContain("hunter2");
-    expect(await (await put({ token: "good-token" })).json()).toEqual({ user: "alexlb", navidrome: false });
+    expect(await (await put({ token: "good-token" })).json()).toEqual({
+      user: "alexlb",
+      navidrome: false,
+    });
     expect(await (await app.request("/api/capabilities", { headers: good })).json()).toMatchObject({
       listenbrainzUser: "alexlb",
       listenbrainzNavidrome: false,
     });
-    expect((await app.request("/api/listenbrainz/playlists/not-an-mbid", { headers: good })).status).toBe(404);
     expect(
-      (await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, { method: "POST", headers: good })).status,
+      (
+        await app.request("/api/listenbrainz/playlists/not-an-mbid", {
+          headers: good,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, {
+          method: "POST",
+          headers: good,
+        })
+      ).status,
     ).toBe(404);
-    expect((await app.request("/api/listenbrainz", { method: "DELETE", headers: good })).status).toBe(200);
+    expect(
+      (
+        await app.request("/api/listenbrainz", {
+          method: "DELETE",
+          headers: good,
+        })
+      ).status,
+    ).toBe(200);
     expect(await (await app.request("/api/capabilities", { headers: good })).json()).toMatchObject({
       listenbrainzUser: null,
     });
@@ -251,6 +419,23 @@ class FakeSocket extends EventEmitter {
 }
 
 describe("device hub", () => {
+  it("defines the client message boundary", () => {
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "hello",
+        device: { id: "phone", name: "Phone", kind: "phone" },
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "command",
+        to: "phone",
+        command: { action: "volume", volume: 2 },
+      }).success,
+    ).toBe(false);
+    expect(ClientMessageSchema.safeParse({ type: "unknown" }).success).toBe(false);
+  });
+
   it("lists a user's devices and forwards commands only within that user", () => {
     const hub = new DeviceHub();
     const mac = new FakeSocket();
@@ -259,15 +444,28 @@ describe("device hub", () => {
     hub.attach(mac as never, "alex");
     hub.attach(phone as never, "alex");
     hub.attach(stranger as never, "guest");
-    mac.say({ type: "hello", device: { id: "mac", name: "Chrome on Mac", kind: "desktop" } });
-    phone.say({ type: "hello", device: { id: "phone", name: "iPhone", kind: "phone" } });
-    stranger.say({ type: "hello", device: { id: "tv", name: "TV", kind: "desktop" } });
+    mac.say({
+      type: "hello",
+      device: { id: "mac", name: "Chrome on Mac", kind: "desktop" },
+    });
+    phone.say({
+      type: "hello",
+      device: { id: "phone", name: "iPhone", kind: "phone" },
+    });
+    stranger.say({
+      type: "hello",
+      device: { id: "tv", name: "TV", kind: "desktop" },
+    });
 
     const last = phone.sent.filter((m) => m.type === "devices").at(-1);
     expect(last?.type === "devices" && last.devices.map((d) => d.id)).toEqual(["mac", "phone"]);
 
     mac.say({ type: "command", to: "phone", command: { action: "pause" } });
-    expect(phone.sent.at(-1)).toEqual({ type: "command", from: "mac", command: { action: "pause" } });
+    expect(phone.sent.at(-1)).toEqual({
+      type: "command",
+      from: "mac",
+      command: { action: "pause" },
+    });
     mac.say({ type: "command", to: "tv", command: { action: "pause" } });
     expect(stranger.sent.some((m) => m.type === "command")).toBe(false);
 
@@ -282,15 +480,30 @@ describe("device hub", () => {
     const second = new FakeSocket();
     hub.attach(first as never, "alex");
     hub.attach(second as never, "alex");
-    first.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
-    second.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
+    first.say({
+      type: "hello",
+      device: { id: "mac", name: "Mac", kind: "desktop" },
+    });
+    second.say({
+      type: "hello",
+      device: { id: "mac", name: "Mac", kind: "desktop" },
+    });
     expect(first.readyState).toBe(3);
     expect(hub.devices("alex")).toHaveLength(1);
   });
 
   const playing = (songId: string, on = true) => ({
     type: "state",
-    state: { songId, title: songId, artist: "A", position: 0, duration: 100, playing: on, volume: 1, updatedAt: 0 },
+    state: {
+      songId,
+      title: songId,
+      artist: "A",
+      position: 0,
+      duration: 100,
+      playing: on,
+      volume: 1,
+      updatedAt: 0,
+    },
   });
   const lastDevices = (socket: FakeSocket) => socket.sent.filter((m) => m.type === "devices").at(-1);
   const pauses = (socket: FakeSocket) =>
@@ -304,9 +517,18 @@ describe("device hub", () => {
     hub.attach(mac as never, "alex");
     hub.attach(phone as never, "alex");
     hub.attach(guest as never, "guest");
-    mac.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
-    phone.say({ type: "hello", device: { id: "phone", name: "iPhone", kind: "phone" } });
-    guest.say({ type: "hello", device: { id: "tv", name: "TV", kind: "desktop" } });
+    mac.say({
+      type: "hello",
+      device: { id: "mac", name: "Mac", kind: "desktop" },
+    });
+    phone.say({
+      type: "hello",
+      device: { id: "phone", name: "iPhone", kind: "phone" },
+    });
+    guest.say({
+      type: "hello",
+      device: { id: "tv", name: "TV", kind: "desktop" },
+    });
     return { hub, mac, phone, guest };
   }
 
@@ -356,14 +578,21 @@ describe("device hub", () => {
     mac.say(playing("s1"));
     const again = new FakeSocket();
     hub.attach(again as never, "alex");
-    again.say({ type: "hello", device: { id: "mac", name: "Mac", kind: "desktop" } });
+    again.say({
+      type: "hello",
+      device: { id: "mac", name: "Mac", kind: "desktop" },
+    });
     expect(mac.readyState).toBe(3);
     expect(lastDevices(phone)).toMatchObject({ activeId: "mac" });
   });
 });
 
 describe("people and permissions", () => {
-  const as = (user: string) => ({ "x-needle-user": user, "x-needle-token": "tok", "x-needle-salt": "salt" });
+  const as = (user: string) => ({
+    "x-needle-user": user,
+    "x-needle-token": "tok",
+    "x-needle-salt": "salt",
+  });
   const USERS = [
     { username: "alex", adminRole: true },
     { username: "sam", adminRole: false },
@@ -378,7 +607,13 @@ describe("people and permissions", () => {
         const params = init?.body instanceof URLSearchParams ? init.body : url.searchParams;
         const me = USERS.find((u) => u.username === params.get("u"));
         const json = (body: object) =>
-          Promise.resolve(new Response(JSON.stringify({ "subsonic-response": { status: "ok", ...body } })));
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                "subsonic-response": { status: "ok", ...body },
+              }),
+            ),
+          );
         if (!url.pathname.startsWith("/rest/")) return Promise.resolve(new Response("[]"));
         if (url.pathname.startsWith("/rest/ping")) return json({});
         if (url.pathname.startsWith("/rest/getUser")) return json({ user: { adminRole: me?.adminRole ?? false } });
@@ -390,7 +625,12 @@ describe("people and permissions", () => {
       dataDir: ":memory:",
       webDist: "/nonexistent",
       publicUrl: "https://music.example.com",
-      lidarr: { url: "http://lidarr.test", apiKey: "k", qualityProfile: null, rootFolder: null },
+      lidarr: {
+        url: "http://lidarr.test",
+        apiKey: "k",
+        qualityProfile: null,
+        rootFolder: null,
+      },
       spotify: { clientId: "id", clientSecret: "secret" },
       soulseek: {
         url: "http://slskd.test",
@@ -411,12 +651,25 @@ describe("people and permissions", () => {
     };
 
   it("gives admins everything and other people nothing until an admin allows it", async () => {
-    expect(await caps("alex")).toMatchObject({ admin: true, lidarr: true, spotify: true });
-    expect(await caps("sam")).toMatchObject({ admin: false, lidarr: false, spotify: false });
+    expect(await caps("alex")).toMatchObject({
+      admin: true,
+      lidarr: true,
+      spotify: true,
+    });
+    expect(await caps("sam")).toMatchObject({
+      admin: false,
+      lidarr: false,
+      spotify: false,
+    });
     expect((await app.request("/api/lidarr/search?q=ab", { headers: as("sam") })).status).toBe(403);
     expect((await app.request("/api/spotify/token", { headers: as("sam") })).status).toBe(403);
     expect(
-      (await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, { method: "POST", headers: as("sam") })).status,
+      (
+        await app.request(`/api/listenbrainz/playlists/${MBID}/missing`, {
+          method: "POST",
+          headers: as("sam"),
+        })
+      ).status,
     ).toBe(403);
 
     const put = await app.request("/api/people/sam", {
@@ -485,5 +738,34 @@ describe("people and permissions", () => {
       ["alex", false],
       ["newcomer", true],
     ]);
+  });
+
+  it("validates each protected route boundary after authorization", async () => {
+    const invalidPerson = await app.request("/api/people/sam", {
+      method: "PUT",
+      headers: { ...as("alex"), "content-type": "application/json" },
+      body: JSON.stringify({ canRequest: "yes" }),
+    });
+    const invalidStatus = await app.request("/api/status?fresh=true", {
+      headers: as("alex"),
+    });
+    const invalidSong = await app.request("/api/songs", {
+      method: "POST",
+      headers: { ...as("alex"), "content-type": "application/json" },
+      body: JSON.stringify({ id: 1 }),
+    });
+    const invalidSpotify = await app.request("/api/spotify/enabled", {
+      method: "PUT",
+      headers: { ...as("alex"), "content-type": "application/json" },
+      body: JSON.stringify({ on: "yes" }),
+    });
+
+    for (const response of [invalidPerson, invalidStatus, invalidSong, invalidSpotify]) {
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: "VALIDATION_ERROR",
+        requestId: expect.any(String) as string,
+      });
+    }
   });
 });

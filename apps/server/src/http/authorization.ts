@@ -1,9 +1,12 @@
+import { ApiErrorCode } from "@needle/shared";
+import { createMiddleware } from "hono/factory";
 import type { Lidarr } from "../lidarr.ts";
 import type { Auth, Navidrome } from "../navidrome.ts";
 import type { People, Permission } from "../people.ts";
 import type { SongDownloads } from "../soulseek.ts";
 import type { Spotify } from "../spotify.ts";
-import type { AppContext } from "./context.ts";
+import type { AppEnv } from "./context.ts";
+import { appError } from "./errors.ts";
 
 const ADMIN_TTL = 10 * 60_000;
 
@@ -23,7 +26,9 @@ export function createAuthorization({ lidarr, navidrome, people, songs, spotify 
 
     if (cachedAdmin && cachedAdmin.until > Date.now()) return cachedAdmin.admin;
 
-    const userResponse = await navidrome.call<{ user: { adminRole?: boolean } }>(auth, "getUser", {
+    const userResponse = await navidrome.call<{
+      user: { adminRole?: boolean };
+    }>(auth, "getUser", {
       username: auth.user,
     });
     const admin = Boolean(userResponse.user.adminRole);
@@ -35,60 +40,84 @@ export function createAuthorization({ lidarr, navidrome, people, songs, spotify 
   };
 
   const can = async (auth: Auth, permission: Permission) => people.allowed(auth.user, await isAdmin(auth), permission);
-  const forbiddenResponse = (context: AppContext, error: string) => context.json({ error }, 403);
-
-  const getLidarrAccess = async (context: AppContext) => {
-    if (!lidarr) return { error: context.json({ error: "Lidarr isn't set up on the Needle server" }, 404) };
-    if (!(await can(context.get("auth"), "request"))) {
-      return { error: forbiddenResponse(context, "Ask an admin to let you request music") };
-    }
-
-    return { lidarr };
+  const authorize = async (auth: Auth, permission: Permission, message: string) => {
+    if (!(await can(auth, permission))) throw appError(403, ApiErrorCode.FORBIDDEN, message);
   };
 
-  const getLidarrAdminAccess = async (context: AppContext) => {
-    if (!lidarr) return { error: context.json({ error: "Lidarr isn't set up on the Needle server" }, 404) };
-    if (!(await isAdmin(context.get("auth")))) {
-      return { error: forbiddenResponse(context, "Only Navidrome admins can manage Lidarr's downloads") };
+  const getLidarr = () => {
+    if (!lidarr) {
+      throw appError(404, ApiErrorCode.INTEGRATION_NOT_CONFIGURED, "Lidarr isn't set up on the Needle server");
     }
 
-    return { lidarr };
+    return lidarr;
   };
 
-  const getSongAccess = async (context: AppContext) => {
-    if (!songs) return { error: context.json({ error: "slskd isn't set up on the Needle server" }, 404) };
-    if (!(await can(context.get("auth"), "request"))) {
-      return { error: forbiddenResponse(context, "Ask an admin to let you request music") };
+  const getSongs = () => {
+    if (!songs) {
+      throw appError(404, ApiErrorCode.INTEGRATION_NOT_CONFIGURED, "slskd isn't set up on the Needle server");
     }
 
-    return { songs };
+    return songs;
   };
 
-  const getSpotifyAccess = async (context: AppContext) => {
+  const getSpotify = () => {
     if (!spotify) {
-      return {
-        error: context.json(
-          { error: "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server" },
-          404,
-        ),
-      };
+      throw appError(
+        404,
+        ApiErrorCode.INTEGRATION_NOT_CONFIGURED,
+        "Add SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET and PUBLIC_URL to the Needle server",
+      );
     }
 
-    if (!(await can(context.get("auth"), "spotify"))) {
-      return { error: forbiddenResponse(context, "Ask an admin to let you use Spotify in Needle") };
-    }
-
-    return { spotify };
+    return spotify;
   };
+
+  const requireAdmin = (message: string) =>
+    createMiddleware<AppEnv>(async (context, next) => {
+      if (!(await isAdmin(context.get("auth")))) {
+        throw appError(403, ApiErrorCode.FORBIDDEN, message);
+      }
+
+      await next();
+    });
+
+  const requirePermission = (permission: Permission, message: string) =>
+    createMiddleware<AppEnv>(async (context, next) => {
+      await authorize(context.get("auth"), permission, message);
+
+      await next();
+    });
+
+  const requireLidarr = createMiddleware<AppEnv>(async (context, next) => {
+    context.set("lidarr", getLidarr());
+
+    await next();
+  });
+
+  const requireSongs = createMiddleware<AppEnv>(async (context, next) => {
+    context.set("songs", getSongs());
+
+    await next();
+  });
+
+  const requireSpotify = createMiddleware<AppEnv>(async (context, next) => {
+    context.set("spotify", getSpotify());
+
+    await next();
+  });
 
   return {
+    authorize,
     can,
-    forbiddenResponse,
-    getLidarrAccess,
-    getLidarrAdminAccess,
-    getSongAccess,
-    getSpotifyAccess,
+    getLidarr,
+    getSongs,
+    getSpotify,
     isAdmin,
+    requireAdmin,
+    requireLidarr,
+    requirePermission,
+    requireSongs,
+    requireSpotify,
   };
 }
 
