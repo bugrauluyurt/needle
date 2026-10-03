@@ -22,37 +22,20 @@ export function LyricsView({
 }) {
   const source = songSource(song);
   const localLyrics = useLyrics(source === "library" ? song.id : undefined);
-  const youtubeMusicLyrics = useYouTubeMusicLyrics(
-    source === "youtubeMusic" ? song.id : undefined,
-  );
-  const data =
-    source === "youtubeMusic"
-      ? youtubeMusicLyrics.data?.lyrics
-      : localLyrics.data;
-  const isLoading =
-    source === "youtubeMusic"
-      ? youtubeMusicLyrics.isLoading
-      : localLyrics.isLoading;
+  const youtubeMusicLyrics = useYouTubeMusicLyrics(source === "youtubeMusic" ? song.id : undefined);
+  const data = source === "youtubeMusic" ? youtubeMusicLyrics.data?.lyrics : localLyrics.data;
+  const isLoading = source === "youtubeMusic" ? youtubeMusicLyrics.isLoading : localLyrics.isLoading;
   const lyrics = useMemo(() => pickLyrics(data), [data]);
   const lines = useMemo(() => lyrics?.line ?? [], [lyrics]);
   const offset = lyrics?.offset ?? 0;
   const synced = Boolean(lyrics?.synced);
-  const active = useProgress((p) =>
-    synced ? lineAt(lines, p.position * 1000 + offset + 150) : -1,
-  );
+  const active = useProgress((p) => (synced ? lineAt(lines, p.position * 1000 + offset + 150) : -1));
   const box = useRef<HTMLDivElement>(null);
   const userScrolled = useRef(0);
 
   useEffect(() => {
-    if (
-      !synced ||
-      active < 0 ||
-      Date.now() - userScrolled.current < USER_SCROLL_PAUSE
-    )
-      return;
-    const el = box.current?.querySelector<HTMLElement>(
-      `[data-line="${active}"]`,
-    );
+    if (!synced || active < 0 || Date.now() - userScrolled.current < USER_SCROLL_PAUSE) return;
+    const el = box.current?.querySelector<HTMLElement>(`[data-line="${active}"]`);
     el?.scrollIntoView({
       block: variant === "peek" ? "start" : "center",
       behavior: "smooth",
@@ -63,11 +46,7 @@ export function LyricsView({
     return (
       <div className={`lyrics ${variant}`} aria-busy="true">
         {[70, 55, 80, 62].map((w, i) => (
-          <div
-            key={i}
-            className="skeleton lyric-skel"
-            style={{ width: `${w}%` }}
-          />
+          <div key={i} className="skeleton lyric-skel" style={{ width: `${w}%` }} />
         ))}
       </div>
     );
@@ -90,9 +69,7 @@ export function LyricsView({
       </div>
     );
   }
-  const shown = limit
-    ? lines.slice(Math.max(0, active), Math.max(0, active) + limit)
-    : lines;
+  const shown = limit ? lines.slice(Math.max(0, active), Math.max(0, active) + limit) : lines;
   const base = limit ? Math.max(0, active) : 0;
   return (
     <div
@@ -105,42 +82,35 @@ export function LyricsView({
         <p className="lyrics-src">
           <Icon name="mic" size={15} />
           {source === "youtubeMusic"
-            ? translate(
-                synced
-                  ? "lyrics.youtubeTimedSource"
-                  : "lyrics.youtubePlainSource",
-                { source: youtubeMusicLyrics.data?.source ?? "YouTube Music" },
-              )
-            : translate(
-                synced ? "lyrics.fileTimedSource" : "lyrics.filePlainSource",
-              )}
+            ? translate(synced ? "lyrics.youtubeTimedSource" : "lyrics.youtubePlainSource", {
+                source: youtubeMusicLyrics.data?.source ?? "YouTube Music",
+              })
+            : translate(synced ? "lyrics.fileTimedSource" : "lyrics.filePlainSource")}
         </p>
       ) : null}
-      {shown.map((l, i) => {
-        const idx = base + i;
-        const state = !synced
-          ? ""
-          : idx < active
-            ? "past"
-            : idx === active
-              ? "now"
-              : "";
+      {shown.map((lyricLine, lyricLineIndex) => {
+        const lyricIndex = base + lyricLineIndex;
+        const state = !synced ? "" : lyricIndex < active ? "past" : lyricIndex === active ? "now" : "";
+        const lyricText = lyricLine.value || "♪";
+        const lyricStart = lyricLine.start;
+
+        if (synced && lyricStart !== undefined) {
+          return (
+            <button
+              key={lyricIndex}
+              type="button"
+              data-line={lyricIndex}
+              className={`lyric ${state}`}
+              onClick={() => player.seek(lyricStart / 1000)}
+            >
+              {lyricText}
+            </button>
+          );
+        }
+
         return (
-          <p
-            key={idx}
-            data-line={idx}
-            className={`lyric ${state}`}
-            {...(synced && l.start !== undefined
-              ? {
-                  role: "button",
-                  tabIndex: 0,
-                  onClick: () => player.seek((l.start ?? 0) / 1000),
-                  onKeyDown: (e) =>
-                    e.key === "Enter" && player.seek((l.start ?? 0) / 1000),
-                }
-              : {})}
-          >
-            {l.value || "♪"}
+          <p key={lyricIndex} data-line={lyricIndex} className={`lyric ${state}`}>
+            {lyricText}
           </p>
         );
       })}

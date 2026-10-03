@@ -9,7 +9,10 @@ test("follows the lyrics line by line and seeks when a line is clicked", async (
   await expect(page).toHaveURL(/\/lyrics$/);
   await expect(page.getByText("Lyrics, timed, from the song’s file")).toBeVisible();
   await expect(page.locator(".lyric.now")).toHaveText("Streetlights hum a quiet tune", { timeout: 8_000 });
-  await page.locator(".lyric", { hasText: "Every story fades by noon" }).click();
+  const seekableLyric = page.getByRole("button", { name: "Every story fades by noon" });
+
+  await expect(seekableLyric).toHaveJSProperty("tagName", "BUTTON");
+  await seekableLyric.click();
   await expect(page.locator(".lyric.now")).toHaveText("Every story fades by noon");
   expect(await position(page)).toBeGreaterThanOrEqual(18);
 
@@ -85,6 +88,28 @@ test("changes settings and keeps them", async ({ page }) => {
   await expect(page.getByRole("switch", { name: "Colour from album art" })).toHaveAttribute("aria-checked", "false");
   await expect(page.getByLabel("Device name")).toHaveValue("Test bench");
   await expect(page.getByRole("button", { name: "Connect Spotify" })).toBeDisabled();
+});
+
+test("supports page zoom and keyboard radio navigation", async ({ page }) => {
+  await signIn(page, "/settings");
+
+  const viewportContent = await page.locator('meta[name="viewport"]').getAttribute("content");
+  const disabledNormalization = page.getByRole("radio", { name: "Off", exact: true });
+  const perSongNormalization = page.getByRole("radio", { name: "Per song", exact: true });
+  const perAlbumNormalization = page.getByRole("radio", { name: "Per album", exact: true });
+
+  expect(viewportContent).not.toContain("maximum-scale");
+  expect(viewportContent).not.toContain("user-scalable=no");
+  await disabledNormalization.focus();
+  await disabledNormalization.press("ArrowRight");
+  await expect(perSongNormalization).toBeFocused();
+  await expect(perSongNormalization).toHaveAttribute("aria-checked", "true");
+  await perSongNormalization.press("End");
+  await expect(perAlbumNormalization).toBeFocused();
+  await expect(perAlbumNormalization).toHaveAttribute("aria-checked", "true");
+  await perAlbumNormalization.press("Home");
+  await expect(disabledNormalization).toBeFocused();
+  await expect(disabledNormalization).toHaveAttribute("aria-checked", "true");
 });
 
 test("admins see what the server can reach", async ({ page }) => {

@@ -34,9 +34,17 @@ test("song options open as a sheet, and Go to album minimizes the player", async
   await page.locator(".tr").first().tap();
   await page.locator(".miniplayer").getByRole("button", { name: "Open now playing" }).tap();
   const player = page.getByRole("dialog", { name: "Now playing" });
-  await player.getByRole("button", { name: "More options" }).tap();
+  const moreOptionsButton = player.getByRole("button", { name: "More options" });
+
+  await moreOptionsButton.tap();
 
   const sheet = page.locator(".action-sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(":focus")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(moreOptionsButton).toBeFocused();
+  await moreOptionsButton.tap();
   await expect(sheet).toBeVisible();
   await expect(sheet.locator(".as-quick button")).toHaveText(["Add to queue", "Play next", /Like/]);
   await sheet.getByRole("button", { name: "Add to playlist" }).tap();

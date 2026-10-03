@@ -10,10 +10,7 @@ import { Art } from "../Art.tsx";
 import { Icon } from "../Icon.tsx";
 import type { IconName } from "../Icon.tsx";
 import { translate } from "../../i18n/index.ts";
-import {
-  usePlaylistTargets,
-  useTrackActions,
-} from "./hooks/useTrackActions.ts";
+import { usePlaylistTargets, useTrackActions } from "./hooks/useTrackActions.ts";
 import type { TrackMenuAction, TrackMenuExtra } from "./types.ts";
 
 export type { TrackMenuExtra } from "./types.ts";
@@ -23,6 +20,7 @@ type MenuRequest = {
   x: number;
   y: number;
   align: "start" | "end";
+  returnFocus?: HTMLElement;
   key: number;
 };
 
@@ -34,7 +32,7 @@ let opened = 0;
 
 export function openTrackMenu(
   songs: Song[],
-  at: { x: number; y: number; align?: "start" | "end" },
+  at: { x: number; y: number; align?: "start" | "end"; returnFocus?: HTMLElement },
   extra?: TrackMenuExtra[],
 ) {
   if (!songs.length) return;
@@ -45,6 +43,7 @@ export function openTrackMenu(
       x: at.x,
       y: at.y,
       align: at.align ?? "start",
+      returnFocus: at.returnFocus,
       key: ++opened,
     },
     open: true,
@@ -53,15 +52,7 @@ export function openTrackMenu(
 
 export const closeTrackMenu = () => useTrackMenu.setState({ open: false });
 
-function Row({
-  icon,
-  children,
-  end,
-}: {
-  icon: IconName;
-  children: ReactNode;
-  end?: ReactNode;
-}) {
+function Row({ icon, children, end }: { icon: IconName; children: ReactNode; end?: ReactNode }) {
   return (
     <>
       <Icon name={icon} size={18} />
@@ -81,11 +72,7 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
         </Row>
       </DM.SubTrigger>
       <DM.Portal>
-        <DM.SubContent
-          className="menu sub"
-          sideOffset={4}
-          collisionPadding={12}
-        >
+        <DM.SubContent className="menu sub" sideOffset={4} collisionPadding={12}>
           <label className="menu-search" onKeyDown={(e) => e.stopPropagation()}>
             <Icon name="search" size={15} />
             <input
@@ -96,28 +83,16 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
             />
           </label>
           <DM.Item className="menu-item" onSelect={t.createNew}>
-            <Row icon="plus">
-              {translate(
-                t.spotify ? "menu.newSpotifyPlaylist" : "menu.newPlaylist",
-              )}
-            </Row>
+            <Row icon="plus">{translate(t.spotify ? "menu.newSpotifyPlaylist" : "menu.newPlaylist")}</Row>
           </DM.Item>
           <DM.Separator className="menu-sep" />
           <div className="menu-scroll">
             {t.shown.map((p) => (
-              <DM.Item
-                key={p.id}
-                className="menu-item"
-                onSelect={() => t.addTo(p)}
-              >
+              <DM.Item key={p.id} className="menu-item" onSelect={() => t.addTo(p)}>
                 <span className="menu-label">{p.name}</span>
               </DM.Item>
             ))}
-            {!t.shown.length ? (
-              <p className="menu-empty">
-                {translate("menu.noPlaylistMatches")}
-              </p>
-            ) : null}
+            {!t.shown.length ? <p className="menu-empty">{translate("menu.noPlaylistMatches")}</p> : null}
           </div>
         </DM.SubContent>
       </DM.Portal>
@@ -125,13 +100,7 @@ function PlaylistSub({ songs }: { songs: Song[] }) {
   );
 }
 
-function DropdownItems({
-  songs,
-  extra,
-}: {
-  songs: Song[];
-  extra?: TrackMenuExtra[] | undefined;
-}) {
+function DropdownItems({ songs, extra }: { songs: Song[]; extra?: TrackMenuExtra[] | undefined }) {
   const groups = useTrackActions(songs, extra);
   return groups.map((group, i) => (
     <Fragment key={group[0]?.id ?? i}>
@@ -162,11 +131,7 @@ function SheetHead({ songs }: { songs: Song[] }) {
         ))}
       </div>
       <div className="as-title">
-        <b>
-          {single
-            ? first.title
-            : translate("menu.songs", { count: songs.length })}
-        </b>
+        <b>{single ? first.title : translate("menu.songs", { count: songs.length })}</b>
         <span>
           {artists.slice(0, 3).join(", ")}
           {artists.length > 3 ? ` ${translate("menu.andMore")}` : ""}
@@ -176,15 +141,7 @@ function SheetHead({ songs }: { songs: Song[] }) {
   );
 }
 
-function PlaylistPane({
-  songs,
-  onBack,
-  onDone,
-}: {
-  songs: Song[];
-  onBack: () => void;
-  onDone: () => void;
-}) {
+function PlaylistPane({ songs, onBack, onDone }: { songs: Song[]; onBack: () => void; onDone: () => void }) {
   const t = usePlaylistTargets(songs);
   const pick = (run: () => void) => {
     onDone();
@@ -193,12 +150,7 @@ function PlaylistPane({
   return (
     <div className="as-pane as-scroll in-right">
       <div className="as-pane-head">
-        <button
-          type="button"
-          className="icon-btn light"
-          aria-label={translate("menu.back")}
-          onClick={onBack}
-        >
+        <button type="button" className="icon-btn light" aria-label={translate("menu.back")} onClick={onBack}>
           <Icon name="back" size={22} />
         </button>
         <b>{translate("menu.addToPlaylist")}</b>
@@ -212,34 +164,19 @@ function PlaylistPane({
           aria-label={translate("menu.findPlaylist")}
         />
       </label>
-      <button
-        type="button"
-        className="as-row"
-        onClick={() => pick(t.createNew)}
-      >
+      <button type="button" className="as-row" onClick={() => pick(t.createNew)}>
         <span className="as-new">
           <Icon name="plus" size={20} />
         </span>
-        <span>
-          {translate(
-            t.spotify ? "menu.newSpotifyPlaylist" : "menu.newPlaylist",
-          )}
-        </span>
+        <span>{translate(t.spotify ? "menu.newSpotifyPlaylist" : "menu.newPlaylist")}</span>
       </button>
       {t.shown.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          className="as-row"
-          onClick={() => pick(() => t.addTo(p))}
-        >
+        <button key={p.id} type="button" className="as-row" onClick={() => pick(() => t.addTo(p))}>
           <Art {...p.art} px={40} />
           <span>{p.name}</span>
         </button>
       ))}
-      {!t.shown.length ? (
-        <p className="as-empty">{translate("menu.noPlaylistMatches")}</p>
-      ) : null}
+      {!t.shown.length ? <p className="as-empty">{translate("menu.noPlaylistMatches")}</p> : null}
     </div>
   );
 }
@@ -259,35 +196,24 @@ function TrackSheet({ req, open }: { req: MenuRequest; open: boolean }) {
   };
   const all = groups.flat();
   const quick = all.filter((a) => a.quick);
-  const rest = [
-    all.filter((a) => !a.quick && !a.go),
-    all.filter((a) => a.go),
-  ].filter((g) => g.length);
+  const rest = [all.filter((a) => !a.quick && !a.go), all.filter((a) => a.go)].filter((g) => g.length);
   return (
     <ActionSheet
       open={open}
       onClose={closeTrackMenu}
       label={
         single
-          ? (req.songs[0]?.title ??
-            translate("count.song", { count: 1, formattedCount: "1" }))
+          ? (req.songs[0]?.title ?? translate("count.song", { count: 1, formattedCount: "1" }))
           : translate("menu.songs", { count: req.songs.length })
       }
       tone={tone}
+      returnFocus={req.returnFocus}
     >
       <SheetHead songs={req.songs} />
       {pane === "playlists" ? (
-        <PlaylistPane
-          songs={req.songs}
-          onBack={() => setPane("back")}
-          onDone={closeTrackMenu}
-        />
+        <PlaylistPane songs={req.songs} onBack={() => setPane("back")} onDone={closeTrackMenu} />
       ) : (
-        <div
-          className={
-            pane === "back" ? "as-pane as-scroll in-left" : "as-pane as-scroll"
-          }
-        >
+        <div className={pane === "back" ? "as-pane as-scroll in-left" : "as-pane as-scroll"}>
           <div className="as-quick">
             {quick.map((a) => (
               <button
@@ -305,12 +231,7 @@ function TrackSheet({ req, open }: { req: MenuRequest; open: boolean }) {
           {rest.map((g) => (
             <div key={g[0]?.id} className="as-group">
               {g.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className="as-row"
-                  onClick={() => run(a)}
-                >
+                <button key={a.id} type="button" className="as-row" onClick={() => run(a)}>
                   <Icon name={a.icon} size={22} />
                   <span>{a.label}</span>
                   {a.playlists ? <Icon name="forward" size={18} /> : null}
@@ -327,21 +248,11 @@ function TrackSheet({ req, open }: { req: MenuRequest; open: boolean }) {
 export function TrackMenuHost({ mobile }: { mobile: boolean }) {
   const req = useTrackMenu((s) => s.req);
   const open = useTrackMenu((s) => s.open);
-  if (mobile)
-    return req ? <TrackSheet key={req.key} req={req} open={open} /> : null;
+  if (mobile) return req ? <TrackSheet key={req.key} req={req} open={open} /> : null;
   return (
-    <DM.Root
-      key={req?.key ?? 0}
-      open={open && Boolean(req)}
-      onOpenChange={(o) => !o && closeTrackMenu()}
-      modal={false}
-    >
+    <DM.Root key={req?.key ?? 0} open={open && Boolean(req)} onOpenChange={(o) => !o && closeTrackMenu()} modal={false}>
       <DM.Trigger asChild>
-        <span
-          aria-hidden="true"
-          className="menu-anchor"
-          style={{ left: req?.x ?? 0, top: req?.y ?? 0 }}
-        />
+        <span aria-hidden="true" className="menu-anchor" style={{ left: req?.x ?? 0, top: req?.y ?? 0 }} />
       </DM.Trigger>
       <DM.Portal>
         <DM.Content
@@ -374,16 +285,10 @@ export function TrackMoreButton({
   const open = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
-    openTrackMenu(songs, { x: r.right, y: r.bottom, align: "end" }, extra);
+    openTrackMenu(songs, { x: r.right, y: r.bottom, align: "end", returnFocus: e.currentTarget }, extra);
   };
   return (
-    <button
-      type="button"
-      className={className ?? "icon-btn"}
-      aria-label={label}
-      aria-haspopup="menu"
-      onClick={open}
-    >
+    <button type="button" className={className ?? "icon-btn"} aria-label={label} aria-haspopup="menu" onClick={open}>
       <Icon name="more" size={size} />
     </button>
   );
