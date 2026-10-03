@@ -15,6 +15,7 @@ type Listener = (payload: unknown) => void;
 class FakeSdkPlayer {
   static last: FakeSdkPlayer | null = null;
   static instances: FakeSdkPlayer[] = [];
+  static autoReady = true;
   listeners = new Map<string, Listener>();
   disconnect = vi.fn();
 
@@ -29,7 +30,8 @@ class FakeSdkPlayer {
   connect() {
     const deviceId = `needle-device-${FakeSdkPlayer.instances.length}`;
 
-    queueMicrotask(() => this.emit("ready", { device_id: deviceId }));
+    if (FakeSdkPlayer.autoReady) queueMicrotask(() => this.emit("ready", { device_id: deviceId }));
+
     return Promise.resolve(true);
   }
   emit(event: string, payload: unknown) {
@@ -86,8 +88,9 @@ describe("Spotify playback moving to another device", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    vi.useFakeTimers({ toFake: ["performance"] });
+    vi.useFakeTimers();
     FakeSdkPlayer.instances = [];
+    FakeSdkPlayer.autoReady = true;
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -185,5 +188,52 @@ describe("Spotify playback moving to another device", () => {
     await Promise.resolve();
 
     expect(receiveToken).not.toHaveBeenCalled();
+  });
+
+  it("disconnects a Spotify SDK player that reports an initialization error", async () => {
+    FakeSdkPlayer.autoReady = false;
+    vi.stubGlobal("window", {
+      Spotify: { Player: FakeSdkPlayer },
+      setTimeout,
+      clearTimeout,
+    });
+    const { prepareSpotify } = await import("../src/player/spotify.ts");
+    const pendingDevice = prepareSpotify("Needle failed", {
+      state: vi.fn(),
+      ended: vi.fn(),
+      error: vi.fn(),
+      lost: vi.fn(),
+    });
+
+    await Promise.resolve();
+    const failedPlayer = FakeSdkPlayer.instances[0] as FakeSdkPlayer;
+    failedPlayer.emit("initialization_error", {});
+
+    await expect(pendingDevice).rejects.toThrow();
+    expect(failedPlayer.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it("disconnects a Spotify SDK player that times out before becoming ready", async () => {
+    FakeSdkPlayer.autoReady = false;
+    vi.stubGlobal("window", {
+      Spotify: { Player: FakeSdkPlayer },
+      setTimeout,
+      clearTimeout,
+    });
+    const { prepareSpotify } = await import("../src/player/spotify.ts");
+    const pendingDevice = prepareSpotify("Needle timeout", {
+      state: vi.fn(),
+      ended: vi.fn(),
+      error: vi.fn(),
+      lost: vi.fn(),
+    });
+    const pendingDeviceExpectation = expect(pendingDevice).rejects.toThrow();
+
+    await Promise.resolve();
+    const timedOutPlayer = FakeSdkPlayer.instances[0] as FakeSdkPlayer;
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await pendingDeviceExpectation;
+    expect(timedOutPlayer.disconnect).toHaveBeenCalledOnce();
   });
 });

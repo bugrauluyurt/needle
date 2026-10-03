@@ -6,7 +6,7 @@ import { getClientAddress } from "../http/client-address.ts";
 import type { App } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
 import type { InMemoryNavidromeVerifier } from "../http/navidrome-verifier.ts";
-import { validate } from "../http/validation.ts";
+import { getRequestBodyLimit, validate } from "../http/validation.ts";
 import { authFromQuery, type Auth, type Navidrome } from "../navidrome.ts";
 import { proxyToNavidrome } from "../proxy.ts";
 import type { YouTubeMusic } from "../youtube-music.ts";
@@ -17,6 +17,7 @@ const queryAuthenticationSchema = z.object({
   s: z.string().min(1).max(200).optional(),
 });
 const SUBSONIC_VERSION = "1.16.1";
+export const SUBSONIC_FORM_BODY_MAX_BYTES = 64 * 1024;
 const radioParamsSchema = z.object({ id: z.string().min(1).max(500) });
 const youtubeMusicStreamParamsSchema = z.object({
   videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
@@ -40,6 +41,14 @@ export function registerMediaRoutes(
   app: App,
   { authorization, config, navidrome, verifier, youtubeMusic }: MediaRouteDependencies,
 ) {
+  app.use(
+    "/rest/*",
+    getRequestBodyLimit({
+      maxBytes: SUBSONIC_FORM_BODY_MAX_BYTES,
+      message: "Subsonic request body is too large",
+    }),
+  );
+
   app.all("/rest/*", validate("query", queryAuthenticationSchema), async (context) => {
     const proxyAuthentication = await getProxyAuthentication(context.req.raw);
     const { auth } = proxyAuthentication;

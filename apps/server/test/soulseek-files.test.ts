@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -185,6 +185,25 @@ describe("Soulseek file paths", () => {
     await expect(moveDownloadedFile(downloadInput(fixture))).rejects.toThrow("already exists");
     expect(await readFile(targetPath, "utf8")).toBe("other");
     expect(await readFile(sourcePath, "utf8")).toBe("music");
+  });
+
+  it("completes a retry when the existing destination is byte-identical", async () => {
+    const fixture = await fileFixture();
+    const sourcePath = await sourceFile(fixture);
+    const targetDirectory = join(fixture.singlesDirectory, "Björk");
+    const targetPath = join(targetDirectory, "Björk - Jóga.flac");
+
+    await mkdir(targetDirectory);
+    await writeFile(targetPath, "music");
+    const targetStatsBeforeRetry = await stat(targetPath);
+
+    await expect(moveDownloadedFile(downloadInput(fixture))).resolves.toBe(targetPath);
+
+    const targetStatsAfterRetry = await stat(targetPath);
+
+    expect(await readFile(targetPath, "utf8")).toBe("music");
+    expect(targetStatsAfterRetry.ino).toBe(targetStatsBeforeRetry.ino);
+    await expect(access(sourcePath)).rejects.toThrow();
   });
 
   it.each([

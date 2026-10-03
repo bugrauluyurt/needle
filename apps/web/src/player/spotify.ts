@@ -124,6 +124,7 @@ function onState(payload: unknown, eventGeneration: number) {
 export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string> {
   events = on;
   const prepareGeneration = playerGeneration;
+  let preparedPlayer: SdkPlayer | null = null;
 
   device ??= (async () => {
     await loadSdk();
@@ -147,6 +148,7 @@ export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string>
           },
         ),
     });
+    preparedPlayer = p;
     player = p;
     const id = await new Promise<string>((resolve, reject) => {
       rejectDevice = reject;
@@ -179,6 +181,8 @@ export function prepareSpotify(name: string, on: SpotifyEvents): Promise<string>
     return id;
   })().catch((e: unknown) => {
     if (prepareGeneration === playerGeneration) {
+      preparedPlayer?.disconnect();
+
       device = null;
       player = null;
       rejectDevice = null;

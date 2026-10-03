@@ -88,6 +88,7 @@ export async function moveDownloadedFile(input: MoveDownloadedFileInput): Promis
   let singlesRoot: OwnedDirectory | null = null;
   let sourceFile: OwnedFile | null = null;
   let destinationDirectory: OwnedDirectory | null = null;
+  let existingTargetFile: OwnedFile | null = null;
 
   try {
     singlesRoot = await openOwnedRoot(input.singlesDir, "SINGLES_DIR");
@@ -97,14 +98,34 @@ export async function moveDownloadedFile(input: MoveDownloadedFileInput): Promis
 
     destinationDirectory = await prepareDestinationDirectory(singlesRoot, dirname(targetPath));
 
-    const existingTarget = await getFileStats(pathThroughDirectory(destinationDirectory, targetName));
-    if (existingTarget) throw new Error(`The destination ${targetName} already exists`);
+    const descriptorTargetPath = pathThroughDirectory(destinationDirectory, targetName);
+    const existingTargetStats = await getFileStats(descriptorTargetPath);
+
+    if (existingTargetStats) {
+      if (!existingTargetStats.isFile() || existingTargetStats.isSymbolicLink()) {
+        throw new Error(`The destination ${targetName} already exists`);
+      }
+
+      existingTargetFile = await openOwnedFile(destinationDirectory, targetName, existingTargetStats, "destination");
+
+      if (!(await haveSameContents(sourceFile, existingTargetFile))) {
+        throw new Error(`The destination ${targetName} already exists`);
+      }
+
+      await assertOwnedDirectoryPath(singlesRoot, "SINGLES_DIR");
+      await assertOwnedDirectoryPath(destinationDirectory, "destination directory");
+      await assertOwnedFilePath(existingTargetFile, "destination");
+      await deleteOwnedSource(sourceFile);
+
+      return targetPath;
+    }
 
     const targetFile = await copyOwnedFile(sourceFile, targetPath, targetName, destinationDirectory, singlesRoot);
 
     try {
       await assertOwnedDirectoryPath(singlesRoot, "SINGLES_DIR");
       await assertOwnedDirectoryPath(destinationDirectory, "destination directory");
+      await assertOwnedFilePath(targetFile, "copied file");
       await deleteOwnedSource(sourceFile);
     } catch (error: unknown) {
       await deleteOwnedFile(targetFile).catch(() => undefined);
@@ -116,12 +137,70 @@ export async function moveDownloadedFile(input: MoveDownloadedFileInput): Promis
 
     return targetPath;
   } finally {
+    await existingTargetFile?.handle.close().catch(() => undefined);
     await sourceFile?.handle.close().catch(() => undefined);
     await sourceFile?.parent.handle.close().catch(() => undefined);
     await destinationDirectory?.handle.close().catch(() => undefined);
     await singlesRoot?.handle.close().catch(() => undefined);
     await downloadsRoot.handle.close().catch(() => undefined);
   }
+}
+
+async function openOwnedFile(
+  parentDirectory: OwnedDirectory,
+  fileName: string,
+  expectedStats: Stats,
+  fileNameForError: string,
+): Promise<OwnedFile> {
+  const fileHandle = await open(
+    pathThroughDirectory(parentDirectory, fileName),
+    constants.O_RDONLY | constants.O_NOFOLLOW,
+  );
+
+  try {
+    const openedFileStats = await fileHandle.stat();
+
+    assertSameFile(openedFileStats, expectedStats, `The ${fileNameForError} changed before it could be opened`);
+
+    return {
+      handle: fileHandle,
+      name: fileName,
+      parent: parentDirectory,
+      stats: openedFileStats,
+    };
+  } catch (error: unknown) {
+    await fileHandle.close().catch(() => undefined);
+
+    throw error;
+  }
+}
+
+async function haveSameContents(firstFile: OwnedFile, secondFile: OwnedFile): Promise<boolean> {
+  if (firstFile.stats.size !== secondFile.stats.size) return false;
+
+  const firstBuffer = Buffer.allocUnsafe(1024 * 1024);
+  const secondBuffer = Buffer.allocUnsafe(1024 * 1024);
+  let readPosition = 0;
+
+  while (readPosition < firstFile.stats.size) {
+    const readLength = Math.min(firstBuffer.length, firstFile.stats.size - readPosition);
+    const [firstRead, secondRead] = await Promise.all([
+      firstFile.handle.read(firstBuffer, 0, readLength, readPosition),
+      secondFile.handle.read(secondBuffer, 0, readLength, readPosition),
+    ]);
+
+    if (
+      firstRead.bytesRead !== secondRead.bytesRead ||
+      !firstBuffer.subarray(0, firstRead.bytesRead).equals(secondBuffer.subarray(0, secondRead.bytesRead))
+    ) {
+      return false;
+    }
+    if (!firstRead.bytesRead) return readPosition === firstFile.stats.size;
+
+    readPosition += firstRead.bytesRead;
+  }
+
+  return true;
 }
 
 function safePathSegment(value: string): string {
@@ -526,6 +605,12 @@ async function assertOwnedDirectoryPath(directory: OwnedDirectory, directoryName
 
   const currentRealPath = await realpath(directory.path);
   if (currentRealPath !== directory.path) throw new Error(`The ${directoryName} changed while moving the file`);
+}
+
+async function assertOwnedFilePath(file: OwnedFile, fileName: string): Promise<void> {
+  const currentFileStats = await lstat(pathThroughDirectory(file.parent, file.name));
+
+  assertSameFile(currentFileStats, file.stats, `The ${fileName} changed while moving the file`);
 }
 
 function pathThroughHandle(handle: FileHandle): string {
