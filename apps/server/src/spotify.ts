@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
 import type { ImportedTrack, ImportResult, SpotifyPlaylist } from "@needle/shared";
+import type { Database } from "./db/types.ts";
 import type { Auth, Navidrome } from "./navidrome.ts";
 import type { LibrarySearch } from "./search.ts";
 import { findSong } from "./search.ts";
@@ -54,7 +54,7 @@ export class Spotify {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly redirectUri: string;
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
   private readonly navidrome: Navidrome;
   private readonly library: LibrarySearch;
 
@@ -62,7 +62,7 @@ export class Spotify {
     clientId: string;
     clientSecret: string;
     publicUrl: string;
-    db: DatabaseSync;
+    db: Database;
     navidrome: Navidrome;
     library: LibrarySearch;
   }) {

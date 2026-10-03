@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { songKey } from "@needle/shared";
 import { openDatabase } from "../src/db.ts";
+import type { Database } from "../src/db.ts";
 import { Lidarr } from "../src/lidarr.ts";
 import { Navidrome } from "../src/navidrome.ts";
 import { LibrarySearch } from "../src/search.ts";
@@ -937,7 +938,7 @@ describe("ListenBrainz", () => {
     [/POST \/rest\/getScanStatus/, () => ok({ scanStatus: { lastScan: "1", count: 3 } })],
     [/POST \/rest\/search3/, () => ok({ searchResult3: { song: LIBRARY } })],
   ];
-  const connected = (db: ReturnType<typeof openDatabase>, linked = 1) =>
+  const connected = (db: Database, linked = 1) =>
     db
       .prepare(
         "INSERT INTO listenbrainz (user, token, lb_user, navidrome_linked, connected_at) VALUES ('alex', 'lb-token', 'alexlb', ?, 0)",

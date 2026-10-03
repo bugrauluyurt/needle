@@ -1,12 +1,12 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "./db/types.ts";
 
 export const PHOTO_TYPES = new Set(["image/webp", "image/jpeg", "image/png"]);
 export const PHOTO_MAX_BYTES = 400_000;
 
 export class Profiles {
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
 
-  constructor(db: DatabaseSync) {
+  constructor(db: Database) {
     this.db = db;
   }
 

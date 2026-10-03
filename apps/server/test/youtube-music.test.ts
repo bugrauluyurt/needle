@@ -1,8 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase } from "../src/db.ts";
+import type { Database } from "../src/db.ts";
 import { Navidrome } from "../src/navidrome.ts";
 import { People } from "../src/people.ts";
 import { LibrarySearch, matchKey } from "../src/search.ts";
@@ -16,7 +16,7 @@ const ALBUM = "MPREexample";
 const SCOPE = "https://www.googleapis.com/auth/youtube";
 const auth = { user: "alex", token: "token", salt: "salt" };
 const headers = { "x-needle-user": auth.user, "x-needle-token": auth.token, "x-needle-salt": auth.salt };
-const databases: DatabaseSync[] = [];
+const databases: Database[] = [];
 const rawSong = {
   videoId: VIDEO,
   title: "Night Transit",
@@ -28,14 +28,14 @@ const rawSong = {
   thumbnails: [{ url: "https://i.ytimg.com/example.jpg", width: 544, height: 544 }],
 };
 
-function database(): DatabaseSync {
+function database(): Database {
   const db = openDatabase(":memory:");
   databases.push(db);
 
   return db;
 }
 
-function seed(db: DatabaseSync, user = auth.user, options: { enabled?: boolean; expiresAt?: number } = {}): void {
+function seed(db: Database, user = auth.user, options: { enabled?: boolean; expiresAt?: number } = {}): void {
   db.prepare(
     "INSERT INTO youtube_music_tokens (user, access_token, refresh_token, expires_at, scope, enabled) VALUES (?, ?, ?, ?, ?, ?)",
   ).run(
