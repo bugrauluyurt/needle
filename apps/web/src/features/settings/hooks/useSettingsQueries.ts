@@ -12,11 +12,9 @@ export const useStorageEstimate = () =>
     staleTime: 60_000,
   });
 
-export const useMe = () =>
-  useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: HOUR_MS });
+export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: HOUR_MS });
 
-export const usePeople = (enabled: boolean) =>
-  useQuery({ queryKey: keys.people, queryFn: api.people, enabled });
+export const usePeople = (enabled: boolean) => useQuery({ queryKey: keys.people, queryFn: api.people, enabled });
 
 export const useCapabilities = () =>
   useQuery({
@@ -32,9 +30,7 @@ export function useCanRequest(): boolean {
 }
 
 export function useIsAdmin(): boolean {
-  const user = useSession(
-    (sessionState) => sessionState.credentials?.user ?? "",
-  );
+  const user = useSession((sessionState) => sessionState.credentials?.user ?? "");
 
   return (
     useQuery({

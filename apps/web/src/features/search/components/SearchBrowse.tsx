@@ -8,16 +8,11 @@ import { TILE_COLORS } from "../../../lib/palette.ts";
 import { useDelayed } from "../../../lib/useDelayed.ts";
 import { useBrowse, useCapabilities } from "../../../queries/hooks.ts";
 
-const tileColor = (tileIndex: number) =>
-  TILE_COLORS[tileIndex % TILE_COLORS.length] ?? "#1E3C78";
+const tileColor = (tileIndex: number) => TILE_COLORS[tileIndex % TILE_COLORS.length] ?? "#1E3C78";
 
 function GenreTile({ tile, color }: { tile: BrowseTile; color: string }) {
   return (
-    <Link
-      to={tile.to}
-      className="genre"
-      style={{ "--g": color } as React.CSSProperties}
-    >
+    <Link to={tile.to} className="genre" style={{ "--g": color } as React.CSSProperties}>
       <b>{tile.name}</b>
       <small>{tile.subtitle}</small>
       <div className="fan" aria-hidden="true">
@@ -87,17 +82,10 @@ export function SearchBrowse({
         ) : null
       ) : shownTiles.length ? (
         <>
-          <RowHeader
-            title={translate("search.browse")}
-            subtitle={translate("search.browseHint")}
-          />
+          <RowHeader title={translate("search.browse")} subtitle={translate("search.browseHint")} />
           <div className="genres">
             {shownTiles.map((tile, tileIndex) => (
-              <GenreTile
-                key={tile.to}
-                tile={tile}
-                color={tileColor(tileIndex)}
-              />
+              <GenreTile key={tile.to} tile={tile} color={tileColor(tileIndex)} />
             ))}
           </div>
         </>
@@ -105,9 +93,7 @@ export function SearchBrowse({
         <div className="browse-empty">
           <h2>{translate("search.noBrowse")}</h2>
           <p className="muted">
-            {capabilities.data?.lidarr
-              ? translate("empty.searchArtist")
-              : translate("search.libraryEmpty")}
+            {capabilities.data?.lidarr ? translate("empty.searchArtist") : translate("search.libraryEmpty")}
           </p>
         </div>
       )}
