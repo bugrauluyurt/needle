@@ -17,7 +17,10 @@ export function registerStaticRoutes(app: App, config: Config) {
     context.header("cache-control", "public, max-age=31536000, immutable");
   });
 
-  const files = serveStatic<AppEnv>({ root: config.webDist, precompressed: true });
+  const files = serveStatic<AppEnv>({
+    root: config.webDist,
+    precompressed: true,
+  });
 
   app.use((context, next) => {
     return FILE.test(context.req.path) && !context.req.path.endsWith("/index.html") ? files(context, next) : next();

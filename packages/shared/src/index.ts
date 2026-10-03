@@ -4,6 +4,7 @@ export * from "./search.ts";
 export * from "./time.ts";
 export * from "./utils/discovery.ts";
 export type * from "./subsonic.ts";
+export * from "./types/api.ts";
 export type * from "./types/analytics.ts";
 export type * from "./types/devices.ts";
 export type * from "./types/discovery.ts";

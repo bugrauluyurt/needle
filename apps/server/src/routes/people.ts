@@ -1,6 +1,19 @@
+import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
-import type { People, PersonPatch } from "../people.ts";
+import { jsonBodyLimit, validate } from "../http/validation.ts";
+import type { People } from "../people.ts";
+
+const personParamsSchema = z.object({
+  user: z.string().trim().min(1).max(200),
+});
+const personPatchSchema = z
+  .object({
+    canRequest: z.boolean().optional(),
+    canSpotify: z.boolean().optional(),
+    canYouTubeMusic: z.boolean().optional(),
+  })
+  .strict();
 
 type PeopleRouteDependencies = {
   authorization: Authorization;
@@ -8,27 +21,21 @@ type PeopleRouteDependencies = {
 };
 
 export function registerPeopleRoutes(app: App, { authorization, people }: PeopleRouteDependencies) {
-  app.get("/api/people", async (context) => {
-    const auth = context.get("auth");
+  app.get("/api/people", authorization.requireAdmin("Only Navidrome admins can see people"), (context) =>
+    context.json(people.list()),
+  );
 
-    if (!(await authorization.isAdmin(auth))) {
-      return authorization.forbiddenResponse(context, "Only Navidrome admins can see people");
-    }
+  app.put(
+    "/api/people/:user",
+    authorization.requireAdmin("Only Navidrome admins can change people"),
+    validate("param", personParamsSchema),
+    jsonBodyLimit,
+    validate("json", personPatchSchema),
+    (context) => {
+      const { user } = context.req.valid("param");
+      const patch = context.req.valid("json");
 
-    return context.json(people.list());
-  });
-
-  app.put("/api/people/:user", async (context) => {
-    const auth = context.get("auth");
-
-    if (!(await authorization.isAdmin(auth))) {
-      return authorization.forbiddenResponse(context, "Only Navidrome admins can change people");
-    }
-
-    const user = context.req.param("user").trim();
-
-    if (!user) return context.json({ error: "Which user?" }, 400);
-
-    return context.json(people.set(user, await context.req.json<PersonPatch>()));
-  });
+      return context.json(people.set(user, patch));
+    },
+  );
 }

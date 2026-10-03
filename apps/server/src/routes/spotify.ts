@@ -1,10 +1,27 @@
 import type { ImportedTrack } from "@needle/shared";
+import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
+import { getRequestBodyLimit, jsonBodyLimit, validate } from "../http/validation.ts";
 import type { Spotify } from "../spotify.ts";
 import type { RecordAlbum } from "./requests.ts";
 
 const MISSING_ALBUMS_LIMIT = 25;
+const MISSING_TRACKS_BODY_MAX_BYTES = 64 * 1024 * 1024;
+const spotifyPermissionMessage = "Ask an admin to let you use Spotify in Needle";
+const requestPermissionMessage = "Ask an admin to let you request music";
+const spotifyCallbackQuerySchema = z.object({
+  code: z.string().min(1).max(4096).optional(),
+  state: z.string().min(1).max(4096).optional(),
+});
+const toggleBodySchema = z.object({ on: z.boolean() }).strict();
+const importBodySchema = z.object({ source: z.string().min(1).max(200) }).strict();
+const importedTrackSchema = z.object({
+  title: z.string().min(1).max(1000),
+  artist: z.string().max(1000),
+  album: z.string().max(1000),
+});
+const missingBodySchema = z.object({ tracks: z.array(importedTrackSchema).max(5000) }).strict();
 
 type SpotifyCallbackDependencies = {
   spotify: Spotify | null;
@@ -16,9 +33,8 @@ type SpotifyRouteDependencies = {
 };
 
 export function registerSpotifyCallbackRoute(app: App, { spotify }: SpotifyCallbackDependencies) {
-  app.get("/api/spotify/callback", async (context) => {
-    const code = context.req.query("code");
-    const state = context.req.query("state");
+  app.get("/api/spotify/callback", validate("query", spotifyCallbackQuerySchema), async (context) => {
+    const { code, state } = context.req.valid("query");
 
     if (!spotify || !code || !state) return context.redirect("/settings?spotify=error");
 
@@ -33,81 +49,82 @@ export function registerSpotifyCallbackRoute(app: App, { spotify }: SpotifyCallb
 }
 
 export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: SpotifyRouteDependencies) {
-  app.get("/api/spotify/login", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
+  const requireSpotifyPermission = authorization.requirePermission("spotify", spotifyPermissionMessage);
 
-    return spotifyAccess.error ?? context.json({ url: spotifyAccess.spotify.authorizeUrl(context.get("auth").user) });
-  });
+  app.get("/api/spotify/login", authorization.requireSpotify, requireSpotifyPermission, (context) =>
+    context.json({
+      url: context.get("spotify").authorizeUrl(context.get("auth").user),
+    }),
+  );
 
-  app.delete("/api/spotify", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
-
-    if (spotifyAccess.error) return spotifyAccess.error;
-
-    spotifyAccess.spotify.disconnect(context.get("auth").user);
+  app.delete("/api/spotify", authorization.requireSpotify, requireSpotifyPermission, (context) => {
+    context.get("spotify").disconnect(context.get("auth").user);
 
     return context.body(null, 204);
   });
 
-  app.put("/api/spotify/enabled", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
+  app.put(
+    "/api/spotify/enabled",
+    authorization.requireSpotify,
+    requireSpotifyPermission,
+    jsonBodyLimit,
+    validate("json", toggleBodySchema),
+    (context) => {
+      context.get("spotify").setEnabled(context.get("auth").user, context.req.valid("json").on);
 
-    if (spotifyAccess.error) return spotifyAccess.error;
+      return context.body(null, 204);
+    },
+  );
 
-    const body = await context.req.json<{ on: boolean }>();
+  app.get("/api/spotify/token", authorization.requireSpotify, requireSpotifyPermission, async (context) =>
+    context.json(await context.get("spotify").token(context.get("auth").user)),
+  );
 
-    spotifyAccess.spotify.setEnabled(context.get("auth").user, body.on);
+  app.get("/api/spotify/playlists", authorization.requireSpotify, requireSpotifyPermission, async (context) =>
+    context.json(await context.get("spotify").playlists(context.get("auth").user)),
+  );
 
-    return context.body(null, 204);
-  });
+  app.post(
+    "/api/spotify/import",
+    authorization.requireSpotify,
+    requireSpotifyPermission,
+    jsonBodyLimit,
+    validate("json", importBodySchema),
+    async (context) => {
+      return context.json(await context.get("spotify").import(context.get("auth"), context.req.valid("json").source));
+    },
+  );
 
-  app.get("/api/spotify/token", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
+  app.post(
+    "/api/spotify/missing",
+    authorization.requireLidarr,
+    authorization.requirePermission("request", requestPermissionMessage),
+    getRequestBodyLimit({ maxBytes: MISSING_TRACKS_BODY_MAX_BYTES }),
+    validate("json", missingBodySchema),
+    async (context) => {
+      const tracks = context.req.valid("json").tracks satisfies ImportedTrack[];
+      const uniqueTracks = [...new Map(tracks.map((track) => [`${track.artist}\0${track.album}`, track])).values()];
+      const missingAlbums = uniqueTracks.slice(0, MISSING_ALBUMS_LIMIT);
+      let requestedAlbums = 0;
 
-    return spotifyAccess.error ?? context.json(await spotifyAccess.spotify.token(context.get("auth").user));
-  });
+      for (const missingAlbum of missingAlbums) {
+        const [matchingAlbum] = await context
+          .get("lidarr")
+          .searchAlbums(`${missingAlbum.artist} ${missingAlbum.album}`);
 
-  app.get("/api/spotify/playlists", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
+        if (!matchingAlbum) continue;
 
-    return spotifyAccess.error ?? context.json(await spotifyAccess.spotify.playlists(context.get("auth").user));
-  });
+        const album = await context.get("lidarr").getAlbum(matchingAlbum.foreignAlbumId);
 
-  app.post("/api/spotify/import", async (context) => {
-    const spotifyAccess = await authorization.getSpotifyAccess(context);
+        recordAlbum(context.get("auth").user, album);
+        requestedAlbums++;
+      }
 
-    if (spotifyAccess.error) return spotifyAccess.error;
-
-    const body = await context.req.json<{ source: string }>();
-
-    return context.json(await spotifyAccess.spotify.import(context.get("auth"), body.source));
-  });
-
-  app.post("/api/spotify/missing", async (context) => {
-    const lidarrAccess = await authorization.getLidarrAccess(context);
-
-    if (lidarrAccess.error) return lidarrAccess.error;
-
-    const body = await context.req.json<{ tracks: ImportedTrack[] }>();
-    const uniqueTracks = [...new Map(body.tracks.map((track) => [`${track.artist}\0${track.album}`, track])).values()];
-    const missingAlbums = uniqueTracks.slice(0, MISSING_ALBUMS_LIMIT);
-    let requestedAlbums = 0;
-
-    for (const missingAlbum of missingAlbums) {
-      const [matchingAlbum] = await lidarrAccess.lidarr.searchAlbums(`${missingAlbum.artist} ${missingAlbum.album}`);
-
-      if (!matchingAlbum) continue;
-
-      const album = await lidarrAccess.lidarr.getAlbum(matchingAlbum.foreignAlbumId);
-
-      recordAlbum(context.get("auth").user, album);
-      requestedAlbums++;
-    }
-
-    return context.json({
-      requested: requestedAlbums,
-      notFound: missingAlbums.length - requestedAlbums,
-      skipped: uniqueTracks.length - missingAlbums.length,
-    });
-  });
+      return context.json({
+        requested: requestedAlbums,
+        notFound: missingAlbums.length - requestedAlbums,
+        skipped: uniqueTracks.length - missingAlbums.length,
+      });
+    },
+  );
 }

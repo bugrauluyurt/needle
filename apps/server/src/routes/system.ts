@@ -1,7 +1,9 @@
 import type { Capabilities } from "@needle/shared";
+import { z } from "zod";
 import type { Config } from "../config.ts";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
+import { validate } from "../http/validation.ts";
 import type { Lidarr } from "../lidarr.ts";
 import type { ListenBrainz } from "../listenbrainz.ts";
 import type { SongDownloads } from "../soulseek.ts";
@@ -9,6 +11,8 @@ import type { Spotify } from "../spotify.ts";
 import type { Status } from "../status.ts";
 import { VERSION } from "../version.ts";
 import type { YouTubeMusic } from "../youtube-music.ts";
+
+const statusQuerySchema = z.object({ fresh: z.literal("1").optional() });
 
 type SystemRouteDependencies = {
   authorization: Authorization;
@@ -61,13 +65,16 @@ export function registerSystemRoutes(
     return context.json(capabilities);
   });
 
-  app.get("/api/status", async (context) => {
-    const auth = context.get("auth");
+  app.get(
+    "/api/status",
+    authorization.requireAdmin("Only Navidrome admins can see connections"),
+    validate("query", statusQuerySchema),
+    async (context) => {
+      const isFresh = context.req.valid("query").fresh === "1";
 
-    if (!(await authorization.isAdmin(auth))) {
-      return context.json({ error: "Only Navidrome admins can see connections" }, 403);
-    }
-
-    return context.json({ checks: await status.checks(auth, context.req.query("fresh") === "1") });
-  });
+      return context.json({
+        checks: await status.checks(context.get("auth"), isFresh),
+      });
+    },
+  );
 }
