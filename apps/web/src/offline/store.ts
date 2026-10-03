@@ -151,7 +151,8 @@ export async function loadOffline() {
   });
   void navigator.storage?.persist?.().catch(() => false);
   const have = useOffline.getState().songs;
-  for (const c of collections) if (c.songIds.some((id) => !have.has(id))) void resumeDownload(c).catch(() => undefined);
+  for (const c of collections)
+    if (c.songIds.some((id) => !have.has(id))) void resumeDownloadForAccount(account, c).catch(() => undefined);
 }
 
 export async function offlineSource(songId: string): Promise<string | null> {
@@ -231,12 +232,16 @@ async function saveSong(
     if (!accountIsCurrent(account)) throw new Error("Account changed");
 
     await cache.put(key(song.id), new Response(blob, { headers: { "content-type": type } }));
+    if (!accountIsCurrent(account)) throw new Error("Account changed");
+
     await idbPut<OfflineSong>(account.accountUser, "songs", {
       id: song.id,
       song,
       bytes: blob.size,
       savedAt: Date.now(),
     });
+    if (!accountIsCurrent(account)) throw new Error("Account changed");
+
     return blob.size;
   } finally {
     clearTimeout(stall);
@@ -244,11 +249,26 @@ async function saveSong(
   }
 }
 
-export async function download(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
+function assertLocalSongs(songs: Song[]): void {
   if (!songs.every(isLocalSong)) throw new Error(translate("query.localDownloadOnly"));
+}
+
+export async function download(collection: Omit<OfflineCollection, "savedAt" | "songIds">, songs: Song[]) {
+  assertLocalSongs(songs);
 
   const account = currentAccount();
-  if (!offlineSupported || !account) return;
+  if (!account) return;
+
+  await downloadForAccount(account, collection, songs);
+}
+
+async function downloadForAccount(
+  account: AccountSnapshot,
+  collection: Omit<OfflineCollection, "savedAt" | "songIds">,
+  songs: Song[],
+): Promise<void> {
+  assertLocalSongs(songs);
+  if (!offlineSupported || !accountIsCurrent(account)) return;
 
   const runningKey = `${account.accountUser}\u0000${collection.id}`;
   if (running.has(runningKey)) return;
@@ -266,11 +286,15 @@ async function fetchAll(
   collection: Omit<OfflineCollection, "savedAt" | "songIds">,
   songs: Song[],
 ) {
+  if (!accountIsCurrent(account)) return;
+
   const entry: OfflineCollection = {
     ...collection,
     songIds: songs.map((s) => s.id),
     savedAt: Date.now(),
   };
+  if (!accountIsCurrent(account)) return;
+
   await idbPut(account.accountUser, "collections", entry);
   if (!accountIsCurrent(account)) return;
 
@@ -291,6 +315,8 @@ async function fetchAll(
   };
   const partial = new Map<string, number>();
   const report = () => {
+    if (!accountIsCurrent(account)) return;
+
     job.progress = (job.done + [...partial.values()].reduce((a, b) => a + b, 0)) / Math.max(1, job.total);
     setJob(entry.id, { ...job });
   };
@@ -344,12 +370,30 @@ async function songsOf(c: OfflineCollection): Promise<Song[]> {
 }
 
 export async function resumeDownload(c: OfflineCollection) {
-  await download(c, await songsOf(c));
-}
-
-export async function removeDownload(collectionId: string) {
   const account = currentAccount();
   if (!account) return;
+
+  await resumeDownloadForAccount(account, c);
+}
+
+async function resumeDownloadForAccount(account: AccountSnapshot, collection: OfflineCollection): Promise<void> {
+  if (!accountIsCurrent(account)) return;
+
+  const songs = await songsOf(collection);
+  if (!accountIsCurrent(account)) return;
+
+  await downloadForAccount(account, collection, songs);
+}
+
+export async function removeDownload(collectionId: string): Promise<void> {
+  const account = currentAccount();
+  if (!account) return;
+
+  await removeDownloadForAccount(account, collectionId);
+}
+
+async function removeDownloadForAccount(account: AccountSnapshot, collectionId: string): Promise<void> {
+  if (!accountIsCurrent(account)) return;
 
   const state = useOffline.getState();
   const target = state.collections.find((c) => c.id === collectionId);
@@ -362,12 +406,18 @@ export async function removeDownload(collectionId: string) {
   const songs = new Map(state.songs);
   for (const id of target.songIds) {
     if (stillNeeded.has(id)) continue;
+    if (!accountIsCurrent(account)) return;
+
     await cache.delete(key(id));
+    if (!accountIsCurrent(account)) return;
+
     await idbDelete(account.accountUser, "songs", id);
     if (!accountIsCurrent(account)) return;
 
     songs.delete(id);
   }
+  if (!accountIsCurrent(account)) return;
+
   await idbDelete(account.accountUser, "collections", collectionId);
   if (!accountIsCurrent(account)) return;
 
@@ -379,10 +429,17 @@ export async function removeAllDownloads() {
   const account = currentAccount();
   if (!account) return;
 
-  for (const c of useOffline.getState().collections) await removeDownload(c.id);
+  const collections = useOffline.getState().collections.slice();
+  for (const collection of collections) {
+    if (!accountIsCurrent(account)) return;
+
+    await removeDownloadForAccount(account, collection.id);
+  }
   if (!accountIsCurrent(account)) return;
 
   if (offlineSupported) await caches.delete(offlineCacheName(account.accountUser));
+  if (!accountIsCurrent(account)) return;
+
   useOffline.setState({ songs: new Map(), jobs: {} });
 }
 
