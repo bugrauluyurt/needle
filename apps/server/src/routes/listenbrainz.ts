@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
-import { validate } from "../http/validation.ts";
+import { jsonBodyLimit, validate } from "../http/validation.ts";
 import type { ListenBrainz } from "../listenbrainz.ts";
 import type { Navidrome } from "../navidrome.ts";
 
@@ -38,16 +38,16 @@ export function registerListenBrainzRoutes(
   app: App,
   { authorization, listenbrainz, navidrome }: ListenBrainzRouteDependencies,
 ) {
-  app.put("/api/listenbrainz", validate("json", connectBodySchema), async (context) => {
-    const body = context.req.valid("json");
+  app.put("/api/listenbrainz", jsonBodyLimit, validate("json", connectBodySchema), async (context) => {
+    const connectRequest = context.req.valid("json");
 
-    return context.json(await listenbrainz.connect(context.get("auth"), body.token, body.password));
+    return context.json(await listenbrainz.connect(context.get("auth"), connectRequest.token, connectRequest.password));
   });
 
-  app.delete("/api/listenbrainz", validate("json", disconnectBodySchema), async (context) => {
-    const body = context.req.valid("json");
+  app.delete("/api/listenbrainz", jsonBodyLimit, validate("json", disconnectBodySchema), async (context) => {
+    const disconnectRequest = context.req.valid("json");
 
-    return context.json(await listenbrainz.disconnect(context.get("auth"), body.password));
+    return context.json(await listenbrainz.disconnect(context.get("auth"), disconnectRequest.password));
   });
 
   app.get("/api/listenbrainz/playlists", async (context) => {

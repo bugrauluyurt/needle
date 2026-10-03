@@ -11,7 +11,7 @@ import type { Deezer } from "../deezer.ts";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
-import { validate } from "../http/validation.ts";
+import { jsonBodyLimit, validate } from "../http/validation.ts";
 import type { Lidarr } from "../lidarr.ts";
 import type { MusicBrainz } from "../musicbrainz.ts";
 import type { Requests } from "../requests.ts";
@@ -158,6 +158,7 @@ export function registerRequestRoutes(
     "/api/songs",
     authorization.requireSongs,
     requireRequestPermission,
+    jsonBodyLimit,
     validate("json", songCandidateSchema),
     (context) => {
       const songCandidate = context.req.valid("json") satisfies SongCandidate;

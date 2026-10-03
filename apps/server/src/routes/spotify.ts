@@ -2,11 +2,12 @@ import type { ImportedTrack } from "@needle/shared";
 import { z } from "zod";
 import type { Authorization } from "../http/authorization.ts";
 import type { App } from "../http/context.ts";
-import { validate } from "../http/validation.ts";
+import { getRequestBodyLimit, jsonBodyLimit, validate } from "../http/validation.ts";
 import type { Spotify } from "../spotify.ts";
 import type { RecordAlbum } from "./requests.ts";
 
 const MISSING_ALBUMS_LIMIT = 25;
+const MISSING_TRACKS_BODY_MAX_BYTES = 64 * 1024 * 1024;
 const spotifyPermissionMessage = "Ask an admin to let you use Spotify in Needle";
 const requestPermissionMessage = "Ask an admin to let you request music";
 const spotifyCallbackQuerySchema = z.object({
@@ -66,6 +67,7 @@ export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: 
     "/api/spotify/enabled",
     authorization.requireSpotify,
     requireSpotifyPermission,
+    jsonBodyLimit,
     validate("json", toggleBodySchema),
     (context) => {
       context.get("spotify").setEnabled(context.get("auth").user, context.req.valid("json").on);
@@ -86,6 +88,7 @@ export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: 
     "/api/spotify/import",
     authorization.requireSpotify,
     requireSpotifyPermission,
+    jsonBodyLimit,
     validate("json", importBodySchema),
     async (context) => {
       return context.json(await context.get("spotify").import(context.get("auth"), context.req.valid("json").source));
@@ -96,6 +99,7 @@ export function registerSpotifyRoutes(app: App, { authorization, recordAlbum }: 
     "/api/spotify/missing",
     authorization.requireLidarr,
     authorization.requirePermission("request", requestPermissionMessage),
+    getRequestBodyLimit({ maxBytes: MISSING_TRACKS_BODY_MAX_BYTES }),
     validate("json", missingBodySchema),
     async (context) => {
       const tracks = context.req.valid("json").tracks satisfies ImportedTrack[];

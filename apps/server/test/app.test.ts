@@ -27,6 +27,34 @@ type ApiErrorBody = {
   issues?: { path: string; message: string }[];
 };
 
+type StreamingRequestInit = RequestInit & { duplex: "half" };
+
+function getStreamingBodyHarness(bodyChunks: Uint8Array[]) {
+  let readChunkCount = 0;
+  const requestBody = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        const bodyChunk = bodyChunks[readChunkCount];
+
+        if (!bodyChunk) {
+          controller.close();
+
+          return;
+        }
+
+        readChunkCount += 1;
+        controller.enqueue(bodyChunk);
+      },
+    },
+    { highWaterMark: 0 },
+  );
+
+  return {
+    body: requestBody,
+    getReadChunkCount: () => readChunkCount,
+  };
+}
+
 function fakeNavidrome() {
   vi.stubGlobal(
     "fetch",
@@ -42,14 +70,14 @@ function fakeNavidrome() {
           }),
         );
       }
-      const json = (body: object) =>
+      const json = (responseBody: object) =>
         Promise.resolve(
           new Response(
             JSON.stringify({
               "subsonic-response": {
                 status: authed ? "ok" : "failed",
                 ...(authed
-                  ? body
+                  ? responseBody
                   : {
                       error: {
                         code: 40,
@@ -175,13 +203,39 @@ describe("server", () => {
       headers: { ...good, "content-type": "application/json" },
       body: '{"secret":"hunter2"',
     });
-    const body = (await response.json()) as ApiErrorBody;
+    const validationErrorBody = (await response.json()) as ApiErrorBody;
 
     expect(response.status).toBe(400);
-    expect(body.code).toBe("VALIDATION_ERROR");
-    expect(body.requestId).toBe(response.headers.get("x-request-id"));
-    expect(body.issues).toEqual(expect.arrayContaining([{ path: "json", message: expect.any(String) as string }]));
-    expect(JSON.stringify(body)).not.toContain("hunter2");
+    expect(validationErrorBody.code).toBe("VALIDATION_ERROR");
+    expect(validationErrorBody.requestId).toBe(response.headers.get("x-request-id"));
+    expect(validationErrorBody.issues).toEqual(
+      expect.arrayContaining([{ path: "json", message: expect.any(String) as string }]),
+    );
+    expect(JSON.stringify(validationErrorBody)).not.toContain("hunter2");
+  });
+
+  it("stops reading oversized JSON bodies and returns the unified error contract", async () => {
+    const textEncoder = new TextEncoder();
+    const streamedJsonBody = getStreamingBodyHarness([
+      textEncoder.encode(`{"songId":"${"x".repeat(65_536)}`),
+      textEncoder.encode('"}'),
+    ]);
+    const oversizedJsonRequestInit: StreamingRequestInit = {
+      method: "POST",
+      headers: { ...good, "content-type": "application/json" },
+      body: streamedJsonBody.body,
+      duplex: "half",
+    };
+    const oversizedJsonResponse = await app.fetch(new Request("http://localhost/api/plays", oversizedJsonRequestInit));
+    const payloadTooLargeError = (await oversizedJsonResponse.json()) as ApiErrorBody;
+
+    expect(oversizedJsonResponse.status).toBe(413);
+    expect(payloadTooLargeError).toEqual({
+      error: "Request body is too large",
+      code: "PAYLOAD_TOO_LARGE",
+      requestId: oversizedJsonResponse.headers.get("x-request-id"),
+    });
+    expect(streamedJsonBody.getReadChunkCount()).toBe(1);
   });
 
   it("validates query and path parameters before route logic", async () => {
@@ -307,19 +361,34 @@ describe("server", () => {
         photo: string | null;
       };
     expect(await me()).toEqual({ user: "alex", photo: null });
-    const put = (type: string, body: Uint8Array<ArrayBuffer>) =>
+    const putPhoto = (contentType: string, photoBytes: Uint8Array<ArrayBuffer>) =>
       app.request("/api/me/photo", {
         method: "PUT",
-        headers: { ...good, "content-type": type },
-        body,
+        headers: { ...good, "content-type": contentType },
+        body: photoBytes,
       });
-    const invalidType = await put("image/gif", new Uint8Array([1]));
-    expect(invalidType.status).toBe(415);
-    expect(await invalidType.json()).toMatchObject({
+    const invalidPhotoTypeResponse = await putPhoto("image/gif", new Uint8Array(400_001));
+    expect(invalidPhotoTypeResponse.status).toBe(415);
+    expect(await invalidPhotoTypeResponse.json()).toMatchObject({
       code: "UNSUPPORTED_MEDIA_TYPE",
     });
-    expect((await put("image/webp", new Uint8Array(500_000))).status).toBe(413);
-    expect((await put("image/webp", new Uint8Array([1, 2, 3]))).status).toBe(204);
+    const streamedPhotoBody = getStreamingBodyHarness([new Uint8Array(400_001), new Uint8Array([1])]);
+    const photoRequestInit: StreamingRequestInit = {
+      method: "PUT",
+      headers: { ...good, "content-type": "image/webp" },
+      body: streamedPhotoBody.body,
+      duplex: "half",
+    };
+    const oversizedPhotoResponse = await app.fetch(new Request("http://localhost/api/me/photo", photoRequestInit));
+
+    expect(oversizedPhotoResponse.status).toBe(413);
+    expect(await oversizedPhotoResponse.json()).toEqual({
+      error: "That image is too large",
+      code: "PAYLOAD_TOO_LARGE",
+      requestId: oversizedPhotoResponse.headers.get("x-request-id"),
+    });
+    expect(streamedPhotoBody.getReadChunkCount()).toBe(1);
+    expect((await putPhoto("image/webp", new Uint8Array([1, 2, 3]))).status).toBe(204);
     expect((await me()).photo).toBe("data:image/webp;base64,AQID");
     await app.request("/api/me/photo", { method: "DELETE", headers: good });
     expect((await me()).photo).toBeNull();

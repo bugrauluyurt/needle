@@ -4,7 +4,7 @@ import { compress } from "hono/compress";
 import { z } from "zod";
 import type { App } from "../http/context.ts";
 import { appError } from "../http/errors.ts";
-import { validate } from "../http/validation.ts";
+import { getRequestBodyLimit, jsonBodyLimit, validate } from "../http/validation.ts";
 import type { LibrarySearch } from "../search.ts";
 import type { Mixes } from "../mixes.ts";
 import { PHOTO_MAX_BYTES, PHOTO_TYPES, type Profiles } from "../profiles.ts";
@@ -44,7 +44,7 @@ type LibraryRouteDependencies = {
 };
 
 export function registerLibraryRoutes(app: App, { library, log, mixes, profiles }: LibraryRouteDependencies) {
-  app.post("/api/plays", validate("json", playReportSchema), (context) => {
+  app.post("/api/plays", jsonBodyLimit, validate("json", playReportSchema), (context) => {
     const play = context.req.valid("json");
 
     log.record(context.get("auth").user, play);
@@ -74,18 +74,23 @@ export function registerLibraryRoutes(app: App, { library, log, mixes, profiles 
     return context.json({ user, photo: profiles.photo(user) });
   });
 
-  app.put("/api/me/photo", validatePhotoHeaders, async (context) => {
-    const contentType = context.req.valid("header")["content-type"];
-    const photo = new Uint8Array(await context.req.arrayBuffer());
+  app.put(
+    "/api/me/photo",
+    validatePhotoHeaders,
+    getRequestBodyLimit({ maxBytes: PHOTO_MAX_BYTES, message: "That image is too large" }),
+    async (context) => {
+      const contentType = context.req.valid("header")["content-type"];
+      const photo = new Uint8Array(await context.req.arrayBuffer());
 
-    if (!photo.length || photo.length > PHOTO_MAX_BYTES) {
-      throw appError(413, ApiErrorCode.PAYLOAD_TOO_LARGE, "That image is too large");
-    }
+      if (!photo.length || photo.length > PHOTO_MAX_BYTES) {
+        throw appError(413, ApiErrorCode.PAYLOAD_TOO_LARGE, "That image is too large");
+      }
 
-    profiles.setPhoto(context.get("auth").user, photo, contentType);
+      profiles.setPhoto(context.get("auth").user, photo, contentType);
 
-    return context.body(null, 204);
-  });
+      return context.body(null, 204);
+    },
+  );
 
   app.delete("/api/me/photo", (context) => {
     profiles.removePhoto(context.get("auth").user);
