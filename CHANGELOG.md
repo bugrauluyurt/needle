@@ -8,6 +8,11 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.8.4 - 2026-10-03
+
+### Fixed
+- Library filters are easier to reach, the sidebar stays aligned, and artist artwork loads at a size suited to the screen.
+
 ## 1.8.3 - 2026-10-02
 
 ### Fixed
