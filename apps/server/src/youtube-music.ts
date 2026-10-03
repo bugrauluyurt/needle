@@ -31,7 +31,9 @@ const CODE_URL = "https://www.youtube.com/o/oauth2/device/code";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SCOPE = "https://www.googleapis.com/auth/youtube";
 const OAUTH_AGENT = "Mozilla/5.0 Cobalt/Version";
-const BRIDGE_PATH = fileURLToPath(new URL("./youtube-music.py", import.meta.url));
+const DEFAULT_BRIDGE_PATH = fileURLToPath(
+  new URL("../../../bridges/youtube-music/src/youtube_music_bridge.py", import.meta.url),
+);
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const PROVIDER_ID = /^[A-Za-z0-9_-]{1,200}$/;
 const SEARCH_KINDS = new Set<YouTubeMusicSearchKind>(["songs", "albums", "artists", "playlists"]);
@@ -101,6 +103,7 @@ type Options = {
   db: DatabaseSync;
   navidrome: Navidrome;
   library: LibrarySearch;
+  bridgePath?: string;
   bridge?: (request: YouTubeMusicBridgeRequest) => Promise<unknown>;
 };
 type CachedMetadata = { data: unknown; at: number };
@@ -924,7 +927,7 @@ export class YouTubeMusic {
     if (this.children.size >= 8) throw new YouTubeMusicError(503, "YouTube Music is busy. Try again shortly.", "busy");
 
     return new Promise<unknown>((resolve, reject) => {
-      const child = spawn(this.options.python, ["-I", BRIDGE_PATH], {
+      const child = spawn(this.options.python, ["-I", this.options.bridgePath ?? DEFAULT_BRIDGE_PATH], {
         stdio: ["pipe", "pipe", "pipe"],
         env: YouTubeMusic.bridgeEnvironment(),
       });

@@ -20,9 +20,24 @@ class SilentLogger:
 
 class YouTubeMusicBridge:
     OPERATIONS = {
-        "health", "resolve", "account", "liked", "albums", "artists", "playlists", "search",
-        "album", "artist", "artistSongs", "artistReleases", "playlist", "lyrics", "radio",
-        "like", "saveAlbum", "follow",
+        "health",
+        "resolve",
+        "account",
+        "liked",
+        "albums",
+        "artists",
+        "playlists",
+        "search",
+        "album",
+        "artist",
+        "artistSongs",
+        "artistReleases",
+        "playlist",
+        "lyrics",
+        "radio",
+        "like",
+        "saveAlbum",
+        "follow",
     }
 
     @staticmethod
@@ -153,7 +168,7 @@ class YouTubeMusicBridge:
             return "quota"
         if "401" in message or "invalid_grant" in message or "unauthorized" in message:
             return "auth_reconnect"
-        if isinstance(error, ModuleNotFoundError) or isinstance(error, importlib.metadata.PackageNotFoundError):
+        if isinstance(error, (ModuleNotFoundError, importlib.metadata.PackageNotFoundError)):
             return "runtime_missing"
 
         return "upstream"
