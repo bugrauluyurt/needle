@@ -1,3 +1,4 @@
+import { zValidator } from "@hono/zod-validator";
 import { ApiErrorCode } from "@needle/shared";
 import { compress } from "hono/compress";
 import { z } from "zod";
@@ -28,6 +29,11 @@ const statsQuerySchema = z.object({
 const searchQuerySchema = z.object({ q: z.string().max(500).optional() });
 const photoHeadersSchema = z.object({
   "content-type": z.string().refine((contentType) => PHOTO_TYPES.has(contentType), "Use a JPEG, PNG or WebP image"),
+});
+const validatePhotoHeaders = zValidator("header", photoHeadersSchema, (result) => {
+  if (!result.success) {
+    throw appError(415, ApiErrorCode.UNSUPPORTED_MEDIA_TYPE, "Use a JPEG, PNG or WebP image");
+  }
 });
 
 type LibraryRouteDependencies = {
@@ -68,7 +74,7 @@ export function registerLibraryRoutes(app: App, { library, log, mixes, profiles 
     return context.json({ user, photo: profiles.photo(user) });
   });
 
-  app.put("/api/me/photo", validate("header", photoHeadersSchema), async (context) => {
+  app.put("/api/me/photo", validatePhotoHeaders, async (context) => {
     const contentType = context.req.valid("header")["content-type"];
     const photo = new Uint8Array(await context.req.arrayBuffer());
 
