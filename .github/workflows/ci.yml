@@ -51,6 +51,7 @@ jobs:
         run: python3 scripts/changelog.py next package.json
 
   e2e:
+    if: github.event_name == 'pull_request'
     needs: checks
     runs-on: ubuntu-24.04
     steps:

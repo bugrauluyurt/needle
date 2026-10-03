@@ -37,6 +37,9 @@ provenance, and pushes amd64 and arm64 images to `ghcr.io/bugrauluyurt/needle` w
 build provenance. `main` takes a pull request only with passing `checks` and `e2e`
 runs and another person's approval; maintainers merge their own through the admin bypass.
 
+E2E runs only on pull requests. Pushes to `main` and reusable release checks run
+the static, unit test and build gates without repeating the browser suite.
+
 ## Conventions
 
 - Commits and pull request titles follow Conventional Commits (`type(scope): summary`, at
