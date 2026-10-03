@@ -30,12 +30,7 @@
 }
 
 .phone-app .tinted {
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--tone) 70%, var(--ink)) 0,
-    color-mix(in oklab, var(--tone) 18%, var(--ink)) 260px,
-    var(--ink) 460px
-  );
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tone) 70%, var(--ink)) 0, color-mix(in oklab, var(--tone) 18%, var(--ink)) 260px, var(--ink) 460px);
   margin-top: calc(-1 * var(--safe-top));
   padding-top: var(--safe-top);
 }
@@ -117,9 +112,7 @@
   text-overflow: ellipsis;
   opacity: 0;
   transform: translateY(6px);
-  transition:
-    opacity 0.2s ease,
-    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .mobile-bar.titled .mobile-bar-title {
@@ -486,12 +479,7 @@
 }
 
 .phone-app .artist-page {
-  background: linear-gradient(
-    180deg,
-    transparent 320px,
-    color-mix(in oklab, var(--tone) 22%, var(--ink)) 320px,
-    var(--ink) 560px
-  );
+  background: linear-gradient(180deg, transparent 320px, color-mix(in oklab, var(--tone) 22%, var(--ink)) 320px, var(--ink) 560px);
 }
 
 /* stats, settings on phone */
@@ -701,12 +689,7 @@
   display: flex;
   flex-direction: column;
   padding: calc(12px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--tone) 85%, #000) 0,
-    color-mix(in oklab, var(--tone) 35%, var(--ink)) 60%,
-    var(--ink)
-  );
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tone) 85%, #000) 0, color-mix(in oklab, var(--tone) 35%, var(--ink)) 60%, var(--ink));
   overflow: hidden;
 }
 
@@ -1087,10 +1070,7 @@
   font-size: 15px;
   font-weight: 600;
   padding-left: 0;
-  transition:
-    max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.2s,
-    padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .psearch-row.focused .psearch-cancel {
@@ -1131,11 +1111,7 @@
   max-height: 85dvh;
   padding-bottom: calc(10px + var(--safe-bottom));
   border-radius: 20px 20px 0 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--tone, var(--menu)) 55%, var(--menu)) 0,
-    var(--menu) 132px
-  );
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tone, var(--menu)) 55%, var(--menu)) 0, var(--menu) 132px);
   box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.5);
   transition: transform 0.2s ease;
   animation: as-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);

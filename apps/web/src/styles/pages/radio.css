@@ -1,0 +1,59 @@
+/* radio */
+.radio-card {
+  cursor: pointer;
+}
+
+.radio-card .card-art .art {
+  width: 100%;
+}
+
+.radio-hint {
+  margin-top: 8px;
+}
+
+.stations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.station {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--groove);
+  border-radius: 10px;
+  padding: 10px 14px 10px 10px;
+}
+
+.station-art-mix {
+  width: 60px;
+  padding: 8px;
+}
+
+.station-art-mix small {
+  display: none;
+}
+
+.station-art-mix b {
+  font-size: 26px;
+}
+
+.station-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.station .t {
+  font-weight: 600;
+}
+
+.station.on .t {
+  color: var(--amber);
+}
+
+.station .s {
+  color: var(--sleeve);
+  font-size: 12.5px;
+  margin-top: 3px;
+}

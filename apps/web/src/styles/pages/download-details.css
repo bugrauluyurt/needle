@@ -1,0 +1,21 @@
+.dl-where {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 22px;
+  font-size: 13.5px;
+}
+
+.dl-where > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dl-where dt {
+  color: var(--dim);
+}
+
+.dl-where dd {
+  color: var(--sleeve);
+  line-height: 1.45;
+}

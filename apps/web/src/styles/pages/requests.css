@@ -1,0 +1,74 @@
+.req-intro {
+  margin: -4px 0 20px;
+}
+
+.req-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.req-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 10px;
+  transition: background-color 0.15s;
+}
+
+.req-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.req-row .get-art {
+  width: 64px;
+  height: 64px;
+  flex: none;
+}
+
+.req-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.req-text .t {
+  color: var(--label);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.req-text .s {
+  font-size: 13px;
+  margin: 2px 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.req-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.req-section {
+  margin-bottom: 28px;
+}
+
+.req-section h2,
+.req-heading {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--label);
+  margin: 8px 0 10px;
+}
+
+a.get-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}

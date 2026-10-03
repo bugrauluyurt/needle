@@ -1,0 +1,81 @@
+.devices h3 {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.devices h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sleeve);
+  margin: 16px 0 6px;
+}
+
+.dev {
+  padding: 10px 0;
+}
+
+.dev + .dev {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dev.this .dev-head .i {
+  color: var(--amber);
+}
+
+.dev-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dev-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.dev-text b {
+  display: block;
+  font-size: 14.5px;
+}
+
+.dev-text span {
+  display: block;
+  color: var(--sleeve);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.dev.this .dev-text b {
+  color: var(--amber);
+}
+
+.dev-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 0 32px;
+  font-size: 13px;
+  color: var(--sleeve);
+}
+
+.dev-now .art {
+  width: 32px;
+}
+
+.dev-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0 28px;
+}
+
+.dev-empty {
+  color: var(--sleeve);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 12px;
+}
