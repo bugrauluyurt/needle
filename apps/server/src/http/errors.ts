@@ -108,14 +108,14 @@ function getAppError(error: Error): AppError {
 }
 
 function getErrorResponse(context: AppContext, error: AppError) {
-  const body: ApiError = {
+  const apiErrorBody: ApiError = {
     error: error.message,
     code: error.code,
     requestId: context.get("requestId"),
     ...(error.issues ? { issues: error.issues } : {}),
   };
 
-  return context.json(body, error.status);
+  return context.json(apiErrorBody, error.status);
 }
 
 function getErrorCodeForStatus(status: number): ApiErrorCodeType {

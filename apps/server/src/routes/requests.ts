@@ -73,13 +73,13 @@ export function registerRequestRoutes(
     requireRequestPermission,
     validate("query", searchQuerySchema),
     async (context) => {
-      const query = context.req.valid("query").q ?? "";
+      const lidarrSearchQuery = context.req.valid("query").q ?? "";
 
-      if (query.length < 2) return context.json({ albums: [] } satisfies LidarrSearch);
+      if (lidarrSearchQuery.length < 2) return context.json({ albums: [] } satisfies LidarrSearch);
 
       const configuredLidarr = context.get("lidarr");
-      const search = await configuredLidarr.search(query);
-      const matchingArtist = configuredLidarr.pickArtist(search.artists, query);
+      const lidarrSearchResult = await configuredLidarr.search(lidarrSearchQuery);
+      const matchingArtist = configuredLidarr.pickArtist(lidarrSearchResult.artists, lidarrSearchQuery);
       const discography = !matchingArtist
         ? []
         : matchingArtist.id
@@ -90,7 +90,7 @@ export function registerRequestRoutes(
       return context.json({
         albums: [
           ...discography.filter((album) => album.state !== "available"),
-          ...search.albums.filter((album) => !seenAlbumIds.has(album.foreignAlbumId)),
+          ...lidarrSearchResult.albums.filter((album) => !seenAlbumIds.has(album.foreignAlbumId)),
         ],
       } satisfies LidarrSearch);
     },
@@ -128,13 +128,13 @@ export function registerRequestRoutes(
     requireRequestPermission,
     validate("query", searchQuerySchema),
     async (context) => {
-      const query = context.req.valid("query").q ?? "";
+      const songSearchQuery = context.req.valid("query").q ?? "";
 
-      if (query.length < 2) return context.json([]);
+      if (songSearchQuery.length < 2) return context.json([]);
 
       const [topSongs, foundSongs, ownedSongKeys] = await Promise.all([
-        deezer.topSongs(query),
-        musicbrainz.recordings(query),
+        deezer.topSongs(songSearchQuery),
+        musicbrainz.recordings(songSearchQuery),
         library.songKeys(context.get("auth")),
       ]);
       const seenSongKeys = new Set<string>();

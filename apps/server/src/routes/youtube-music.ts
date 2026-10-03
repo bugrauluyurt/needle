@@ -104,11 +104,13 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
   });
 
   app.get("/api/youtube-music/search", validate("query", searchQuerySchema), async (context) => {
-    const query = context.req.valid("query");
-    const limit = YouTubeMusic.limit(query.limit, 20, 100);
+    const youtubeMusicSearchQuery = context.req.valid("query");
+    const limit = YouTubeMusic.limit(youtubeMusicSearchQuery.limit, 20, 100);
 
     return context.json(
-      await context.get("youtubeMusic").search(context.get("auth").user, query.q ?? "", query.kind, limit),
+      await context
+        .get("youtubeMusic")
+        .search(context.get("auth").user, youtubeMusicSearchQuery.q ?? "", youtubeMusicSearchQuery.kind, limit),
     );
   });
 
@@ -142,13 +144,13 @@ export function registerYouTubeMusicRoutes(app: App, { authorization, youtubeMus
     validate("param", providerIdParamsSchema),
     validate("query", releaseQuerySchema),
     async (context) => {
-      const query = context.req.valid("query");
-      const limit = YouTubeMusic.limit(query.limit);
+      const releaseQuery = context.req.valid("query");
+      const limit = YouTubeMusic.limit(releaseQuery.limit);
 
       return context.json(
         await context
           .get("youtubeMusic")
-          .artistReleases(context.get("auth").user, context.req.valid("param").id, query.kind, limit),
+          .artistReleases(context.get("auth").user, context.req.valid("param").id, releaseQuery.kind, limit),
       );
     },
   );
