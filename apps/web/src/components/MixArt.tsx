@@ -26,10 +26,5 @@ export function MixArt({
 }
 
 export function playMix(mix: Mix, shuffle = false) {
-  player.playSongs(
-    mix.songs,
-    0,
-    { kind: "mix", id: mix.id, name: mix.name },
-    { shuffle },
-  );
+  player.playSongs(mix.songs, 0, { kind: "mix", id: mix.id, name: mix.name }, { shuffle });
 }

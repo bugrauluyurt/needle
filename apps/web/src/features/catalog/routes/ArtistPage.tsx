@@ -3,26 +3,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { Art } from "../../../components/Art.tsx";
 import { LikeButton } from "../../../components/Buttons.tsx";
-import {
-  albumItem,
-  ArtistCard,
-  CardRow,
-  RowHeader,
-} from "../../../components/Cards.tsx";
-import {
-  Collection,
-  CollectionTools,
-  releaseSorts,
-} from "../../../components/Collection.tsx";
+import { albumItem, ArtistCard, CardRow, RowHeader } from "../../../components/Cards.tsx";
+import { Collection, CollectionTools, releaseSorts } from "../../../components/Collection.tsx";
 import type { SortOption } from "../../../components/Collection.tsx";
 import { ArtistSearchCard } from "../../../components/GetCard.tsx";
-import {
-  ActBar,
-  NotFoundState,
-  PageSkeleton,
-  PlayContextButton,
-  ShuffleButton,
-} from "../../../components/Hero.tsx";
+import { ActBar, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../../../components/Hero.tsx";
 import { Icon } from "../../../components/Icon.tsx";
 import { SearchField } from "../../../components/SearchField.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
@@ -80,11 +65,7 @@ function About({ name, bio }: { name: string; bio: string }) {
         <div className="about-foot">
           <span className="src">{bioSource()}</span>
           {long ? (
-            <button
-              type="button"
-              className="show-all"
-              onClick={() => setOpen(true)}
-            >
+            <button type="button" className="show-all" onClick={() => setOpen(true)}>
               {translate("catalog.readMore")}
             </button>
           ) : null}
@@ -93,18 +74,10 @@ function About({ name, bio }: { name: string; bio: string }) {
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="scrim" />
-          <Dialog.Content
-            className="dialog about-dialog"
-            aria-describedby={undefined}
-          >
+          <Dialog.Content className="dialog about-dialog" aria-describedby={undefined}>
             <div className="dialog-head">
-              <Dialog.Title className="dialog-title small">
-                {translate("catalog.aboutArtist", { name })}
-              </Dialog.Title>
-              <Dialog.Close
-                className="icon-btn"
-                aria-label={translate("common.close")}
-              >
+              <Dialog.Title className="dialog-title small">{translate("catalog.aboutArtist", { name })}</Dialog.Title>
+              <Dialog.Close className="icon-btn" aria-label={translate("common.close")}>
                 <Icon name="close" />
               </Dialog.Close>
             </div>
@@ -129,21 +102,14 @@ const artistSongSorts = (): [SongSort, string][] => [
   ["title", translate("track.title")],
   ["album", translate("track.album")],
 ];
-const artistReleaseSorts = (): SortOption[] => [
-  ...releaseSorts(),
-  ["plays", translate("sort.mostPlayed")],
-];
+const artistReleaseSorts = (): SortOption[] => [...releaseSorts(), ["plays", translate("sort.mostPlayed")]];
 
 export default function ArtistPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const artistSection = searchParams.get("section");
   const section =
-    artistSection === "songs" ||
-    artistSection === "albums" ||
-    artistSection === "singles"
-      ? artistSection
-      : null;
+    artistSection === "songs" || artistSection === "albums" || artistSection === "singles" ? artistSection : null;
   const [songFilter, setSongFilter] = useState("");
   const [songOrder, setSongOrder] = useState<SongOrder>(MOST_PLAYED);
   const mobile = useIsMobile();
@@ -152,23 +118,13 @@ export default function ArtistPage() {
   const librarySongs = useLibrarySongs(Boolean(id));
   const starred = useStarredIds();
   const caps = useCapabilities();
-  const albums = useMemo(
-    () =>
-      [...(artist?.album ?? [])].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)),
-    [artist],
-  );
-  const fullAlbums = albums.filter(
-    (album) => releaseKindValue(album.songCount, album.duration) === "album",
-  );
-  const singles = albums.filter(
-    (album) => releaseKindValue(album.songCount, album.duration) !== "album",
-  );
+  const albums = useMemo(() => [...(artist?.album ?? [])].sort((a, b) => (b.year ?? 0) - (a.year ?? 0)), [artist]);
+  const fullAlbums = albums.filter((album) => releaseKindValue(album.songCount, album.duration) === "album");
+  const singles = albums.filter((album) => releaseKindValue(album.songCount, album.duration) !== "album");
   const artistSongs = useMemo(
     () =>
       (librarySongs.data ?? []).filter(
-        (song) =>
-          song.artistId === id ||
-          song.artists?.some((songArtist) => songArtist.id === id),
+        (song) => song.artistId === id || song.artists?.some((songArtist) => songArtist.id === id),
       ),
     [librarySongs.data, id],
   );
@@ -177,10 +133,7 @@ export default function ArtistPage() {
     [artistSongs, songOrder, songFilter],
   );
   const { data: library } = useArtists();
-  const known = useMemo(
-    () => new Set((library ?? []).map((a) => a.id)),
-    [library],
-  );
+  const known = useMemo(() => new Set((library ?? []).map((a) => a.id)), [library]);
   const similar = info?.similarArtist ?? [];
   const inLibrary = similar.filter((a) => known.has(a.id));
   const missingNames = similar
@@ -204,14 +157,7 @@ export default function ArtistPage() {
 
   if (isLoading) return <PageSkeleton />;
   if (isError || !artist || !albums.length)
-    return (
-      <NotFoundState
-        what="artist"
-        error={error}
-        retry={() => void refetch()}
-        name={artist?.name}
-      />
-    );
+    return <NotFoundState what="artist" error={error} retry={() => void refetch()} name={artist?.name} />;
 
   const songCount = albums.reduce((n, a) => n + a.songCount, 0);
   const plays = albums.reduce((n, a) => n + (a.playCount ?? 0), 0);
@@ -230,11 +176,7 @@ export default function ArtistPage() {
               onChange={setSongFilter}
               label={translate("catalog.findArtistSongs")}
             />
-            <CollectionTools
-              sorts={artistSongSorts()}
-              order={songOrder}
-              onOrder={setSongOrder}
-            />
+            <CollectionTools sorts={artistSongSorts()} order={songOrder} onOrder={setSongOrder} />
             {!section && artistSongs.length > SONG_PREVIEW ? (
               <Link className="show-all" to={sectionHref("songs")}>
                 {translate("common.showAll")}
@@ -250,11 +192,7 @@ export default function ArtistPage() {
       ) : librarySongs.isError ? (
         <div className="empty-inline">
           <p className="muted">{translate("catalog.loadSongsFailed")}</p>
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => void librarySongs.refetch()}
-          >
+          <button type="button" className="btn ghost sm" onClick={() => void librarySongs.refetch()}>
             {translate("common.retry")}
           </button>
         </div>
@@ -275,8 +213,7 @@ export default function ArtistPage() {
                 }
               : {
                   label: translate("stats.plays"),
-                  value: (song) =>
-                    song.playCount ? count(song.playCount) : "",
+                  value: (song) => (song.playCount ? count(song.playCount) : ""),
                   sort: "plays",
                 }
           }
@@ -289,11 +226,7 @@ export default function ArtistPage() {
   );
 
   return (
-    <div
-      className={
-        section === "songs" ? "artist-page artist-songs-page" : "artist-page"
-      }
-    >
+    <div className={section === "songs" ? "artist-page artist-songs-page" : "artist-page"}>
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="a-hero">
         <div className="bg">
@@ -309,8 +242,7 @@ export default function ArtistPage() {
         <div className="a-hero-text">
           {starred.artists.has(artist.id) ? (
             <div className="kind">
-              <Icon name="heartFill" size={15} />{" "}
-              {translate("catalog.favourites")}
+              <Icon name="heartFill" size={15} /> {translate("catalog.favourites")}
             </div>
           ) : null}
           <h1
@@ -340,28 +272,17 @@ export default function ArtistPage() {
           contextId={artist.id}
           label={artist.name}
           disabled={!artistSongs.length}
-          onPlay={() =>
-            player.playSongs(shownSongs(artistSongs, songOrder, ""), 0, context)
-          }
+          onPlay={() => player.playSongs(shownSongs(artistSongs, songOrder, ""), 0, context)}
         />
         <ShuffleButton
           label={artist.name}
           disabled={!artistSongs.length}
-          onShuffle={() =>
-            player.playSongs(
-              shownSongs(artistSongs, songOrder, ""),
-              0,
-              context,
-              { shuffle: true },
-            )
-          }
+          onShuffle={() => player.playSongs(shownSongs(artistSongs, songOrder, ""), 0, context, { shuffle: true })}
         />
         <button
           type="button"
           className="btn ghost sm"
-          onClick={() =>
-            void player.startRadio({ artistId: artist.id, name: artist.name })
-          }
+          onClick={() => void player.startRadio({ artistId: artist.id, name: artist.name })}
         >
           <Icon name="radio" size={15} />
           {translate("catalog.artistRadio")}
@@ -387,12 +308,7 @@ export default function ArtistPage() {
             id="artist-albums"
             title={translate("catalog.albums")}
             items={fullAlbums.map((album) =>
-              albumItem(
-                album,
-                [album.year, translate("catalog.album")]
-                  .filter(Boolean)
-                  .join(", "),
-              ),
+              albumItem(album, [album.year, translate("catalog.album")].filter(Boolean).join(", ")),
             )}
             sorts={artistReleaseSorts()}
             {...(!section ? { preview: 6, to: sectionHref("albums") } : {})}
@@ -403,12 +319,7 @@ export default function ArtistPage() {
             id="artist-singles"
             title={translate("catalog.singlesEps")}
             items={singles.map((album) =>
-              albumItem(
-                album,
-                [album.year, releaseKind(album.songCount, album.duration)]
-                  .filter(Boolean)
-                  .join(", "),
-              ),
+              albumItem(album, [album.year, releaseKind(album.songCount, album.duration)].filter(Boolean).join(", ")),
             )}
             sorts={artistReleaseSorts()}
             {...(!section ? { preview: 6, to: sectionHref("singles") } : {})}
@@ -426,10 +337,7 @@ export default function ArtistPage() {
         ) : null}
         {!section && lidarrOn && missing.data?.length ? (
           <>
-            <RowHeader
-              title={translate("catalog.similarMissing")}
-              subtitle={translate("catalog.similarMissingHint")}
-            />
+            <RowHeader title={translate("catalog.similarMissing")} subtitle={translate("catalog.similarMissingHint")} />
             <div className="get">
               {missing.data.map((a) => (
                 <ArtistSearchCard key={a.foreignArtistId} artist={a} />

@@ -46,14 +46,8 @@ export class AudioEngine {
     const mine = () => slot === this.active;
     const time = () => {
       if (!mine()) return;
-      const b = el.buffered.length
-        ? el.buffered.end(el.buffered.length - 1)
-        : 0;
-      this.on.time(
-        el.currentTime,
-        Number.isFinite(el.duration) ? el.duration : 0,
-        b,
-      );
+      const b = el.buffered.length ? el.buffered.end(el.buffered.length - 1) : 0;
+      this.on.time(el.currentTime, Number.isFinite(el.duration) ? el.duration : 0, b);
     };
     el.addEventListener("timeupdate", time);
     el.addEventListener("durationchange", time);
@@ -64,10 +58,7 @@ export class AudioEngine {
       this.on.waiting(false);
       this.on.playing(true);
     });
-    el.addEventListener(
-      "pause",
-      () => mine() && !el.ended && this.on.playing(false),
-    );
+    el.addEventListener("pause", () => mine() && !el.ended && this.on.playing(false));
     el.addEventListener("waiting", () => mine() && this.on.waiting(true));
     el.addEventListener("canplay", () => mine() && this.on.waiting(false));
     el.addEventListener("error", () => {
@@ -109,11 +100,7 @@ export class AudioEngine {
   private applyVolume() {
     const v = this.volume * this.volume;
     if (this.graph) {
-      this.graph.master.gain.setTargetAtTime(
-        v,
-        this.graph.ctx.currentTime,
-        0.015,
-      );
+      this.graph.master.gain.setTargetAtTime(v, this.graph.ctx.currentTime, 0.015);
       for (const el of this.els) el.volume = 1;
     } else {
       this.els.forEach((el, i) => {
@@ -129,11 +116,7 @@ export class AudioEngine {
       const now = this.graph.ctx.currentTime;
       g.cancelScheduledValues(now);
       g.setValueAtTime(Math.max(g.value, MIN_GAIN), now);
-      if (rampSeconds > 0)
-        g.exponentialRampToValueAtTime(
-          Math.max(value, MIN_GAIN),
-          now + rampSeconds,
-        );
+      if (rampSeconds > 0) g.exponentialRampToValueAtTime(Math.max(value, MIN_GAIN), now + rampSeconds);
       else g.setValueAtTime(value, now);
     } else {
       this.els[slot].volume = Math.min(1, this.volume * this.volume * value);
@@ -145,10 +128,7 @@ export class AudioEngine {
     this.applyVolume();
   }
 
-  load(
-    src: string,
-    opts: { autoplay: boolean; startAt?: number; gain?: number },
-  ) {
+  load(src: string, opts: { autoplay: boolean; startAt?: number; gain?: number }) {
     this.cancelFade();
     const other = (1 - this.active) as 0 | 1;
     if (this.srcs[other] === src) {
@@ -170,11 +150,7 @@ export class AudioEngine {
       if (el.readyState >= 1) seek();
       else el.addEventListener("loadedmetadata", seek, { once: true });
     }
-    this.on.time(
-      opts.startAt ?? 0,
-      Number.isFinite(el.duration) ? el.duration : 0,
-      0,
-    );
+    this.on.time(opts.startAt ?? 0, Number.isFinite(el.duration) ? el.duration : 0, 0);
     if (opts.autoplay) void this.play();
   }
 
@@ -232,10 +208,7 @@ export class AudioEngine {
     window.clearTimeout(this.fadeTimer);
     this.fadeTimer = null;
     this.releaseSlot((1 - this.active) as 0 | 1);
-    this.setGain(
-      this.active,
-      this.gainTargets[this.active] < 0.01 ? 1 : this.gainTargets[this.active],
-    );
+    this.setGain(this.active, this.gainTargets[this.active] < 0.01 ? 1 : this.gainTargets[this.active]);
   }
 
   private releaseSlot(slot: 0 | 1) {
@@ -250,17 +223,14 @@ export class AudioEngine {
 
   async play(): Promise<void> {
     this.ensureGraph();
-    if (this.graph?.ctx.state === "suspended")
-      await this.graph.ctx.resume().catch(() => undefined);
+    if (this.graph?.ctx.state === "suspended") await this.graph.ctx.resume().catch(() => undefined);
     try {
       await this.element.play();
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       this.on.playing(false);
       if (e instanceof DOMException && e.name === "NotAllowedError") return;
-      this.on.error(
-        e instanceof Error ? e.message : translate("player.playbackFailed"),
-      );
+      this.on.error(e instanceof Error ? e.message : translate("player.playbackFailed"));
     }
   }
 
@@ -272,13 +242,7 @@ export class AudioEngine {
   seek(seconds: number) {
     const el = this.element;
     if (!Number.isFinite(seconds)) return;
-    el.currentTime = Math.max(
-      0,
-      Math.min(
-        seconds,
-        Number.isFinite(el.duration) ? el.duration - 0.25 : seconds,
-      ),
-    );
+    el.currentTime = Math.max(0, Math.min(seconds, Number.isFinite(el.duration) ? el.duration - 0.25 : seconds));
   }
 
   stop() {

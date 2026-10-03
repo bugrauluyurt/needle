@@ -14,16 +14,11 @@ import { locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { setFullScreen, toggleRightPanel, useUi } from "../state/ui.ts";
 import { usePlayback, useShownProgress } from "../features/remote/client.ts";
-import {
-  DevicesButton,
-  kindIcon,
-} from "../features/remote/components/DevicesButton.tsx";
+import { DevicesButton, kindIcon } from "../features/remote/components/DevicesButton.tsx";
 import { albumPath, artistPath } from "../lib/paths.ts";
 import { useIsWide } from "../lib/media.ts";
 
-export const LiveLabel = () => (
-  <span className="live">{translate("player.liveRadio")}</span>
-);
+export const LiveLabel = () => <span className="live">{translate("player.liveRadio")}</span>;
 
 export function SeekBar({
   className = "seek",
@@ -33,10 +28,7 @@ export function SeekBar({
   times?: "side" | "below" | "remaining";
 }) {
   const { remote, station, controls } = usePlayback();
-  const position = useShownProgress(
-    remote,
-    (p) => Math.floor(p.position * 4) / 4,
-  );
+  const position = useShownProgress(remote, (p) => Math.floor(p.position * 4) / 4);
   const duration = useShownProgress(remote, (p) => p.duration);
   const buffered = useShownProgress(remote, (p) => Math.floor(p.buffered));
   const [preview, setPreview] = useState<number | null>(null);
@@ -79,9 +71,7 @@ export function SeekBar({
       <span className="time">{clock(shown)}</span>
       {slider}
       <span className="time">
-        {times === "remaining"
-          ? `-${clock(Math.max(0, duration - shown))}`
-          : clock(duration)}
+        {times === "remaining" ? `-${clock(Math.max(0, duration - shown))}` : clock(duration)}
       </span>
     </div>
   );
@@ -115,9 +105,7 @@ export function Transport({ big = false }: { big?: boolean }) {
         className="icon-btn"
         data-key="S"
         aria-pressed={shuffle}
-        aria-label={translate(
-          shuffle ? "player.turnOffShuffle" : "player.shuffle",
-        )}
+        aria-label={translate(shuffle ? "player.turnOffShuffle" : "player.shuffle")}
         disabled={empty || Boolean(remote)}
         onClick={() => player.setShuffle(!shuffle)}
       >
@@ -162,17 +150,13 @@ export function Transport({ big = false }: { big?: boolean }) {
         disabled={empty || Boolean(remote)}
         onClick={player.cycleRepeat}
       >
-        <Icon
-          name={repeat === "one" ? "repeatOne" : "repeat"}
-          size={big ? 22 : size}
-        />
+        <Icon name={repeat === "one" ? "repeatOne" : "repeat"} size={big ? 22 : size} />
       </button>
     </div>
   );
 }
 
-const volumeIcon = (volume: number): IconName =>
-  volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume";
+const volumeIcon = (volume: number): IconName => (volume === 0 ? "mute" : volume < 0.5 ? "volumeLow" : "volume");
 
 export function Volume() {
   const { volume, controls } = usePlayback();
@@ -199,13 +183,7 @@ export function Volume() {
   );
 }
 
-export function LikeCurrent({
-  size = 18,
-  className = "icon-btn",
-}: {
-  size?: number;
-  className?: string;
-}) {
+export function LikeCurrent({ size = 18, className = "icon-btn" }: { size?: number; className?: string }) {
   const { song } = usePlayback();
   const likes = useSongLikes();
   if (!song) return null;
@@ -254,11 +232,7 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
   return (
     <DM.Root modal={false}>
       <DM.Trigger asChild>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={translate("player.moreOptions")}
-        >
+        <button type="button" className="icon-btn" aria-label={translate("player.moreOptions")}>
           <Icon name="more" size={18} />
         </button>
       </DM.Trigger>
@@ -275,17 +249,10 @@ function MoreMenu({ actions }: { actions: BarAction[] }) {
           }}
         >
           {actions.map((a) => (
-            <DM.Item
-              key={a.label}
-              className="menu-item"
-              disabled={a.disabled}
-              onSelect={() => (picked.current = a)}
-            >
+            <DM.Item key={a.label} className="menu-item" disabled={a.disabled} onSelect={() => (picked.current = a)}>
               <Icon name={a.icon} size={18} />
               <span className="menu-label">{a.label}</span>
-              {a.pressed ? (
-                <Icon name="check" size={16} className="menu-end" />
-              ) : null}
+              {a.pressed ? <Icon name="check" size={16} className="menu-end" /> : null}
             </DM.Item>
           ))}
         </DM.Content>
@@ -300,11 +267,7 @@ function VolumeButton() {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={translate("player.volume")}
-        >
+        <button type="button" className="icon-btn" aria-label={translate("player.volume")}>
           <Icon name={volumeIcon(volume)} size={18} />
         </button>
       </Popover.Trigger>
@@ -340,11 +303,7 @@ function SongTitle({ song, locatable }: { song: Song; locatable: boolean }) {
       </button>
     );
   }
-  return song.albumId ? (
-    <Link to={albumPath(song.albumId)}>{song.title}</Link>
-  ) : (
-    <>{song.title}</>
-  );
+  return song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : <>{song.title}</>;
 }
 
 function RemoteStrip({ remote }: { remote: Device }) {
@@ -399,8 +358,7 @@ function Bar() {
     size: 18,
     keyHint: "Y",
     pressed: pathname === "/lyrics",
-    run: () =>
-      void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")),
+    run: () => void (pathname === "/lyrics" ? navigate(-1) : navigate("/lyrics")),
   };
   const full: BarAction = {
     label: translate("player.fullScreen"),
@@ -440,11 +398,7 @@ function Bar() {
                 <SongTitle song={song} locatable={locatable} />
               </div>
               <div className="np-a">
-                {song.artistId ? (
-                  <Link to={artistPath(song.artistId)}>{artistName(song)}</Link>
-                ) : (
-                  artistName(song)
-                )}
+                {song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}
               </div>
             </div>
             <LikeCurrent />
@@ -455,9 +409,7 @@ function Bar() {
               <Icon name="album" size={24} />
             </div>
             <div className="np-text">
-              <div className="np-t muted">
-                {translate("player.nothingPlaying")}
-              </div>
+              <div className="np-t muted">{translate("player.nothingPlaying")}</div>
             </div>
           </>
         )}

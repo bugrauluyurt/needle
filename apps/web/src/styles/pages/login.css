@@ -26,9 +26,7 @@
 }
 
 .wall-tile.t0 {
-  background:
-    radial-gradient(circle at 50% 60%, #ffb86b 26%, transparent 27%),
-    linear-gradient(#1c1242, #e0457b);
+  background: radial-gradient(circle at 50% 60%, #ffb86b 26%, transparent 27%), linear-gradient(#1c1242, #e0457b);
 }
 .wall-tile.t1 {
   background:
@@ -36,11 +34,7 @@
     radial-gradient(50% 50% at 75% 70%, #f2b8c6, transparent 70%), #e7e2f1;
 }
 .wall-tile.t2 {
-  background: repeating-radial-gradient(
-    circle at 50% 50%,
-    #c9a86a 0 2px,
-    #121018 3px 9px
-  );
+  background: repeating-radial-gradient(circle at 50% 50%, #c9a86a 0 2px, #121018 3px 9px);
 }
 .wall-tile.t3 {
   background: linear-gradient(160deg, #f3e8d6 55%, #2e6b5e 56%);
@@ -52,40 +46,24 @@
     #07201f;
 }
 .wall-tile.t5 {
-  background:
-    radial-gradient(60% 60% at 40% 40%, #f27d2e, transparent 70%), #1a0f0a;
+  background: radial-gradient(60% 60% at 40% 40%, #f27d2e, transparent 70%), #1a0f0a;
 }
 .wall-tile.t6 {
-  background: repeating-linear-gradient(
-    90deg,
-    #b9a58c 0 12px,
-    #efe6da 12px 22px,
-    #6f5e4b 22px 26px,
-    #efe6da 26px 40px
-  );
+  background: repeating-linear-gradient(90deg, #b9a58c 0 12px, #efe6da 12px 22px, #6f5e4b 22px 26px, #efe6da 26px 40px);
 }
 .wall-tile.t7 {
-  background: repeating-radial-gradient(
-    circle at 45% 50%,
-    #7fb7d9 0 1.5px,
-    #0f2436 2.5px 8px
-  );
+  background: repeating-radial-gradient(circle at 45% 50%, #7fb7d9 0 1.5px, #0f2436 2.5px 8px);
 }
 .wall-tile.t8 {
   background:
-    radial-gradient(circle at 70% 25%, #ffe066 12%, transparent 13%),
-    linear-gradient(200deg, #ff8a3d 50%, #1d7a46 51%);
+    radial-gradient(circle at 70% 25%, #ffe066 12%, transparent 13%), linear-gradient(200deg, #ff8a3d 50%, #1d7a46 51%);
 }
 
 .login::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    600px 520px at 50% 50%,
-    var(--ink) 35%,
-    rgba(15, 14, 19, 0.4) 100%
-  );
+  background: radial-gradient(600px 520px at 50% 50%, var(--ink) 35%, rgba(15, 14, 19, 0.4) 100%);
   z-index: 1;
 }
 

@@ -31,9 +31,7 @@ export default function LikedArtistsPage() {
     () =>
       sortItems(
         (data?.artist ?? [])
-          .filter((artist) =>
-            matchesTerms(queryTerms(artistFilter), artist.name),
-          )
+          .filter((artist) => matchesTerms(queryTerms(artistFilter), artist.name))
           .map((artist) => ({
             ...artistItem(artist),
             added: artist.starred ?? "",
@@ -57,23 +55,13 @@ export default function LikedArtistsPage() {
               onChange={setArtistFilter}
               label={translate("library.findLikedArtists")}
             />
-            <CollectionTools
-              sorts={SORTS}
-              order={c.order}
-              onOrder={c.setOrder}
-              view={c.view}
-              onView={c.setView}
-            />
+            <CollectionTools sorts={SORTS} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
           </div>
         </div>
         <CollectionBody
           items={items}
           view={c.view}
-          empty={translate(
-            artistFilter.trim()
-              ? "library.noLikedArtistMatch"
-              : "library.noLikedArtists",
-          )}
+          empty={translate(artistFilter.trim() ? "library.noLikedArtistMatch" : "library.noLikedArtists")}
         />
       </div>
     </>

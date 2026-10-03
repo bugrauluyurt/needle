@@ -10,12 +10,7 @@ import { MobileHeader } from "../layout/Mobile.tsx";
 import { useIsMobile } from "../lib/media.ts";
 import { usePageTone } from "../layout/pageTone.ts";
 import { TopBar } from "../layout/TopBar.tsx";
-import {
-  useCapabilities,
-  useEveryonesRequests,
-  useLidarrDownloads,
-  useRequests,
-} from "../queries/hooks.ts";
+import { useCapabilities, useEveryonesRequests, useLidarrDownloads, useRequests } from "../queries/hooks.ts";
 import { keys } from "../queries/keys.ts";
 import { toast } from "../state/ui.ts";
 import { translate } from "../i18n/index.ts";
@@ -29,42 +24,22 @@ function RequestRow({ r }: { r: RequestItem }) {
   const retry = () =>
     void api
       .retryRequest(r.id)
-      .then(refresh, (e: unknown) =>
-        toast(
-          e instanceof Error ? e.message : translate("requests.retryFailed"),
-        ),
-      );
+      .then(refresh, (e: unknown) => toast(e instanceof Error ? e.message : translate("requests.retryFailed")));
   return (
     <li className="req-row">
-      <RemoteCover
-        url={r.coverUrl}
-        record={r.kind === "album" ? r.ref : undefined}
-      />
+      <RemoteCover url={r.coverUrl} record={r.kind === "album" ? r.ref : undefined} />
       <div className="req-text">
         <div className="t">{r.title}</div>
         <div className="s">
-          {translate(
-            r.kind === "album" ? "requests.kindAlbum" : "requests.kindSong",
-          )}
-          , {r.artist},{" "}
-          {mine
-            ? ""
-            : `${translate("requests.askedBy", { user: r.user ?? "" })} `}
+          {translate(r.kind === "album" ? "requests.kindAlbum" : "requests.kindSong")}, {r.artist},{" "}
+          {mine ? "" : `${translate("requests.askedBy", { user: r.user ?? "" })} `}
           {ago(new Date(r.created).toISOString())}
         </div>
-        <RequestState
-          kind={r.kind}
-          state={r.state}
-          progress={r.progress}
-          detail={r.detail}
-        />
+        <RequestState kind={r.kind} state={r.state} progress={r.progress} detail={r.detail} />
       </div>
       <div className="req-acts">
         {r.state === "available" ? (
-          <Link
-            className="btn ghost sm"
-            to={`/search?q=${encodeURIComponent(`${r.artist} ${r.title}`)}`}
-          >
+          <Link className="btn ghost sm" to={`/search?q=${encodeURIComponent(`${r.artist} ${r.title}`)}`}>
             {translate("common.open")}
           </Link>
         ) : mine && RETRY.has(r.state) ? (
@@ -85,48 +60,30 @@ function RequestRow({ r }: { r: RequestItem }) {
   );
 }
 
-const ACTIVE_SONG = new Set<RequestItem["state"]>([
-  "searching",
-  "downloading",
-  "moving",
-]);
+const ACTIVE_SONG = new Set<RequestItem["state"]>(["searching", "downloading", "moving"]);
 
 function DownloadRow({ d }: { d: DownloadItem }) {
   const qc = useQueryClient();
   const remove = (findAnother: boolean) =>
     void api.removeDownload(d.id, findAnother).then(
       () => {
-        toast(
-          translate(
-            findAnother ? "requests.lookingAnother" : "requests.removed",
-            { title: d.title },
-          ),
-        );
+        toast(translate(findAnother ? "requests.lookingAnother" : "requests.removed", { title: d.title }));
         void qc.invalidateQueries({ queryKey: keys.downloads });
         void qc.invalidateQueries({ queryKey: keys.requests });
       },
-      (e: unknown) =>
-        toast(
-          e instanceof Error ? e.message : translate("requests.removeFailed"),
-        ),
+      (e: unknown) => toast(e instanceof Error ? e.message : translate("requests.removeFailed")),
     );
   return (
     <li className="req-row">
       <RemoteCover url={d.coverUrl} record={String(d.id)} />
       <div className="req-text">
         <div className="t">{d.title}</div>
-        <div className="s">
-          {translate("requests.albumArtist", { artist: d.artist })}
-        </div>
+        <div className="s">{translate("requests.albumArtist", { artist: d.artist })}</div>
         <RequestState state={d.state} progress={d.progress} detail={d.detail} />
       </div>
       <div className="req-acts">
         {d.state === "failed" ? (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => remove(true)}
-          >
+          <button type="button" className="btn ghost sm" onClick={() => remove(true)}>
             {translate("requests.findAnother")}
           </button>
         ) : null}
@@ -146,14 +103,9 @@ function DownloadRow({ d }: { d: DownloadItem }) {
 function DownloadingNow() {
   const { data: downloads = [] } = useLidarrDownloads(true);
   const { data: requests = [] } = useRequests();
-  const songs = requests.filter(
-    (r) => r.kind === "song" && ACTIVE_SONG.has(r.state),
-  );
+  const songs = requests.filter((r) => r.kind === "song" && ACTIVE_SONG.has(r.state));
   return (
-    <section
-      className="req-section"
-      aria-label={translate("requests.downloading")}
-    >
+    <section className="req-section" aria-label={translate("requests.downloading")}>
       <h2>{translate("requests.downloading")}</h2>
       {downloads.length || songs.length ? (
         <ul className="req-list">
@@ -175,10 +127,7 @@ function EveryonesRequests() {
   const { data = [] } = useEveryonesRequests(true);
   if (!data.length) return null;
   return (
-    <section
-      className="req-section"
-      aria-label={translate("requests.everyone")}
-    >
+    <section className="req-section" aria-label={translate("requests.everyone")}>
       <h2 className="req-heading">{translate("requests.everyone")}</h2>
       <ul className="req-list">
         {data.map((r) => (
@@ -196,18 +145,10 @@ export default function RequestsPage() {
   usePageTone(null);
   return (
     <>
-      {mobile ? (
-        <MobileHeader title={translate("requests.title")} />
-      ) : (
-        <TopBar />
-      )}
+      {mobile ? <MobileHeader title={translate("requests.title")} /> : <TopBar />}
       <div className="pad requests-page">
-        {!mobile ? (
-          <h1 className="hello">{translate("requests.title")}</h1>
-        ) : null}
-        <p className="muted req-intro">
-          {translate(admin ? "requests.adminIntro" : "requests.userIntro")}
-        </p>
+        {!mobile ? <h1 className="hello">{translate("requests.title")}</h1> : null}
+        <p className="muted req-intro">{translate(admin ? "requests.adminIntro" : "requests.userIntro")}</p>
         {admin ? <DownloadingNow /> : null}
         <h2 className="req-heading">{translate("requests.yours")}</h2>
         {isLoading ? (

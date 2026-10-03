@@ -1,12 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { Song } from "@needle/shared";
 import { useOffline } from "../../offline/store.ts";
@@ -63,9 +56,7 @@ type Side = "up" | "down";
 let locateHandled = 0;
 
 const scrollBehavior = (): ScrollBehavior =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? "auto"
-    : "smooth";
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
 function SortHeader({
   label,
@@ -88,9 +79,7 @@ function SortHeader({
   const state = active ? (order.desc ? "descending" : "ascending") : "none";
   return (
     <span
-      className={["sortable", active ? "on" : "", className ?? ""]
-        .filter(Boolean)
-        .join(" ")}
+      className={["sortable", active ? "on" : "", className ?? ""].filter(Boolean).join(" ")}
       role="columnheader"
       aria-sort={state}
     >
@@ -143,10 +132,7 @@ export function TrackList({
     (sort: SongSort) => (onOrder ?? setOwn)(nextOrder(current, sort, fallback)),
     [onOrder, current, fallback],
   );
-  const list = useMemo(
-    () => (order ? songs : shownSongs(songs, own, "")),
-    [order, songs, own],
-  );
+  const list = useMemo(() => (order ? songs : shownSongs(songs, own, "")), [order, songs, own]);
   const dragFrom = useRef<number | null>(null);
   const shown = limit ? list.slice(0, limit) : list;
 
@@ -160,10 +146,7 @@ export function TrackList({
     },
     [list, context, onPlay, resorted],
   );
-  const select = useCallback(
-    (i: number) => setSelected(list[i]?.id ?? null),
-    [list],
-  );
+  const select = useCallback((i: number) => setSelected(list[i]?.id ?? null), [list]);
   const like = likes.setLiked;
 
   const scroller = useScrollContainer();
@@ -172,21 +155,13 @@ export function TrackList({
   const [rowH, setRowH] = useState(ROW);
   const virtual = shown.length > VIRTUALIZE_AFTER && Boolean(scroller);
   const chrome = useIsMobile() ? CHROME.phone : CHROME.desktop;
-  const at = useMemo(
-    () => (currentId ? shown.findIndex((s) => s.id === currentId) : -1),
-    [shown, currentId],
-  );
+  const at = useMemo(() => (currentId ? shown.findIndex((s) => s.id === currentId) : -1), [shown, currentId]);
   useLayoutEffect(() => {
     if (!virtual || !listRef.current || !scroller?.current) return;
     const measure = () => {
       const el = listRef.current;
       const sc = scroller.current;
-      if (el && sc)
-        setMargin(
-          el.getBoundingClientRect().top -
-            sc.getBoundingClientRect().top +
-            sc.scrollTop,
-        );
+      if (el && sc) setMargin(el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -202,9 +177,7 @@ export function TrackList({
   });
   const rendered = virtual && v.getVirtualItems().length > 0;
   useLayoutEffect(() => {
-    const h = rendered
-      ? listRef.current?.querySelector<HTMLElement>(".tr")?.offsetHeight
-      : undefined;
+    const h = rendered ? listRef.current?.querySelector<HTMLElement>(".tr")?.offsetHeight : undefined;
     if (h) setRowH(h);
   }, [rendered, chrome]);
   useLayoutEffect(() => v.measure(), [v, rowH]);
@@ -212,19 +185,14 @@ export function TrackList({
   const [ioSide, setIoSide] = useState<Side | null>(null);
   useEffect(() => {
     const root = scroller?.current;
-    const target =
-      !virtual && at >= 0 ? listRef.current?.children[at] : undefined;
+    const target = !virtual && at >= 0 ? listRef.current?.children[at] : undefined;
     if (!root || !target) return;
     const io = new IntersectionObserver(
       (entries) => {
         const e = entries.at(-1);
         if (e)
           setIoSide(
-            e.intersectionRatio >= 0.5
-              ? null
-              : e.boundingClientRect.top < (e.rootBounds?.top ?? 0)
-                ? "up"
-                : "down",
+            e.intersectionRatio >= 0.5 ? null : e.boundingClientRect.top < (e.rootBounds?.top ?? 0) ? "up" : "down",
           );
       },
       {
@@ -238,8 +206,7 @@ export function TrackList({
   }, [scroller, virtual, at, chrome]);
   const virtualSide = (): Side | null => {
     const top = (v.scrollOffset ?? 0) + chrome.top;
-    const bottom =
-      (v.scrollOffset ?? 0) + (v.scrollRect?.height ?? 0) - chrome.bottom;
+    const bottom = (v.scrollOffset ?? 0) + (v.scrollRect?.height ?? 0) - chrome.bottom;
     const middle = margin + (at + 0.5) * rowH;
     return middle < top ? "up" : middle > bottom ? "down" : null;
   };
@@ -252,17 +219,14 @@ export function TrackList({
   const [located, setLocated] = useState<number | null>(null);
   useEffect(() => {
     if (located === null) return;
-    listRef.current
-      ?.querySelector<HTMLElement>(".tr.located")
-      ?.focus({ preventScroll: true });
+    listRef.current?.querySelector<HTMLElement>(".tr.located")?.focus({ preventScroll: true });
     const timer = window.setTimeout(() => setLocated(null), PULSE_MS);
     return () => window.clearTimeout(timer);
   }, [located]);
   const locate = useCallback(() => {
     const sc = scroller?.current;
     if (at < 0 || !sc) return;
-    if (virtual)
-      v.scrollToIndex(at, { align: "center", behavior: scrollBehavior() });
+    if (virtual) v.scrollToIndex(at, { align: "center", behavior: scrollBehavior() });
     else
       listRef.current?.children[at]?.scrollIntoView({
         block: "center",
@@ -319,31 +283,19 @@ export function TrackList({
       onLike={like}
       onDragStart={(from) => (dragFrom.current = from)}
       onDropAt={(to) => {
-        if (dragFrom.current !== null && dragFrom.current !== to)
-          onReorder?.(dragFrom.current, to);
+        if (dragFrom.current !== null && dragFrom.current !== to) onReorder?.(dragFrom.current, to);
         dragFrom.current = null;
       }}
       {...(style ? { style } : {})}
     />
   );
 
-  const cols = [
-    "tracks",
-    art ? "with-art" : "",
-    album ? "with-album" : "",
-    column ? "with-col" : "",
-    className ?? "",
-  ]
+  const cols = ["tracks", art ? "with-art" : "", album ? "with-album" : "", column ? "with-col" : "", className ?? ""]
     .filter(Boolean)
     .join(" ");
   const playingSong = at >= 0 ? shown[at] : undefined;
   return (
-    <div
-      className={cols}
-      style={
-        column?.width ? ({ "--col": column.width } as CSSProperties) : undefined
-      }
-    >
+    <div className={cols} style={column?.width ? ({ "--col": column.width } as CSSProperties) : undefined}>
       <div role="table" aria-label={context.name}>
         {header ? (
           <div className="th" role="row">
@@ -352,11 +304,7 @@ export function TrackList({
                 type="button"
                 className="th-reset"
                 aria-label={translate("track.originalOrder")}
-                disabled={
-                  !canSort ||
-                  (current.key === fallback.key &&
-                    current.desc === fallback.desc)
-                }
+                disabled={!canSort || (current.key === fallback.key && current.desc === fallback.desc)}
                 onClick={() => (onOrder ?? setOwn)(fallback)}
                 data-no-tip
               >
@@ -411,11 +359,7 @@ export function TrackList({
           ref={listRef}
           className="tbody"
           role="rowgroup"
-          style={
-            virtual
-              ? { height: v.getTotalSize(), position: "relative" }
-              : undefined
-          }
+          style={virtual ? { height: v.getTotalSize(), position: "relative" } : undefined}
         >
           {virtual
             ? v.getVirtualItems().map((item) => {

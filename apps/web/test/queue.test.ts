@@ -42,10 +42,7 @@ describe("queue", () => {
   });
 
   it("starts from an empty queue when adding", () => {
-    const q = Q.addToQueue(
-      { items: [], index: -1, original: null },
-      songs("a"),
-    );
+    const q = Q.addToQueue({ items: [], index: -1, original: null }, songs("a"));
     expect(ids(q)).toEqual(["a"]);
     expect(q.index).toBe(0);
   });
@@ -109,8 +106,6 @@ describe("queue", () => {
     expect(Q.nextIndex(q, "all")).toBe(0);
     expect(Q.previousIndex({ ...q, index: 0 }, "off")).toBeNull();
     expect(Q.previousIndex({ ...q, index: 0 }, "all")).toBe(1);
-    expect(
-      Q.nextIndex({ items: [], index: -1, original: null }, "all"),
-    ).toBeNull();
+    expect(Q.nextIndex({ items: [], index: -1, original: null }, "all")).toBeNull();
   });
 });

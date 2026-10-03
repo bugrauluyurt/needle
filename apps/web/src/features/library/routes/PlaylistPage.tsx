@@ -36,13 +36,7 @@ import { useSession } from "../../../state/session.ts";
 import { toast } from "../../../state/ui.ts";
 import { translate } from "../../../i18n/index.ts";
 
-function EditForm({
-  playlist,
-  onDone,
-}: {
-  playlist: PlaylistWithSongs;
-  onDone: () => void;
-}) {
+function EditForm({ playlist, onDone }: { playlist: PlaylistWithSongs; onDone: () => void }) {
   const update = useUpdatePlaylist();
   const remove = useDeletePlaylist();
   const navigate = useNavigate();
@@ -72,12 +66,7 @@ function EditForm({
         <div className="edit-fields">
           <label className="field">
             <span>{translate("playlist.name")}</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-              autoFocus
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoFocus />
           </label>
           <label className="field">
             <span>{translate("playlist.description")}</span>
@@ -121,12 +110,7 @@ function EditForm({
           <Icon name="trash" size={16} />
           {translate("playlist.delete")}
         </button>
-        <button
-          type="button"
-          className="btn light"
-          disabled={update.isPending}
-          onClick={save}
-        >
+        <button type="button" className="btn light" disabled={update.isPending} onClick={save}>
           {translate("common.save")}
         </button>
       </div>
@@ -149,19 +133,12 @@ function EditDialog({
         <Dialog.Overlay className="scrim" />
         <Dialog.Content className="dialog edit" aria-describedby={undefined}>
           <div className="dialog-head">
-            <Dialog.Title className="dialog-title small">
-              {translate("playlist.edit")}
-            </Dialog.Title>
-            <Dialog.Close
-              className="icon-btn"
-              aria-label={translate("common.close")}
-            >
+            <Dialog.Title className="dialog-title small">{translate("playlist.edit")}</Dialog.Title>
+            <Dialog.Close className="icon-btn" aria-label={translate("common.close")}>
               <Icon name="close" />
             </Dialog.Close>
           </div>
-          {open ? (
-            <EditForm playlist={playlist} onDone={() => onOpenChange(false)} />
-          ) : null}
+          {open ? <EditForm playlist={playlist} onDone={() => onOpenChange(false)} /> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -171,9 +148,7 @@ function EditDialog({
 function SongsThatFit({ playlist }: { playlist: PlaylistWithSongs }) {
   const entries = playlist.entry ?? [];
   const [seed, setSeed] = useState(0);
-  const seedSong = entries.length
-    ? entries[(seed * 7) % entries.length]
-    : undefined;
+  const seedSong = entries.length ? entries[(seed * 7) % entries.length] : undefined;
   const { data = [] } = useSimilarSongs(seedSong?.id);
   const add = useAddToPlaylist();
   const have = new Set(entries.map((s) => s.id));
@@ -185,11 +160,7 @@ function SongsThatFit({ playlist }: { playlist: PlaylistWithSongs }) {
         title={translate("playlist.fit")}
         subtitle={translate("playlist.fitHint")}
         action={
-          <button
-            type="button"
-            className="show-all"
-            onClick={() => setSeed(seed + 1)}
-          >
+          <button type="button" className="show-all" onClick={() => setSeed(seed + 1)}>
             {translate("playlist.refresh")}
           </button>
         }
@@ -210,8 +181,7 @@ function SongsThatFit({ playlist }: { playlist: PlaylistWithSongs }) {
                 add.mutate(
                   { playlistId: playlist.id, songIds: [s.id] },
                   {
-                    onSuccess: () =>
-                      toast(translate("playlist.added", { name: s.title })),
+                    onSuccess: () => toast(translate("playlist.added", { name: s.title })),
                   },
                 )
               }
@@ -228,13 +198,7 @@ function SongsThatFit({ playlist }: { playlist: PlaylistWithSongs }) {
 export default function PlaylistPage() {
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
-  const {
-    data: playlist,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = usePlaylist(id);
+  const { data: playlist, isLoading, isError, error, refetch } = usePlaylist(id);
   const me = useSession((s) => s.credentials?.user);
   const reorder = useReorderPlaylist();
   const update = useUpdatePlaylist();
@@ -244,20 +208,10 @@ export default function PlaylistPage() {
   const tone = useTone(playlist?.coverArt);
   usePageTone(tone);
   const songs = useMemo(() => playlist?.entry ?? [], [playlist]);
-  const shown = useMemo(
-    () => shownSongs(songs, order, filter),
-    [songs, order, filter],
-  );
+  const shown = useMemo(() => shownSongs(songs, order, filter), [songs, order, filter]);
 
   if (isLoading) return <PageSkeleton />;
-  if (isError || !playlist)
-    return (
-      <NotFoundState
-        what="playlist"
-        error={error}
-        retry={() => void refetch()}
-      />
-    );
+  if (isError || !playlist) return <NotFoundState what="playlist" error={error} retry={() => void refetch()} />;
 
   const mine = playlist.owner === me && !playlist.readonly;
   const context = {
@@ -266,31 +220,19 @@ export default function PlaylistPage() {
     name: playlist.name,
   };
   const canReorder = mine && order.key === "custom" && !filter;
-  const setEdit = (o: boolean) =>
-    setParams(o ? { edit: "1" } : {}, { replace: true });
+  const setEdit = (o: boolean) => setParams(o ? { edit: "1" } : {}, { replace: true });
 
   return (
     <div className="tinted">
       <Hero
-        art={
-          <Art
-            id={playlist.coverArt}
-            version={playlist.changed}
-            px={232}
-            eager
-          />
-        }
-        kind={translate(
-          playlist.public ? "playlist.publicKind" : "playlist.kind",
-        )}
+        art={<Art id={playlist.coverArt} version={playlist.changed} px={232} eager />}
+        kind={translate(playlist.public ? "playlist.publicKind" : "playlist.kind")}
         title={playlist.name}
         description={playlist.comment}
         meta={
           <>
             <b>
-              <span className="avatar tiny">
-                {(playlist.owner ?? "?").slice(0, 1).toUpperCase()}
-              </span>
+              <span className="avatar tiny">{(playlist.owner ?? "?").slice(0, 1).toUpperCase()}</span>
               {playlist.owner}
             </b>
             <span>
@@ -311,10 +253,7 @@ export default function PlaylistPage() {
               label={translate("playlist.find")}
             />
             <CollectionTools
-              sorts={[
-                ["custom", translate("playlist.customOrder")],
-                ...librarySongSorts(),
-              ]}
+              sorts={[["custom", translate("playlist.customOrder")], ...librarySongSorts()]}
               order={order}
               onOrder={setOrder}
             />
@@ -326,12 +265,7 @@ export default function PlaylistPage() {
           label={playlist.name}
           onPlay={() => player.playSongs(songs, 0, context)}
         />
-        <ShuffleButton
-          label={playlist.name}
-          onShuffle={() =>
-            player.playSongs(songs, 0, context, { shuffle: true })
-          }
-        />
+        <ShuffleButton label={playlist.name} onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })} />
         <DownloadButton
           target={{
             id: playlist.id,
@@ -411,9 +345,7 @@ export default function PlaylistPage() {
         </div>
       )}
       <SongsThatFit playlist={playlist} />
-      {mine ? (
-        <EditDialog playlist={playlist} open={editing} onOpenChange={setEdit} />
-      ) : null}
+      {mine ? <EditDialog playlist={playlist} open={editing} onOpenChange={setEdit} /> : null}
     </div>
   );
 }

@@ -24,17 +24,12 @@ export function Toasts() {
   const error = usePlayer((s) => s.error);
   useEffect(() => {
     if (!error) return;
-    const t = window.setTimeout(
-      () => usePlayer.setState({ error: null }),
-      5000,
-    );
+    const t = window.setTimeout(() => usePlayer.setState({ error: null }), 5000);
     return () => window.clearTimeout(t);
   }, [error]);
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {!online ? (
-        <div className="toast offline">{translate("offline.message")}</div>
-      ) : null}
+      {!online ? <div className="toast offline">{translate("offline.message")}</div> : null}
       {error ? <div className="toast error">{error}</div> : null}
       {toasts.map((t) => (
         <div key={t.id} className="toast">

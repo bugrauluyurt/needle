@@ -1,14 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { CollectionTools } from "../components/Collection.tsx";
-import {
-  ActBar,
-  Hero,
-  NotFoundState,
-  PageSkeleton,
-  PlayContextButton,
-  ShuffleButton,
-} from "../components/Hero.tsx";
+import { ActBar, Hero, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { MixArt, playMix } from "../components/MixArt.tsx";
 import { SearchField } from "../components/SearchField.tsx";
 import { TrackMoreButton } from "../components/tracks/TrackMenu.tsx";
@@ -61,21 +54,14 @@ export default function MixPage() {
               label={translate("mix.find")}
             />
             <CollectionTools
-              sorts={[
-                ["custom", translate("mix.order")],
-                ...librarySongSorts(),
-              ]}
+              sorts={[["custom", translate("mix.order")], ...librarySongSorts()]}
               order={songOrder}
               onOrder={setSongOrder}
             />
           </>
         }
       >
-        <PlayContextButton
-          contextId={mix.id}
-          label={mix.name}
-          onPlay={() => playMix(mix)}
-        />
+        <PlayContextButton contextId={mix.id} label={mix.name} onPlay={() => playMix(mix)} />
         <ShuffleButton label={mix.name} onShuffle={() => playMix(mix, true)} />
         <TrackMoreButton
           songs={mix.songs}
@@ -84,14 +70,7 @@ export default function MixPage() {
           label={translate("track.moreOptions", { title: mix.name })}
         />
       </ActBar>
-      <TrackList
-        songs={visibleSongs}
-        context={context}
-        art
-        album
-        order={songOrder}
-        onOrder={setSongOrder}
-      />
+      <TrackList songs={visibleSongs} context={context} art album order={songOrder} onOrder={setSongOrder} />
     </div>
   );
 }

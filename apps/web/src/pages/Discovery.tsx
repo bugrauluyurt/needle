@@ -3,20 +3,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { trackCandidate } from "@needle/shared";
 import type { DiscoveryDetail, DiscoveryTrack } from "@needle/shared";
-import {
-  discoveryContext,
-  DiscoveryArt,
-  librarySongs,
-} from "../components/Discovery.tsx";
+import { discoveryContext, DiscoveryArt, librarySongs } from "../components/Discovery.tsx";
 import { GetSongCard } from "../components/GetCard.tsx";
-import {
-  ActBar,
-  Hero,
-  NotFoundState,
-  PageSkeleton,
-  PlayContextButton,
-  ShuffleButton,
-} from "../components/Hero.tsx";
+import { ActBar, Hero, NotFoundState, PageSkeleton, PlayContextButton, ShuffleButton } from "../components/Hero.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { TrackList } from "../components/tracks/TrackList.tsx";
 import { api, ApiError } from "../lib/api.ts";
@@ -32,8 +21,7 @@ import { useCapabilities, useDiscovery } from "../queries/hooks.ts";
 import { toast } from "../state/ui.ts";
 import { translate } from "../i18n/index.ts";
 
-const wanted = (t: DiscoveryTrack) =>
-  !t.request || t.request.state === "failed";
+const wanted = (t: DiscoveryTrack) => !t.request || t.request.state === "failed";
 
 function Actions({ playlist }: { playlist: DiscoveryDetail }) {
   const qc = useQueryClient();
@@ -43,11 +31,7 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
   const songs = librarySongs(playlist);
   const missing = playlist.tracks.filter((t) => !t.song && wanted(t)).length;
   const context = discoveryContext(playlist);
-  const run = async (
-    what: "get" | "save",
-    job: () => Promise<void>,
-    failed: string,
-  ) => {
+  const run = async (what: "get" | "save", job: () => Promise<void>, failed: string) => {
     setBusy(what);
     try {
       await job();
@@ -69,9 +53,7 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
         toast(
           translate("discovery.lookingSoulseek", {
             songs: plural(r.started, "song"),
-            details: r.skipped
-              ? translate("discovery.skippedDetail", { count: r.skipped })
-              : "",
+            details: r.skipped ? translate("discovery.skippedDetail", { count: r.skipped }) : "",
           }),
           {
             label: translate("common.requests"),
@@ -110,23 +92,14 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
           />
           <ShuffleButton
             label={playlist.name}
-            onShuffle={() =>
-              player.playSongs(songs, 0, context, { shuffle: true })
-            }
+            onShuffle={() => player.playSongs(songs, 0, context, { shuffle: true })}
           />
         </>
       ) : null}
       {canGet && missing ? (
-        <button
-          type="button"
-          className="btn light sm"
-          disabled={busy !== null}
-          onClick={() => void getMissing()}
-        >
+        <button type="button" className="btn light sm" disabled={busy !== null} onClick={() => void getMissing()}>
           <Icon name="download" size={15} />
-          {busy === "get"
-            ? translate("discovery.starting")
-            : translate("discovery.getMissing", { count: missing })}
+          {busy === "get" ? translate("discovery.starting") : translate("discovery.getMissing", { count: missing })}
         </button>
       ) : null}
       {songs.length ? (
@@ -139,9 +112,7 @@ function Actions({ playlist }: { playlist: DiscoveryDetail }) {
         >
           <Icon name="plus" size={15} />
           <span className="act-label">
-            {translate(
-              busy === "save" ? "discovery.saving" : "discovery.savePlaylist",
-            )}
+            {translate(busy === "save" ? "discovery.saving" : "discovery.savePlaylist")}
           </span>
         </button>
       ) : null}
@@ -162,26 +133,14 @@ function Missing({ tracks }: { tracks: DiscoveryTrack[] }) {
   const canGet = useCapabilities().data?.songs ?? false;
   if (!tracks.length) return null;
   return (
-    <section
-      className="res-source pad"
-      aria-label={translate("discovery.notInLibrary")}
-    >
+    <section className="res-source pad" aria-label={translate("discovery.notInLibrary")}>
       <div className="source-h">
         <h2>{translate("discovery.notInLibrary")}</h2>
-        <p className="sub">
-          {canGet
-            ? translate("discovery.soulseekHint")
-            : translate("discovery.adminNeeded")}
-        </p>
+        <p className="sub">{canGet ? translate("discovery.soulseekHint") : translate("discovery.adminNeeded")}</p>
       </div>
       <div className="get">
         {tracks.map((t) => (
-          <GetSongCard
-            key={t.mbid}
-            song={trackCandidate(t)}
-            request={t.request ?? undefined}
-            canGet={canGet}
-          />
+          <GetSongCard key={t.mbid} song={trackCandidate(t)} request={t.request ?? undefined} canGet={canGet} />
         ))}
       </div>
     </section>
@@ -196,9 +155,7 @@ function LoadError({ error, retry }: { error: unknown; retry: () => void }) {
       {mobile ? <MobileBack /> : <TopBar />}
       <div className="empty">
         <div className="empty-in">
-          <h1>
-            {translate(connect ? "discovery.connect" : "discovery.loadFailed")}
-          </h1>
+          <h1>{translate(connect ? "discovery.connect" : "discovery.loadFailed")}</h1>
           <p>
             {connect
               ? translate("discovery.connectHint")
@@ -253,9 +210,7 @@ export default function DiscoveryPage() {
         }
       />
       <Actions playlist={data} />
-      {songs.length ? (
-        <TrackList songs={songs} context={discoveryContext(data)} art album />
-      ) : null}
+      {songs.length ? <TrackList songs={songs} context={discoveryContext(data)} art album /> : null}
       <Missing tracks={data.tracks.filter((t) => !t.song)} />
     </div>
   );

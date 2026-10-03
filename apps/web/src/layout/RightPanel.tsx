@@ -8,12 +8,7 @@ import { LyricsView } from "../components/Lyrics.tsx";
 import { SearchField } from "../components/SearchField.tsx";
 import { SourceMark } from "../components/SpotifyMark.tsx";
 import { YouTubeMusicPlaybackError } from "../features/youtube-music/components/YouTubeMusicPlaybackError.tsx";
-import {
-  isLocalSong,
-  matchesTerms,
-  queryTerms,
-  songSource,
-} from "@needle/shared";
+import { isLocalSong, matchesTerms, queryTerms, songSource } from "@needle/shared";
 import { TrackMoreButton } from "../components/tracks/TrackMenu.tsx";
 import { artistName, count, formatLong, plainBio } from "../lib/format.ts";
 import { player } from "../player/controller.ts";
@@ -78,9 +73,7 @@ export function QueueRow({
       >
         <Art id={item.song.coverArt} px={44} />
         <div className="mini-text">
-          <div className={`t ${playing ? "playing" : ""}`}>
-            {item.song.title}
-          </div>
+          <div className={`t ${playing ? "playing" : ""}`}>{item.song.title}</div>
           <div className="s">
             <SourceMark source={songSource(item.song)} compact />
             {artistName(item.song)}
@@ -121,24 +114,15 @@ export function QueueView() {
   const now = items[index];
   const userCount = userItemsAfter({ items, index, original: null });
   const user = items.slice(index + 1, index + 1 + userCount);
-  const rest = items.slice(
-    index + 1 + userCount,
-    queueQuery.trim() ? undefined : index + 1 + userCount + 60,
-  );
+  const rest = items.slice(index + 1 + userCount, queueQuery.trim() ? undefined : index + 1 + userCount + 60);
   const queueTerms = queryTerms(queueQuery);
   const matchesQueueItem = (queueItem: QueueItem) =>
-    matchesTerms(
-      queueTerms,
-      queueItem.song.title,
-      artistName(queueItem.song),
-      queueItem.song.album,
-    );
+    matchesTerms(queueTerms, queueItem.song.title, artistName(queueItem.song), queueItem.song.album);
   const drop = (target: number) => {
     if (dragging.current) player.moveInQueue(dragging.current, target);
     dragging.current = null;
   };
-  if (!now)
-    return <p className="panel-empty">{translate("panel.emptyQueue")}</p>;
+  if (!now) return <p className="panel-empty">{translate("panel.emptyQueue")}</p>;
   return (
     <>
       <div className="queue-search">
@@ -156,11 +140,7 @@ export function QueueView() {
         <>
           <h6 className="q-h">
             {translate("panel.nextQueue")}
-            <button
-              type="button"
-              className="q-clear"
-              onClick={player.clearUserQueue}
-            >
+            <button type="button" className="q-clear" onClick={player.clearUserQueue}>
               {translate("panel.clear")}
             </button>
           </h6>
@@ -223,26 +203,14 @@ export function QueueView() {
 
 function AboutArtist({ song }: { song: Song }) {
   const { data } = useArtistInfo(song.artistId);
-  const youtubeMusicArtist = useYouTubeMusicArtist(
-    songSource(song) === "youtubeMusic" ? (song.artistId ?? "") : "",
-  );
-  const cover = useArtistImage(
-    song.artistId,
-    song.artists?.[0]?.name ?? song.artist,
-  );
-  const bio = plainBio(
-    youtubeMusicArtist.data?.artist.description ?? data?.biography,
-  );
+  const youtubeMusicArtist = useYouTubeMusicArtist(songSource(song) === "youtubeMusic" ? (song.artistId ?? "") : "");
+  const cover = useArtistImage(song.artistId, song.artists?.[0]?.name ?? song.artist);
+  const bio = plainBio(youtubeMusicArtist.data?.artist.description ?? data?.biography);
   if (!song.artistId) return null;
   return (
     <Link to={artistPath(song.artistId)} className="rp-card about-card">
       <div className="about-art">
-        <Art
-          id={cover ?? song.coverArt}
-          px={300}
-          fallback="artist"
-          className={cover ? "" : "blurred"}
-        />
+        <Art id={cover ?? song.coverArt} px={300} fallback="artist" className={cover ? "" : "blurred"} />
         <span>{translate("panel.aboutArtist")}</span>
       </div>
       <h6>{artistName(song)}</h6>
@@ -255,22 +223,15 @@ function NowView() {
   const { remote, song } = usePlayback();
   const items = usePlayer((s) => s.items);
   const index = usePlayer((s) => s.index);
-  if (!song)
-    return <p className="panel-empty">{translate("panel.emptyNow")}</p>;
+  if (!song) return <p className="panel-empty">{translate("panel.emptyNow")}</p>;
   const next = remote ? undefined : items[index + 1];
   const rows: [string, string][] = [
     [translate("panel.format"), formatLong(song)],
-    [
-      translate("panel.bitrate"),
-      song.bitRate ? `${count(song.bitRate)} kbps` : "",
-    ],
+    [translate("panel.bitrate"), song.bitRate ? `${count(song.bitRate)} kbps` : ""],
     [
       translate("panel.played"),
       song.playCount
-        ? translate(
-            song.playCount === 1 ? "panel.playedOnce" : "panel.playedMany",
-            { count: count(song.playCount) },
-          )
+        ? translate(song.playCount === 1 ? "panel.playedOnce" : "panel.playedMany", { count: count(song.playCount) })
         : translate("panel.firstTime"),
     ],
   ];
@@ -279,20 +240,10 @@ function NowView() {
       <Art id={song.coverArt} px={304} className="rp-art" eager />
       <div className="rp-title">
         <div>
-          <h5>
-            {song.albumId ? (
-              <Link to={albumPath(song.albumId)}>{song.title}</Link>
-            ) : (
-              song.title
-            )}
-          </h5>
+          <h5>{song.albumId ? <Link to={albumPath(song.albumId)}>{song.title}</Link> : song.title}</h5>
           <p>
             <SourceMark source={songSource(song)} compact />
-            {song.artistId ? (
-              <Link to={artistPath(song.artistId)}>{artistName(song)}</Link>
-            ) : (
-              artistName(song)
-            )}
+            {song.artistId ? <Link to={artistPath(song.artistId)}>{artistName(song)}</Link> : artistName(song)}
           </p>
         </div>
         <TrackMoreButton songs={[song]} />
@@ -303,11 +254,7 @@ function NowView() {
         <div className="rp-card">
           <h6>
             {translate("panel.nextQueue")}
-            <button
-              type="button"
-              className="rp-link"
-              onClick={() => useUi.setState({ rightPanel: "queue" })}
-            >
+            <button type="button" className="rp-link" onClick={() => useUi.setState({ rightPanel: "queue" })}>
               {translate("panel.openQueue")}
             </button>
           </h6>

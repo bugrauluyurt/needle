@@ -39,12 +39,7 @@ export function TabBar() {
   return (
     <nav className="tabbar" aria-label={translate("common.main")}>
       {TABS.map(([to, labelKey, icon]) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === "/"}
-          className={({ isActive }) => (isActive ? "on" : "")}
-        >
+        <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => (isActive ? "on" : "")}>
           <Icon name={icon} size={24} />
           {translate(labelKey)}
         </NavLink>
@@ -55,24 +50,17 @@ export function TabBar() {
 
 export function MiniPlayer() {
   const { remote, song, station, playing, controls } = usePlayback();
-  const pct = useShownProgress(remote, (p) =>
-    p.duration ? Math.round((p.position / p.duration) * 1000) / 10 : 0,
-  );
+  const pct = useShownProgress(remote, (p) => (p.duration ? Math.round((p.position / p.duration) * 1000) / 10 : 0));
   const tone = useTone(song?.coverArt);
   const deviceName = useSession((s) => s.deviceName);
   if (!song && !station) return null;
   return (
-    <div
-      className="miniplayer"
-      style={{ "--tone": tone } as React.CSSProperties}
-    >
+    <div className="miniplayer" style={{ "--tone": tone } as React.CSSProperties}>
       <button
         type="button"
         className="mini-open"
         aria-label={translate("common.openNowPlaying")}
-        onClick={() =>
-          useUi.setState({ nowPlayingOpen: true, mobileView: "player" })
-        }
+        onClick={() => useUi.setState({ nowPlayingOpen: true, mobileView: "player" })}
       >
         {station ? (
           <div className="art station-art">
@@ -90,9 +78,7 @@ export function MiniPlayer() {
               <>
                 <Icon name="devices" size={13} />
                 <span className="ellipsis">
-                  {remote
-                    ? translate("player.playingOn", { device: remote.name })
-                    : deviceName}
+                  {remote ? translate("player.playingOn", { device: remote.name }) : deviceName}
                 </span>
               </>
             )}
@@ -120,24 +106,13 @@ function SearchButton({ className }: { className: string }) {
   const openSearch = useOpenSearch();
   if (pathname === "/search") return null;
   return (
-    <button
-      type="button"
-      className={className}
-      aria-label={translate("navigation.search")}
-      onClick={openSearch}
-    >
+    <button type="button" className={className} aria-label={translate("navigation.search")} onClick={openSearch}>
       <Icon name="search" size={22} />
     </button>
   );
 }
 
-export function MobileHeader({
-  title,
-  actions,
-}: {
-  title: string;
-  actions?: ReactNode;
-}) {
+export function MobileHeader({ title, actions }: { title: string; actions?: ReactNode }) {
   return (
     <header className="ph-h">
       <AccountMenu size={34} />
@@ -160,11 +135,7 @@ export function MobileBack() {
     const main = scroller?.current;
     const el = bar.current;
     if (!main || !el) return;
-    const glass = () =>
-      el.style.setProperty(
-        "--p",
-        String(Math.min(1, main.scrollTop / GLASS_AFTER_PX)),
-      );
+    const glass = () => el.style.setProperty("--p", String(Math.min(1, main.scrollTop / GLASS_AFTER_PX)));
     glass();
     main.addEventListener("scroll", glass, { passive: true });
     return () => main.removeEventListener("scroll", glass);
@@ -205,11 +176,7 @@ export function NowPlayingSheet() {
         type="button"
         className="icon-btn light"
         aria-label={translate("common.close")}
-        onClick={
-          view === "player"
-            ? close
-            : () => useUi.setState({ mobileView: "player" })
-        }
+        onClick={view === "player" ? close : () => useUi.setState({ mobileView: "player" })}
       >
         <Icon name="down" size={26} />
       </button>
@@ -217,11 +184,7 @@ export function NowPlayingSheet() {
         {label}
         <b>{name}</b>
       </div>
-      {song ? (
-        <TrackMoreButton songs={[song]} className="icon-btn light" size={24} />
-      ) : (
-        <span style={{ width: 32 }} />
-      )}
+      {song ? <TrackMoreButton songs={[song]} className="icon-btn light" size={24} /> : <span style={{ width: 32 }} />}
     </div>
   );
 
@@ -240,15 +203,11 @@ export function NowPlayingSheet() {
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            document
-              .querySelector<HTMLButtonElement>(".mini-open")
-              ?.focus({ preventScroll: true });
+            document.querySelector<HTMLButtonElement>(".mini-open")?.focus({ preventScroll: true });
           }}
         >
           <Dialog.Title asChild>
-            <span className="sr-only">
-              {translate("track.nowPlaying")}
-            </span>
+            <span className="sr-only">{translate("track.nowPlaying")}</span>
           </Dialog.Title>
           {view === "lyrics" && song ? (
             <div className="plyr">
@@ -262,9 +221,7 @@ export function NowPlayingSheet() {
                   <button
                     type="button"
                     className="pp"
-                    aria-label={translate(
-                      playing ? "player.pause" : "player.play",
-                    )}
+                    aria-label={translate(playing ? "player.pause" : "player.play")}
                     onClick={controls.toggle}
                   >
                     <Icon name={playing ? "pause" : "play"} size={26} />
@@ -284,9 +241,7 @@ export function NowPlayingSheet() {
               {remote
                 ? head(translate("player.playing"), remote.name)
                 : head(
-                    station
-                      ? translate("player.internetRadio")
-                      : playbackContextLabel(context?.kind),
+                    station ? translate("player.internetRadio") : playbackContextLabel(context?.kind),
                     station?.name ?? context?.name ?? song?.album ?? "",
                   )}
               <div className="nowp-art" {...swipe}>
@@ -329,9 +284,7 @@ export function NowPlayingSheet() {
                     )}
                   </p>
                 </div>
-                {song ? (
-                  <LikeCurrent size={26} className="icon-btn big-heart" />
-                ) : null}
+                {song ? <LikeCurrent size={26} className="icon-btn big-heart" /> : null}
               </div>
               <SeekBar className="seek below" times="below" />
               <Transport big />

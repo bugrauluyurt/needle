@@ -1,14 +1,8 @@
 import type { StructuredLyrics } from "@needle/shared";
 
-export function pickLyrics(
-  list: StructuredLyrics[] | undefined,
-): StructuredLyrics | null {
+export function pickLyrics(list: StructuredLyrics[] | undefined): StructuredLyrics | null {
   if (!list?.length) return null;
-  return (
-    list.find((l) => l.synced && l.line?.length) ??
-    list.find((l) => l.line?.length) ??
-    null
-  );
+  return list.find((l) => l.synced && l.line?.length) ?? list.find((l) => l.line?.length) ?? null;
 }
 
 export function lineAt(lines: { start?: number }[], ms: number): number {

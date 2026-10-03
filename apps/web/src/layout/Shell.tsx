@@ -1,31 +1,13 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
-import {
-  allowSpotify,
-  allowYouTubeMusic,
-  player,
-  SEEK_STEP_S,
-  warmSpotify,
-} from "../player/controller.ts";
+import { allowSpotify, allowYouTubeMusic, player, SEEK_STEP_S, warmSpotify } from "../player/controller.ts";
 import { useCapabilities } from "../queries/hooks.ts";
 import { useSpotifyRequestsAllowed } from "../features/spotify/hooks/useSpotify.ts";
 import { useYouTubeMusicOn } from "../features/youtube-music/hooks/useYouTubeMusic.ts";
-import {
-  current,
-  locatePlaying,
-  useLocate,
-  usePlayer,
-} from "../player/store.ts";
+import { current, locatePlaying, useLocate, usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi, toggleRightPanel } from "../state/ui.ts";
 import { useSongLikes } from "../queries/likes.ts";
 import { isIOS, isStandalone } from "../lib/device.ts";
@@ -34,10 +16,7 @@ import { InstallHint } from "../components/InstallHint.tsx";
 import { MiniPlayer, NowPlayingSheet, TabBar } from "./Mobile.tsx";
 import { Toasts } from "./Overlays.tsx";
 import { SearchFocusProxy, useOpenSearch } from "./TopBar.tsx";
-import {
-  closeTrackMenu,
-  TrackMenuHost,
-} from "../components/tracks/TrackMenu.tsx";
+import { closeTrackMenu, TrackMenuHost } from "../components/tracks/TrackMenu.tsx";
 import { Tooltips } from "../components/Tooltips.tsx";
 import { useActiveRemote } from "../features/remote/client.ts";
 import { useIsMobile, useIsWide } from "../lib/media.ts";
@@ -52,10 +31,7 @@ import { Sidebar } from "./Sidebar.tsx";
 
 function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
-  return Boolean(
-    el &&
-    (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)),
-  );
+  return Boolean(el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)));
 }
 
 function useShortcuts() {
@@ -69,24 +45,12 @@ function useShortcuts() {
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (
-        e.defaultPrevented ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.altKey ||
-        typing(e.target)
-      )
-        return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
       const s = usePlayer.getState();
       const handled = () => e.preventDefault();
       switch (e.key) {
         case " ":
-          if (
-            (e.target as HTMLElement | null)?.closest(
-              "button,[role=slider],[role=row],a",
-            )
-          )
-            return;
+          if ((e.target as HTMLElement | null)?.closest("button,[role=slider],[role=row],a")) return;
           handled();
           player.toggle();
           break;
@@ -101,22 +65,12 @@ function useShortcuts() {
           else player.seekBy(-SEEK_STEP_S);
           break;
         case "ArrowUp":
-          if (
-            (e.target as HTMLElement | null)?.closest(
-              "[role=row],[role=slider]",
-            )
-          )
-            return;
+          if ((e.target as HTMLElement | null)?.closest("[role=row],[role=slider]")) return;
           handled();
           player.setVolume(s.volume + 0.1);
           break;
         case "ArrowDown":
-          if (
-            (e.target as HTMLElement | null)?.closest(
-              "[role=row],[role=slider]",
-            )
-          )
-            return;
+          if ((e.target as HTMLElement | null)?.closest("[role=row],[role=slider]")) return;
           handled();
           player.setVolume(s.volume - 0.1);
           break;
@@ -191,9 +145,7 @@ function Main({ children, mobile }: { children: ReactNode; mobile: boolean }) {
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() =>
-        el.toggleAttribute("data-scrolled", el.scrollTop > 60),
-      );
+      raf = requestAnimationFrame(() => el.toggleAttribute("data-scrolled", el.scrollTop > 60));
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -245,14 +197,11 @@ export function Shell() {
   const fullScreen = useUi((s) => s.fullScreen);
   const shortcuts = useUi((s) => s.shortcutsOpen);
   const remote = useActiveRemote();
-  const hasSong =
-    usePlayer((s) => s.items.length > 0 || Boolean(s.station)) ||
-    Boolean(remote);
+  const hasSong = usePlayer((s) => s.items.length > 0 || Boolean(s.station)) || Boolean(remote);
   const wide = useIsWide();
   const panelOver = usePanelOver(!wide && !mobile);
   const spotifyOn = useSpotifyRequestsAllowed();
-  const spotifyPlayback =
-    Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
+  const spotifyPlayback = Boolean(useCapabilities().data?.spotifyPlayback) && spotifyOn;
   const youtubeMusicOn = useYouTubeMusicOn();
   useShortcuts();
   useCloseOverlaysOnNavigate();

@@ -1,9 +1,5 @@
 import { youtubeMusicRawId } from "@needle/shared";
-import type {
-  YouTubeMusicAlbum,
-  YouTubeMusicArtist,
-  YouTubeMusicPlaylist,
-} from "@needle/shared";
+import type { YouTubeMusicAlbum, YouTubeMusicArtist, YouTubeMusicPlaylist } from "@needle/shared";
 import { player } from "../../../player/controller.ts";
 import { queryClient } from "../../../queries/client.ts";
 import {
@@ -20,9 +16,7 @@ import { translate } from "../../../i18n/index.ts";
 const playbackFailed = () => toast(translate("youtube.answerFailedHint"));
 
 export async function playYouTubeMusicAlbum(id: string) {
-  const { album, songs } = await queryClient.fetchQuery(
-    youtubeMusicAlbumQuery(id),
-  );
+  const { album, songs } = await queryClient.fetchQuery(youtubeMusicAlbumQuery(id));
 
   player.playSongs(songs, 0, {
     kind: "album",
@@ -33,9 +27,7 @@ export async function playYouTubeMusicAlbum(id: string) {
 }
 
 export async function playYouTubeMusicArtist(id: string) {
-  const { artist, songs } = await queryClient.fetchQuery(
-    youtubeMusicArtistQuery(id),
-  );
+  const { artist, songs } = await queryClient.fetchQuery(youtubeMusicArtistQuery(id));
 
   player.playSongs(songs, 0, {
     kind: "artist",
@@ -45,9 +37,7 @@ export async function playYouTubeMusicArtist(id: string) {
 }
 
 export async function playYouTubeMusicPlaylist(id: string) {
-  const { playlist, songs } = await queryClient.fetchQuery(
-    youtubeMusicPlaylistQuery(id),
-  );
+  const { playlist, songs } = await queryClient.fetchQuery(youtubeMusicPlaylistQuery(id));
 
   if (!songs.items.length) return toast(translate("youtube.emptyPlaylist"));
 
@@ -58,10 +48,7 @@ export async function playYouTubeMusicPlaylist(id: string) {
   });
 }
 
-export function youtubeMusicAlbumItem(
-  album: YouTubeMusicAlbum,
-  subtitle?: string,
-): CollectionItem {
+export function youtubeMusicAlbumItem(album: YouTubeMusicAlbum, subtitle?: string): CollectionItem {
   const artistNames = album.artists.map((artist) => artist.name).join(", ");
 
   return {
@@ -78,15 +65,11 @@ export function youtubeMusicAlbumItem(
   };
 }
 
-export function youtubeMusicArtistItem(
-  artist: YouTubeMusicArtist,
-): CollectionItem {
+export function youtubeMusicArtistItem(artist: YouTubeMusicArtist): CollectionItem {
   return {
     key: artist.id,
     to: `/youtube-music/artist/${youtubeMusicRawId(artist.id)}`,
-    art: (pixels) => (
-      <Art images={artist.images} px={pixels} round fallback="artist" />
-    ),
+    art: (pixels) => <Art images={artist.images} px={pixels} round fallback="artist" />,
     title: artist.name,
     subtitle: translate("youtube.followedArtist"),
     by: artist.name,
@@ -96,9 +79,7 @@ export function youtubeMusicArtistItem(
   };
 }
 
-export function youtubeMusicPlaylistItem(
-  playlist: YouTubeMusicPlaylist,
-): CollectionItem {
+export function youtubeMusicPlaylistItem(playlist: YouTubeMusicPlaylist): CollectionItem {
   return {
     key: playlist.id,
     to: `/youtube-music/playlist/${youtubeMusicRawId(playlist.id)}`,
@@ -110,18 +91,13 @@ export function youtubeMusicPlaylistItem(
     by: playlist.author ?? "",
     contextId: playlist.id,
     source: "youtubeMusic",
-    onPlay: () =>
-      void playYouTubeMusicPlaylist(playlist.id).catch(playbackFailed),
+    onPlay: () => void playYouTubeMusicPlaylist(playlist.id).catch(playbackFailed),
   };
 }
 
-export const YouTubeMusicAlbumCard = ({
-  album,
-}: {
-  album: YouTubeMusicAlbum;
-}) => <ItemCard item={youtubeMusicAlbumItem(album)} />;
-export const YouTubeMusicPlaylistCard = ({
-  playlist,
-}: {
-  playlist: YouTubeMusicPlaylist;
-}) => <ItemCard item={youtubeMusicPlaylistItem(playlist)} />;
+export const YouTubeMusicAlbumCard = ({ album }: { album: YouTubeMusicAlbum }) => (
+  <ItemCard item={youtubeMusicAlbumItem(album)} />
+);
+export const YouTubeMusicPlaylistCard = ({ playlist }: { playlist: YouTubeMusicPlaylist }) => (
+  <ItemCard item={youtubeMusicPlaylistItem(playlist)} />
+);

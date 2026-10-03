@@ -1,11 +1,7 @@
 import type { ConnectionCheck } from "@needle/shared";
 import { translate } from "../i18n/index.ts";
 
-export function browserChecks(
-  publicUrl: string | null,
-  origin: string,
-  secure: boolean,
-): ConnectionCheck[] {
+export function browserChecks(publicUrl: string | null, origin: string, secure: boolean): ConnectionCheck[] {
   const https: ConnectionCheck = secure
     ? {
         id: "https",

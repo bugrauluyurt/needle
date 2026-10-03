@@ -48,10 +48,7 @@ export default function AlbumGrid() {
   const from = Number(params.get("from") ?? 0);
   const to = Number(params.get("to") ?? 0);
   const listType = type as AlbumListType;
-  const title =
-    listType === "byYear"
-      ? translate("albumGrid.decade", { year: from })
-      : titles()[listType];
+  const title = listType === "byYear" ? translate("albumGrid.decade", { year: from }) : titles()[listType];
   usePageTone(null);
   const libraryAlbums = useAllAlbums();
   const starred = useStarred();
@@ -64,10 +61,7 @@ export default function AlbumGrid() {
         ...(listType === "byYear" ? { fromYear: from, toYear: to } : {}),
       }),
     initialPageParam: 0,
-    getNextPageParam: (last, all) =>
-      last.length === PAGE && listType !== "random"
-        ? all.length * PAGE
-        : undefined,
+    getNextPageParam: (last, all) => (last.length === PAGE && listType !== "random" ? all.length * PAGE : undefined),
     enabled: Boolean(title),
   });
   const sentinel = useRef<HTMLDivElement>(null);
@@ -76,8 +70,7 @@ export default function AlbumGrid() {
     if (!el) return;
     const io = new IntersectionObserver(
       (e) => {
-        if (e[0]?.isIntersecting && q.hasNextPage && !q.isFetchingNextPage)
-          void q.fetchNextPage();
+        if (e[0]?.isIntersecting && q.hasNextPage && !q.isFetchingNextPage) void q.fetchNextPage();
       },
       { rootMargin: "600px" },
     );
@@ -92,9 +85,7 @@ export default function AlbumGrid() {
     ["plays", translate("sort.mostPlayed")],
   ];
   const c = useCollectionView(`albums-${type}`, sorts);
-  const complete =
-    listType !== "random" &&
-    (Boolean(albumFilter.trim()) || c.order.key !== "default");
+  const complete = listType !== "random" && (Boolean(albumFilter.trim()) || c.order.key !== "default");
   const items = useMemo(() => {
     const albums = complete
       ? listType === "starred"
@@ -109,8 +100,7 @@ export default function AlbumGrid() {
       if (
         complete &&
         listType === "byYear" &&
-        ((album.year ?? 0) < Math.min(from, to) ||
-          (album.year ?? 0) > Math.max(from, to))
+        ((album.year ?? 0) < Math.min(from, to) || (album.year ?? 0) > Math.max(from, to))
       )
         return false;
 
@@ -119,47 +109,23 @@ export default function AlbumGrid() {
 
     if (complete && c.order.key === "default") {
       if (listType === "recent")
-        matchingAlbums.sort((albumA, albumB) =>
-          (albumB.played ?? "").localeCompare(albumA.played ?? ""),
-        );
+        matchingAlbums.sort((albumA, albumB) => (albumB.played ?? "").localeCompare(albumA.played ?? ""));
       if (listType === "frequent")
-        matchingAlbums.sort(
-          (albumA, albumB) => (albumB.playCount ?? 0) - (albumA.playCount ?? 0),
-        );
+        matchingAlbums.sort((albumA, albumB) => (albumB.playCount ?? 0) - (albumA.playCount ?? 0));
       if (listType === "highest")
-        matchingAlbums.sort(
-          (albumA, albumB) =>
-            (albumB.userRating ?? 0) - (albumA.userRating ?? 0),
-        );
+        matchingAlbums.sort((albumA, albumB) => (albumB.userRating ?? 0) - (albumA.userRating ?? 0));
       if (listType === "starred")
-        matchingAlbums.sort((albumA, albumB) =>
-          (albumB.starred ?? "").localeCompare(albumA.starred ?? ""),
-        );
+        matchingAlbums.sort((albumA, albumB) => (albumB.starred ?? "").localeCompare(albumA.starred ?? ""));
       if (listType === "alphabeticalByName")
-        matchingAlbums.sort((albumA, albumB) =>
-          compareText(albumA.name, albumB.name),
-        );
-      if (listType === "byYear")
-        matchingAlbums.sort(
-          (albumA, albumB) => (albumA.year ?? 0) - (albumB.year ?? 0),
-        );
+        matchingAlbums.sort((albumA, albumB) => compareText(albumA.name, albumB.name));
+      if (listType === "byYear") matchingAlbums.sort((albumA, albumB) => (albumA.year ?? 0) - (albumB.year ?? 0));
     }
 
     return sortItems(
       matchingAlbums.map((album) => albumItem(album)),
       c.order,
     );
-  }, [
-    complete,
-    listType,
-    starred.data,
-    libraryAlbums.data,
-    q.data,
-    albumFilter,
-    c.order,
-    from,
-    to,
-  ]);
+  }, [complete, listType, starred.data, libraryAlbums.data, q.data, albumFilter, c.order, from, to]);
   const loading = complete
     ? listType === "starred"
       ? starred.isLoading
@@ -178,27 +144,15 @@ export default function AlbumGrid() {
               collapsible
               value={albumFilter}
               onChange={setAlbumFilter}
-              label={translate(
-                listType === "random"
-                  ? "albumGrid.findSelection"
-                  : "albumGrid.find",
-              )}
+              label={translate(listType === "random" ? "albumGrid.findSelection" : "albumGrid.find")}
             />
-            <CollectionTools
-              sorts={sorts}
-              order={c.order}
-              onOrder={c.setOrder}
-              view={c.view}
-              onView={c.setView}
-            />
+            <CollectionTools sorts={sorts} order={c.order} onOrder={c.setOrder} view={c.view} onView={c.setView} />
           </div>
         </div>
         <CollectionBody
           items={items}
           view={c.view}
-          empty={translate(
-            albumFilter.trim() ? "albumGrid.noMatch" : "albumGrid.noAlbums",
-          )}
+          empty={translate(albumFilter.trim() ? "albumGrid.noMatch" : "albumGrid.noAlbums")}
           {...(loading ? { loading: <CardSkeletons n={12} /> } : {})}
         />
         {!complete ? <div ref={sentinel} /> : null}

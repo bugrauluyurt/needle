@@ -11,13 +11,7 @@ import { MobileHeader } from "../../../layout/Mobile.tsx";
 import { useIsMobile } from "../../../lib/media.ts";
 import { usePageTone } from "../../../layout/pageTone.ts";
 import { TopBar } from "../../../layout/TopBar.tsx";
-import {
-  bytesOf,
-  offlineSongs,
-  removeDownload,
-  resumeDownload,
-  useOffline,
-} from "../../../offline/store.ts";
+import { bytesOf, offlineSongs, removeDownload, resumeDownload, useOffline } from "../../../offline/store.ts";
 import type { OfflineCollection } from "../../../offline/store.ts";
 import { player } from "../../../player/controller.ts";
 import { useSettings } from "../../../state/settings.ts";
@@ -26,14 +20,10 @@ import { translate } from "../../../i18n/index.ts";
 
 function Row({ c }: { c: OfflineCollection }) {
   const job = useOffline((s) => s.jobs[c.id]);
-  const saved = useOffline(
-    (s) => c.songIds.filter((id) => s.songs.has(id)).length,
-  );
+  const saved = useOffline((s) => c.songIds.filter((id) => s.songs.has(id)).length);
   const size = useOffline((s) => bytesOf(s.songs, c.songIds));
   const to = c.kind === "liked" ? "/liked" : `/${c.kind}/${c.id}`;
-  const pct = Math.round(
-    (job ? job.progress : saved / Math.max(1, c.songIds.length)) * 100,
-  );
+  const pct = Math.round((job ? job.progress : saved / Math.max(1, c.songIds.length)) * 100);
   const running = job && job.done + job.failed < job.total;
   const status = running
     ? job.waiting
@@ -66,10 +56,7 @@ function Row({ c }: { c: OfflineCollection }) {
           <div className="t">{c.name}</div>
           <div className="s">{status}</div>
           {running || incomplete ? (
-            <div
-              className="line static"
-              style={{ "--p": `${pct}%` } as React.CSSProperties}
-            >
+            <div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}>
               <i />
             </div>
           ) : null}
@@ -93,11 +80,7 @@ function Row({ c }: { c: OfflineCollection }) {
         <Icon name="play" size={18} />
       </button>
       {incomplete ? (
-        <button
-          type="button"
-          className="btn ghost sm"
-          onClick={() => void resumeDownload(c)}
-        >
+        <button type="button" className="btn ghost sm" onClick={() => void resumeDownload(c)}>
           {translate("common.retry")}
         </button>
       ) : null}
@@ -120,11 +103,7 @@ export default function DownloadsPage() {
   const visibleCollections = useMemo(
     () =>
       collections.filter((collection) =>
-        matchesTerms(
-          queryTerms(collectionFilter),
-          collection.name,
-          collection.subtitle,
-        ),
+        matchesTerms(queryTerms(collectionFilter), collection.name, collection.subtitle),
       ),
     [collections, collectionFilter],
   );
@@ -138,15 +117,9 @@ export default function DownloadsPage() {
   const where = deviceKind() === "phone" ? "iPhone" : "device";
   return (
     <>
-      {mobile ? (
-        <MobileHeader title={translate("common.downloads")} />
-      ) : (
-        <TopBar />
-      )}
+      {mobile ? <MobileHeader title={translate("common.downloads")} /> : <TopBar />}
       <div className="pad downloads">
-        {!mobile ? (
-          <h1 className="hello">{translate("common.downloads")}</h1>
-        ) : null}
+        {!mobile ? <h1 className="hello">{translate("common.downloads")}</h1> : null}
         {!supported ? (
           <div className="dl-sum">
             <b>{translate("downloads.secure")}</b>
@@ -166,16 +139,12 @@ export default function DownloadsPage() {
             <dl className="dl-where">
               <div>
                 <dt>{translate("downloads.where")}</dt>
-                <dd>
-                  {translate("downloads.whereValue", { device: deviceName })}
-                </dd>
+                <dd>{translate("downloads.whereValue", { device: deviceName })}</dd>
               </div>
               {quota?.quota ? (
                 <div>
                   <dt>{translate("downloads.free")}</dt>
-                  <dd>
-                    {sizeLabel(Math.max(0, quota.quota - (quota.usage ?? 0)))}
-                  </dd>
+                  <dd>{sizeLabel(Math.max(0, quota.quota - (quota.usage ?? 0)))}</dd>
                 </div>
               ) : null}
             </dl>
@@ -196,19 +165,11 @@ export default function DownloadsPage() {
             {collections.length && !visibleCollections.length ? (
               <p className="muted">{translate("library.noDownloadsMatch")}</p>
             ) : null}
-            {!collections.length ? (
-              <p className="muted">{translate("downloads.empty")}</p>
-            ) : null}
+            {!collections.length ? <p className="muted">{translate("downloads.empty")}</p> : null}
             <div className="set-row">
               <div>
                 <b>{translate("settings.downloadCellular")}</b>
-                <span>
-                  {translate(
-                    onCellular
-                      ? "downloads.cellularOn"
-                      : "downloads.cellularOff",
-                  )}
-                </span>
+                <span>{translate(onCellular ? "downloads.cellularOn" : "downloads.cellularOff")}</span>
               </div>
               <button
                 type="button"

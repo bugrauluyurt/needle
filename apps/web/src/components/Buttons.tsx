@@ -1,11 +1,6 @@
 import type { Album, Artist } from "@needle/shared";
 import type { Song } from "@needle/shared";
-import {
-  download,
-  removeDownload,
-  useIsDownloaded,
-  useOffline,
-} from "../offline/store.ts";
+import { download, removeDownload, useIsDownloaded, useOffline } from "../offline/store.ts";
 import type { CollectionKind } from "../offline/store.ts";
 import { useStarredIds, useToggleStar } from "../queries/hooks.ts";
 import { useNavigate } from "react-router";
@@ -26,16 +21,11 @@ export function LikeButton({
 }) {
   const starred = useStarredIds();
   const star = useToggleStar();
-  const on =
-    kind === "album"
-      ? starred.albums.has(item.id)
-      : starred.artists.has(item.id);
+  const on = kind === "album" ? starred.albums.has(item.id) : starred.artists.has(item.id);
   const addedKey = kind === "album" ? "like.addedAlbums" : "like.addedArtists";
   const addKey = kind === "album" ? "like.addAlbums" : "like.addArtists";
-  const removedKey =
-    kind === "album" ? "like.removedAlbums" : "like.removedArtists";
-  const removeKey =
-    kind === "album" ? "like.removeAlbums" : "like.removeArtists";
+  const removedKey = kind === "album" ? "like.removedAlbums" : "like.removedArtists";
+  const removeKey = kind === "album" ? "like.removeAlbums" : "like.removeArtists";
   return (
     <button
       type="button"
@@ -84,9 +74,7 @@ export function DownloadButton({
     <button
       type="button"
       className={`dl-ring ${done && !job ? "on" : ""} ${job ? "busy" : ""}`}
-      style={
-        { width: size, height: size, "--p": `${pct}%` } as React.CSSProperties
-      }
+      style={{ width: size, height: size, "--p": `${pct}%` } as React.CSSProperties}
       aria-label={label}
       title={label}
       disabled={!songs?.length}

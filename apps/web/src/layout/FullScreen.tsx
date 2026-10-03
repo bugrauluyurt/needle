@@ -10,13 +10,7 @@ import { usePlayer } from "../player/store.ts";
 import { setFullScreen, useUi } from "../state/ui.ts";
 import { usePlayback } from "../features/remote/client.ts";
 import { DevicesButton } from "../features/remote/components/DevicesButton.tsx";
-import {
-  LikeCurrent,
-  LiveLabel,
-  SeekBar,
-  Transport,
-  Volume,
-} from "./PlayerBar.tsx";
+import { LikeCurrent, LiveLabel, SeekBar, Transport, Volume } from "./PlayerBar.tsx";
 import { translate } from "../i18n/index.ts";
 
 export default function FullScreenPlayer() {
@@ -29,8 +23,7 @@ export default function FullScreenPlayer() {
   const [lyrics, setLyrics] = useState(false);
   useEffect(() => {
     if (!open) return;
-    const exit = () =>
-      !document.fullscreenElement && useUi.setState({ fullScreen: false });
+    const exit = () => !document.fullscreenElement && useUi.setState({ fullScreen: false });
     document.addEventListener("fullscreenchange", exit);
     return () => document.removeEventListener("fullscreenchange", exit);
   }, [open]);
@@ -69,12 +62,7 @@ export default function FullScreenPlayer() {
           >
             <Icon name="mic" />
           </button>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={translate("player.exitFullScreen")}
-            onClick={close}
-          >
+          <button type="button" className="icon-btn" aria-label={translate("player.exitFullScreen")} onClick={close}>
             <Icon name="close" />
           </button>
         </div>
@@ -89,9 +77,7 @@ export default function FullScreenPlayer() {
         )}
         <div className="full-info">
           <h2>{station?.name ?? song?.title}</h2>
-          <div className="by">
-            {station ? <LiveLabel /> : song ? artistName(song) : ""}
-          </div>
+          <div className="by">{station ? <LiveLabel /> : song ? artistName(song) : ""}</div>
           {!remote ? <YouTubeMusicPlaybackError song={song} /> : null}
           {lyrics && song ? (
             <div className="full-lyrics">
@@ -101,12 +87,7 @@ export default function FullScreenPlayer() {
             <div className="upnext">
               <h6>{translate("panel.upNext")}</h6>
               {upNext.map((it) => (
-                <button
-                  key={it.uid}
-                  type="button"
-                  className="mini"
-                  onClick={() => player.playQueueItem(it.uid)}
-                >
+                <button key={it.uid} type="button" className="mini" onClick={() => player.playQueueItem(it.uid)}>
                   <Art id={it.song.coverArt} px={44} />
                   <div className="mini-text">
                     <div className="t">{it.song.title}</div>

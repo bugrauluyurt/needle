@@ -40,20 +40,18 @@ export default function YouPage() {
         </div>
         {isIOS && !isStandalone ? <InstallHint inline /> : null}
         <ul className="you-links">
-          {LINKS.filter(([to]) => to !== "/requests" || canRequest).map(
-            ([to, icon, titleKey, subtitleKey]) => (
-              <li key={to}>
-                <Link to={to}>
-                  <Icon name={icon} size={22} />
-                  <div>
-                    <b>{translate(titleKey)}</b>
-                    <span>{translate(subtitleKey)}</span>
-                  </div>
-                  <Icon name="forward" size={18} />
-                </Link>
-              </li>
-            ),
-          )}
+          {LINKS.filter(([to]) => to !== "/requests" || canRequest).map(([to, icon, titleKey, subtitleKey]) => (
+            <li key={to}>
+              <Link to={to}>
+                <Icon name={icon} size={22} />
+                <div>
+                  <b>{translate(titleKey)}</b>
+                  <span>{translate(subtitleKey)}</span>
+                </div>
+                <Icon name="forward" size={18} />
+              </Link>
+            </li>
+          ))}
         </ul>
         <button type="button" className="btn ghost you-out" onClick={signOut}>
           {translate("common.signOut")}

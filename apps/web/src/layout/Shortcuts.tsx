@@ -25,21 +25,13 @@ const shortcutKeys = (): [string, string[]][] => [
 export default function ShortcutsDialog() {
   const open = useUi((s) => s.shortcutsOpen);
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(o) => useUi.setState({ shortcutsOpen: o })}
-    >
+    <Dialog.Root open={open} onOpenChange={(o) => useUi.setState({ shortcutsOpen: o })}>
       <Dialog.Portal>
         <Dialog.Overlay className="scrim" />
         <Dialog.Content className="dialog" aria-describedby={undefined}>
           <div className="dialog-head">
-            <Dialog.Title className="dialog-title">
-              {translate("common.keyboardShortcuts")}
-            </Dialog.Title>
-            <Dialog.Close
-              className="icon-btn"
-              aria-label={translate("common.close")}
-            >
+            <Dialog.Title className="dialog-title">{translate("common.keyboardShortcuts")}</Dialog.Title>
+            <Dialog.Close className="icon-btn" aria-label={translate("common.close")}>
               <Icon name="close" />
             </Dialog.Close>
           </div>

@@ -2,25 +2,12 @@ import { useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 import type { Song } from "@needle/shared";
 import { RowHeader } from "../../../components/Cards.tsx";
-import {
-  CollectionBody,
-  CollectionTools,
-} from "../../../components/Collection.tsx";
+import { CollectionBody, CollectionTools } from "../../../components/Collection.tsx";
 import { Icon } from "../../../components/Icon.tsx";
-import {
-  FilterChips,
-  LIBRARY_FILTERS,
-  LibrarySource,
-} from "../../../components/SearchResults.tsx";
+import { FilterChips, LIBRARY_FILTERS, LibrarySource } from "../../../components/SearchResults.tsx";
 import type { Filter } from "../../../components/SearchResults.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
-import {
-  AS_GIVEN,
-  librarySongSorts,
-  likedSorts,
-  RECENT_FIRST,
-  shownSongs,
-} from "../../../lib/songs.ts";
+import { AS_GIVEN, librarySongSorts, likedSorts, RECENT_FIRST, shownSongs } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { useDebounced } from "../../../lib/useDelayed.ts";
 import { useIsMobile } from "../../../lib/media.ts";
@@ -35,10 +22,7 @@ import {
 } from "../../../layout/Sidebar.tsx";
 import { SearchHeader } from "../../../layout/SearchHeader.tsx";
 import { useLibrarySongs } from "../../../queries/hooks.ts";
-import {
-  useSpotifyLiked,
-  useSpotifyOn,
-} from "../../../features/spotify/hooks/useSpotify.ts";
+import { useSpotifyLiked, useSpotifyOn } from "../../../features/spotify/hooks/useSpotify.ts";
 import {
   useYouTubeMusicAlbums,
   useYouTubeMusicArtists,
@@ -49,11 +33,7 @@ import {
 import { useYouTubeMusicStatus } from "../../../features/youtube-music/api/client.ts";
 import { YouTubeMusicNotice } from "../../../features/youtube-music/components/YouTubeMusicNotice.tsx";
 import type { CollectionOrder } from "../../../components/Collection.tsx";
-import type {
-  CollectionView,
-  LibraryFilter,
-  LibraryOrigin,
-} from "../../../state/ui.ts";
+import type { CollectionView, LibraryFilter, LibraryOrigin } from "../../../state/ui.ts";
 import { translate } from "../../../i18n/index.ts";
 
 const KINDS: Partial<Record<Filter, LibraryFilter>> = {
@@ -79,21 +59,11 @@ function useSongs(
   const youtubeMusic = useYouTubeMusicLiked(youtubeMusicLimit);
   return useMemo(() => {
     const localSongs = includeLocal ? (server.data ?? []) : [];
-    const spotifySongs =
-      spotifyOn && (origin === "spotify" || origin === "all")
-        ? (spotify.data ?? [])
-        : [];
-    const youtubeSongs =
-      origin === "youtubeMusic" || origin === "all"
-        ? (youtubeMusic.data ?? [])
-        : [];
+    const spotifySongs = spotifyOn && (origin === "spotify" || origin === "all") ? (spotify.data ?? []) : [];
+    const youtubeSongs = origin === "youtubeMusic" || origin === "all" ? (youtubeMusic.data ?? []) : [];
 
     return {
-      songs: shownSongs(
-        [...localSongs, ...spotifySongs, ...youtubeSongs],
-        order,
-        query,
-      ),
+      songs: shownSongs([...localSongs, ...spotifySongs, ...youtubeSongs], order, query),
       pending:
         (includeLocal && server.isPending) ||
         (origin === "spotify" && spotify.isLoading) ||
@@ -146,15 +116,7 @@ function AllSongs({
       </p>
     );
   return (
-    <TrackList
-      songs={songs}
-      context={context()}
-      art
-      album
-      order={order}
-      onOrder={onOrder}
-      fallback={RECENT_FIRST}
-    />
+    <TrackList songs={songs} context={context()} art album order={order} onOrder={onOrder} fallback={RECENT_FIRST} />
   );
 }
 
@@ -176,16 +138,9 @@ function SpotifyMatches({
   const shownSongs = filter === "All" || filter === "Songs" ? songs : [];
   const shownEntries = filter === "Songs" ? [] : entries;
   if (!shownSongs.length && !shownEntries.length)
-    return (
-      <p className="muted source-note">
-        {translate("library.noSpotifyMatch", { query: q })}
-      </p>
-    );
+    return <p className="muted source-note">{translate("library.noSpotifyMatch", { query: q })}</p>;
   return (
-    <section
-      className="res-source bare"
-      aria-label={translate("library.inSpotify")}
-    >
+    <section className="res-source bare" aria-label={translate("library.inSpotify")}>
       {shownSongs.length ? (
         <>
           <RowHeader title={translate("library.likedSpotify")} />
@@ -231,17 +186,10 @@ function YouTubeMusicMatches({
   const matchingEntries = filter === "Songs" ? [] : entries;
 
   if (!matchingSongs.length && !matchingEntries.length)
-    return (
-      <p className="muted source-note">
-        {translate("library.noYouTubeMatch", { query: q })}
-      </p>
-    );
+    return <p className="muted source-note">{translate("library.noYouTubeMatch", { query: q })}</p>;
 
   return (
-    <section
-      className="res-source bare"
-      aria-label={translate("library.title")}
-    >
+    <section className="res-source bare" aria-label={translate("library.title")}>
       {matchingSongs.length ? (
         <>
           <RowHeader title={translate("library.likedYouTube")} />
@@ -299,22 +247,13 @@ export default function LibraryPage() {
     (origin === "all" || origin === "youtubeMusic") &&
     youtubeMusicLimit < 3000 &&
     youtubeLibraryPages.some((libraryPage) => libraryPage.hasMore);
-  const youtubeMusicError = youtubeLibraryPages.some(
-    (libraryPage) => libraryPage.isError,
-  );
+  const youtubeMusicError = youtubeLibraryPages.some((libraryPage) => libraryPage.isError);
   const youtubeMusicUnavailable =
-    origin === "youtubeMusic" &&
-    youtubeMusicError &&
-    youtubeLibraryPages.every((libraryPage) => !libraryPage.data);
+    origin === "youtubeMusic" && youtubeMusicError && youtubeLibraryPages.every((libraryPage) => !libraryPage.data);
   const visibleSongOrder =
-    origin !== "server" &&
-    !likedSorts().some(([songSort]) => songSort === songOrder.key)
-      ? RECENT_FIRST
-      : songOrder;
+    origin !== "server" && !likedSorts().some(([songSort]) => songSort === songOrder.key) ? RECENT_FIRST : songOrder;
   const kind = KINDS[filter] ?? null;
-  const { order, setOrder, view, setView } = useLibrarySort(
-    mobile ? "list" : "grid",
-  );
+  const { order, setOrder, view, setView } = useLibrarySort(mobile ? "list" : "grid");
   const entries = useLibraryEntries(kind, "", order, origin, youtubeMusicLimit);
   const newPlaylist = useNewPlaylist();
   usePageTone(null);
@@ -338,58 +277,24 @@ export default function LibraryPage() {
       show={show}
     />
   ) : (
-    <CollectionTools
-      sorts={librarySorts()}
-      order={order}
-      onOrder={setOrder}
-      view={view}
-      onView={setView}
-      show={show}
-    />
+    <CollectionTools sorts={librarySorts()} order={order} onOrder={setOrder} view={view} onView={setView} show={show} />
   );
   const body = youtubeMusicUnavailable ? null : q ? (
     <>
       {origin === "server" || origin === "all" ? (
-        <LibrarySource
-          q={q}
-          filter={filter}
-          setFilter={setFilter}
-          heading={false}
-        />
+        <LibrarySource q={q} filter={filter} setFilter={setFilter} heading={false} />
       ) : null}
       {spotifyOn && (origin === "all" || origin === "spotify") ? (
-        <SpotifyMatches
-          q={q}
-          filter={filter}
-          kind={kind}
-          order={order}
-          view={view}
-        />
+        <SpotifyMatches q={q} filter={filter} kind={kind} order={order} view={view} />
       ) : null}
       {youtubeMusicOn && (origin === "all" || origin === "youtubeMusic") ? (
-        <YouTubeMusicMatches
-          q={q}
-          filter={filter}
-          kind={kind}
-          order={order}
-          view={view}
-          limit={youtubeMusicLimit}
-        />
+        <YouTubeMusicMatches q={q} filter={filter} kind={kind} order={order} view={view} limit={youtubeMusicLimit} />
       ) : null}
     </>
   ) : filter === "Songs" ? (
-    <AllSongs
-      origin={origin}
-      order={visibleSongOrder}
-      onOrder={setSongOrder}
-      youtubeMusicLimit={youtubeMusicLimit}
-    />
+    <AllSongs origin={origin} order={visibleSongOrder} onOrder={setSongOrder} youtubeMusicLimit={youtubeMusicLimit} />
   ) : (
-    <CollectionBody
-      items={entries}
-      view={view}
-      empty={libraryEmptyText(kind, "")}
-    />
+    <CollectionBody items={entries} view={view} empty={libraryEmptyText(kind, "")} />
   );
   return (
     <>
@@ -421,8 +326,7 @@ export default function LibraryPage() {
           <YouTubeMusicNotice
             error={youtubeMusicError}
             retry={() => {
-              for (const libraryPage of youtubeLibraryPages)
-                void libraryPage.refetch();
+              for (const libraryPage of youtubeLibraryPages) void libraryPage.refetch();
             }}
           />
         ) : null}
@@ -432,15 +336,8 @@ export default function LibraryPage() {
             <button
               type="button"
               className="btn ghost sm"
-              disabled={
-                blocked ||
-                youtubeLibraryPages.some(
-                  (libraryPage) => libraryPage.isFetching,
-                )
-              }
-              onClick={() =>
-                setYouTubeMusicLimit(Math.min(youtubeMusicLimit + 100, 3000))
-              }
+              disabled={blocked || youtubeLibraryPages.some((libraryPage) => libraryPage.isFetching)}
+              onClick={() => setYouTubeMusicLimit(Math.min(youtubeMusicLimit + 100, 3000))}
             >
               {translate("library.loadYouTube")}
             </button>

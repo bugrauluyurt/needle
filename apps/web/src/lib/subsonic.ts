@@ -36,17 +36,11 @@ type Params = Record<string, Param>;
 const clientName = () => `Needle ${useSession.getState().deviceName}`;
 
 export function makeCredentials(user: string, password: string): Credentials {
-  const salt = crypto
-    .getRandomValues(new Uint32Array(3))
-    .reduce((s, n) => s + n.toString(36), "");
+  const salt = crypto.getRandomValues(new Uint32Array(3)).reduce((s, n) => s + n.toString(36), "");
   return { user, salt, token: md5(password + salt) };
 }
 
-function query(
-  params: Params,
-  creds: Credentials | null = credentials(),
-  json = true,
-): URLSearchParams {
+function query(params: Params, creds: Credentials | null = credentials(), json = true): URLSearchParams {
   const q = new URLSearchParams({ v: API_VERSION, c: clientName() });
   if (json) q.set("f", "json");
   if (creds) {
@@ -65,11 +59,7 @@ export function subsonicUrl(method: string, params: Params = {}): string {
   return `/rest/${method}.view?${query(params, credentials(), false).toString()}`;
 }
 
-export function coverUrl(
-  id: string | undefined,
-  size = 300,
-  version?: string,
-): string | null {
+export function coverUrl(id: string | undefined, size = 300, version?: string): string | null {
   if (!id) return null;
   if (id.startsWith("https://")) return sizedCover(id, size);
   const c = credentials();
@@ -90,20 +80,12 @@ export async function call<T>(
     body,
     signal: signal ?? null,
   });
-  if (!res.ok)
-    throw new SubsonicError(
-      res.status,
-      translate("error.navidromeAnswered", { status: res.status }),
-    );
+  if (!res.ok) throw new SubsonicError(res.status, translate("error.navidromeAnswered", { status: res.status }));
   const json = (await res.json()) as SubsonicEnvelope<T>;
   const r = json["subsonic-response"];
   if (r.status !== "ok") {
-    const err = new SubsonicError(
-      r.error?.code ?? 0,
-      r.error?.message ?? translate("error.navidromeRequestFailed"),
-    );
-    if (!creds && (err.code === 40 || err.code === 41 || err.code === 44))
-      useSession.getState().signOut();
+    const err = new SubsonicError(r.error?.code ?? 0, r.error?.message ?? translate("error.navidromeRequestFailed"));
+    if (!creds && (err.code === 40 || err.code === 41 || err.code === 44)) useSession.getState().signOut();
     throw err;
   }
   return r;
@@ -122,8 +104,7 @@ export type AlbumListType =
   | "byGenre";
 
 export const sub = {
-  ping: (creds?: Credentials) =>
-    call<{ serverVersion?: string }>("ping", {}, creds),
+  ping: (creds?: Credentials) => call<{ serverVersion?: string }>("ping", {}, creds),
   user: (username: string) =>
     call<{ user: { username: string; adminRole?: boolean } }>("getUser", {
       username,
@@ -147,16 +128,12 @@ export const sub = {
       fromYear: opts.fromYear,
       toYear: opts.toYear,
     }).then((r) => r.albumList2.album ?? []),
-  album: (id: string) =>
-    call<{ album: AlbumWithSongs }>("getAlbum", { id }).then((r) => r.album),
+  album: (id: string) => call<{ album: AlbumWithSongs }>("getAlbum", { id }).then((r) => r.album),
   artists: () =>
-    call<{ artists: { index?: { artist?: Artist[] }[] } }>("getArtists").then(
-      (r) => (r.artists.index ?? []).flatMap((i) => i.artist ?? []),
+    call<{ artists: { index?: { artist?: Artist[] }[] } }>("getArtists").then((r) =>
+      (r.artists.index ?? []).flatMap((i) => i.artist ?? []),
     ),
-  artist: (id: string) =>
-    call<{ artist: ArtistWithAlbums }>("getArtist", { id }).then(
-      (r) => r.artist,
-    ),
+  artist: (id: string) => call<{ artist: ArtistWithAlbums }>("getArtist", { id }).then((r) => r.artist),
   artistInfo: (id: string, count = 12, includeNotPresent = false) =>
     call<{ artistInfo2: ArtistInfo }>("getArtistInfo2", {
       id,
@@ -173,8 +150,7 @@ export const sub = {
       id,
       count,
     }).then((r) => r.similarSongs2.song ?? []),
-  song: (id: string) =>
-    call<{ song: Song }>("getSong", { id }).then((r) => r.song),
+  song: (id: string) => call<{ song: Song }>("getSong", { id }).then((r) => r.song),
   randomSongs: (size = 50, genre?: string) =>
     call<{ randomSongs: { song?: Song[] } }>("getRandomSongs", {
       size,
@@ -186,19 +162,11 @@ export const sub = {
       count,
       offset,
     }).then((r) => r.songsByGenre.song ?? []),
-  genres: () =>
-    call<{ genres: { genre?: Genre[] } }>("getGenres").then(
-      (r) => r.genres.genre ?? [],
-    ),
+  genres: () => call<{ genres: { genre?: Genre[] } }>("getGenres").then((r) => r.genres.genre ?? []),
 
   playlists: () =>
-    call<{ playlists: { playlist?: Playlist[] } }>("getPlaylists").then(
-      (r) => r.playlists.playlist ?? [],
-    ),
-  playlist: (id: string) =>
-    call<{ playlist: PlaylistWithSongs }>("getPlaylist", { id }).then(
-      (r) => r.playlist,
-    ),
+    call<{ playlists: { playlist?: Playlist[] } }>("getPlaylists").then((r) => r.playlists.playlist ?? []),
+  playlist: (id: string) => call<{ playlist: PlaylistWithSongs }>("getPlaylist", { id }).then((r) => r.playlist),
   createPlaylist: (name: string, songId: string[] = []) =>
     call<{ playlist: PlaylistWithSongs }>("createPlaylist", {
       name,
@@ -230,47 +198,30 @@ export const sub = {
   deletePlaylist: (id: string) => call("deletePlaylist", { id }),
 
   starred: () =>
-    call<{ starred2: { song?: Song[]; album?: Album[]; artist?: Artist[] } }>(
-      "getStarred2",
-    ).then((r) => r.starred2),
-  star: (ids: { id?: string[]; albumId?: string[]; artistId?: string[] }) =>
-    call("star", ids),
-  unstar: (ids: { id?: string[]; albumId?: string[]; artistId?: string[] }) =>
-    call("unstar", ids),
+    call<{ starred2: { song?: Song[]; album?: Album[]; artist?: Artist[] } }>("getStarred2").then((r) => r.starred2),
+  star: (ids: { id?: string[]; albumId?: string[]; artistId?: string[] }) => call("star", ids),
+  unstar: (ids: { id?: string[]; albumId?: string[]; artistId?: string[] }) => call("unstar", ids),
 
-  scrobble: (id: string, submission: boolean, time?: number) =>
-    call("scrobble", { id, submission, time }),
-  playQueue: () =>
-    call<{ playQueue?: PlayQueue }>("getPlayQueue").then(
-      (r) => r.playQueue ?? null,
-    ),
+  scrobble: (id: string, submission: boolean, time?: number) => call("scrobble", { id, submission, time }),
+  playQueue: () => call<{ playQueue?: PlayQueue }>("getPlayQueue").then((r) => r.playQueue ?? null),
   savePlayQueue: (ids: string[], current?: string, position?: number) =>
     call("savePlayQueue", { id: ids, current, position }),
 
   lyrics: (id: string) =>
-    call<{ lyricsList: { structuredLyrics?: StructuredLyrics[] } }>(
-      "getLyricsBySongId",
-      { id },
-    ).then((r) => r.lyricsList.structuredLyrics ?? []),
+    call<{ lyricsList: { structuredLyrics?: StructuredLyrics[] } }>("getLyricsBySongId", { id }).then(
+      (r) => r.lyricsList.structuredLyrics ?? [],
+    ),
 
   radios: () =>
     call<{
       internetRadioStations: { internetRadioStation?: InternetRadioStation[] };
-    }>("getInternetRadioStations").then(
-      (r) => r.internetRadioStations.internetRadioStation ?? [],
-    ),
+    }>("getInternetRadioStations").then((r) => r.internetRadioStations.internetRadioStation ?? []),
   addRadio: (name: string, streamUrl: string, homepageUrl?: string) =>
     call("createInternetRadioStation", { name, streamUrl, homepageUrl }),
   deleteRadio: (id: string) => call("deleteInternetRadioStation", { id }),
-  updateRadio: (
-    id: string,
-    name: string,
-    streamUrl: string,
-    homepageUrl?: string,
-  ) => call("updateInternetRadioStation", { id, name, streamUrl, homepageUrl }),
+  updateRadio: (id: string, name: string, streamUrl: string, homepageUrl?: string) =>
+    call("updateInternetRadioStation", { id, name, streamUrl, homepageUrl }),
 
-  startScan: () =>
-    call<{ scanStatus: ScanStatus }>("startScan").then((r) => r.scanStatus),
-  scanStatus: () =>
-    call<{ scanStatus: ScanStatus }>("getScanStatus").then((r) => r.scanStatus),
+  startScan: () => call<{ scanStatus: ScanStatus }>("startScan").then((r) => r.scanStatus),
+  scanStatus: () => call<{ scanStatus: ScanStatus }>("getScanStatus").then((r) => r.scanStatus),
 };

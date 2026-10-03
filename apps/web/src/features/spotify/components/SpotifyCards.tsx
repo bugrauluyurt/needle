@@ -2,11 +2,7 @@ import { spId } from "../api/client.ts";
 import type { SpAlbumRef, SpArtist, SpPlaylist } from "../api/client.ts";
 import { player } from "../../../player/controller.ts";
 import { queryClient } from "../../../queries/client.ts";
-import {
-  spotifyAlbumQuery,
-  spotifyArtistSongs,
-  spotifyPlaylistQuery,
-} from "../hooks/useSpotify.ts";
+import { spotifyAlbumQuery, spotifyArtistSongs, spotifyPlaylistQuery } from "../hooks/useSpotify.ts";
 import { toast } from "../../../state/ui.ts";
 import { Art } from "../../../components/Art.tsx";
 import { ItemCard } from "../../../components/Cards.tsx";
@@ -17,50 +13,26 @@ export const releaseYear = (a: SpAlbumRef) => a.release_date?.slice(0, 4);
 
 export async function playSpotifyAlbum(id: string, shuffle = false) {
   const { album, songs } = await queryClient.fetchQuery(spotifyAlbumQuery(id));
-  player.playSongs(
-    songs,
-    0,
-    { kind: "album", id: spId(album.id), name: album.name, ordered: true },
-    { shuffle },
-  );
+  player.playSongs(songs, 0, { kind: "album", id: spId(album.id), name: album.name, ordered: true }, { shuffle });
 }
 
 export async function playSpotifyArtist(id: string, shuffle = false) {
   const { artist, songs } = await spotifyArtistSongs(id);
-  player.playSongs(
-    songs,
-    0,
-    { kind: "artist", id: spId(artist.id), name: artist.name },
-    { shuffle },
-  );
+  player.playSongs(songs, 0, { kind: "artist", id: spId(artist.id), name: artist.name }, { shuffle });
 }
 
 export async function playSpotifyPlaylist(id: string, shuffle = false) {
-  const { meta, songs } = await queryClient.fetchQuery(
-    spotifyPlaylistQuery(id),
-  );
+  const { meta, songs } = await queryClient.fetchQuery(spotifyPlaylistQuery(id));
   if (!songs?.length) {
-    toast(
-      songs
-        ? translate("spotify.emptyPlaylist")
-        : translate("spotify.lockedHeading"),
-    );
+    toast(songs ? translate("spotify.emptyPlaylist") : translate("spotify.lockedHeading"));
     return;
   }
-  player.playSongs(
-    songs,
-    0,
-    { kind: "playlist", id: spId(id), name: meta.name },
-    { shuffle },
-  );
+  player.playSongs(songs, 0, { kind: "playlist", id: spId(id), name: meta.name }, { shuffle });
 }
 
 const failed = () => toast(translate("spotify.answerFailed"));
 
-export function spotifyAlbumItem(
-  album: SpAlbumRef & { added_at?: string },
-  subtitle?: string,
-): CollectionItem {
+export function spotifyAlbumItem(album: SpAlbumRef & { added_at?: string }, subtitle?: string): CollectionItem {
   const by = album.artists?.map((a) => a.name).join(", ") ?? "";
   const year = Number.parseInt(album.release_date ?? "", 10);
   return {
@@ -108,13 +80,9 @@ export function spotifyPlaylistItem(playlist: SpPlaylist): CollectionItem {
   };
 }
 
-export const SpotifyAlbumCard = ({
-  album,
-  subtitle,
-}: {
-  album: SpAlbumRef;
-  subtitle?: string;
-}) => <ItemCard item={spotifyAlbumItem(album, subtitle)} />;
+export const SpotifyAlbumCard = ({ album, subtitle }: { album: SpAlbumRef; subtitle?: string }) => (
+  <ItemCard item={spotifyAlbumItem(album, subtitle)} />
+);
 export const SpotifyPlaylistCard = ({ playlist }: { playlist: SpPlaylist }) => (
   <ItemCard item={spotifyPlaylistItem(playlist)} />
 );

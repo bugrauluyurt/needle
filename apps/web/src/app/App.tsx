@@ -14,30 +14,21 @@ import { router } from "./router.tsx";
 const SongDetailsDialog = lazy(() => import("../components/SongDetails.tsx"));
 
 export function App() {
-  const signedIn = useSession((sessionState) =>
-    Boolean(sessionState.credentials),
-  );
+  const signedIn = useSession((sessionState) => Boolean(sessionState.credentials));
   const detailsOpen = useDetails((detailsState) => Boolean(detailsState.song));
-  const selectedLanguage = useSettings(
-    (settingsState) => settingsState.language,
-  );
+  const selectedLanguage = useSettings((settingsState) => settingsState.language);
   const { i18n } = useTranslation();
   const language = i18n.resolvedLanguage;
 
   useAppRuntime(signedIn);
 
   useEffect(() => {
-    if (i18n.resolvedLanguage !== selectedLanguage)
-      void changeLanguage(selectedLanguage);
+    if (i18n.resolvedLanguage !== selectedLanguage) void changeLanguage(selectedLanguage);
   }, [i18n, selectedLanguage]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {signedIn ? (
-        <RouterProvider key={language} router={router} />
-      ) : (
-        <Login key={language} />
-      )}
+      {signedIn ? <RouterProvider key={language} router={router} /> : <Login key={language} />}
       {detailsOpen ? (
         <Suspense key={language} fallback={null}>
           <SongDetailsDialog />

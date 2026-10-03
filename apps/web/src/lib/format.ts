@@ -4,22 +4,11 @@ import { i18next, translate } from "../i18n/index.ts";
 import type { TranslationKey } from "../i18n/locales/en.ts";
 
 type CountUnit =
-  | "album"
-  | "artist"
-  | "connection"
-  | "hour"
-  | "minute"
-  | "play"
-  | "playlist"
-  | "release"
-  | "second"
-  | "song";
+  "album" | "artist" | "connection" | "hour" | "minute" | "play" | "playlist" | "release" | "second" | "song";
 
-export const localeCode = () =>
-  i18next.resolvedLanguage === "tr" ? "tr-TR" : "en-US";
+export const localeCode = () => (i18next.resolvedLanguage === "tr" ? "tr-TR" : "en-US");
 
-export const count = (number: number) =>
-  new Intl.NumberFormat(localeCode()).format(number);
+export const count = (number: number) => new Intl.NumberFormat(localeCode()).format(number);
 
 export function plural(n: number, one: string, many = `${one}s`): string {
   const countUnit = countUnitFor(one);
@@ -47,9 +36,7 @@ export function longDuration(seconds: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
 
-  return m
-    ? translate("duration.hoursMinutes", { hours: h, minutes: m })
-    : translate("duration.hours", { hours: h });
+  return m ? translate("duration.hoursMinutes", { hours: h, minutes: m }) : translate("duration.hours", { hours: h });
 }
 
 export function hours(ms: number): string {
@@ -61,19 +48,14 @@ export function hours(ms: number): string {
 export function ago(iso: string | undefined, now = Date.now()): string {
   if (!iso) return "";
   const then = new Date(iso);
-  const days = Math.floor(
-    (new Date(now).setHours(0, 0, 0, 0) - new Date(then).setHours(0, 0, 0, 0)) /
-      DAY_MS,
-  );
+  const days = Math.floor((new Date(now).setHours(0, 0, 0, 0) - new Date(then).setHours(0, 0, 0, 0)) / DAY_MS);
   if (days <= 0) return translate("time.today");
   if (days === 1) return translate("time.yesterday");
   if (days < 7) return translate("time.daysAgo", { count: days });
   if (days < 14) return translate("time.lastWeek");
-  if (days < 31)
-    return translate("time.weeksAgo", { count: Math.floor(days / 7) });
+  if (days < 31) return translate("time.weeksAgo", { count: Math.floor(days / 7) });
   if (days < 62) return translate("time.lastMonth");
-  if (days < 365)
-    return translate("time.monthsAgo", { count: Math.floor(days / 30) });
+  if (days < 365) return translate("time.monthsAgo", { count: Math.floor(days / 30) });
 
   return then.toLocaleDateString(localeCode(), {
     day: "numeric",
@@ -83,10 +65,7 @@ export function ago(iso: string | undefined, now = Date.now()): string {
 }
 
 export function formatLabel(
-  song:
-    | Pick<Song, "suffix" | "bitDepth" | "samplingRate" | "bitRate">
-    | null
-    | undefined,
+  song: Pick<Song, "suffix" | "bitDepth" | "samplingRate" | "bitRate"> | null | undefined,
 ): string | null {
   if (!song?.suffix) return null;
   const codec = song.suffix.toUpperCase();
@@ -101,27 +80,20 @@ export function formatLabel(
 export function formatLong(song: Song): string {
   const parts = [song.suffix?.toUpperCase()];
   if (song.bitDepth) parts.push(`${song.bitDepth}-bit`);
-  if (song.samplingRate)
-    parts.push(
-      `${(song.samplingRate / 1000).toFixed(1).replace(/\.0$/, "")} kHz`,
-    );
+  if (song.samplingRate) parts.push(`${(song.samplingRate / 1000).toFixed(1).replace(/\.0$/, "")} kHz`);
   return parts.filter(Boolean).join(", ");
 }
 
 export const artistName = (song: Pick<Song, "displayArtist" | "artist">) =>
   song.displayArtist ?? song.artist ?? translate("catalog.unknownArtist");
 
-export function releaseDateLabel(
-  song: Pick<Song, "year" | "releaseDate">,
-): string {
+export function releaseDateLabel(song: Pick<Song, "year" | "releaseDate">): string {
   const releaseDate = song.releaseDate ?? String(song.year ?? "");
 
   if (!releaseDate) return translate("catalog.unknown");
   if (releaseDate.length === 4) return releaseDate;
 
-  const parsedReleaseDate = new Date(
-    `${releaseDate.length === 7 ? `${releaseDate}-01` : releaseDate}T12:00:00Z`,
-  );
+  const parsedReleaseDate = new Date(`${releaseDate.length === 7 ? `${releaseDate}-01` : releaseDate}T12:00:00Z`);
 
   if (Number.isNaN(parsedReleaseDate.getTime())) return releaseDate;
 
@@ -143,11 +115,7 @@ export function minutesSince(iso: string, now = Date.now()): number {
 
 export type ReleaseKind = "album" | "compilation" | "ep" | "single";
 
-export function releaseKindValue(
-  songCount: number,
-  duration: number,
-  compilation = false,
-): ReleaseKind {
+export function releaseKindValue(songCount: number, duration: number, compilation = false): ReleaseKind {
   if (compilation) return "compilation";
   if (songCount <= 3 && duration < 1800) return "single";
   if (songCount <= 6 && duration < 1800) return "ep";
@@ -155,11 +123,7 @@ export function releaseKindValue(
   return "album";
 }
 
-export function releaseKind(
-  songCount: number,
-  duration: number,
-  compilation = false,
-): string {
+export function releaseKind(songCount: number, duration: number, compilation = false): string {
   switch (releaseKindValue(songCount, duration, compilation)) {
     case "album":
       return translate("catalog.album");

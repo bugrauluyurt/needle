@@ -30,7 +30,6 @@ export const TILE_COLORS = [
 
 export function hashPalette(s: string): [string, string, string] {
   let h = 2166136261;
-  for (let i = 0; i < s.length; i++)
-    h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return PALETTES[(h >>> 0) % PALETTES.length] as [string, string, string];
 }

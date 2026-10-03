@@ -111,8 +111,7 @@
   bottom: 0;
   height: 2px;
   border-radius: 1px;
-  background: linear-gradient(90deg, transparent, var(--amber), transparent)
-    no-repeat;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent) no-repeat;
   background-size: 45% 100%;
   opacity: 0;
   transition: opacity 0.2s;
@@ -169,8 +168,7 @@
 
 .sf-top:hover {
   background: color-mix(in oklab, var(--groove), var(--label) 5%);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--ridge), var(--label) 25%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ridge), var(--label) 25%);
 }
 
 .sf-top:focus-within {

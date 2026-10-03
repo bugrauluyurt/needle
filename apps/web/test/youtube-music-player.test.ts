@@ -124,13 +124,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   vi.useFakeTimers({
-    toFake: [
-      "setTimeout",
-      "clearTimeout",
-      "setInterval",
-      "clearInterval",
-      "performance",
-    ],
+    toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
   });
   playerMocks.events = null;
   playerMocks.fading = false;
@@ -178,10 +172,7 @@ describe("YouTube Music playback boundaries", () => {
     controller.player.playSongs([youtubeSong]);
     await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
 
-    const proxyUrl = new URL(
-      String(playerMocks.load.mock.calls[0]?.[0]),
-      "https://needle.test",
-    );
+    const proxyUrl = new URL(String(playerMocks.load.mock.calls[0]?.[0]), "https://needle.test");
     expect(proxyUrl.pathname).toBe("/youtube-music/stream/video-12345");
     expect(proxyUrl.searchParams.get("u")).toBe("listener");
     expect(playerMocks.offlineSource).not.toHaveBeenCalled();
@@ -202,9 +193,7 @@ describe("YouTube Music playback boundaries", () => {
     expect(playerMocks.load).not.toHaveBeenCalled();
     expect(playerMocks.scrobble).not.toHaveBeenCalled();
     expect(controller.usePlayer.getState().playing).toBe(false);
-    expect(controller.usePlayer.getState().error).toContain(
-      "YouTube Music is switched off",
-    );
+    expect(controller.usePlayer.getState().error).toContain("YouTube Music is switched off");
   });
 
   it("stops YouTube playback on disable and does not restart the same source", async () => {
@@ -224,10 +213,7 @@ describe("YouTube Music playback boundaries", () => {
   it("stops after a YouTube stream error without resolving the following songs", async () => {
     const controller = await initializedPlayer();
     controller.allowYouTubeMusic(true);
-    controller.player.playSongs([
-      youtubeSong,
-      { ...youtubeSong, id: "ytm:next-123456" },
-    ]);
+    controller.player.playSongs([youtubeSong, { ...youtubeSong, id: "ytm:next-123456" }]);
     await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
 
     playerMocks.events?.error("The provider is unavailable");
@@ -241,19 +227,12 @@ describe("YouTube Music playback boundaries", () => {
   it("saves only local queue entries to Navidrome when a local song is current", async () => {
     const controller = await initializedPlayer();
     controller.allowYouTubeMusic(true);
-    controller.player.playSongs([
-      { id: "local-1", title: "Local song" },
-      youtubeSong,
-    ]);
+    controller.player.playSongs([{ id: "local-1", title: "Local song" }, youtubeSong]);
     await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
 
     controller.player.pause();
 
-    expect(playerMocks.savePlayQueue).toHaveBeenCalledWith(
-      ["local-1"],
-      "local-1",
-      0,
-    );
+    expect(playerMocks.savePlayQueue).toHaveBeenCalledWith(["local-1"], "local-1", 0);
   });
 
   it("preserves the existing clamped start index for library queues", async () => {
@@ -277,19 +256,10 @@ describe("YouTube Music playback boundaries", () => {
     const controller = await initializedPlayer();
     controller.allowYouTubeMusic(true);
 
-    controller.player.playSongs([
-      youtubeSong,
-      { ...youtubeSong, id: "ytm:unavailable", isAvailable: false },
-    ]);
-    controller.player.addToQueue([
-      { ...youtubeSong, id: "ytm:unavailable", isAvailable: false },
-    ]);
+    controller.player.playSongs([youtubeSong, { ...youtubeSong, id: "ytm:unavailable", isAvailable: false }]);
+    controller.player.addToQueue([{ ...youtubeSong, id: "ytm:unavailable", isAvailable: false }]);
 
-    expect(
-      controller.usePlayer
-        .getState()
-        .items.map((queueItem) => queueItem.song.id),
-    ).toEqual([youtubeSong.id]);
+    expect(controller.usePlayer.getState().items.map((queueItem) => queueItem.song.id)).toEqual([youtubeSong.id]);
   });
 
   it("records YouTube listening in Needle while excluding both Navidrome scrobble modes", async () => {
@@ -305,9 +275,7 @@ describe("YouTube Music playback boundaries", () => {
 
     controller.allowYouTubeMusic(false);
 
-    expect(playerMocks.reportPlay).toHaveBeenCalledWith(
-      expect.objectContaining({ songId: youtubeSong.id }),
-    );
+    expect(playerMocks.reportPlay).toHaveBeenCalledWith(expect.objectContaining({ songId: youtubeSong.id }));
     expect(playerMocks.scrobble).not.toHaveBeenCalled();
     expect(playerMocks.savePlayQueue).not.toHaveBeenCalled();
   });
@@ -315,10 +283,7 @@ describe("YouTube Music playback boundaries", () => {
   it("attributes listening to the YouTube song when moving into a local song", async () => {
     const controller = await initializedPlayer();
     controller.allowYouTubeMusic(true);
-    controller.player.playSongs([
-      youtubeSong,
-      { id: "local-next", title: "Next local song" },
-    ]);
+    controller.player.playSongs([youtubeSong, { id: "local-next", title: "Next local song" }]);
     await vi.waitFor(() => expect(playerMocks.load).toHaveBeenCalledOnce());
 
     for (let elapsedSeconds = 1; elapsedSeconds <= 35; elapsedSeconds++) {

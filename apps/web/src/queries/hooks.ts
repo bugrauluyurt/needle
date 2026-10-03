@@ -1,22 +1,8 @@
 import { useNavigate } from "react-router";
 import { HOUR_MS, MINUTE_MS, musicSource } from "@needle/shared";
-import {
-  keepPreviousData,
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Query, QueryClient } from "@tanstack/react-query";
-import type {
-  Album,
-  Artist,
-  Period,
-  PlaylistWithSongs,
-  RequestItem,
-  Song,
-  SongCandidate,
-} from "@needle/shared";
+import type { Album, Artist, Period, PlaylistWithSongs, RequestItem, Song, SongCandidate } from "@needle/shared";
 import { api } from "../lib/api.ts";
 import type { AlbumListType } from "../lib/subsonic.ts";
 import { sub } from "../lib/subsonic.ts";
@@ -44,22 +30,15 @@ export const useAlbum = (id: string | undefined) =>
 
 type ListOpts = { genre?: string; fromYear?: number; toYear?: number };
 
-export const albumListOptions = (
-  type: AlbumListType,
-  size = 20,
-  opts: ListOpts = {},
-) =>
+export const albumListOptions = (type: AlbumListType, size = 20, opts: ListOpts = {}) =>
   queryOptions({
     queryKey: keys.albumList(type, size, JSON.stringify(opts)),
     queryFn: () => sub.albumList(type, { size, ...opts }),
     staleTime: type === "random" ? Infinity : 60_000,
   });
 
-export const useAlbumList = (
-  type: AlbumListType,
-  size = 20,
-  opts: ListOpts = {},
-) => useQuery(albumListOptions(type, size, opts));
+export const useAlbumList = (type: AlbumListType, size = 20, opts: ListOpts = {}) =>
+  useQuery(albumListOptions(type, size, opts));
 
 const browseOptions = queryOptions({
   queryKey: keys.browse,
@@ -90,14 +69,10 @@ queryClient.getQueryCache().subscribe((e) => {
   if (e.type !== "updated") return;
   const query = e.query as Query<RequestItem[]>;
   if (query.queryKey[0] !== keys.requests[0]) return;
-  const done = new Set(
-    query.state.data?.filter((r) => r.state === "available").map((r) => r.id),
-  );
+  const done = new Set(query.state.data?.filter((r) => r.state === "available").map((r) => r.id));
   const fresh = arrived !== null && [...done].some((id) => !arrived?.has(id));
   arrived = done;
-  if (fresh)
-    for (const queryKey of LIBRARY_KEYS)
-      void queryClient.invalidateQueries({ queryKey });
+  if (fresh) for (const queryKey of LIBRARY_KEYS) void queryClient.invalidateQueries({ queryKey });
 });
 
 export const useEveryonesRequests = (enabled: boolean) =>
@@ -109,11 +84,7 @@ export const useEveryonesRequests = (enabled: boolean) =>
   });
 
 const pollFor = (states: string[]) =>
-  states.some((s) => ACTIVE.has(s))
-    ? REQUEST_POLL_MS
-    : states.includes("wanted")
-      ? WAITING_POLL_MS
-      : false;
+  states.some((s) => ACTIVE.has(s)) ? REQUEST_POLL_MS : states.includes("wanted") ? WAITING_POLL_MS : false;
 
 export const useRequests = () =>
   useQuery({
@@ -129,8 +100,7 @@ export const useLidarrDownloads = (enabled: boolean) =>
     queryKey: keys.downloads,
     queryFn: api.lidarrDownloads,
     enabled,
-    refetchInterval: (q) =>
-      q.state.data?.length ? REQUEST_POLL_MS : DOWNLOADS_IDLE_POLL_MS,
+    refetchInterval: (q) => (q.state.data?.length ? REQUEST_POLL_MS : DOWNLOADS_IDLE_POLL_MS),
   });
 
 export const useSongCandidates = (q: string, enabled: boolean) =>
@@ -156,10 +126,7 @@ export function useGetSong() {
           run: () => void navigate("/requests"),
         });
       },
-      (e: unknown) =>
-        toast(
-          e instanceof Error ? e.message : translate("query.downloadFailed"),
-        ),
+      (e: unknown) => toast(e instanceof Error ? e.message : translate("query.downloadFailed")),
     );
 }
 
@@ -175,11 +142,7 @@ const genresOptions = queryOptions({
 });
 
 export function prefetchStart(qc: QueryClient) {
-  for (const o of [
-    albumListOptions("recent", 12),
-    albumListOptions("newest", 12),
-  ])
-    void qc.prefetchQuery(o);
+  for (const o of [albumListOptions("recent", 12), albumListOptions("newest", 12)]) void qc.prefetchQuery(o);
   void qc.prefetchQuery(mixesOptions);
   void qc.prefetchQuery(browseOptions);
 }
@@ -199,8 +162,7 @@ export const useLibrarySongs = (enabled: boolean) =>
     staleTime: 60_000,
   });
 
-export const useArtists = () =>
-  useQuery({ queryKey: keys.artists, queryFn: sub.artists, staleTime: 60_000 });
+export const useArtists = () => useQuery({ queryKey: keys.artists, queryFn: sub.artists, staleTime: 60_000 });
 
 const ALBUM_PAGE = 500;
 
@@ -213,16 +175,14 @@ async function allAlbums(): Promise<Album[]> {
   }
 }
 
-export const useAllAlbums = () =>
-  useQuery({ queryKey: keys.allAlbums, queryFn: allAlbums, staleTime: 60_000 });
+export const useAllAlbums = () => useQuery({ queryKey: keys.allAlbums, queryFn: allAlbums, staleTime: 60_000 });
 
 export function useArtistCover(id: string | undefined): string | undefined {
   const { data } = useArtists();
   return id ? data?.find((a) => a.id === id)?.coverArt : undefined;
 }
 
-const navidromeId = (id: string | undefined) =>
-  Boolean(id) && musicSource(id) === "library";
+const navidromeId = (id: string | undefined) => Boolean(id) && musicSource(id) === "library";
 
 export const useArtistInfo = (id: string | undefined) =>
   useQuery({
@@ -240,8 +200,7 @@ export const useTopSongs = (name: string | undefined) =>
     staleTime: HOUR_MS,
   });
 
-export const usePlaylists = () =>
-  useQuery({ queryKey: keys.playlists, queryFn: sub.playlists });
+export const usePlaylists = () => useQuery({ queryKey: keys.playlists, queryFn: sub.playlists });
 
 export const usePlaylist = (id: string | undefined) =>
   useQuery({
@@ -250,8 +209,7 @@ export const usePlaylist = (id: string | undefined) =>
     enabled: navidromeId(id),
   });
 
-export const useStarred = () =>
-  useQuery({ queryKey: keys.starred, queryFn: sub.starred, staleTime: 60_000 });
+export const useStarred = () => useQuery({ queryKey: keys.starred, queryFn: sub.starred, staleTime: 60_000 });
 
 export const useGenres = () => useQuery(genresOptions);
 
@@ -295,12 +253,7 @@ export const discoveryOptions = (id: string) =>
 export const useDiscovery = (id: string) =>
   useQuery({
     ...discoveryOptions(id),
-    refetchInterval: (q) =>
-      pollFor(
-        q.state.data?.tracks.flatMap((t) =>
-          t.request ? [t.request.state] : [],
-        ) ?? [],
-      ),
+    refetchInterval: (q) => pollFor(q.state.data?.tracks.flatMap((t) => (t.request ? [t.request.state] : [])) ?? []),
   });
 
 export const useStats = (period: Period) =>
@@ -318,8 +271,7 @@ export const useLyrics = (id: string | undefined) =>
     staleTime: Infinity,
   });
 
-export const useRadios = () =>
-  useQuery({ queryKey: keys.radios, queryFn: sub.radios });
+export const useRadios = () => useQuery({ queryKey: keys.radios, queryFn: sub.radios });
 
 export const useLidarrSearch = (q: string, enabled: boolean) =>
   useQuery({
@@ -360,38 +312,22 @@ export function useStarredIds() {
 export function useToggleStar() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      kind,
-      item,
-      on,
-    }: {
-      kind: StarKind;
-      item: Song | Album | Artist;
-      on: boolean;
-    }) => {
-      if (!navidromeId(item.id))
-        throw new Error(translate("query.localStarOnly"));
+    mutationFn: async ({ kind, item, on }: { kind: StarKind; item: Song | Album | Artist; on: boolean }) => {
+      if (!navidromeId(item.id)) throw new Error(translate("query.localStarOnly"));
 
       const ids =
-        kind === "song"
-          ? { id: [item.id] }
-          : kind === "album"
-            ? { albumId: [item.id] }
-            : { artistId: [item.id] };
+        kind === "song" ? { id: [item.id] } : kind === "album" ? { albumId: [item.id] } : { artistId: [item.id] };
       await (on ? sub.star(ids) : sub.unstar(ids));
     },
     onMutate: async ({ kind, item, on }) => {
       await qc.cancelQueries({ queryKey: keys.starred });
       const prev = qc.getQueryData<Starred>(keys.starred);
-      const field =
-        kind === "song" ? "song" : kind === "album" ? "album" : "artist";
+      const field = kind === "song" ? "song" : kind === "album" ? "album" : "artist";
       const list = (prev?.[field] ?? []) as (Song | Album | Artist)[];
       const stamped = { ...item, starred: new Date().toISOString() };
       qc.setQueryData<Starred>(keys.starred, {
         ...prev,
-        [field]: on
-          ? [stamped, ...list.filter((x) => x.id !== item.id)]
-          : list.filter((x) => x.id !== item.id),
+        [field]: on ? [stamped, ...list.filter((x) => x.id !== item.id)] : list.filter((x) => x.id !== item.id),
       });
       return { prev };
     },
@@ -407,8 +343,7 @@ export function useCreatePlaylist() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ name, songIds }: { name: string; songIds?: string[] }) => {
-      if (songIds?.some((songId) => !navidromeId(songId)))
-        throw new Error(translate("query.localPlaylistOnly"));
+      if (songIds?.some((songId) => !navidromeId(songId))) throw new Error(translate("query.localPlaylistOnly"));
 
       return sub.createPlaylist(name, songIds);
     },
@@ -419,17 +354,8 @@ export function useCreatePlaylist() {
 export function useAddToPlaylist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      playlistId,
-      songIds,
-    }: {
-      playlistId: string;
-      songIds: string[];
-    }) => {
-      if (
-        !navidromeId(playlistId) ||
-        songIds.some((songId) => !navidromeId(songId))
-      )
+    mutationFn: ({ playlistId, songIds }: { playlistId: string; songIds: string[] }) => {
+      if (!navidromeId(playlistId) || songIds.some((songId) => !navidromeId(songId)))
         throw new Error(translate("query.localPlaylistOnly"));
 
       return sub.updatePlaylist(playlistId, { add: songIds });
@@ -464,17 +390,14 @@ export function useUpdatePlaylist() {
 export function useReorderPlaylist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, songIds }: { id: string; songIds: string[] }) =>
-      sub.replacePlaylistSongs(id, songIds),
+    mutationFn: ({ id, songIds }: { id: string; songIds: string[] }) => sub.replacePlaylistSongs(id, songIds),
     onMutate: ({ id, songIds }) => {
       const prev = qc.getQueryData<PlaylistWithSongs>(keys.playlist(id));
       if (prev?.entry) {
         const byId = new Map(prev.entry.map((s) => [s.id, s]));
         qc.setQueryData<PlaylistWithSongs>(keys.playlist(id), {
           ...prev,
-          entry: songIds
-            .map((sid) => byId.get(sid))
-            .filter((s): s is Song => Boolean(s)),
+          entry: songIds.map((sid) => byId.get(sid)).filter((s): s is Song => Boolean(s)),
         });
       }
       return { prev };
@@ -483,8 +406,7 @@ export function useReorderPlaylist() {
       if (ctx?.prev) qc.setQueryData(keys.playlist(v.id), ctx.prev);
       toast(translate("query.orderFailed"));
     },
-    onSettled: (_d, _e, v) =>
-      void qc.invalidateQueries({ queryKey: keys.playlist(v.id) }),
+    onSettled: (_d, _e, v) => void qc.invalidateQueries({ queryKey: keys.playlist(v.id) }),
   });
 }
 

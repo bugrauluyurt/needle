@@ -31,8 +31,7 @@ function hourLabel(h: number): string {
 
 function when(h: number | null): string | null {
   if (h === null) return null;
-  if (h >= 21 || h < 2)
-    return translate("stats.whenAfter", { time: hourLabel(h >= 21 ? h : 21) });
+  if (h >= 21 || h < 2) return translate("stats.whenAfter", { time: hourLabel(h >= 21 ? h : 21) });
   if (h < 6) return translate("stats.whenNight");
   if (h < 12) return translate("stats.whenMorning");
   if (h < 17) return translate("stats.whenAfternoon");
@@ -40,10 +39,7 @@ function when(h: number | null): string | null {
   return translate("stats.whenEvening");
 }
 
-function headline(
-  s: Stats,
-  period: Period,
-): { lead: string; accent: string | null } {
+function headline(s: Stats, period: Period): { lead: string; accent: string | null } {
   const now = new Date();
   const month = new Intl.DateTimeFormat(i18next.resolvedLanguage, {
     month: "long",
@@ -82,11 +78,7 @@ function comparison(s: Stats, period: Period): string {
   });
   if (period === "all" || !s.prevMsPlayed) return base;
   const diffH = Math.round((s.msPlayed - s.prevMsPlayed) / HOUR_MS);
-  const previousMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth() - 1,
-    1,
-  );
+  const previousMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
   const prev =
     period === "month"
       ? new Intl.DateTimeFormat(i18next.resolvedLanguage, {
@@ -95,13 +87,13 @@ function comparison(s: Stats, period: Period): string {
       : period === "year"
         ? String(new Date().getFullYear() - 1)
         : translate("stats.previousQuarter", { count: QUARTER_DAYS });
-  if (diffH === 0)
-    return translate("stats.comparisonSame", { base, previous: prev });
+  if (diffH === 0) return translate("stats.comparisonSame", { base, previous: prev });
 
-  return translate(
-    diffH > 0 ? "stats.comparisonMore" : "stats.comparisonLess",
-    { base, hours: plural(Math.abs(diffH), "hour"), previous: prev },
-  );
+  return translate(diffH > 0 ? "stats.comparisonMore" : "stats.comparisonLess", {
+    base,
+    hours: plural(Math.abs(diffH), "hour"),
+    previous: prev,
+  });
 }
 
 export default function StatsPage() {
@@ -116,25 +108,11 @@ export default function StatsPage() {
   const h = s ? headline(s, period) : null;
   return (
     <>
-      {mobile ? (
-        <MobileHeader title={translate("common.yourListening")} />
-      ) : (
-        <TopBar />
-      )}
+      {mobile ? <MobileHeader title={translate("common.yourListening")} /> : <TopBar />}
       <div className="pad stats">
-        <div
-          className="chips page-chips flush"
-          role="group"
-          aria-label={translate("stats.period")}
-        >
+        <div className="chips page-chips flush" role="group" aria-label={translate("stats.period")}>
           {periodOptions().map(([p, label]) => (
-            <button
-              key={p}
-              type="button"
-              className="pill"
-              aria-pressed={period === p}
-              onClick={() => setPeriod(p)}
-            >
+            <button key={p} type="button" className="pill" aria-pressed={period === p} onClick={() => setPeriod(p)}>
               {label}
             </button>
           ))}
@@ -166,17 +144,12 @@ export default function StatsPage() {
             <div className="stat-grid">
               <section className="stat-box">
                 <h3>
-                  {translate("stats.topArtists")}{" "}
-                  <span>{translate("stats.plays")}</span>
+                  {translate("stats.topArtists")} <span>{translate("stats.plays")}</span>
                 </h3>
                 {s.topArtists.map((a, i) => (
                   <Link
                     key={a.id}
-                    to={
-                      known(a.id) || musicSource(a.id) !== "library"
-                        ? artistPath(a.id)
-                        : "/stats"
-                    }
+                    to={known(a.id) || musicSource(a.id) !== "library" ? artistPath(a.id) : "/stats"}
                     className="rank"
                   >
                     <span className="n">{i + 1}</span>
@@ -184,9 +157,7 @@ export default function StatsPage() {
                     <div>
                       <div className="t">
                         {a.name}
-                        {musicSource(a.id) !== "library" ? (
-                          <SourceMark source={musicSource(a.id)} compact />
-                        ) : null}
+                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
                       </div>
                       <div className="bar-in">
                         <i
@@ -202,8 +173,7 @@ export default function StatsPage() {
               </section>
               <section className="stat-box">
                 <h3>
-                  {translate("stats.topAlbums")}{" "}
-                  <span>{translate("stats.plays")}</span>
+                  {translate("stats.topAlbums")} <span>{translate("stats.plays")}</span>
                 </h3>
                 {s.topAlbums.map((a, i) => (
                   <Link key={a.id} to={albumPath(a.id)} className="rank">
@@ -212,9 +182,7 @@ export default function StatsPage() {
                     <div>
                       <div className="t">
                         {a.name}
-                        {musicSource(a.id) !== "library" ? (
-                          <SourceMark source={musicSource(a.id)} compact />
-                        ) : null}
+                        {musicSource(a.id) !== "library" ? <SourceMark source={musicSource(a.id)} compact /> : null}
                       </div>
                       <div className="bar-in">
                         <i
@@ -230,8 +198,7 @@ export default function StatsPage() {
               </section>
               <section className="stat-box">
                 <h3>
-                  {translate("stats.when")}{" "}
-                  <span>{translate("stats.byHour")}</span>
+                  {translate("stats.when")} <span>{translate("stats.byHour")}</span>
                 </h3>
                 <div
                   className="hours"
@@ -265,18 +232,14 @@ export default function StatsPage() {
               </section>
               <section className="stat-box">
                 <h3>
-                  {translate("stats.genres")}{" "}
-                  <span>{translate("stats.share")}</span>
+                  {translate("stats.genres")} <span>{translate("stats.share")}</span>
                 </h3>
                 <div className="genrebar">
                   {s.genres.map((g) => (
                     <i
                       key={g.name}
                       style={{
-                        background:
-                          g.name === "Other"
-                            ? "var(--dim)"
-                            : hashPalette(g.name)[1],
+                        background: g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1],
                         flex: g.share,
                       }}
                     />
@@ -288,10 +251,7 @@ export default function StatsPage() {
                       key={g.name}
                       style={
                         {
-                          "--c":
-                            g.name === "Other"
-                              ? "var(--dim)"
-                              : hashPalette(g.name)[1],
+                          "--c": g.name === "Other" ? "var(--dim)" : hashPalette(g.name)[1],
                         } as React.CSSProperties
                       }
                     >

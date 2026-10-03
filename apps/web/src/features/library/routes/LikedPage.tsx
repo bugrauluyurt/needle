@@ -1,21 +1,11 @@
 import { useMemo, useState } from "react";
 import { CollectionTools } from "../../../components/Collection.tsx";
 import { SearchField } from "../../../components/SearchField.tsx";
-import {
-  librarySongSorts,
-  RECENT_FIRST,
-  shownSongs,
-} from "../../../lib/songs.ts";
+import { librarySongSorts, RECENT_FIRST, shownSongs } from "../../../lib/songs.ts";
 import type { SongOrder } from "../../../lib/songs.ts";
 import { LikedArt } from "../../../components/Art.tsx";
 import { DownloadButton } from "../../../components/Buttons.tsx";
-import {
-  ActBar,
-  Hero,
-  PageSkeleton,
-  PlayContextButton,
-  ShuffleButton,
-} from "../../../components/Hero.tsx";
+import { ActBar, Hero, PageSkeleton, PlayContextButton, ShuffleButton } from "../../../components/Hero.tsx";
 import { Icon } from "../../../components/Icon.tsx";
 import { TrackList } from "../../../components/tracks/TrackList.tsx";
 import { ago, plural } from "../../../lib/format.ts";
@@ -40,16 +30,12 @@ export default function LikedPage() {
   };
   usePageTone("#6B2A5A");
   const songs = useMemo(
-    () =>
-      [...(data?.song ?? [])].sort((a, b) =>
-        (b.starred ?? "").localeCompare(a.starred ?? ""),
-      ),
+    () => [...(data?.song ?? [])].sort((a, b) => (b.starred ?? "").localeCompare(a.starred ?? "")),
     [data],
   );
   const genres = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const s of songs)
-      if (s.genre) counts.set(s.genre, (counts.get(s.genre) ?? 0) + 1);
+    for (const s of songs) if (s.genre) counts.set(s.genre, (counts.get(s.genre) ?? 0) + 1);
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
@@ -76,9 +62,7 @@ export default function LikedPage() {
         meta={
           <>
             <b>
-              <span className="avatar tiny">
-                {user.slice(0, 1).toUpperCase()}
-              </span>
+              <span className="avatar tiny">{user.slice(0, 1).toUpperCase()}</span>
               {user}
             </b>
             <span>{plural(songs.length, "song")}</span>
@@ -100,11 +84,7 @@ export default function LikedPage() {
               onChange={setFilter}
               label={translate("library.findLikedSongs")}
             />
-            <CollectionTools
-              sorts={librarySongSorts()}
-              order={order}
-              onOrder={setOrder}
-            />
+            <CollectionTools sorts={librarySongSorts()} order={order} onOrder={setOrder} />
           </>
         }
       >
@@ -115,9 +95,7 @@ export default function LikedPage() {
         />
         <ShuffleButton
           label={translate("library.likedSongs")}
-          onShuffle={() =>
-            player.playSongs(shown, 0, context, { shuffle: true })
-          }
+          onShuffle={() => player.playSongs(shown, 0, context, { shuffle: true })}
         />
         <DownloadButton
           target={{
@@ -130,17 +108,8 @@ export default function LikedPage() {
         />
       </ActBar>
       {genres.length > 1 ? (
-        <div
-          className="chips page-chips"
-          role="group"
-          aria-label={translate("library.filterGenre")}
-        >
-          <button
-            type="button"
-            className="pill"
-            aria-pressed={!genre}
-            onClick={() => setGenre(null)}
-          >
+        <div className="chips page-chips" role="group" aria-label={translate("library.filterGenre")}>
+          <button type="button" className="pill" aria-pressed={!genre} onClick={() => setGenre(null)}>
             {translate("common.all")}
           </button>
           {genres.map((g) => (

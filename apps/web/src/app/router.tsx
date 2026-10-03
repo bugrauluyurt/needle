@@ -4,56 +4,28 @@ import { Shell } from "../layout/Shell.tsx";
 
 const Home = lazy(() => import("../pages/Home.tsx"));
 const Search = lazy(() => import("../features/search/routes/SearchPage.tsx"));
-const AlbumPage = lazy(
-  () => import("../features/catalog/routes/AlbumPage.tsx"),
-);
-const ArtistPage = lazy(
-  () => import("../features/catalog/routes/ArtistPage.tsx"),
-);
-const PlaylistPage = lazy(
-  () => import("../features/library/routes/PlaylistPage.tsx"),
-);
-const LikedPage = lazy(
-  () => import("../features/library/routes/LikedPage.tsx"),
-);
+const AlbumPage = lazy(() => import("../features/catalog/routes/AlbumPage.tsx"));
+const ArtistPage = lazy(() => import("../features/catalog/routes/ArtistPage.tsx"));
+const PlaylistPage = lazy(() => import("../features/library/routes/PlaylistPage.tsx"));
+const LikedPage = lazy(() => import("../features/library/routes/LikedPage.tsx"));
 const MixPage = lazy(() => import("../pages/Mix.tsx"));
 const DiscoveryPage = lazy(() => import("../pages/Discovery.tsx"));
-const GenrePage = lazy(
-  () => import("../features/catalog/routes/GenrePage.tsx"),
-);
+const GenrePage = lazy(() => import("../features/catalog/routes/GenrePage.tsx"));
 const LyricsPage = lazy(() => import("../pages/LyricsPage.tsx"));
 const Stats = lazy(() => import("../pages/Stats.tsx"));
 const Radio = lazy(() => import("../pages/Radio.tsx"));
-const Settings = lazy(
-  () => import("../features/settings/routes/SettingsPage.tsx"),
-);
-const Library = lazy(
-  () => import("../features/library/routes/LibraryPage.tsx"),
-);
-const Downloads = lazy(
-  () => import("../features/library/routes/DownloadsPage.tsx"),
-);
+const Settings = lazy(() => import("../features/settings/routes/SettingsPage.tsx"));
+const Library = lazy(() => import("../features/library/routes/LibraryPage.tsx"));
+const Downloads = lazy(() => import("../features/library/routes/DownloadsPage.tsx"));
 const You = lazy(() => import("../pages/You.tsx"));
-const AlbumGrid = lazy(
-  () => import("../features/catalog/routes/AlbumGridPage.tsx"),
-);
+const AlbumGrid = lazy(() => import("../features/catalog/routes/AlbumGridPage.tsx"));
 const NotFound = lazy(() => import("../pages/NotFound.tsx"));
 const Requests = lazy(() => import("../pages/Requests.tsx"));
-const LikedArtists = lazy(
-  () => import("../features/catalog/routes/LikedArtistsPage.tsx"),
-);
+const LikedArtists = lazy(() => import("../features/catalog/routes/LikedArtistsPage.tsx"));
 
-function spotifyPage(
-  name:
-    | "SpotifyLikedPage"
-    | "SpotifyPlaylistPage"
-    | "SpotifyAlbumPage"
-    | "SpotifyArtistPage",
-) {
+function spotifyPage(name: "SpotifyLikedPage" | "SpotifyPlaylistPage" | "SpotifyAlbumPage" | "SpotifyArtistPage") {
   return lazy(() =>
-    import("../features/spotify/routes/SpotifyRoutes.tsx").then(
-      (spotifyModule) => ({ default: spotifyModule[name] }),
-    ),
+    import("../features/spotify/routes/SpotifyRoutes.tsx").then((spotifyModule) => ({ default: spotifyModule[name] })),
   );
 }
 
@@ -63,16 +35,12 @@ const SpotifyAlbum = spotifyPage("SpotifyAlbumPage");
 const SpotifyArtist = spotifyPage("SpotifyArtistPage");
 
 function youtubeMusicPage(
-  name:
-    | "YouTubeMusicLikedPage"
-    | "YouTubeMusicPlaylistPage"
-    | "YouTubeMusicAlbumPage"
-    | "YouTubeMusicArtistPage",
+  name: "YouTubeMusicLikedPage" | "YouTubeMusicPlaylistPage" | "YouTubeMusicAlbumPage" | "YouTubeMusicArtistPage",
 ) {
   return lazy(() =>
-    import("../features/youtube-music/routes/YouTubeMusicRoutes.tsx").then(
-      (youtubeMusicModule) => ({ default: youtubeMusicModule[name] }),
-    ),
+    import("../features/youtube-music/routes/YouTubeMusicRoutes.tsx").then((youtubeMusicModule) => ({
+      default: youtubeMusicModule[name],
+    })),
   );
 }
 
@@ -82,11 +50,7 @@ const YouTubeMusicAlbum = youtubeMusicPage("YouTubeMusicAlbumPage");
 const YouTubeMusicArtist = youtubeMusicPage("YouTubeMusicArtistPage");
 
 function suspensePage(page: React.ReactNode) {
-  return (
-    <Suspense fallback={<div className="page-loading" aria-busy="true" />}>
-      {page}
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{page}</Suspense>;
 }
 
 export const router = createBrowserRouter([

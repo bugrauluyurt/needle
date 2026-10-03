@@ -31,30 +31,19 @@ export function RequestState({
   if (state === "downloading") {
     return (
       <div className="get-state">
-        <div
-          className="line static"
-          style={{ "--p": `${pct}%` } as React.CSSProperties}
-        >
+        <div className="line static" style={{ "--p": `${pct}%` } as React.CSSProperties}>
           <i />
         </div>
         {translate(LABELS.downloading)}, {pct}%
       </div>
     );
   }
-  if (state === "available")
-    return <div className="get-state ok">{translate(LABELS.available)}</div>;
-  if (state === "failed")
-    return (
-      <div className="get-state bad">{detail ?? translate(LABELS.failed)}</div>
-    );
+  if (state === "available") return <div className="get-state ok">{translate(LABELS.available)}</div>;
+  if (state === "failed") return <div className="get-state bad">{detail ?? translate(LABELS.failed)}</div>;
   return (
     <div className="get-state">
       {state === "missing" ? null : <span className="spin" />}
-      {translate(
-        kind === "song" && state === "searching"
-          ? "requestState.soulseek"
-          : LABELS[state],
-      )}
+      {translate(kind === "song" && state === "searching" ? "requestState.soulseek" : LABELS[state])}
     </div>
   );
 }
