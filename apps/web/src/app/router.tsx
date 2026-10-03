@@ -1,4 +1,6 @@
-import { lazy, Suspense } from "react";
+import { cloneElement, lazy, Suspense } from "react";
+import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 import { createBrowserRouter } from "react-router";
 import { Shell } from "../layout/Shell.tsx";
 
@@ -49,8 +51,20 @@ const YouTubeMusicPlaylist = youtubeMusicPage("YouTubeMusicPlaylistPage");
 const YouTubeMusicAlbum = youtubeMusicPage("YouTubeMusicAlbumPage");
 const YouTubeMusicArtist = youtubeMusicPage("YouTubeMusicArtistPage");
 
-function suspensePage(page: React.ReactNode) {
-  return <Suspense fallback={<div className="page-loading" aria-busy="true" />}>{page}</Suspense>;
+function LocalizedPage({ page }: { page: ReactElement }) {
+  const { i18n } = useTranslation();
+
+  return cloneElement(page as ReactElement<{ language?: string }>, {
+    language: i18n.resolvedLanguage,
+  });
+}
+
+function suspensePage(page: ReactElement) {
+  return (
+    <Suspense fallback={<div className="page-loading" aria-busy="true" />}>
+      <LocalizedPage page={page} />
+    </Suspense>
+  );
 }
 
 export const router = createBrowserRouter([

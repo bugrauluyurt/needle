@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollContext } from "../components/ScrollContext.ts";
 import { DEFAULT_TONE } from "../lib/tone.ts";
@@ -192,6 +193,8 @@ function usePanelOver(narrow: boolean): boolean {
 }
 
 export function Shell() {
+  useTranslation();
+
   const mobile = useIsMobile();
   const panel = useUi((s) => s.rightPanel);
   const fullScreen = useUi((s) => s.fullScreen);

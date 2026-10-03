@@ -18,7 +18,6 @@ export function App() {
   const detailsOpen = useDetails((detailsState) => Boolean(detailsState.song));
   const selectedLanguage = useSettings((settingsState) => settingsState.language);
   const { i18n } = useTranslation();
-  const language = i18n.resolvedLanguage;
 
   useAppRuntime(signedIn);
 
@@ -28,9 +27,9 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {signedIn ? <RouterProvider key={language} router={router} /> : <Login key={language} />}
+      {signedIn ? <RouterProvider router={router} /> : <Login />}
       {detailsOpen ? (
-        <Suspense key={language} fallback={null}>
+        <Suspense fallback={null}>
           <SongDetailsDialog />
         </Suspense>
       ) : null}
