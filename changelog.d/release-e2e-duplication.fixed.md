@@ -1,1 +1,0 @@
-- Shorten release pipelines by running browser tests once in the required pull request checks instead of repeating them after merge and during publication.
