@@ -21,7 +21,6 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    launchOptions: chromiumLaunchOptions,
   },
   projects: [
     {
@@ -31,7 +30,7 @@ export default defineConfig({
         viewport: { width: 1440, height: 900 },
         launchOptions: chromiumLaunchOptions,
       },
-      testIgnore: /(mobile|tablet)\.spec/,
+      testIgnore: [/mobile.*\.spec/, /tablet\.spec/],
     },
     {
       name: "tablet",
@@ -52,7 +51,15 @@ export default defineConfig({
         userAgent: iphone,
         launchOptions: chromiumLaunchOptions,
       },
-      testMatch: /mobile\.spec/,
+      testMatch: [/mobile.*\.spec/, /auth\.spec/],
+    },
+    {
+      name: "mobile-webkit",
+      use: {
+        ...devices["iPhone 13"],
+        viewport: { width: 390, height: 844 },
+      },
+      testMatch: [/auth\.spec/, /mobile-viewport\.spec/],
     },
   ],
   webServer: [

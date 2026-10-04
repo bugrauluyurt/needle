@@ -78,11 +78,13 @@ function sessionStorageValue(storageKey: string): string | null {
   }
 }
 
-function writeLocalStorage(storageKey: string, storageValue: string): void {
+function writeLocalStorage(storageKey: string, storageValue: string): boolean {
   try {
     localStorage.setItem(storageKey, storageValue);
+
+    return true;
   } catch {
-    return;
+    return false;
   }
 }
 
@@ -102,14 +104,40 @@ function removeLocalStorage(storageKey: string): void {
   }
 }
 
+function removeSessionStorage(storageKey: string): void {
+  try {
+    sessionStorage.removeItem(storageKey);
+  } catch {
+    return;
+  }
+}
+
+function persistCredentials(credentials: Credentials | null): void {
+  const sessionState: StoredSession = { credentials };
+  const storedSession = JSON.stringify({ state: sessionState, version: 2 });
+
+  if (writeLocalStorage(SESSION_STORAGE_KEY, storedSession)) {
+    removeSessionStorage(SESSION_STORAGE_KEY);
+  } else {
+    removeLocalStorage(SESSION_STORAGE_KEY);
+    writeSessionStorage(SESSION_STORAGE_KEY, storedSession);
+  }
+}
+
 const browserSessionStorage: PersistStorage<SessionState> = {
   getItem: () => {
+    const storedSession = localStorageValue(SESSION_STORAGE_KEY);
+    const storedTabSession = sessionStorageValue(SESSION_STORAGE_KEY);
     const storedIdentity = deviceIdentity(localStorageValue(DEVICE_STORAGE_KEY));
-    const legacyIdentity = deviceIdentity(localStorageValue(SESSION_STORAGE_KEY));
+    const legacyIdentity = deviceIdentity(storedSession);
     const identity = storedIdentity ?? legacyIdentity;
-    const credentials = sessionCredentials(sessionStorageValue(SESSION_STORAGE_KEY));
+    const credentials = sessionCredentials(storedSession ?? storedTabSession);
 
-    removeLocalStorage(SESSION_STORAGE_KEY);
+    if (storedSession !== null) {
+      removeSessionStorage(SESSION_STORAGE_KEY);
+    } else if (storedTabSession !== null) {
+      persistCredentials(credentials);
+    }
 
     if (identity && !storedIdentity) {
       writeLocalStorage(DEVICE_STORAGE_KEY, JSON.stringify({ state: identity, version: 1 }));
@@ -127,20 +155,14 @@ const browserSessionStorage: PersistStorage<SessionState> = {
     } as StorageValue<SessionState>;
   },
   setItem: (_storageKey, storedSession) => {
-    const { credentials, deviceId, deviceName } = storedSession.state;
-    const sessionState: StoredSession = { credentials };
+    const { deviceId, deviceName } = storedSession.state;
     const identityState: StoredDeviceIdentity = { deviceId, deviceName };
 
-    writeSessionStorage(SESSION_STORAGE_KEY, JSON.stringify({ state: sessionState, version: 2 }));
     writeLocalStorage(DEVICE_STORAGE_KEY, JSON.stringify({ state: identityState, version: 1 }));
-    removeLocalStorage(SESSION_STORAGE_KEY);
   },
   removeItem: () => {
-    try {
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch {
-      return;
-    }
+    removeLocalStorage(SESSION_STORAGE_KEY);
+    removeSessionStorage(SESSION_STORAGE_KEY);
   },
 };
 
@@ -153,10 +175,14 @@ export const useSession = create<SessionState>()(
       signIn: (credentials) => {
         if (get().credentials?.user !== credentials.user) resetAccountState();
 
+        persistCredentials(credentials);
+
         set({ credentials });
       },
       signOut: () => {
         if (get().credentials) resetAccountState();
+
+        persistCredentials(null);
 
         set({ credentials: null });
       },

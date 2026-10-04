@@ -1398,3 +1398,9 @@
 .phone-app .req-acts .icon-btn {
   margin-left: auto;
 }
+
+@media (pointer: coarse) {
+  :is(input, textarea, select):not([type="range"]) {
+    font-size: max(16px, 1em);
+  }
+}

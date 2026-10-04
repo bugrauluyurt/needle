@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe("browser session isolation", () => {
-  it("purges legacy local credentials while preserving device identity", async () => {
+  it("restores legacy local credentials while preserving device identity", async () => {
     const legacySession = JSON.stringify({
       state: {
         credentials: { user: "alice", token: "alice-token", salt: "alice-salt" },
@@ -68,16 +68,15 @@ describe("browser session isolation", () => {
     const { useSession } = await import("../src/state/session.ts");
 
     expect(useSession.getState()).toMatchObject({
-      credentials: null,
+      credentials: { user: "alice", token: "alice-token", salt: "alice-salt" },
       deviceId: "living-room-device",
       deviceName: "Living room",
     });
-    expect(localStorage.getItem("needle.session")).toBeNull();
     expect(localStorage.getItem("needle.device")).toContain("living-room-device");
-    expect(JSON.stringify([...localStorage.values])).not.toContain("alice-token");
+    expect(sessionStorage.getItem("needle.session")).toBeNull();
   });
 
-  it("keeps credentials through a same-tab reload using session storage only", async () => {
+  it("keeps credentials after closing and reopening with empty tab storage", async () => {
     const localStorage = memoryStorage();
     const sessionStorage = memoryStorage();
     vi.stubGlobal("localStorage", localStorage);
@@ -85,8 +84,11 @@ describe("browser session isolation", () => {
 
     const firstSessionModule = await import("../src/state/session.ts");
     firstSessionModule.useSession.getState().signIn({ user: "alice", token: "alice-token", salt: "alice-salt" });
+    const signedInDeviceId = firstSessionModule.useSession.getState().deviceId;
 
     vi.resetModules();
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
     const reloadedSessionModule = await import("../src/state/session.ts");
 
     expect(reloadedSessionModule.useSession.getState().credentials).toEqual({
@@ -94,8 +96,135 @@ describe("browser session isolation", () => {
       token: "alice-token",
       salt: "alice-salt",
     });
+    expect(reloadedSessionModule.useSession.getState().deviceId).toBe(signedInDeviceId);
+    expect(localStorage.getItem("needle.session")).toContain("alice-token");
+  });
+
+  it("migrates tab credentials so another session can restore the account", async () => {
+    const localStorage = memoryStorage();
+    const sessionStorage = memoryStorage({
+      "needle.session": JSON.stringify({
+        state: { credentials: { user: "alice", token: "alice-token", salt: "alice-salt" } },
+        version: 2,
+      }),
+    });
+
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", sessionStorage);
+
+    const migratedSessionModule = await import("../src/state/session.ts");
+
+    expect(migratedSessionModule.useSession.getState().credentials?.user).toBe("alice");
+    expect(localStorage.getItem("needle.session")).toContain("alice-token");
+    expect(sessionStorage.getItem("needle.session")).toBeNull();
+
+    vi.resetModules();
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const reopenedSessionModule = await import("../src/state/session.ts");
+
+    expect(reopenedSessionModule.useSession.getState().credentials?.user).toBe("alice");
+  });
+
+  it("keeps migrated tab credentials when persistent storage cannot be written", async () => {
+    const localStorage = memoryStorage();
+    const sessionStorage = memoryStorage({
+      "needle.session": JSON.stringify({
+        state: { credentials: { user: "alice", token: "alice-token", salt: "alice-salt" } },
+        version: 2,
+      }),
+    });
+
+    vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage is unavailable", "QuotaExceededError");
+    });
+
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", sessionStorage);
+
+    const { useSession } = await import("../src/state/session.ts");
+
+    expect(useSession.getState().credentials?.user).toBe("alice");
     expect(sessionStorage.getItem("needle.session")).toContain("alice-token");
-    expect(JSON.stringify([...localStorage.values])).not.toContain("alice-token");
+
+    useSession.getState().signIn({ user: "bob", token: "bob-token", salt: "bob-salt" });
+
+    expect(sessionStorage.getItem("needle.session")).toContain("bob-token");
+  });
+
+  it("does not restore stale tab credentials after a persisted sign-out", async () => {
+    const localStorage = memoryStorage({
+      "needle.session": JSON.stringify({ state: { credentials: null }, version: 2 }),
+    });
+    const sessionStorage = memoryStorage({
+      "needle.session": JSON.stringify({
+        state: { credentials: { user: "alice", token: "alice-token", salt: "alice-salt" } },
+        version: 2,
+      }),
+    });
+
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", sessionStorage);
+
+    const { useSession } = await import("../src/state/session.ts");
+
+    expect(useSession.getState().credentials).toBeNull();
+    expect(sessionStorage.getItem("needle.session")).toBeNull();
+  });
+
+  it("stays signed out after reopening while preserving device identity", async () => {
+    const localStorage = memoryStorage();
+
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const signedInSessionModule = await import("../src/state/session.ts");
+
+    signedInSessionModule.useSession.getState().signIn({ user: "alice", token: "alice-token", salt: "alice-salt" });
+    signedInSessionModule.useSession.getState().rename("Living room");
+
+    const signedInDeviceId = signedInSessionModule.useSession.getState().deviceId;
+
+    signedInSessionModule.useSession.getState().signOut();
+
+    expect(localStorage.getItem("needle.session")).not.toContain("alice-token");
+
+    vi.resetModules();
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const reopenedSessionModule = await import("../src/state/session.ts");
+
+    expect(reopenedSessionModule.useSession.getState()).toMatchObject({
+      credentials: null,
+      deviceId: signedInDeviceId,
+      deviceName: "Living room",
+    });
+  });
+
+  it("does not let a stale tab's device rename undo another tab's sign-out", async () => {
+    const localStorage = memoryStorage();
+
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const olderTabSessionModule = await import("../src/state/session.ts");
+
+    olderTabSessionModule.useSession.getState().signIn({ user: "alice", token: "alice-token", salt: "alice-salt" });
+
+    vi.resetModules();
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const newerTabSessionModule = await import("../src/state/session.ts");
+
+    newerTabSessionModule.useSession.getState().signOut();
+    olderTabSessionModule.useSession.getState().rename("Living room");
+
+    vi.resetModules();
+    vi.stubGlobal("sessionStorage", memoryStorage());
+
+    const reopenedSessionModule = await import("../src/state/session.ts");
+
+    expect(reopenedSessionModule.useSession.getState().credentials).toBeNull();
   });
 
   it("resets account state before sign-out or another user becomes active", async () => {

@@ -68,7 +68,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Install media fixture dependencies
         run: sudo apt-get update && sudo apt-get install --yes ffmpeg

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Logo } from "../components/Icon.tsx";
 import { translate } from "../i18n/index.ts";
+import { deviceKind } from "../lib/device.ts";
 import { makeCredentials, SubsonicError, sub } from "../lib/subsonic.ts";
 import { useSession } from "../state/session.ts";
 
@@ -57,7 +58,7 @@ export function Login() {
             autoCorrect="off"
             spellCheck={false}
             required
-            autoFocus
+            autoFocus={deviceKind() === "desktop"}
           />
         </label>
         <label className="field">

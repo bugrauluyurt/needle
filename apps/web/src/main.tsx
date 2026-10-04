@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App.tsx";
+import { initializeViewport } from "./app/viewport.ts";
 import { useUpdate } from "./state/update.ts";
 import "./i18n/index.ts";
 import "./styles/global.css";
@@ -8,6 +9,8 @@ import "./styles/layout.css";
 import "./styles/components.css";
 import "./styles/pages.css";
 import "./styles/mobile.css";
+
+initializeViewport();
 
 const root = document.getElementById("root");
 if (root) {

@@ -39,7 +39,6 @@ body,
 }
 
 html {
-  touch-action: pan-x pan-y;
   background: var(--ink);
   color: var(--label);
   font-family: var(--ui);
@@ -50,6 +49,10 @@ html {
   text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+}
+
+:where(html.standalone-mobile, html.standalone-mobile *) {
+  touch-action: pan-x pan-y;
 }
 
 body {
