@@ -1,1 +1,0 @@
-- Home-screen apps open at their normal full-width scale with touch zoom disabled. Mobile text fields no longer trigger unwanted zoom, and browser tabs remain zoomable.

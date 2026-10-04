@@ -8,6 +8,12 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.10.3 - 2026-10-04
+
+### Fixed
+- Stay signed in when reopening Needle, including home-screen apps on mobile. Signing out still clears the saved login and account-specific state.
+- Home-screen apps open at their normal full-width scale with touch zoom disabled. Mobile text fields no longer trigger unwanted zoom, and browser tabs remain zoomable.
+
 ## 1.10.2 - 2026-10-03
 
 ### Fixed
