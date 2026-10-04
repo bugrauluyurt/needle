@@ -20,13 +20,37 @@ test("signs in, stays signed in after a same-tab reload, and signs out", async (
   await expect(page.getByRole("heading", { name: "Sign in to your music" })).toBeVisible();
 });
 
-test("keeps credentials out of persistent browser storage", async ({ page }) => {
+test("stays signed in after closing and reopening the app", async ({ page, context }) => {
+  await signIn(page);
+  await page.close();
+
+  const reopenedPage = await context.newPage();
+
+  await reopenedPage.goto("/");
+  await expect(reopenedPage.locator("#main")).toBeVisible();
+  await expect(reopenedPage.getByRole("heading", { name: "Sign in to your music" })).toBeHidden();
+});
+
+test("stays signed out after closing and reopening the app", async ({ page, context }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: /Account, signed in as admin/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to your music" })).toBeVisible();
+  await page.close();
+
+  const reopenedPage = await context.newPage();
+
+  await reopenedPage.goto("/");
+  await expect(reopenedPage.getByRole("heading", { name: "Sign in to your music" })).toBeVisible();
+});
+
+test("remembers the authentication token without storing the password", async ({ page }) => {
   await signIn(page);
   const persistentStorage = await page.evaluate(() => JSON.stringify(localStorage));
   const tabStorage = await page.evaluate(() => JSON.stringify(sessionStorage));
 
   expect(persistentStorage).not.toContain(PASSWORD);
-  expect(persistentStorage).not.toContain("token");
+  expect(persistentStorage).toContain("token");
   expect(tabStorage).not.toContain(PASSWORD);
-  expect(tabStorage).toContain("token");
+  expect(tabStorage).not.toContain("token");
 });

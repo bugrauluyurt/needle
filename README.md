@@ -507,9 +507,10 @@ nothing to set up. Choose qualities in Needle's Settings.
 - Needle sends a restrictive content security policy, frame denial, MIME-sniffing
   protection, a strict referrer policy, HSTS and camera, location and microphone
   restrictions.
-- The browser keeps the replayable Navidrome token only for the current tab session
-  and clears account-specific queues, provider caches and offline state on sign-out
-  or account change. Client-side tokens remain readable to code running on Needle's
+- The browser remembers your sign-in across app launches using a replayable Navidrome
+  token, never your password. Signing out clears that token and account-specific queues,
+  provider caches and offline state. Changing accounts clears the previous account's state.
+  Client-side tokens remain readable to code running on Needle's
   origin, so only install trusted releases and keep the server updated.
 - API keys and the Spotify client secret never reach the browser.
 - Spotify sign-in state is bound to the browser that started the flow with a

@@ -1,0 +1,1 @@
+- Stay signed in when reopening Needle, including home-screen apps on mobile. Signing out still clears the saved login and account-specific state.
