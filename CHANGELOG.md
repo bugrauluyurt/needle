@@ -8,6 +8,12 @@ version: breaking or removed for a major, added, changed or deprecated for a min
 or security for a patch. A bot keeps a release pull request open with them; merging it
 writes the entries here and releases.
 
+## 1.10.4 - 2026-10-22
+
+### Security
+- Stop the YouTube Music bridge from trusting the emSign ECC Root CA - G3 root, whose compromised eMudhra intermediates could sign forged certificates, and update its Brotli decoder to fix CVE-2026-111497.
+- Run the Docker image on Node.js 24.22.1, which fixes a Brotli decoder flaw that allowed remote code execution (CVE-2026-111497) and TLS certificate hostname check bypasses from the October 2026 Node.js security release.
+
 ## 1.10.3 - 2026-10-04
 
 ### Fixed

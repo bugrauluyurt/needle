@@ -1,6 +1,6 @@
 {
   "name": "needle",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "private": true,
   "license": "MIT",
   "type": "module",

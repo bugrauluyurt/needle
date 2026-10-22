@@ -1,1 +1,0 @@
-- Stop the YouTube Music bridge from trusting the emSign ECC Root CA - G3 root, whose compromised eMudhra intermediates could sign forged certificates, and update its Brotli decoder to fix CVE-2026-111497.
