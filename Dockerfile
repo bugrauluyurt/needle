@@ -1,4 +1,4 @@
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
+FROM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS build
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -12,7 +12,7 @@ COPY bridges bridges
 RUN pnpm --filter @needle/web build \
  && pnpm --filter @needle/server deploy --prod --legacy /out
 
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+FROM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
 ENV NODE_ENV=production PORT=4535 DATA_DIR=/data WEB_DIST=/app/web YTMUSIC_PYTHON=/opt/ytmusic/bin/python YTMUSIC_BRIDGE_PATH=/app/bridges/youtube-music/src/youtube_music_bridge.py UV_PROJECT_ENVIRONMENT=/opt/ytmusic
 WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv@sha256:2381d6aa60c326b71fd40023f921a0a3b8f91b14d5db6b90402e65a635053709 /uv /uvx /bin/
